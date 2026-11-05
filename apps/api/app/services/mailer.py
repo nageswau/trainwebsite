@@ -565,7 +565,7 @@ def _lead_email_html(*, body: str, sender_name: str) -> str:
 </html>"""
 
 
-def lead_email_message(*, to_email: str, subject: str, body: str, sender_name: str, sender_email: str) -> EmailMessage:
+def lead_email_message(*, to_email: str, subject: str, body: str, sender_name: str, sender_email: str, ics: str | None = None) -> EmailMessage:
     """EM1: the technical From is the verified SMTP account (providers reject anything else); the display name and Reply-To carry the
     telecaller, so a reply reaches them (not tracked in the CRM). `formataddr` quotes any specials in a name. A malformed address raises
     ValueError, which the worker records as a permanent failure. The subject arrives single-line (schemas.LeadEmailCreate)."""
@@ -576,4 +576,7 @@ def lead_email_message(*, to_email: str, subject: str, body: str, sender_name: s
     msg["Reply-To"] = formataddr((sender_name, sender_email))
     msg.set_content(f"{body}\n\n--\nSent by {sender_name} via EduSphere.\n")
     msg.add_alternative(_lead_email_html(body=body, sender_name=sender_name), subtype="html")
+    if ics:  # hrc-028 (DEC-SCOPE-398 I6): a recruiter's interview notice carries its calendar invite
+        method = "CANCEL" if "\r\nMETHOD:CANCEL\r\n" in ics else "REQUEST"
+        msg.add_attachment(ics.encode(), maintype="text", subtype="calendar", filename=INVITE_FILENAME, params={"method": method, "charset": "utf-8"})
     return msg

@@ -68,6 +68,8 @@ ROWS = [
     R("patch", "/recruiter/interviews/{hiring_interview}", lambda w: {"interviewer": tag("Meera ")}, **allow(200, *WRITE), **allow(404, *OUT)),
     R("post", "/recruiter/interviews/{hiring_interview}/reschedule", lambda w: {"scheduled_at": _at(3), "notify": False}, **allow(200, *WRITE), **allow(404, *OUT)),
     R("post", "/recruiter/interviews/{hiring_interview}/status", {"status": "confirmed"}, **allow(200, *WRITE), **allow(404, *OUT)),
+    # hrc-028 (§2.291): cancel is a write like reschedule
+    R("post", "/recruiter/interviews/{hiring_interview}/cancel", {"reason": "Panel unavailable", "notify": False}, **allow(200, *WRITE), **allow(404, *OUT)),
     # rec-021 -- feedback (§2.101) on the Completed interview
     R("put", "/recruiter/interviews/{hiring_done}/feedback", {"overall_rating": 4, "strengths": "Clear Java answers"}, **allow(200, *WRITE), **allow(404, *OUT)),
     # rec-022 -- offers (§2.81): the manager reads and downloads the letter; the student reads only their own offers (anyone else 403)

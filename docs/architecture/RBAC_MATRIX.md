@@ -3832,3 +3832,10 @@ anonymous 401. A candidate (`candidate` role) raises only their own request (no 
 acts on a candidate subject. Deactivating a `placement_officer`, `placement_manager`, `hr_team` or `hr_manager` now increments their
 `session_version` and removes them as placement-officer owner and collaborator of every candidate. Pinned by
 `apps/api/tests/test_hrc_035_candidate_privacy.py` and the rec-038 matrix rows.
+
+### 2.291 Interview cancel *(added 2026-11-05 — `DEC-SCOPE-398`, hrc-028)*
+
+`POST /recruiter/interviews/{id}/cancel` follows §2.74 exactly: rec-007's requirement scope through rec-017's `load_scoped`, so out of
+scope is 404 (the same as an unknown id); the writers (`placement_officer` on the requirement, `super_admin`) cancel; the manager and the
+assigned BDM read only (403); every other role 403, anonymous 401. No new grant key. Pinned by `apps/api/tests/test_hrc_028_interviews.py`
+and the rec-038 matrix row.

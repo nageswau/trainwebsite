@@ -6,7 +6,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
 from uuid import UUID
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, available_timezones
 
 from pydantic import (
     AfterValidator,
@@ -80,6 +80,7 @@ from app.models import (
     GENDERS,
     HR_REVIEW_OPEN_STAGES,
     INSTITUTION_TYPES,
+    INTERVIEW_PLATFORMS,
     INTERVIEW_ROUNDS,
     INVESTMENT_STATUSES,
     INVESTMENT_VERTICALS,
@@ -11225,6 +11226,27 @@ RecInterviewRound = Literal[INTERVIEW_ROUNDS]
 RecInterviewMove = Literal["confirmed", "completed", "no_show", "selected", "rejected", "on_hold"]  # IV3: never scheduled / rescheduled
 
 
+def _rec_time_zone(value: str) -> str:
+    """hrc-028 (I1): an IANA name the server knows -- never a path (ZoneInfo would read a file)."""
+    if value not in available_timezones():
+        raise ValueError("Choose a valid time zone")
+    return value
+
+
+# hrc-028 (DEC-SCOPE-398 I1): the interview's own fields; the end's relation to the start is checked in the service (and by a CHECK)
+RecInterviewTimeZone = Annotated[str, StringConstraints(strip_whitespace=True, max_length=64), AfterValidator(_rec_time_zone)]
+RecInterviewEnd = Annotated[AwareDatetime, AfterValidator(_bdm_appt_minute)] | None
+RecInterviewRoundNumber = Annotated[StrictInt, Field(ge=1, le=20)] | None
+RecInterviewPlatform = Literal[INTERVIEW_PLATFORMS] | None
+REC_INTERVIEW_LABELS = {"instructions": "Instructions", "documents_required": "Documents to bring", "reason": "Reason"}
+
+
+def _rec_interview_text(max_length: int, required: bool = False):
+    """Multi-line text (CRLF stored as LF before the length check); blank -> None, or 422 when required."""
+    check = AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, required, REC_INTERVIEW_LABELS))
+    return Annotated[Annotated[str, _trimmed(max_length)] | None, check, BeforeValidator(_bdm_newlines)]
+
+
 class RecInterviewCreate(BaseModel):
     """IV5 / IV7: the §14 fields. Code, status, creator and history are server-owned (unknown fields here); the time rules, the clash and
     the contact are checked in the service."""
@@ -11238,6 +11260,13 @@ class RecInterviewCreate(BaseModel):
     interviewer: _bdm_appt_optional(160) = None
     location: _bdm_appt_optional(200) = None
     contact_id: UUID | None = None
+    round_number: RecInterviewRoundNumber = None
+    ends_at: RecInterviewEnd = None
+    time_zone: RecInterviewTimeZone = "Asia/Kolkata"
+    platform: RecInterviewPlatform = None
+    phone_details: _bdm_appt_optional(200) = None
+    instructions: _rec_interview_text(2000) = None
+    documents_required: _rec_interview_text(1000) = None
     notify: StrictBool = True
 
 
@@ -11252,11 +11281,19 @@ class RecInterviewUpdate(BaseModel):
     interviewer: _bdm_appt_optional(160) = None
     location: _bdm_appt_optional(200) = None
     contact_id: UUID | None = None
+    round_number: RecInterviewRoundNumber = None
+    ends_at: RecInterviewEnd = None
+    time_zone: RecInterviewTimeZone | None = None
+    platform: RecInterviewPlatform = None
+    phone_details: _bdm_appt_optional(200) = None
+    instructions: _rec_interview_text(2000) = None
+    documents_required: _rec_interview_text(1000) = None
     expected_updated_at: datetime | None = None  # hrc-003: the version the form showed; another one is 409 `record_changed`
+    notify: StrictBool = True  # hrc-028 (I5): a change the candidate can see notifies them
 
     @model_validator(mode="after")
     def _required_stay_set(self):
-        for key in ("round", "mode"):
+        for key in ("round", "mode", "time_zone"):
             if key in self.model_fields_set and getattr(self, key) is None:
                 raise ValueError(f"{key.capitalize()} can't be removed")
         return self
@@ -11266,6 +11303,14 @@ class RecInterviewReschedule(BaseModel):
     model_config = ConfigDict(extra="forbid")
     scheduled_at: BdmApptStart
     reason: _bdm_appt_optional(500) = None
+    notify: StrictBool = True
+
+
+class RecInterviewCancel(BaseModel):
+    """hrc-028 (I3): the reason is required and shown to the candidate."""
+
+    model_config = ConfigDict(extra="forbid")
+    reason: _rec_interview_text(500, required=True)
     notify: StrictBool = True
 
 

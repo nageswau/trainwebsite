@@ -39,7 +39,8 @@ the times in their own time zone.
 - **I7 Student portal** (`/it/student/interview-schedule`): Round, Role, Company, When (in the interview's zone), Mode, Meeting (an Open
   link only while not cancelled), Details (platform, phone, location, instructions, documents), Status — "Cancelled — <reason>";
   decisions still read Completed (hrc-001 H3).
-- **I8 Recruiter UI.** The schedule/edit form gains the fields (time zone as a select of common zones plus the stored one); the item shows
+- **I8 Recruiter UI.** The schedule/edit form gains the fields (time zone as a select of common zones plus the stored one; the end as a
+  Duration select -- the end is the start plus the minutes, so a reschedule keeps it); the item shows
   them, the candidate-zone time when it differs from IST, a Cancel action with a required reason, and the new history lines.
 - **I9 Auth.** Unchanged: rec-017 writers (`rec`, `super`) write, out of scope 404, other roles 403 (RBAC §2.291 adds the cancel row).
 - **I10 Not built:** auto-creating Google/Zoho meetings (Q-29), interviewer users and their notices (hrc-029), result release (hrc-030),

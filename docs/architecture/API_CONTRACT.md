@@ -5864,3 +5864,24 @@ lists (archived too); `PATCH /admin/data-requests/{id}` answers 409 for a `candi
 only, never accepted in a body. `GET /recruiter/candidates` takes an optional `engagement=<key>`; `POST /recruiter/candidates/search`
 takes an optional `engagement` key (label "Engagement"); any other value is 422. The stored `status` field and its filter are unchanged.
 No new endpoint, permission or migration.
+
+## 12KQ. Interview completion, cancellation, link history and calendar (hrc-028) — addendum, 2026-11-05
+
+`DEC-SCOPE-398`, migration `0274_interview_completion`. **Changed (additive):** `POST /api/v1/recruiter/interviews` and
+`PATCH /recruiter/interviews/{id}` accept `round_number` (1–20), `ends_at` (after `scheduled_at`, ≤ 12 h later; else 422 on `ends_at`),
+`time_zone` (IANA name, default `Asia/Kolkata`; unknown 422; PATCH cannot clear it), `platform` (`google_meet`, `microsoft_teams`, `zoom`,
+`zoho_meeting`, `other`), `phone_details` (≤ 200), `instructions` (≤ 2000, multi-line), `documents_required` (≤ 1000, multi-line). PATCH
+also takes `notify` (default true): when a candidate-visible field changed, the candidate (and the contact) are notified and the reply is
+the interview plus `notifications`; otherwise the reply is unchanged. Every interview item gains those fields plus `local_when` (the time in
+the candidate's zone), `platform_label`, `cancel_reason` and `can_cancel`; `history` rows gain `old_meeting_url`, `new_meeting_url`,
+`old_location`, `new_location` (set on the new `details` event). A PATCH of a cancelled interview is 409. A reschedule moves `ends_at` with
+the start.
+
+**New:** `POST /api/v1/recruiter/interviews/{id}/cancel` `{reason (required, ≤ 500), notify (default true)}` → 200
+`{interview, notifications}`; status `cancelled` (label "Cancelled"); 409 unless Scheduled, Confirmed, Rescheduled or On Hold; 422 on a
+blank reason; 403 for readers, 404 out of scope. Cancelled interviews list under `view=closed`.
+
+Notices (schedule, reschedule, update, cancel) carry an iCalendar invite: the student's email delivery has context
+`{kind: "interview_invite", ics, method}`; a recruiter email row stores `calendar_ics`, attached as `invite.ics` by the worker.
+`GET /api/v1/portal/it/student/interview-schedule` rows are now `{id, title, round, role, company, when, mode, link, details, status}`
+(`link` null once cancelled; `status` "Cancelled — <reason>" for a cancel; decisions still read Completed).

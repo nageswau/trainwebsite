@@ -81,6 +81,7 @@ from app.services import (
 from app.services import application_outcomes as outcomes
 from app.services import applications as job_applications
 from app.services import batch_timetable as timetable
+from app.services import interviews as interview_svc
 from app.services import training_progress as progress
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
 from app.services.agent_dashboard import headline_counts
@@ -117,6 +118,20 @@ async def _safe[T](db: AsyncSession, fn: Callable[[], Awaitable[T]], default: T)
 # ENH-003 / QA-005: the same wording the Super Admin table and the Manage users panel use for a user's setup state.
 _Reviewer = aliased(User)  # ccrm-021 S5: the document queue names who reviewed each document
 _SETUP_LABEL = {"active": "Password set", "pending_setup": "Awaiting setup", "link_expired": "Link expired"}
+
+
+def _student_interview(i: Interview, job: Job, company: Company) -> dict:
+    """hrc-028 (DEC-SCOPE-398 I7): one row of the student's interview schedule. `details` never carries a link."""
+    cancelled = i.status == "cancelled"
+    facts = (("Platform", interview_svc.PLATFORM_LABELS.get(i.platform or "")), ("Location", i.location), ("Phone", i.phone_details),
+             ("Instructions", i.instructions), ("Documents to bring", i.documents_required))  # fmt: skip
+    status = interview_svc.unreleased_status(i.status)
+    return {
+        "id": i.id, "title": f"meeting link for {job.title}",  # the link cell's accessible name ("Open meeting link for ...")
+        "round": interview_svc.round_text(i), "role": job.title, "company": company.name, "when": interview_svc.local_when(i), "mode": i.mode,
+        "link": None if cancelled else i.meeting_url, "details": " · ".join(f"{label}: {value}" for label, value in facts if value) or None,
+        "status": f"Cancelled — {i.cancel_reason}" if cancelled else interview_svc.status_label(status),
+    }
 
 
 def _payload(title, subtitle, columns=(), rows=(), metrics=(), actions=(), panels=()):
@@ -452,9 +467,11 @@ async def _it_student(db: AsyncSession, user: User, section: str):
         return _payload(
             "Interview Schedule",
             "Mock and employer interview appointments.",
-            # hrc-001 (DEC-SCOPE-371 H3): no outcome column until hrc-030's release step.
-            (("role", "Role"), ("company", "Company"), ("scheduled", "Scheduled"), ("mode", "Mode"), ("link", "Meeting")),
-            ({"role": j.title, "company": c.name, "scheduled": i.scheduled_at, "mode": i.mode, "link": i.meeting_url} for i, j, c in rows),
+            # hrc-001 (DEC-SCOPE-371 H3): a decision reads Completed until hrc-030's release step. hrc-028 (DEC-SCOPE-398 I7): the time in the
+            # interview's zone, only the current link (none once cancelled -- old links live on staff-only events), the reason of a cancel.
+            (("round", "Round"), ("role", "Role"), ("company", "Company"), ("when", "When"), ("mode", "Mode"), ("link", "Meeting", "link"),
+             ("details", "Details"), ("status", "Status")),
+            (_student_interview(i, j, c) for i, j, c in rows),
         )
     if section == "placement-status":
         # rec-022 QA-04: the offers are the "My offers" card (GET /workflows/it/student/offers), with the letter; no text panel here.

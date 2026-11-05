@@ -68,6 +68,7 @@ function stageTitle(row: RecTimelineRow): string {
 
 function interviewTitle(row: RecTimelineRow): string {
   if (row.event === "status") return `Interview: ${move(row)}`;
+  if (row.event === "details") return `Interview details changed: ${labelOf(ROUNDS, row.status)}`; // hrc-028 (I4): a link or location replaced
   return `Interview ${row.event === "rescheduled" ? "rescheduled" : "scheduled"}: ${labelOf(ROUNDS, row.status)}`;
 }
 
