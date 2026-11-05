@@ -149,6 +149,7 @@ async def create(db: AsyncSession, user: User, payload: RecCallCreate, now: date
     )
     db.add(call)
     await db.flush()
+    await companies.refresh_last_contact(db, call.company_id)  # pob-003 D4
     follow_up = None
     if payload.next_follow_up is not None:
         body = RecFollowUpCreate(**payload.next_follow_up.model_dump(), contact_id=payload.contact_id)

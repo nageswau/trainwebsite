@@ -3880,3 +3880,11 @@ and resolve only the caller's own assignments: anything else is 404 (IDOR), and 
 profile is the requirement's company. A member reads the candidate summary (no phone, email, LinkedIn or salary), the resume version shared
 at assignment within 7 days after the interview, and writes only their own feedback; they never read other members' or the recruiter's
 feedback. Pinned by `apps/api/tests/test_hrc_029_interview_panel.py` and the rec-038 matrix rows.
+
+### 2.299 Company business context and documents *(added 2026-11-05 — `DEC-SCOPE-406`, pob-003)*
+
+The business context is part of the company record: it is read in the rec-003 company scope (§2.47) and written by the company's
+`can_edit` (the assigned recruiter or super_admin; a manager or the assigned BDM is 403; archived 409). Documents: listed and downloaded in
+the same scope (out of scope 404), uploaded by `can_edit`. A `recruitment_agreement` follows §2.296: download needs
+`commercials.client.view`, upload needs view + edit; its row (name, date, uploader) stays listed. Pinned by
+`apps/api/tests/test_pob_003_company_context.py`, `test_pob_003_company_documents.py` and the rec-038 matrix rows.

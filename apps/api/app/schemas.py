@@ -9596,13 +9596,16 @@ class SkillPage(BaseModel):
 REC_COMPANY_LABELS = {
     "name": "Company name", "website": "Website", "linkedin_url": "LinkedIn", "city": "City", "state": "State", "country": "Country",
     "head_office": "Head office", "branches": "Branches", "description": "Company description",
+    "products_services": "Products and services",  # pob-003 D2
 }
-REC_COMPANY_MULTILINE = frozenset({"branches", "description"})
+REC_COMPANY_MULTILINE = frozenset({"branches", "description", "products_services"})
 REC_COMPANY_URLS = frozenset({"website", "linkedin_url"})
 REC_COMPANY_FIELDS = (  # the columns a create or edit may write; everything else on `companies` is server-owned
     "name", "website", "linkedin_url", "industry_id", "company_size_id", "employee_count", "city", "state", "country", "head_office",
     "branches", "description", "lead_source_id", "campaign_id", "priority", "assigned_bdm_user_id",
+    "products_services", "departments_hiring", "hiring_locations", "target_roles",  # pob-003 D2
 )
+REC_COMPANY_RELATIONS = ("branch_locations", "skill_demand_ids")  # pob-003 D1/D3: rows in their own tables, replaced as a set
 
 
 def _rec_company_text(value: str | None, info: ValidationInfo) -> str | None:
@@ -9641,6 +9644,63 @@ RecCompanyBranches = _rec_company_optional(1000, multiline=True)
 RecCompanyDescription = _rec_company_optional(2000, multiline=True)
 RecEmployeeCount = _bdm_whole_number("Number of employees must be a whole number from 0 to 10,000,000", 0, 10_000_000)
 RecCompanyPriority = Literal["hot", "warm", "cold"]
+
+# --- pob-003 (DEC-SCOPE-406 D1-D3): business context -----------------------------------------------------------------------------
+REC_CONTEXT_LIST_MAX = 20
+REC_BRANCHES_MAX = 50
+REC_SKILL_DEMAND_MAX = 30
+REC_CONTEXT_LIST_LABELS = {"departments_hiring": "Departments hiring", "hiring_locations": "Hiring locations", "target_roles": "Target roles"}
+
+
+def _rec_context_list(value: list[str], info: ValidationInfo) -> list[str]:
+    """D2: trimmed, blanks dropped, case-insensitive repeats dropped (first spelling kept), no control characters, at most 20 of 120."""
+    label = REC_CONTEXT_LIST_LABELS[info.field_name]
+    kept: dict[str, str] = {}
+    for item in value:
+        item = item.strip()
+        if _BDM_CONTROL.search(item):
+            raise ValueError(f"{label} contains invalid characters")
+        if len(item) > 120:
+            raise ValueError(f"Each of the {label.lower()} can be at most 120 characters")
+        if item:
+            kept.setdefault(item.lower(), item)
+    if len(kept) > REC_CONTEXT_LIST_MAX:
+        raise ValueError(f"Add at most {REC_CONTEXT_LIST_MAX} {label.lower()}")
+    return list(kept.values())
+
+
+RecContextList = Annotated[list[str], AfterValidator(_rec_context_list)]  # null is a 422: send [] to clear
+
+
+def _rec_unique_ids(value: list[UUID]) -> list[UUID]:
+    if len(set(value)) != len(value):
+        raise ValueError("Each skill can be added once")
+    return value
+
+
+def _rec_place(value: str | None) -> str | None:
+    """A one-line place name (already trimmed): no control characters; blank -> None."""
+    if value and _BDM_CONTROL.search(value):
+        raise ValueError("A branch location contains invalid characters")
+    return value or None
+
+
+RecPlace = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)] | None, AfterValidator(_rec_place)]
+
+
+class RecBranchIn(BaseModel):
+    """D1: one branch location; the city is required."""
+
+    model_config = ConfigDict(extra="forbid")
+    city: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120), AfterValidator(_rec_place)]
+    state: RecPlace = None
+    country: RecPlace = None
+
+
+class RecBranchOut(BaseModel):
+    city: str
+    state: str | None
+    country: str | None
 
 
 # --- rec-004 (DEC-SCOPE-125): company contacts ------------------------------------------------------------------------------------
@@ -9741,6 +9801,13 @@ class RecCompanyUpdate(BaseModel):
     priority: RecCompanyPriority | None = None
     assigned_bdm_user_id: UUID | None = None
     confirm_duplicate: StrictBool = False
+    # pob-003 (D1-D3): a sent list replaces the stored one ([] clears); null is refused for the lists (send [] instead)
+    products_services: RecCompanyDescription = None
+    departments_hiring: RecContextList = None
+    hiring_locations: RecContextList = None
+    target_roles: RecContextList = None
+    branch_locations: Annotated[list[RecBranchIn], Field(max_length=REC_BRANCHES_MAX)] = None
+    skill_demand_ids: Annotated[list[UUID], Field(max_length=REC_SKILL_DEMAND_MAX), AfterValidator(_rec_unique_ids)] = None
 
 
 class RecCompanyCreate(RecCompanyUpdate):
@@ -9788,6 +9855,7 @@ class RecCompanyRow(BaseModel):
     stage_label: str
     lost: bool
     next_follow_up_at: datetime | None = None  # rec-024 FU9: the earliest open follow-up (derived)
+    last_contacted_at: datetime | None = None  # pob-003 D4: the latest call, message or completed meeting
 
 
 class RecCompanyPage(BaseModel):
@@ -9980,6 +10048,13 @@ class RecCompanyOut(RecCompanyRow):
     assignment_history: list[RecAssignmentOut]
     pipeline: RecPipelineOut
     contract: RecCompanyContractRef | None = None  # rec-030 CT10: the current contract's (effective) status
+    # pob-003 (DEC-SCOPE-406 D1-D3): business context
+    products_services: str | None = None
+    departments_hiring: list[str] = []
+    hiring_locations: list[str] = []
+    target_roles: list[str] = []
+    branch_locations: list[RecBranchOut] = []
+    skill_demand: list[RecCatalogueRef] = []
     archived_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -9987,6 +10062,41 @@ class RecCompanyOut(RecCompanyRow):
 
 class RecCompanyEnvelope(BaseModel):
     company: RecCompanyOut
+
+
+# --- pob-003 (DEC-SCOPE-406 D6): the company document store -------------------------------------------------------------------------
+RecCompanyDocumentKind = Literal["company_profile", "vendor_onboarding_form", "recruitment_agreement", "job_description", "meeting_notes"]
+
+
+class RecDocumentMeetingRef(BaseModel):
+    id: UUID
+    code: str
+    starts_at: datetime
+
+
+class RecCompanyDocumentOut(BaseModel):
+    id: UUID
+    kind: RecCompanyDocumentKind
+    name: str | None
+    content_type: str
+    size_bytes: int
+    meeting: RecDocumentMeetingRef | None
+    uploaded_by: RecPersonRef
+    created_at: datetime
+    can_download: bool  # pob-003 D8: false for an agreement without `commercials.client.view`
+
+
+class RecCompanyDocumentPage(BaseModel):
+    items: list[RecCompanyDocumentOut]
+    total: int
+    limit: int
+    offset: int
+    can_upload: bool
+    can_upload_agreement: bool
+
+
+class RecCompanyDocumentEnvelope(BaseModel):
+    document: RecCompanyDocumentOut
 
 
 class RecContactOut(BaseModel):

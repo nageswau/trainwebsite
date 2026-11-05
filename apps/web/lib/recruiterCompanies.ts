@@ -14,6 +14,7 @@ export type CompanyRow = {
   assigned_recruiter: Person | null; archived: boolean; permissions: CompanyPermissions;
   stage: string; stage_label: string; lost: boolean; // rec-005: the lead's Status
   next_follow_up_at?: string | null; // rec-024 FU9: the earliest open follow-up (derived)
+  last_contacted_at?: string | null; // pob-003 D4: the latest call, message or completed meeting
 };
 export type Assignment = { from_user: Person | null; to_user: Person; changed_by: Person; created_at: string };
 export type Company = CompanyRow & {
@@ -22,6 +23,12 @@ export type Company = CompanyRow & {
   assigned_bdm: Person | null; owner_type: string; created_by: Person | null; assignment_history: Assignment[]; pipeline: Pipeline; archived_at: string | null;
   created_at: string; updated_at: string;
   contract?: { status: string; status_label: string } | null; // rec-030 CT10: the current contract's status
+} & Partial<BusinessContext>;
+// pob-003 (DEC-SCOPE-406 D1-D3): the company's business context, as the API returns it.
+export type Branch = { city: string; state: string | null; country: string | null };
+export type BusinessContext = {
+  products_services: string | null; departments_hiring: string[]; hiring_locations: string[]; target_roles: string[];
+  branch_locations: Branch[]; skill_demand: Ref[];
 };
 export type DuplicateMatch = { id: string; code: string; name: string; city: string | null; archived: boolean };
 export type Duplicate = { message: string; matches: DuplicateMatch[]; total: number };
@@ -112,4 +119,34 @@ export function recruiterSearch(exclude: string | null) {
     const items = page.items.filter((r) => r.active && r.id !== exclude).map((r) => ({ id: r.id, label: r.full_name, detail: r.email }));
     return { items, truncated: page.total > page.items.length };
   };
+}
+
+// --- pob-003: the business-context editor's draft and the PATCH it sends ------------------------------------------------------------
+export type BranchDraft = { city: string; state: string; country: string };
+export type ContextDraft = {
+  products: string; departments: string; locations: string; roles: string; branches: BranchDraft[]; skills: Ref[];
+};
+
+/** A comma-separated input as the list the API stores: trimmed, blanks dropped (the server also drops repeats). */
+export const splitList = (text: string) => text.split(",").map((s) => s.trim()).filter(Boolean);
+
+export function contextOf(c: Company): ContextDraft {
+  return {
+    products: c.products_services ?? "", departments: (c.departments_hiring ?? []).join(", "), locations: (c.hiring_locations ?? []).join(", "),
+    roles: (c.target_roles ?? []).join(", "), skills: c.skill_demand ?? [],
+    branches: (c.branch_locations ?? []).map((b) => ({ city: b.city, state: b.state ?? "", country: b.country ?? "" })),
+  };
+}
+
+const branchWire = (b: BranchDraft): Branch => ({ city: b.city.trim(), state: b.state.trim() || null, country: b.country.trim() || null });
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+/** Only the fields that changed (a list is sent whole); an empty object means nothing to save. */
+export function contextBody(next: ContextDraft, original: ContextDraft): Record<string, unknown> {
+  const wire = (d: ContextDraft) => ({
+    products_services: d.products.trim() || null, departments_hiring: splitList(d.departments), hiring_locations: splitList(d.locations),
+    target_roles: splitList(d.roles), branch_locations: d.branches.map(branchWire), skill_demand_ids: d.skills.map((s) => s.id),
+  });
+  const before = wire(original);
+  return Object.fromEntries(Object.entries(wire(next)).filter(([k, v]) => !same(v, before[k as keyof typeof before])));
 }

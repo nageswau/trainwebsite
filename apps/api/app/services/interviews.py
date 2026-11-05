@@ -38,7 +38,7 @@ from app.models import (
 )
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import RecInterviewCreate, RecInterviewUpdate
-from app.services import applications, calendar_ics, company_pipeline, mailer, recruitment_history
+from app.services import applications, calendar_ics, company_pipeline, mailer, recruiter_companies, recruitment_history
 from app.services import recruiter_requirements as requirements
 
 logger = logging.getLogger("app.recruiter")
@@ -469,6 +469,8 @@ async def notify(db: AsyncSession, user: User, interview: Interview, application
             summary["contact"] = "queued"
     db.add_all(emails)
     await db.flush()
+    if summary["contact"] == "queued":
+        await recruiter_companies.refresh_last_contact(db, company.id)  # pob-003 D4: the invite emailed to the client contact
     return summary, [m.id for m in emails]
 
 

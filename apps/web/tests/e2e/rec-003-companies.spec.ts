@@ -48,7 +48,7 @@ test("a recruiter adds, edits and archives a company; a duplicate name warns", a
   // Edit, then archive: hidden from the default list, read-only.
   page.once("dialog", (d) => d.accept()); // the leave guard on the unsaved duplicate entry
   await page.goto(detailUrl);
-  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByLabel("City").fill("Mumbai");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Changes saved.")).toBeVisible();
@@ -56,7 +56,7 @@ test("a recruiter adds, edits and archives a company; a duplicate name warns", a
   await page.getByRole("button", { name: "Archive" }).click();
   await page.getByRole("button", { name: "Yes, archive" }).click();
   await expect(page.getByText("Company archived.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Edit" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
   await page.goto(`/recruiter/companies?q=${encodeURIComponent(name)}`);
   await expect(page.getByText("No companies match these filters.")).toBeVisible();
   await page.getByLabel("Show archived").click(); // URL-driven: it reads checked once the navigation lands
@@ -76,7 +76,7 @@ test("a placement manager adds an unassigned company and assigns it to a recruit
   await page.getByRole("button", { name: "Save company" }).click();
   await page.waitForURL(/\/recruiter\/companies\/[0-9a-f-]{36}$/);
   await expect(page.getByText("Not assigned to a recruiter yet.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Edit" })).toHaveCount(0); // a manager reassigns; recruiters edit
+  await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0); // a manager reassigns; recruiters edit
 
   await page.getByRole("combobox", { name: "Assign to" }).fill("Kiran");
   await page.getByRole("option", { name: /Kiran Placement/ }).click();

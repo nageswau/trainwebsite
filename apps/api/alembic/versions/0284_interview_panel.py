@@ -1,7 +1,7 @@
 """hrc-029 -- the interview panel (`interview_interviewers`) and each panel member's own feedback (`interview_panel_feedback`).
 
-Revision ID: 0280_interview_panel
-Revises: 0278_commercial_grants
+Revision ID: 0284_interview_panel
+Revises: 0283_company_business_context
 
 docs/superpowers/specs/2026-11-05-hrc-029-interviewer-access-feedback-design.md (DEC-SCOPE-405 V1, V7). Two new tables; 0001 builds a
 fresh database from the current models, which already carry them, so each is created only when missing (0277's idiom). The checks are
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0280_interview_panel"
-down_revision = "0278_commercial_grants"
+revision = "0284_interview_panel"
+down_revision = "0283_company_business_context"
 branch_labels = None
 depends_on = None
 

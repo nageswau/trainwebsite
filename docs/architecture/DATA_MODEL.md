@@ -2353,3 +2353,13 @@ live_classes, questions, feedback, certificates), `min_state` (CHECK registered,
 `updated_by_id` → users, timestamps. Seeded `partially_paid` for every feature; a missing row means the same default. The student's
 payment state is not stored: it is derived from `enrollments` and IT `payments` on each request. Grant `it_admin`
 `student_access.configure`. The downgrade drops the table and the grant; no existing row changes.
+
+## Company business context and documents (`pob-003`, `DEC-SCOPE-406`; migration `0283_company_business_context`, after `0278_commercial_grants`)
+
+**`companies`** gains `products_services` (varchar 2000), `departments_hiring`, `hiring_locations`, `target_roles` (JSON string lists,
+default `[]`) and `last_contacted_at` (timestamptz, indexed `ix_companies_last_contacted`; backfilled, then recomputed by the call, message,
+interview-invite, profile-share and meeting-outcome writes). **`company_branches`** (`id`, `company_id` → companies CASCADE, `position`,
+`city` not null, `state`, `country`). **`company_skill_demand`** (PK `company_id` + `skill_id` → skills RESTRICT, `position`).
+**`company_documents`** (`id`, `company_id` → companies RESTRICT, `kind` CHECK in the five kinds, `name`, `content_type`, `size_bytes`,
+`storage_key` (server-generated, never returned), `meeting_id` → recruiter_meetings, `uploaded_by_user_id`, `created_at`). The legacy
+`companies.branches` text is unchanged. The downgrade drops the tables and columns (stored files stay in object storage).

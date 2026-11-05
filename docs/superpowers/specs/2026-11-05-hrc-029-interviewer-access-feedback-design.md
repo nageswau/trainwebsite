@@ -62,7 +62,7 @@ panel member's feedback on the interview. The candidate never sees any of it.
 - Sharing every future resume version automatically: contradicts "only the resume version shared with them".
 
 ## Numbering
-Migration `0280_interview_panel` (after `0278_commercial_grants`); API §12KX; RBAC §2.298.
+Migration `0284_interview_panel` (after `0283_company_business_context`, pob-003); API §12KX; RBAC §2.298.
 
 ## Acceptance criteria
 1. An assigned interviewer (internal or employer) submits feedback after the interview time (200); before it 409.

@@ -5976,3 +5976,20 @@ end + 7 days. `PUT /api/v1/interviewer/interviews/{id}/feedback {attendance: att
 strong_yes|yes|no|strong_no, notes ≤2000}` → the item; attended needs score and recommendation (422 on each field), no-show clears them;
 409 before the interview time, when cancelled or decided. Panel feedback never changes the interview or the application. No candidate,
 student or employer-list route returns it.
+
+## 12KZ. Company business context, last contact and documents (pob-003) — addendum, 2026-11-05
+
+`DEC-SCOPE-406`, migration `0283`. **Changed (additive):** `POST /api/v1/recruiter/companies` and `PATCH /recruiter/companies/{id}` accept
+`products_services` (≤ 2000), `departments_hiring`, `hiring_locations`, `target_roles` (lists of ≤ 20 strings ≤ 120; trimmed, blanks and
+case-insensitive repeats dropped; `null` 422 — send `[]`), `branch_locations` (≤ 50 `{city (required), state?, country?}`, replaced whole)
+and `skill_demand_ids` (≤ 30 distinct skill ids, replaced whole; a newly added inactive/unknown skill 422 "Choose an active skill"). The
+company detail returns those fields (`skill_demand` as `[{id, name, active}]`) and `last_contacted_at`; list rows gain
+`last_contacted_at`; `GET /recruiter/companies` accepts `sort=name|last_contacted` (default `name`; else 422). `last_contacted_at` is the
+latest company call, message or completed meeting and changes only through those writes. **New:** `GET /recruiter/companies/{id}/documents
+?kind=&meeting_id=&limit=&offset=` → `{items, total, limit, offset, can_upload, can_upload_agreement}`, newest first; item `{id, kind, name,
+content_type, size_bytes, meeting {id, code, starts_at} | null, uploaded_by, created_at, can_download}`. `POST /recruiter/companies/{id}/
+documents` multipart `kind`, `file`, `meeting_id?` → 201 `{document}`: 403 without `can_edit` (or, for `recruitment_agreement`, effective
+`commercials.client.edit`), 409 archived or 200 documents, 422 bad kind / empty file / meeting of another company, 413 too large, 415 not
+PDF/JPEG/PNG by content, 429 + `Retry-After` past 20 uploads an hour. `GET /recruiter/companies/documents/{document_id}/download` → the
+bytes as an attachment named `<kind>-<company code>.<ext>` (`no-store`, `nosniff`, sandbox CSP); an agreement needs
+`commercials.client.view` (403). Out of scope = 404 everywhere. Audit `recruiter_company_document.uploaded|downloaded`.

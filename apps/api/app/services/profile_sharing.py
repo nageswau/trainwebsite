@@ -38,7 +38,7 @@ from app.models import (
 )
 from app.notifications.phone import wa_number
 from app.schemas import RecShareCreate
-from app.services import applications, candidates, company_pipeline, mailer
+from app.services import applications, candidates, company_pipeline, mailer, recruiter_companies
 from app.services import recruiter_messages as messages
 from app.services import recruiter_requirements as requirements
 
@@ -272,6 +272,7 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
         )
         db.add(message)
         await db.flush()
+        await recruiter_companies.refresh_last_contact(db, company.id)  # pob-003 D4
 
     share = ProfileShare(
         job_id=job.id,

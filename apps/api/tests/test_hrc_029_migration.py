@@ -1,4 +1,4 @@
-"""hrc-029 -- migration 0280_interview_panel (DEC-SCOPE-405 V1/V7): the two tables, the frozen checks, the chain and the round trip, in a
+"""hrc-029 -- migration 0284_interview_panel (DEC-SCOPE-405 V1/V7): the two tables, the frozen checks, the chain and the round trip, in a
 throwaway database (the hrc-020 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -12,15 +12,15 @@ from app.core.config import settings
 from app.models import InterviewInterviewer, InterviewPanelFeedback
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_hrc_029_migration_0280", VERSIONS / "0280_interview_panel.py")
+_spec = importlib.util.spec_from_file_location("_hrc_029_migration_0284", VERSIONS / "0284_interview_panel.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0280_interview_panel", "0278_commercial_grants"
+HEAD, BASE = "0284_interview_panel", "0283_company_business_context"
 TABLES = ("interview_interviewers", "interview_panel_feedback")
 
 
-def test_migration_chains_after_0278_and_is_the_single_head():
+def test_migration_chains_after_0283_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert HEAD in {r.revision for r in script.walk_revisions()} and len(script.get_heads()) == 1

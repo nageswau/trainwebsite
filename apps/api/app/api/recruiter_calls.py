@@ -52,6 +52,9 @@ async def update_call(call_id: UUID, payload: RecCallUpdate, user: User = Depend
     now = await db_now(db)
     call = await svc.load_for_write(db, user, call_id, "call_update", now)
     changed = svc.apply_update(db, user, call, payload.model_dump(exclude_unset=True), now)
+    if "occurred_at" in changed:
+        await db.flush()
+        await companies.refresh_last_contact(db, call.company_id)  # pob-003 D4
     await db.commit()
     if changed:
         svc.log("recruiter_call_updated", user, call_id, fields=changed)
@@ -63,7 +66,10 @@ async def delete_call(call_id: UUID, user: User = Depends(get_current_user), db:
     """CA4/CA6: a follow-up the call created stays."""
     call = await svc.load_for_write(db, user, call_id, "call_delete", await db_now(db))
     svc.audit(db, user, "delete", call.id, {"outcome": call.outcome})
+    company_id = call.company_id
     await db.delete(call)
+    await db.flush()
+    await companies.refresh_last_contact(db, company_id)  # pob-003 D4: recomputed without the deleted call
     await db.commit()
     svc.log("recruiter_call_deleted", user, call_id)
     return Response(status_code=204)
