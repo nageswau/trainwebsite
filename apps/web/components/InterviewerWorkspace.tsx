@@ -252,7 +252,8 @@ export default function InterviewerWorkspace({ heading = "My interviews" }: { he
           </button>
         ))}
       </div>
-      <p role="status" aria-live="polite" className="form-message" style={{ margin: 0, minHeight: message ? undefined : 0 }}>{message}</p>
+      {/* QA-01: the live region is always there; the message box shows only with a message */}
+      <p role="status" aria-live="polite" className={message ? "form-message" : undefined} style={{ margin: 0 }}>{message}</p>
       {failure ? (
         <div role="alert">
           <p className="form-error">{failure.message}</p>

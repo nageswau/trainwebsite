@@ -105,6 +105,8 @@ describe("InterviewerWorkspace (hrc-029 V6/V7)", () => {
     render(<InterviewerWorkspace />);
     expect(screen.getByText("Loading your interviews…")).toBeTruthy();
     expect(await screen.findByText("No interviews are assigned to you yet.")).toBeTruthy();
+    // QA-01: the live region stays, but without the green message box until there is a message
+    expect(screen.getByRole("status").className).not.toContain("form-message");
   });
 
   it("shows the card with the candidate summary, the resume link and no contact detail", async () => {
