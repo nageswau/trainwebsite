@@ -917,6 +917,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** medium.
 
 #### hrc-027: Candidate-facing job recommendations and apply
+- **Status:** built as `DEC-SCOPE-398` (no migration, API §12KQ, RBAC §2.292; J1–J12 are the builder's recommended calls,
+  `NEEDS_CONFIRMATION`; the "new matching job" notice is left to hrc-032); design
+  `docs/superpowers/specs/2026-11-05-hrc-027-candidate-job-recommendations-design.md`.
 - **Business requirement:** §7.1; §11 Recommended Jobs and All Open Jobs; §13 "New matching vacancy"; §17 QA #4–5.
 - **Existing behavior:** IT students get every open job, newest first, with no score. The student apply form makes them type a job reference. Matching runs job→candidates only. External candidates have no portal.
 - **Expected behavior:**

@@ -66,6 +66,10 @@ async def _accepted(db: AsyncSession, candidate: Candidate | None) -> set[UUID]:
     return held.union(*({a, b} for a, b in pairs.all()))
 
 
+def _hard_on(job: Job) -> bool:
+    return any(getattr(job, f"match_hard_{k}") for k in matching.HARD_FILTERS)
+
+
 async def _assess(db: AsyncSession, job: Job, candidate: Candidate | None) -> dict:
     """hrc-018's rule for one job: the candidate-audience result, the skill hits and the unmet hard filters."""
     spec = await matching.spec(db, job)
@@ -105,8 +109,7 @@ async def listing(db: AsyncSession, user: User, *, view: str, q: str | None, lim
     cards = []
     for job, company in rows:
         own = skills.get(job.id, [])
-        hard = any(getattr(job, f"match_hard_{k}") for k in matching.HARD_FILTERS)
-        assessed = await _assess(db, job, candidate) if hard or any(s.skill_id in accepted for s in own) else None
+        assessed = await _assess(db, job, candidate) if _hard_on(job) or any(s.skill_id in accepted for s in own) else None
         result = assessed["result"] if assessed else None
         required = [s.name for s in own if s.kind == "required"]
         preferred = [s.name for s in own if s.kind == "preferred"]
@@ -126,13 +129,11 @@ async def listing(db: AsyncSession, user: User, *, view: str, q: str | None, lim
         })  # fmt: skip
     groups = {
         "recommended": sorted((c for c in cards if c["recommended"]), key=lambda c: -c["match"]["score"]),
-        "matching": sorted((c for c in cards if c["matches_skills"]), key=lambda c: (c["match"] is None, -(c["match"] or {"score": 0})["score"])),
+        "matching": sorted((c for c in cards if c["matches_skills"]), key=lambda c: -c["match"]["score"] if c["match"] else 1),
         "all": cards,
-    }  # sorted() is stable, so equal scores stay newest first
+    }  # sorted() is stable, so equal scores stay newest first; unscored matching jobs follow the scored ones
     chosen = groups[view]
-    logger.info(
-        "candidate_jobs_listed", extra={"extra_fields": {"user_id": str(user.id), "view": view, "visible": len(cards), "assessed": sum(1 for c in cards if c["matches_skills"] or c["blocked"])}}
-    )
+    logger.info("candidate_jobs_listed", extra={"extra_fields": {"user_id": str(user.id), "view": view, "visible": len(cards), "shown": len(chosen)}})
     return {
         "view": view, "q": q, "items": chosen[offset: offset + limit], "total": len(chosen), "limit": limit, "offset": offset,
         "counts": {k: len(v) for k, v in groups.items()}, "reason": None if accepted else matching.NO_SKILLS,
@@ -142,7 +143,7 @@ async def listing(db: AsyncSession, user: User, *, view: str, q: str | None, lim
 
 async def check_eligible(db: AsyncSession, job: Job, candidate: Candidate) -> None:
     """J7: 422 naming each switched-on hard filter the candidate misses (required skills only rank)."""
-    blocked = (await _assess(db, job, candidate))["blocked"] if any(getattr(job, f"match_hard_{k}") for k in matching.HARD_FILTERS) else []
+    blocked = (await _assess(db, job, candidate))["blocked"] if _hard_on(job) else []
     if blocked:
         raise HTTPException(422, f"Your profile does not meet this job's requirements: {'; '.join(blocked)}. Update your profile or ask your recruiter.")
 

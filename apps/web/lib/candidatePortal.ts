@@ -15,6 +15,7 @@ export const CANDIDATE_PORTAL_HOME = "/it/careers/portal/profile";
 
 export const CANDIDATE_NAV: NavItem[] = [
   { label: "Candidate profile", href: CANDIDATE_PORTAL_HOME },
+  { label: "Jobs", href: "/it/careers/portal/jobs" }, // hrc-027
   { label: "Privacy", href: "/it/careers/portal/privacy" },
 ];
 
