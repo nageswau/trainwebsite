@@ -11824,6 +11824,28 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   database clock. E9 AuthZ unchanged. E10 a stored column is the follow-up if the pool outgrows per-row evaluation.
 - **Numbering:** no migration; API §12KP; no RBAC change.
 - **Feature ID authorized:** `hrc-021`. **Status:** built on `worktree-hrc-021`.
+### DEC-SCOPE-398 — Candidate-facing job recommendations and apply (`hrc-027`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-027` (PDF §7.1, §11 Recommended Jobs / All Open Jobs, §13 "New matching
+  vacancy", §17 QA #4–5; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00). Dependencies hrc-008
+  (`DEC-SCOPE-385`), hrc-018 (`DEC-SCOPE-392`), hrc-022 (`DEC-SCOPE-386`) and hrc-026 (`DEC-SCOPE-394`) merged. The owner said to proceed
+  with the recommended answers, so J1–J12 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-05-hrc-027-candidate-job-recommendations-design.md`.
+- **Behaviour:** an IT student (`/it/student/jobs`) or a portal candidate (`/it/careers/portal/jobs`) sees the open jobs they may apply
+  to in three views: Recommended for you (the hrc-018 rule passes and the score is at least 50), Matching your skills (at least one
+  required skill held, at its minimum level or through a related skill) and All open jobs (newest first, never hidden by a score). A
+  search narrows all three. Each card shows the title, company, location, work mode, employment type, required and preferred skills,
+  experience, the apply-by date, the match explanation (or which required skills are missing) and the "not a guarantee" disclaimer; never
+  a salary. A profile without skills gets an empty Recommended view and a prompt to add skills. Applying sends the hrc-026 receipt; a job
+  the caller cannot see is 404, a second apply 409, and a switched-on hrc-018 hard filter the profile does not meet 422 naming what is
+  missing (the salary one without amounts); the card disables Apply with the same reasons.
+- **Builder's calls:** J1 `it_student` and `candidate` (division it) only, the caller's own record. J2 hrc-008's student visibility.
+  J3 threshold 50, a constant. J4/J5 view rules and order; `limit` 1–100 (default 20). J6 card fields, no salary (E9). J7 hard filters
+  gate applying; required skills only rank. J8 the legacy `POST /workflows/it/jobs/{id}/apply` uses the same gate. J9 reading never creates
+  a candidate. J10 a portal candidate's notices link to `/it/careers/portal/jobs`. J11 no `job_views` table. J12 two pages, one board.
+- **Not built:** the optional "new matching job" notice (hrc-032 owns every §13 trigger), an admin-set threshold, view analytics (hrc-034).
+- **Numbering:** no migration; API §12KQ; RBAC §2.292.
+- **Feature ID authorized:** `hrc-027`. **Status:** built on `worktree-hrc-027`.
 
 ### DEC-SCOPE-399 — Advanced multi-filter resume search (`hrc-019`)
 

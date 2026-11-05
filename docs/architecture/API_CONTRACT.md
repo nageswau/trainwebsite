@@ -5864,6 +5864,18 @@ lists (archived too); `PATCH /admin/data-requests/{id}` answers 409 for a `candi
 only, never accepted in a body. `GET /recruiter/candidates` takes an optional `engagement=<key>`; `POST /recruiter/candidates/search`
 takes an optional `engagement` key (label "Engagement"); any other value is 422. The stored `status` field and its filter are unchanged.
 No new endpoint, permission or migration.
+## 12KQ. Candidate-facing job recommendations and apply (hrc-027) — addendum, 2026-11-05
+
+`DEC-SCOPE-398`. **New:** `GET /api/v1/candidate/jobs?view=recommended|matching|all&q=&limit=&offset=` (an `it_student` or `candidate`
+session; other roles 403, anonymous 401; `view` other than the three, `q` over 100 characters, `limit` outside 1–100 or a negative
+`offset` → 422) → `{view, q, items[], total, limit, offset, counts: {recommended, matching, all}, reason: "no_skills"|null, disclaimer,
+threshold}`. Each item: `{id, title, company, location, work_mode, employment_type, required_skills[], preferred_skills[],
+experience_min_months, experience_max_months, closes_on, match: {score, explanation[]}|null, skills_text, matches_skills, recommended,
+application: {code, status_label}|null, can_apply, blocked[]}` — no salary field. `POST /api/v1/candidate/jobs/{job_id}/apply` (no body)
+→ 201 `{id, code, status_label}`; a job outside the caller's visibility, closed or past its date → 404 "Open job not found"; already
+applied → 409 "Already applied"; a switched-on hard filter not met → 422 naming it. **Changed (behaviour):**
+`POST /api/v1/workflows/it/jobs/{id}/apply` applies the same hard-filter gate (422). A portal candidate's application notices carry
+`action_url` `/it/careers/portal/jobs`.
 
 ## 12KR. Advanced multi-filter resume search (hrc-019) — addendum, 2026-11-05
 

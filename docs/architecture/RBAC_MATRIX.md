@@ -3832,3 +3832,9 @@ anonymous 401. A candidate (`candidate` role) raises only their own request (no 
 acts on a candidate subject. Deactivating a `placement_officer`, `placement_manager`, `hr_team` or `hr_manager` now increments their
 `session_version` and removes them as placement-officer owner and collaborator of every candidate. Pinned by
 `apps/api/tests/test_hrc_035_candidate_privacy.py` and the rec-038 matrix rows.
+### 2.292 Candidate job recommendations *(added 2026-11-05 — `DEC-SCOPE-398`, hrc-027)*
+
+No new grant. `GET /candidate/jobs` and `POST /candidate/jobs/{id}/apply` admit only an `it_student` or a `candidate` (division `it`);
+every other role is 403, anonymous 401. Neither route takes a candidate id: the caller's own record only. A job outside hrc-008's student
+visibility (internal, another segment, closed, past its date) is the same 404 as a missing one on both apply routes. Pinned by
+`apps/api/tests/test_hrc_027_candidate_jobs.py`.

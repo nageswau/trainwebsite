@@ -3,7 +3,10 @@ whatever the email (C2/C5); every `/candidate/me*` route is the signed-in candid
 the caller. The allow-list setting sits with the other recruiter candidate settings (C7). Each write is one transaction committed here;
 verification emails go out after it as a background task."""
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, Response
+from typing import Literal
+from uuid import UUID
+
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import CHANGE_PASSWORD_FAILED, _change_password_wait_seconds
@@ -14,11 +17,12 @@ from app.core.security import verify_password
 from app.models import AuditLog, User
 from app.notifications.phone import normalise_phone
 from app.schemas import CandidatePortalConsent, CandidatePortalEmailChange, CandidatePortalRegistration, CandidatePortalResend, CandidatePortalToken
+from app.services import applications as job_applications
+from app.services import candidate_jobs, website_intake
 from app.services import candidate_ownership as ownership
 from app.services import candidate_portal as portal
 from app.services import candidate_privacy as privacy
 from app.services import candidates as svc
-from app.services import website_intake
 
 router = APIRouter(prefix="/candidate", tags=["candidate-portal"])
 settings_router = APIRouter(prefix="/recruiter/candidate-self-service-settings", tags=["recruiter-candidates"])
@@ -119,6 +123,32 @@ async def request_my_erasure(response: Response, user: User = Depends(_candidate
     await db.commit()
     response.status_code = 201 if created else 200
     return await _privacy(db, user, candidate)
+
+
+# --- hrc-027 (DEC-SCOPE-398 J1): the open jobs a candidate or an IT student may see, and applying to one ----------------------------
+def _job_seeker(user: User = Depends(get_current_user)) -> User:
+    if (user.role, user.division) not in {(portal.ROLE, "it"), ("it_student", "it")}:
+        raise HTTPException(403, "Only candidates and IT students can use the job recommendations")
+    return user
+
+
+@router.get("/jobs")
+async def my_jobs(
+    view: Literal["recommended", "matching", "all"] = "recommended",
+    q: str | None = Query(None, max_length=100),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(_job_seeker),
+    db: AsyncSession = Depends(get_db),
+):
+    return await candidate_jobs.listing(db, user, view=view, q=q, limit=limit, offset=offset)
+
+
+@router.post("/jobs/{job_id}/apply", status_code=201)
+async def apply_to_job(job_id: UUID, user: User = Depends(_job_seeker), db: AsyncSession = Depends(get_db)):
+    item = await candidate_jobs.apply(db, user, job_id)
+    await db.commit()
+    return {"id": item.id, "code": item.application_code, "status_label": job_applications.candidate_label(item.candidate_status)}
 
 
 @settings_router.get("")
