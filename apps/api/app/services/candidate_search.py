@@ -20,6 +20,7 @@ from sqlalchemy.orm import aliased
 from app.api.lookups import _pattern as like_pattern
 from app.models import CANDIDATE_SKILL_LEVELS, Candidate, CandidateResume, CandidateSkill, RecCandidateSource, Skill, SkillAlias, SkillRelated, User
 from app.schemas import CandidateSearch
+from app.services import candidate_engagement
 from app.services.candidates import pool_filter
 
 logger = logging.getLogger("app.candidate_search")
@@ -136,6 +137,8 @@ def filters(body: CandidateSearch, terms: dict[str, dict]) -> list:
         out.append(Candidate.source_id == body.source_id)
     if body.status:
         out.append(Candidate.status == body.status)
+    if body.engagement:  # hrc-021 (DEC-SCOPE-397 E7)
+        out.append(candidate_engagement.expression() == body.engagement)
     if body.text:  # FT1: the GIN index finds matching resumes; only a candidate's current one counts
         resume = aliased(CandidateResume)
         out.append(Candidate.id.in_(select(resume.candidate_id).where(resume.search_vector.op("@@")(_tsquery(body.text)), _current(resume))))
@@ -180,11 +183,11 @@ async def page(db: AsyncSession, where: list, terms: dict[str, dict], limit: int
         rank = select(func.ts_rank_cd(resume.search_vector, _tsquery(text))).where(resume.candidate_id == Candidate.id, _current(resume))
         order.insert(0, rank.scalar_subquery().desc())
     rows = (await db.execute(
-        select(Candidate, RecCandidateSource).join(RecCandidateSource, RecCandidateSource.id == Candidate.source_id).where(*where)
-        .order_by(*order).limit(limit).offset(offset)
+        select(Candidate, RecCandidateSource, candidate_engagement.expression()).join(RecCandidateSource, RecCandidateSource.id == Candidate.source_id)
+        .where(*where).order_by(*order).limit(limit).offset(offset)
     )).all()
     matched = set().union(*(t["ids"] for t in terms.values()))
-    skills: dict[UUID, list] = {c.id: [] for c, _ in rows}
+    skills: dict[UUID, list] = {c.id: [] for c, _, _ in rows}
     if skills:
         held = await db.execute(
             select(CandidateSkill.candidate_id, CandidateSkill.skill_id, Skill.name, CandidateSkill.level, CandidateSkill.status)
@@ -200,9 +203,9 @@ async def page(db: AsyncSession, where: list, terms: dict[str, dict], limit: int
             "experience_months": c.experience_months, "location": c.location, "notice_days": c.notice_days, "expected_salary": c.expected_salary,
             "expected_salary_currency": c.expected_salary_currency, "expected_salary_period": c.expected_salary_period, "expected_annual_inr": c.expected_annual_inr,
             "source": {"id": s.id, "name": s.name, "active": s.active}, "source_detail": c.source_detail, "status": c.status, "skills": skills[c.id],
-            "snippet": None,
+            "snippet": None, "engagement": candidate_engagement.out(e),
         }
-        for c, s in rows
+        for c, s, e in rows
     ]
 
 

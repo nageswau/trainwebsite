@@ -8,7 +8,9 @@ import type { Page } from "@/lib/apiErrors";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import LocalTime from "@/components/LocalTime";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
-import { CANDIDATES_PATH, CANDIDATES_URL, OWNER_FILTERS, STATUSES, STATUS_LABEL, experienceLabel, personLabel, type CandidateItem } from "@/lib/recruiterCandidates";
+import {
+  CANDIDATES_PATH, CANDIDATES_URL, ENGAGEMENTS, OWNER_FILTERS, STATUSES, STATUS_LABEL, engagementOf, experienceLabel, personLabel, type CandidateItem,
+} from "@/lib/recruiterCandidates";
 import { pageOffset } from "@/lib/telecaller";
 import { getPage } from "@/lib/telecallerCatalogue";
 
@@ -28,10 +30,11 @@ export default function RecruiterCandidateList({ sourceFilter }: { sourceFilter:
   const sourceId = UUID.test(params.get("source_id") ?? "") ? params.get("source_id")! : "";
   const archived = params.get("archived") === "true";
   const owner = OWNER_FILTERS.some((o) => o.key === params.get("owner")) ? params.get("owner")! : ""; // hrc-012
+  const engagement = engagementOf(params.get("engagement")); // hrc-021
   const request = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
-  for (const [key, value] of Object.entries({ q: query, status, source_id: sourceId, owner, archived: archived ? "true" : "" })) if (value) request.set(key, value);
+  for (const [key, value] of Object.entries({ q: query, status, engagement, source_id: sourceId, owner, archived: archived ? "true" : "" })) if (value) request.set(key, value);
   const requestUrl = `${CANDIDATES_URL}?${request}`;
-  const filtered = !!(query || status || sourceId || owner);
+  const filtered = !!(query || status || engagement || sourceId || owner);
 
   const [data, setData] = useState<Page<CandidateItem> | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -93,6 +96,13 @@ export default function RecruiterCandidateList({ sourceFilter }: { sourceFilter:
           </select>
         </div>
         <div className="field" style={{ flex: "1 1 10rem" }}>
+          <label htmlFor="cand-filter-engagement">Engagement</label>
+          <select id="cand-filter-engagement" value={engagement} onChange={(e) => go({ engagement: e.target.value })}>
+            <option value="">All engagement</option>
+            {ENGAGEMENTS.map((e) => <option key={e.key} value={e.key}>{e.label}</option>)}
+          </select>
+        </div>
+        <div className="field" style={{ flex: "1 1 10rem" }}>
           <label htmlFor="cand-filter-owner">Owner</label>
           <select id="cand-filter-owner" value={owner} onChange={(e) => go({ owner: e.target.value })}>
             <option value="">Everyone&apos;s candidates</option>
@@ -127,6 +137,7 @@ export default function RecruiterCandidateList({ sourceFilter }: { sourceFilter:
                   <th scope="col">Experience</th>
                   <th scope="col">Location</th>
                   <th scope="col">Status</th>
+                  <th scope="col">Engagement</th>
                   <th scope="col">Primary recruiter</th>
                   <th scope="col">Added</th>
                 </tr>
@@ -144,6 +155,7 @@ export default function RecruiterCandidateList({ sourceFilter }: { sourceFilter:
                     <td style={{ whiteSpace: "nowrap" }}>{experienceLabel(c.experience_months)}</td>
                     <td>{c.location ?? <span className="muted">—</span>}</td>
                     <td>{STATUS_LABEL[c.status] ?? c.status}{c.archived && <div className="muted" style={{ fontSize: 13 }}>Archived</div>}</td>
+                    <td>{c.engagement ? <span className="badge">{c.engagement.label}</span> : <span className="muted">—</span>}</td>
                     <td>{c.owner ? personLabel(c.owner) : <span className="muted">Unassigned</span>}</td>
                     <td style={{ whiteSpace: "nowrap" }}><LocalTime value={c.created_at} /></td>
                   </tr>

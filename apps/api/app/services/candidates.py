@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import CANDIDATE_CODE_SEQ, AuditLog, Candidate, CandidateResume, CareerApplication, Job, RecCandidateSource, User
 from app.notifications.phone import normalise_phone, wa_number
 from app.schemas import NO_CONTACT
-from app.services import candidate_ownership, candidate_privacy, candidate_profile
+from app.services import candidate_engagement, candidate_ownership, candidate_privacy, candidate_profile
 from app.services.permissions import user_has_grant
 from app.services.recruiter import MANAGER_ROLE, ROLE
 from app.services.storage import storage
@@ -376,6 +376,7 @@ async def detail_out(db: AsyncSession, user: User, candidate: Candidate) -> dict
         "owner": (ownership := await candidate_ownership.ownership_out(db, user, candidate))["owner"],  # hrc-012 O2
         "ownership": ownership,
         "consent": await candidate_privacy.latest_consent(db, candidate.id),  # hrc-035 (DEC-SCOPE-396 K2)
+        "engagement": candidate_engagement.out((await candidate_engagement.of(db, [candidate.id])).get(candidate.id)),  # hrc-021
     }
 
 

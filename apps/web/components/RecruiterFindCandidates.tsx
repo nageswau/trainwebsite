@@ -16,7 +16,7 @@ import {
   MAX_GROUPS, MAX_TERMS, OTHER_LOCATION, PAGE_SIZE, paramsOf, requirementSearch, salaryText, SEARCH_URL, searchBody, type SearchResult,
   type SearchState, searchText, stateOf, TEXT_MAX, unknownSkill,
 } from "@/lib/recruiterCandidateSearch";
-import { CANDIDATES_PATH, COMPENSATION_VIEW, experienceLabel, STATUS_LABEL, STATUSES } from "@/lib/recruiterCandidates";
+import { CANDIDATES_PATH, COMPENSATION_VIEW, ENGAGEMENTS, experienceLabel, STATUS_LABEL, STATUSES } from "@/lib/recruiterCandidates";
 import { STATUS_LABEL as SKILL_STATUS_LABEL } from "@/lib/recruiterCandidateSkills";
 import { usePermissions } from "@/lib/usePermissions";
 
@@ -74,6 +74,7 @@ export function Card({ c, writes, requirement, shortlisted, onShortlist, matchNo
     // hrc-001 H2: left out without the grant; hrc-011 C6: the yearly rupee figure the salary filter compares
     ...(c.expected_salary === undefined ? [] : [["Expected salary", salaryText(c.expected_annual_inr ?? null)] as [string, string]]),
     ["Source", c.source_detail ? `${c.source.name} — ${c.source_detail}` : c.source.name], ["Status", STATUS_LABEL[c.status] ?? c.status],
+    ...(c.engagement ? [["Engagement", c.engagement.label] as [string, string]] : []), // hrc-021
   ];
   return (
     <li className="action-card" style={{ gap: 10 }} aria-labelledby={`card-${c.id}`}>
@@ -329,6 +330,13 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
             <select id="find-status" value={draft.status} onChange={(e) => set("status", e.target.value)}>
               <option value="">All statuses</option>
               {STATUSES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+            </select>
+          </div>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label htmlFor="find-engagement">Engagement</label>
+            <select id="find-engagement" value={draft.engagement} onChange={(e) => set("engagement", e.target.value)}>
+              <option value="">All engagement</option>
+              {ENGAGEMENTS.map((e) => <option key={e.key} value={e.key}>{e.label}</option>)}
             </select>
           </div>
         </div>

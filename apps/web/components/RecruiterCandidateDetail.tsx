@@ -119,6 +119,7 @@ export default function RecruiterCandidateDetail({ initial, merged }: { initial:
           <h2 style={{ overflowWrap: "anywhere" }}>{candidate.name}</h2>
           <p className="muted" style={{ margin: 0 }}>
             <span className="badge">{STATUS_LABEL[candidate.status] ?? candidate.status}</span>
+            {candidate.engagement && <> <span className="badge">Engagement: {candidate.engagement.label}</span></>}
             {archived && <> <span className="badge">Archived <LocalTime value={candidate.archived_at} /></span></>}
           </p>
         </div>

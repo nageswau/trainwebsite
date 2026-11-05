@@ -8,12 +8,12 @@ const params = (query: string) => new URLSearchParams(query);
 
 describe("rec-013 search state <-> URL", () => {
   it("reads skills, groups and filters from the URL and writes them back unchanged", () => {
-    const query = "q=%22AWS+Certified%22+Kafka&all=Java&all=Spring+Boot&any1=AWS&any1=Azure&any2=SQL&verified=1&exp_min=2&exp_max=5&location=Hyderabad&avail=immediate&avail=d15&qualification=B.Tech&sal_min=5&sal_max=10.5&source_id=0f8fad5b-d9cb-469f-a165-70867728950e&status=available&offset=50";
+    const query = "q=%22AWS+Certified%22+Kafka&all=Java&all=Spring+Boot&any1=AWS&any1=Azure&any2=SQL&verified=1&exp_min=2&exp_max=5&location=Hyderabad&avail=immediate&avail=d15&qualification=B.Tech&sal_min=5&sal_max=10.5&source_id=0f8fad5b-d9cb-469f-a165-70867728950e&status=available&engagement=screened&offset=50";
     const state = stateOf(params(query));
     expect(state).toEqual({
       text: '"AWS Certified" Kafka', all: ["Java", "Spring Boot"], any: [["AWS", "Azure"], ["SQL"]], verified: true, expMin: "2", expMax: "5", location: "Hyderabad",
       availability: ["immediate", "d15"], qualification: "B.Tech", salMin: "5", salMax: "10.5",
-      sourceId: "0f8fad5b-d9cb-469f-a165-70867728950e", status: "available", offset: 50,
+      sourceId: "0f8fad5b-d9cb-469f-a165-70867728950e", status: "available", engagement: "screened", offset: 50, // hrc-021
     });
     expect(stateOf(paramsOf(state))).toEqual(state);
   });
