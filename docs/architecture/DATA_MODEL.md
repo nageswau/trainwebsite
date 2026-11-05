@@ -2363,3 +2363,16 @@ interview-invite, profile-share and meeting-outcome writes). **`company_branches
 **`company_documents`** (`id`, `company_id` → companies RESTRICT, `kind` CHECK in the five kinds, `name`, `content_type`, `size_bytes`,
 `storage_key` (server-generated, never returned), `meeting_id` → recruiter_meetings, `uploaded_by_user_id`, `created_at`). The legacy
 `companies.branches` text is unchanged. The downgrade drops the tables and columns (stored files stay in object storage).
+
+## College placement profiles (`pob-013`, `DEC-SCOPE-410`; migration `0288_college_placement`, after `0285_job_revisions`)
+
+**`bdm_organization_contacts`** gains `office_details` (varchar 300) and `preferred_contact_method` (varchar 20, CHECK email / phone /
+whatsapp / in_person / linkedin). **`bdm_org_placement_profiles`** (PK `organization_id` → bdm_organizations RESTRICT, `drive_process`,
+`eligibility_rules` text, `updated_by_user_id`, timestamps). **`bdm_org_courses`** (`id`, `organization_id`, `department` 120, `course` 120,
+`course_key` = casefolded "department|course", UNIQUE (`organization_id`, `course_key`)). **`bdm_org_placement_batches`** (`id`,
+`organization_id`, `course_id` → bdm_org_courses RESTRICT, `pass_out_year` CHECK 2000–2100, `pass_out_date`, `student_count` CHECK
+0–100,000, `notes` 500, `created_by_user_id`; index (`organization_id`, `pass_out_year`)). **`bdm_org_placement_events`** (`id`,
+`organization_id`, `title` 200, `kind` CHECK, `starts_on`, `ends_on` CHECK ≥ start, `notes`, `created_by_user_id`; index (`organization_id`,
+`starts_on`)). **`bdm_org_tpo_interactions`** (append-only: `id`, `organization_id`, `contact_id` → contacts SET NULL, `contact_name`
+snapshot, `channel` CHECK, `occurred_at`, `summary` text, `next_step` 500, `logged_by_user_id`, `created_at`; index (`organization_id`,
+`occurred_at`)). The `bdm_organizations` row is never written by pob-013. Every step is guarded; the downgrade drops what it added.

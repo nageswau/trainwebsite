@@ -3895,3 +3895,22 @@ A requirement's revisions are read by its readers (rec-007 scope; outside it 404
 `commercials.client.view` (§2.296). Writing the per-requirement terms needs effective `commercials.client.edit`. The backup owner is in
 the recruiter's scope (and a placement manager's team scope) and holds `can_manage_owners`, like the primary; the backup is changed by
 the primary, the backup or super_admin. No new grant. Pinned by `apps/api/tests/test_pob_002_requirement_revisions.py`.
+
+### 2.303 College placement profiles *(added 2026-11-05 — `DEC-SCOPE-410`, pob-013)*
+
+A cross-module scope (BDM ↔ recruiter) on `/recruiter/colleges` only; the bdm-002 `caller_scope` is reused for BDM callers and **not**
+widened, so every `/bdm/*` route (organization edit, contacts, MoU, appointments, activities) keeps refusing `placement_team` (403
+"BDM role required").
+
+| Role | Read (list, detail) | Write (profile, courses, batches, calendar, TPO interactions, TPO contact details) |
+|---|---|---|
+| `placement_team` (with a recruiter profile) | every active college-module college/university | yes |
+| `placement_manager` | every active college-module college/university | 403 |
+| `bdm` | bdm-002 scope (own module; archived included) | the assigned BDM only; others 403 |
+| `bdm_manager` | bdm-002 scope (the team's) | 403 |
+| `super_admin` | all | yes |
+| any other role (incl. `placement_officer`, `hr_team`, `it_admin`) | 403 | 403 |
+
+Out of scope 404 (including another module's university and, for the placement roles, an archived organization); archived 409 for
+writers. `placement_officer` (DEC-SCOPE-403 C1) is not granted — `NEEDS_CONFIRMATION`. Pinned by
+`apps/api/tests/test_pob_013_college_placement.py` and the rec-038 matrix rows (`rec038_rows_activity.py`).
