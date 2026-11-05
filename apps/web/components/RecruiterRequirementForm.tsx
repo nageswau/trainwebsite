@@ -7,15 +7,19 @@ import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import type { PickOption } from "@/lib/lookups";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
 import { recruiterSearch, type Ref } from "@/lib/recruiterCompanies";
+import { contactsOf, isContactList } from "@/lib/recruiterContacts";
 import {
   companySearch,
   FORM_FIELDS,
   type FormField,
   type FormValues,
   hiringManagerSearch,
+  type InheritedTerm,
   isRequirementBody,
   label,
   monthsFromYears,
+  ownerSearch,
+  PAYMENT_TRIGGER_OPTIONS,
   type PossibleDuplicate,
   possibleDuplicate,
   type Requirement,
@@ -59,7 +63,15 @@ const TEXT: Partial<Record<FormField, Text>> = {
   required_skills: { label: "Required skills", max: 3000, multiline: true, hint: "One per comma or line" },
   preferred_skills: { label: "Preferred skills", max: 3000, multiline: true, hint: "One per comma or line" },
   description: { label: "Job description", max: 10000, multiline: true },
+  // pob-002 (DEC-SCOPE-405 R6/R7)
+  interview_rounds: { label: "Interview rounds", max: 1300, multiline: true, hint: "One round per line, in order (at most 10)" },
+  screening_steps: { label: "Screening steps", max: 1300, multiline: true, hint: "One step per line, in order (at most 10)" },
+  expected_tat_days: { label: "Expected turnaround (days)", max: 3, hint: "The client's target from requirement to joining" },
+  payment_days: { label: "Payment due (days after joining)", max: 3 },
+  payment_terms: { label: "Payment terms", max: 2000, multiline: true },
+  replacement_terms: { label: "Replacement terms", max: 2000, multiline: true },
 };
+const NUMERIC = new Set<string>(["vacancies", "expected_tat_days", "payment_days"]);
 const SELECTS: Partial<Record<FormField, { label: string; vocabulary: string }>> = {
   work_mode: { label: "Work mode", vocabulary: "work_mode" },
   shift: { label: "Shift", vocabulary: "shift" },
@@ -70,11 +82,12 @@ const SELECTS: Partial<Record<FormField, { label: string; vocabulary: string }>>
 const CHOICES: Partial<Record<FormField, { label: string; options: { id: string; name: string }[] }>> = {
   relocation_required: { label: "Relocation required", options: [{ id: "yes", name: "Yes" }, { id: "no", name: "No" }] },
   salary_period: { label: "Pay period", options: [{ id: "year", name: "A year" }, { id: "month", name: "A month" }] },
+  payment_trigger: { label: "Payment trigger", options: PAYMENT_TRIGGER_OPTIONS }, // pob-002 R7
 };
-const SKILL_FIELDS = new Set<string>(["required_skills", "preferred_skills"]);
+const SKILL_FIELDS = new Set<string>(["required_skills", "preferred_skills", "interview_rounds", "screening_steps"]); // a list's item error lands on the list
 const FIELD_LABELS: Record<string, string> = {
   job_category_id: "Job category", skills: "Skills", status: "Status", assign: "Recruiter", weights: "Skill weights", lead_source_id: "Lead source",
-  hiring_manager_user_id: "Hiring manager",
+  hiring_manager_user_id: "Hiring manager", decision_maker_contact_id: "Decision-maker", backup_owner_user_id: "Backup owner",
 };
 
 /** FastAPI's 422 list -> errors at the form's fields (a skill's item lands on its list); null when any item is about something else. */
@@ -88,6 +101,12 @@ function fieldErrors(detail: unknown): Partial<Record<FormField, string>> | null
     found[field as FormField] = detailMessage([item]);
   }
   return found;
+}
+
+/** pob-002 R7: what an empty term falls back to. */
+function inheritedHint(term: InheritedTerm | undefined): string {
+  const fallback = term?.inherited ? term.value : null;
+  return fallback ? `Leave empty to use the contract's: "${fallback.length > 120 ? `${fallback.slice(0, 120)}…` : fallback}"` : "Leave empty to use the contract's terms";
 }
 
 function withCurrent(options: { id: string; name: string }[], current: Ref | null | undefined) {
@@ -130,6 +149,14 @@ export default function RecruiterRequirementForm({
   const [reasonError, setReasonError] = useState<string | null>(null);
   const [vocabularies, setVocabularies] = useState<Record<string, string[]>>({});
   const [pickersFailed, setPickersFailed] = useState(false);
+  // pob-002: the company's active contacts (the decision-maker) and the optional reason the save's revision records
+  const [contacts, setContacts] = useState<{ id: string; name: string }[] | null>(null);
+  const [revisionReason, setRevisionReason] = useState("");
+  const terms = requirement?.commercial_terms;
+  const showTerms = mode === "edit" && !!terms?.can_edit;
+  const showBackup = mode === "edit" && !!requirement?.permissions.can_manage_owners;
+  const companyId = requirement?.company.id ?? companyPick?.id ?? null;
+  const searchBackups = useMemo(() => (requirement ? ownerSearch(requirement.id, "backup") : null), [requirement]);
   const focus = useFocusAfterRender();
   const idPrefix = mode === "create" ? "requirement-new" : `requirement-${requirement?.id}`;
   const dirty = FORM_FIELDS.some((k) => values[k] !== opened[k]) || recruiter !== null || (mode === "create" && !company && companyPick !== null);
@@ -152,6 +179,24 @@ export default function RecruiterRequirementForm({
     return () => abort.abort();
   }, []);
 
+  useEffect(() => {
+    if (!companyId) return setContacts([]);
+    const abort = new AbortController();
+    setContacts(null);
+    fetch(contactsOf(companyId), { signal: abort.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setContacts(isContactList(data) ? data.items.filter((c) => c.active).map((c) => ({ id: c.id, name: c.designation ? `${c.name} (${c.designation})` : c.name })) : []))
+      .catch(() => abort.signal.aborted || setContacts([]));
+    return () => abort.abort();
+  }, [companyId]);
+
+  // The current decision-maker stays choosable even if since deactivated (the API keeps it; R6).
+  const decisionMakers = useMemo(() => {
+    const current = requirement?.decision_maker;
+    const options = contacts ?? [];
+    return current && !options.some((c) => c.id === current.id) ? [{ id: current.id, name: `${current.name}${current.active ? "" : " (inactive)"}` }, ...options] : options;
+  }, [contacts, requirement?.decision_maker]);
+
   const set = (key: FormField, value: string) => setValues((prev) => ({ ...prev, [key]: value }));
 
   function cancel() {
@@ -171,7 +216,11 @@ export default function RecruiterRequirementForm({
     const [min, max] = [monthsFromYears(values.experience_min_months), monthsFromYears(values.experience_max_months)];
     if (min != null && max != null && !Number.isNaN(min + max) && min > max) found.experience_max_months = "Must be at least the minimum experience";
     if (values.salary_min.trim() && values.salary_max.trim() && Number(values.salary_min) > Number(values.salary_max)) found.salary_max = "Must be at least the minimum salary";
-    if (values.vacancies.trim() && !/^\d+$/.test(values.vacancies.trim())) found.vacancies = "Enter a whole number";
+    for (const key of ["vacancies", "expected_tat_days", "payment_days"] as const) {
+      if (values[key].trim() && !/^\d+$/.test(values[key].trim())) found[key] = "Enter a whole number";
+    }
+    // pob-002 R7: the days go with (and only with) "Days after joining"
+    if (values.payment_trigger === "days_after_joining" && !values.payment_days.trim()) found.payment_days = "Enter the number of days after joining";
     setErrors(found);
     const first = (["company", ...FORM_FIELDS] as const).find((k) => found[k]);
     if (first) focus(`${idPrefix}-${first}`);
@@ -189,7 +238,13 @@ export default function RecruiterRequirementForm({
     if (!anyway) setDuplicate(null);
     const body = requirementBody(values, mode === "edit" ? opened : undefined);
     if (mode === "edit" && Object.keys(body).length === 0) return onSaved(requirement!, false);
+    // pob-002 R7: a trigger other than "Days after joining" clears the stored days, so the pair stays valid
+    if (values.payment_trigger !== "days_after_joining" && ("payment_trigger" in body || "payment_days" in body)) {
+      if (opened.payment_days) body.payment_days = null;
+      else delete body.payment_days; // the hidden field was typed in, then the trigger changed
+    }
     if (mode === "edit") body.expected_updated_at = guard.token;
+    if (mode === "edit" && revisionReason.trim()) body.revision_reason = revisionReason.trim();
     if (anyway) body.duplicate_reason = reason.trim();
     if (mode === "create") {
       body.company_id = companyPick!.id;
@@ -240,8 +295,8 @@ export default function RecruiterRequirementForm({
       </p>
     );
 
-  function textField(key: FormField) {
-    const spec = TEXT[key]!;
+  function textField(key: FormField, hintOverride?: string) {
+    const spec = { ...TEXT[key]!, ...(hintOverride ? { hint: hintOverride } : {}) };
     const common = {
       id: `${idPrefix}-${key}`,
       value: values[key],
@@ -250,7 +305,7 @@ export default function RecruiterRequirementForm({
       "aria-describedby": describe(key, spec.hint),
       onChange: (e: { target: { value: string } }) => set(key, e.target.value),
     };
-    const numeric = key === "vacancies" || key.startsWith("salary") || key.startsWith("experience");
+    const numeric = NUMERIC.has(key) || key.startsWith("salary") || key.startsWith("experience");
     return (
       <div className="field" key={key}>
         <label htmlFor={common.id}>
@@ -393,18 +448,67 @@ export default function RecruiterRequirementForm({
           {vocabularyField("priority")}
         </div>
       </fieldset>
+      {/* pob-002 (DEC-SCOPE-405 R6): the client's hiring process */}
+      <fieldset className="form-section">
+        <legend>Hiring process</legend>
+        <div className="form-grid">
+          {textField("interview_rounds")}
+          {textField("screening_steps")}
+          {selectField("decision_maker_contact_id", contacts === null ? "Decision-maker (loading contacts…)" : "Decision-maker", decisionMakers)}
+          {textField("expected_tat_days")}
+        </div>
+      </fieldset>
+      {/* pob-002 R7: shown only to those who may change client terms; an empty term keeps the contract's */}
+      {showTerms && (
+        <fieldset className="form-section">
+          <legend>Commercial terms</legend>
+          <div className="form-grid">
+            {choiceField("payment_trigger")}
+            {values.payment_trigger === "days_after_joining" && textField("payment_days")}
+          </div>
+          {textField("payment_terms", inheritedHint(terms?.payment_terms))}
+          {textField("replacement_terms", inheritedHint(terms?.replacement_terms))}
+        </fieldset>
+      )}
+      {/* pob-002 R9: the primary's owner rights, for an active recruiter */}
+      {showBackup && searchBackups && (
+        <fieldset className="form-section">
+          <legend>Backup owner</legend>
+          <div className="field">
+            <SearchableSelect
+              id={`${idPrefix}-backup_owner_user_id`}
+              label="Backup owner"
+              noun="recruiter"
+              search={searchBackups}
+              initial={requirement?.backup_owner ? { id: requirement.backup_owner.id, label: requirement.backup_owner.full_name } : null}
+              onChange={(option) => set("backup_owner_user_id", option?.id ?? "")}
+            />
+            <p className="muted field-help">Has the same owner rights as the primary owner. Clear the choice to remove the backup.</p>
+            {errorOf("backup_owner_user_id")}
+          </div>
+        </fieldset>
+      )}
       <fieldset className="form-section">
         <legend>Skills and description</legend>
         {textField("required_skills")}
         {textField("preferred_skills")}
         {textField("description")}
       </fieldset>
+      {mode === "edit" && (
+        <div className="field">
+          <label htmlFor={`${idPrefix}-revision-reason`}>Reason for this revision (optional)</label>
+          <input id={`${idPrefix}-revision-reason`} type="text" maxLength={500} value={revisionReason} autoComplete="off" aria-describedby={`${idPrefix}-revision-reason-hint`}
+            onChange={(e) => setRevisionReason(e.target.value)} />
+          <p className="muted field-help" id={`${idPrefix}-revision-reason-hint`}>Saved with this revision, for example &quot;Client added a seat&quot;.</p>
+        </div>
+      )}
       <StaleRecordNotice
         guard={guard}
         labelOf={(key) => TEXT[key as FormField]?.label ?? SELECTS[key as FormField]?.label ?? CHOICES[key as FormField]?.label ?? FIELD_LABELS[key] ?? label(key)}
         display={(key, value) => {
           if (key === "job_category_id") return withCurrent(categories, requirement?.job_category).find((c) => c.id === value)?.name ?? value;
           if (key === "lead_source_id") return withCurrent(sources, requirement?.lead_source).find((c) => c.id === value)?.name ?? value;
+          if (key === "decision_maker_contact_id") return decisionMakers.find((c) => c.id === value)?.name ?? value;
           if (CHOICES[key as FormField]) return CHOICES[key as FormField]!.options.find((o) => o.id === value)?.name ?? value;
           return SELECTS[key as FormField] && value ? label(value) : value;
         }}

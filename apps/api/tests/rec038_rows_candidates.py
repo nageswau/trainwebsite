@@ -22,6 +22,7 @@ from app.models import (
     CandidateTask,
     Job,
     JobAssignment,
+    JobRevision,
     JobSkill,
     Program,
     RecCandidateSource,
@@ -82,6 +83,8 @@ ROWS = [
     R("post", "/recruiter/requirements", _new_requirement, **allow(201, "rec", "mgr", "super"), rec_out=404, mgr_out=404),
     R("get", "/recruiter/requirements/{requirement}", **OWN),
     R("get", "/recruiter/requirements/{requirement}/history", **OWN),  # hrc-004 B1: the record's readers
+    R("get", "/recruiter/requirements/{requirement}/revisions", **OWN),  # pob-002 (DEC-SCOPE-405 R5): the record's readers
+    R("get", "/recruiter/requirements/{requirement}/revisions/1", **OWN),
     R("patch", "/recruiter/requirements/{requirement}", {"location": "Bengaluru"}, **allow(200, "rec", "super"), **OWN_OUT),
     R("post", "/recruiter/requirements/{requirement}/assign", lambda w: {"recruiter_user_id": w["rec2_id"]}, **allow(200, "mgr", "super"), **OUT),
     R("post", "/recruiter/requirements/{requirement}/status", {"status": "shortlisting"}, **allow(200, "rec", "super"), **OWN_OUT),
@@ -238,6 +241,7 @@ async def build(client, db, w) -> None:
     co_owner = await add(db, User(email=f"{tag('r38-co-')}@example.local", password_hash="!", full_name=f"Co-owner {tag()}", role="placement_officer",
                                   division="it", active=True, email_verified=True))  # fmt: skip
     await add(db, JobAssignment(job_id=job.id, user_id=co_owner.id, role="collaborator", added_by_user_id=rec.id))  # hrc-006
+    await add(db, JobRevision(job_id=job.id, revision=1, snapshot={"title": job.title}, changed_fields=[], author_user_id=rec.id))  # pob-002
     if "id" not in _POOL:  # one pool per run: the pool list counts every active pool's members, so a pool per world makes it crawl
         _POOL["id"] = (await add(db, TalentPool(name=tag("R38 Pool "), all_terms=["Java"], any_terms=[], active=True, created_by_user_id=mgr.id,
                                                 updated_by_user_id=mgr.id))).id  # fmt: skip

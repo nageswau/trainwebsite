@@ -87,6 +87,7 @@ from app.models import (
     INVESTMENT_VERTICALS,
     JOB_EMPLOYMENT_TYPES,
     JOB_FEE_BASES,
+    JOB_PAYMENT_TRIGGERS,
     JOB_PRIORITIES,
     JOB_SHIFTS,
     JOB_STATUSES,
@@ -10656,8 +10657,11 @@ REC_REQUIREMENT_LABELS = {
     # hrc-005 (DEC-SCOPE-381 V1)
     "requisition_reference": "Requisition reference", "certifications": "Certifications", "country": "Country", "state": "State",
     "city": "City", "travel_requirement": "Travel", "benefits": "Benefits", "duplicate_reason": "Reason",
+    # pob-002 (DEC-SCOPE-405)
+    "payment_terms": "Payment terms", "replacement_terms": "Replacement terms", "revision_reason": "Reason for this revision",
 }
-REC_REQUIREMENT_MULTILINE = frozenset({"description", "note", "skills", "responsibilities", "requirements", "remarks", "certifications", "benefits"})
+REC_REQUIREMENT_MULTILINE = frozenset({"description", "note", "skills", "responsibilities", "requirements", "remarks", "certifications", "benefits",
+                                       "payment_terms", "replacement_terms", "revision_reason"})  # fmt: skip
 REC_REQUIREMENT_FIELDS = (  # the `jobs` columns a create or edit may write; code, status, assignee and creator are server-owned
     "title", "location", "description", "department", "job_category_id", "vacancies", "qualification", "experience_min_months",
     "experience_max_months", "salary_min", "salary_max", "work_mode", "shift", "employment_type", "joining_requirement", "closes_on",
@@ -10665,7 +10669,11 @@ REC_REQUIREMENT_FIELDS = (  # the `jobs` columns a create or edit may write; cod
     # hrc-005 (V1)
     "requisition_reference", "lead_source_id", "certifications", "country", "state", "city", "relocation_required", "travel_requirement",
     "salary_currency", "salary_period", "benefits", "hiring_manager_user_id", "expected_joining_date",
+    # pob-002 (DEC-SCOPE-405 R6/R7/R9): the hiring process, the per-requirement terms and the backup owner
+    "interview_rounds", "screening_steps", "decision_maker_contact_id", "expected_tat_days", "payment_trigger", "payment_days",
+    "payment_terms", "replacement_terms", "backup_owner_user_id",
 )
+REC_REQUIREMENT_TERMS = ("payment_trigger", "payment_days", "payment_terms", "replacement_terms")  # pob-002 R8: behind commercials.client
 
 
 def _rec_requirement_text(value: str | None, info: ValidationInfo) -> str | None:
@@ -10694,6 +10702,20 @@ RecRequirementLocation = _rec_requirement_text_type(120)
 RecSkillName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
 RecMonths = Annotated[int | None, Field(ge=0, le=600)]
 RecMoney = Annotated[Decimal | None, Field(ge=0, max_digits=12, decimal_places=2)]
+RecDays = Annotated[int | None, Field(ge=1, le=365)]  # pob-002: a turnaround or payment period in days
+
+
+def _rec_steps(value: list[str] | None) -> list[str] | None:
+    """pob-002 (R6): an ordered list of names; blanks dropped, an empty list clears (null); no control characters."""
+    if value is None:
+        return None
+    if any(_BDM_CONTROL.search(item) for item in value):
+        raise ValueError("A step contains invalid characters")
+    kept = [item for item in value if item]
+    return kept or None
+
+
+RecSteps = Annotated[list[Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)]] | None, Field(max_length=10), AfterValidator(_rec_steps)]
 
 
 class RecRequirementUpdate(BaseModel):
@@ -10738,6 +10760,17 @@ class RecRequirementUpdate(BaseModel):
     hiring_manager_user_id: UUID | None = None
     expected_joining_date: date | None = None
     duplicate_reason: _rec_requirement_text_type(500, multiline=True) = None  # V5: saves despite a possible duplicate (audited)
+    # pob-002 (DEC-SCOPE-405): R6 the hiring process, R7 the terms (commercials.client edit), R9 the backup owner, R2 the revision's reason
+    interview_rounds: RecSteps = None
+    screening_steps: RecSteps = None
+    decision_maker_contact_id: UUID | None = None
+    expected_tat_days: RecDays = None
+    payment_trigger: Literal[JOB_PAYMENT_TRIGGERS] | None = None
+    payment_days: RecDays = None
+    payment_terms: _rec_requirement_text_type(2000, multiline=True) = None
+    replacement_terms: _rec_requirement_text_type(2000, multiline=True) = None
+    backup_owner_user_id: UUID | None = None
+    revision_reason: _rec_requirement_text_type(500, multiline=True) = None
 
     @model_validator(mode="after")
     def _ranges(self):

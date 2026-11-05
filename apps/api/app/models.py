@@ -951,6 +951,14 @@ JOB_PAY_CHECKS = {  # hrc-005 (DEC-SCOPE-381 V1): migration 0258 repeats these s
     "ck_jobs_salary_currency": "salary_currency IS NULL OR salary_currency ~ '^[A-Z]{3}$'",
     "ck_jobs_salary_period": "salary_period IS NULL OR salary_period IN ('year', 'month')",
 }
+# pob-002 (DEC-SCOPE-405 R6/R7): the hiring-process and per-requirement commercial columns; migration 0281 repeats these strings
+# (test_pob_002_migration asserts they stay identical).
+JOB_PAYMENT_TRIGGERS = ("on_joining", "days_after_joining", "on_invoice")
+JOB_TERMS_CHECKS = {
+    "ck_jobs_payment_trigger": "payment_trigger IS NULL OR payment_trigger IN ('on_joining', 'days_after_joining', 'on_invoice')",
+    "ck_jobs_payment_days": "(payment_trigger IS NOT DISTINCT FROM 'days_after_joining') = (payment_days IS NOT NULL) AND (payment_days IS NULL OR payment_days BETWEEN 1 AND 365)",
+    "ck_jobs_expected_tat_days": "expected_tat_days IS NULL OR expected_tat_days BETWEEN 1 AND 365",
+}
 # hrc-005 V4: the duplicate check's keys, spelled exactly as ix_jobs_company_title_key so the planner can use it.
 JOB_TITLE_KEY_SQL = r"lower(regexp_replace(btrim(title), '\s+', ' ', 'g'))"
 JOB_PLACE_KEY_SQL = r"lower(regexp_replace(btrim(coalesce(city, location)), '\s+', ' ', 'g'))"
@@ -964,7 +972,7 @@ class Job(Base, TimestampMixin):
     __tablename__ = "jobs"
     __table_args__ = (
         UniqueConstraint("requirement_code", name="uq_jobs_requirement_code"),
-        *(CheckConstraint(sql, name=name) for name, sql in {**JOB_CHECKS, **JOB_FEE_CHECKS, **JOB_PAY_CHECKS}.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in {**JOB_CHECKS, **JOB_FEE_CHECKS, **JOB_PAY_CHECKS, **JOB_TERMS_CHECKS}.items()),
         CheckConstraint(JOB_SOURCE_CHECK, name="ck_jobs_source"),
         CheckConstraint(JOB_VISIBILITY_CHECK, name="ck_jobs_visibility"),
         CheckConstraint(JOB_SEGMENT_POOL_CHECK, name="ck_jobs_segment_pool"),
@@ -1029,7 +1037,42 @@ class Job(Base, TimestampMixin):
     match_hard_qualification: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     match_hard_location: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     match_hard_salary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    # pob-002 (DEC-SCOPE-405 R6): the client's hiring process
+    interview_rounds: Mapped[list | None] = mapped_column(JSON, nullable=True)  # ordered names, at most 10
+    screening_steps: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    decision_maker_contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    expected_tat_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # pob-002 R7: per-requirement terms; null payment/replacement terms inherit the current contract's (the fee stays rec-031's override)
+    payment_trigger: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    payment_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    payment_terms: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    replacement_terms: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    # pob-002 R9: an active recruiter with the primary's owner rights (Q-02: always, not only while the primary is away)
+    backup_owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     company = relationship("Company")
+
+
+# pob-002 (DEC-SCOPE-405 R1): an append-only snapshot of a requirement's material fields per save; migration 0281 repeats the checks.
+JOB_REVISION_CHECKS = {"ck_job_revisions_revision": "revision >= 1"}
+
+
+class JobRevision(Base):
+    """pob-002 (R1-R3): revision n of a job requirement -- every material field by display value (`snapshot`), the fields that changed,
+    an optional reason and the author (NULL = the system's baseline for a job created before revisions were kept). Never updated."""
+
+    __tablename__ = "job_revisions"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in JOB_REVISION_CHECKS.items()),
+        UniqueConstraint("job_id", "revision", name="uq_job_revisions_revision"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"))
+    revision: Mapped[int] = mapped_column(Integer)
+    snapshot: Mapped[dict] = mapped_column(JSON)
+    changed_fields: Mapped[list] = mapped_column(JSON, default=list)
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    author_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 # hrc-018 (DEC-SCOPE-392 E1/E2): the six match factors in display order and the source's default weights; migration 0269 repeats them

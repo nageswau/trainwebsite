@@ -15,6 +15,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import RecruiterInvoice, RecruiterPayment, User
 from app.schemas import RecCompanyRevenue, RecFeeOverride, RecInvoiceCancel, RecInvoiceCreate, RecInvoiceEnvelope, RecInvoicePage, RecPaymentCreate, RecRequirementRevenue
+from app.services import job_revisions as revisions
 from app.services import recruiter_companies as companies
 from app.services import recruiter_contracts as contracts
 from app.services import recruiter_revenue as svc
@@ -38,8 +39,11 @@ async def set_fee(requirement_id: UUID, payload: RecFeeOverride, user: User = De
     before = {"basis": job.fee_basis, "value": str(svc.money(job.fee_value))} if job.fee_basis else None
     after = {"basis": payload.fee_basis, "value": str(svc.money(payload.fee_value))} if payload.fee_basis else None
     if before != after:
+        snapshot_before = await revisions.snapshot(db, job)  # pob-002 (DEC-SCOPE-405 R2): the fee is in the requirement's revisions
         job.fee_basis, job.fee_value = payload.fee_basis, svc.money(payload.fee_value) if payload.fee_basis else None
         svc.audit(db, user, "fee_set", "job", job.id, {"from": before, "to": after})
+        await db.flush()
+        await revisions.record(db, user, job, snapshot_before, None)
         await db.commit()
         await db.refresh(job)
         svc.log("recruiter_revenue_fee_set", user, job_id=job.id)

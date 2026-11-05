@@ -11,11 +11,12 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models import Job, JobAssignment, JobAssignmentHistory, RecruiterProfile, User
+from app.models import AuditLog, Job, JobAssignment, JobAssignmentHistory, RecruiterProfile, User
 from app.services.recruiter import ROLE
 from app.services.recruiter_companies import person
 
 OFFICER_ROLE = "placement_officer"
+BACKUP = "backup"  # pob-002 (DEC-SCOPE-405 R9): the picker's role for `jobs.backup_owner_user_id` (not a job_assignments role)
 ROLE_LABELS = {"primary": "Primary owner", "placement_officer": "Placement officer owner", "collaborator": "Collaborator"}
 ELIGIBLE = {"collaborator": (ROLE, OFFICER_ROLE), "placement_officer": (OFFICER_ROLE,)}  # O3
 INVALID = {"collaborator": "Choose an active recruiter or placement officer", "placement_officer": "Choose an active placement officer"}
@@ -51,6 +52,8 @@ async def set_primary(db: AsyncSession, actor: User, job: Job, target_id: UUID) 
         await db.delete(row)
     if job.assigned_recruiter_user_id:
         _record(db, job.id, job.assigned_recruiter_user_id, "primary", "removed", actor, "reassign")
+    if job.backup_owner_user_id == target_id:  # pob-002 (DEC-SCOPE-405 R9): the backup promoted is no longer the backup
+        job.backup_owner_user_id = None
     job.assigned_recruiter_user_id = target_id
     _record(db, job.id, target_id, "primary", "added", actor, "reassign")
 
@@ -94,7 +97,13 @@ async def release(db: AsyncSession, actor: User, user: User) -> int:
     for row in rows:
         _record(db, row.job_id, user.id, row.role, "removed", actor, "deactivated")
         await db.delete(row)
-    return len(rows)
+    # pob-002 (DEC-SCOPE-405 R9): and stops being a backup owner -- one audit row per job (the hrc-004 History shows it), not a co-owner row
+    backups = (await db.scalars(select(Job).where(Job.backup_owner_user_id == user.id).order_by(Job.id).with_for_update())).all()
+    for job in backups:
+        job.backup_owner_user_id = None
+        db.add(AuditLog(user_id=actor.id, action="recruiter_requirement.backup_released", entity_type="job", entity_id=str(job.id),
+                        metadata_json={"user_id": str(user.id), "changes": {"backup_owner": [user.full_name, None]}}))  # fmt: skip
+    return len(rows) + len(backups)
 
 
 async def owners_out(db: AsyncSession, job_id: UUID) -> list[dict]:
@@ -114,10 +123,15 @@ async def owners_out(db: AsyncSession, job_id: UUID) -> list[dict]:
 
 
 async def options(db: AsyncSession, job: Job, role: str, matching: list, limit: int) -> dict:
-    """The picker: eligible people not already on the job."""
-    filters = [*_eligible_users(role), User.id.not_in(select(JobAssignment.user_id).where(JobAssignment.job_id == job.id)), *matching]
-    if job.assigned_recruiter_user_id:
-        filters.append(User.id != job.assigned_recruiter_user_id)
+    """The picker: eligible people not already on the job. pob-002 (R9): `backup` = active recruiters other than the primary and the backup
+    (a collaborator may become the backup)."""
+    if role == BACKUP:
+        filters = [User.active.is_(True), User.role == ROLE, User.id.in_(select(RecruiterProfile.user_id)), *matching]
+        filters += [User.id != u for u in (job.assigned_recruiter_user_id, job.backup_owner_user_id) if u]
+    else:
+        filters = [*_eligible_users(role), User.id.not_in(select(JobAssignment.user_id).where(JobAssignment.job_id == job.id)), *matching]
+        if job.assigned_recruiter_user_id:
+            filters.append(User.id != job.assigned_recruiter_user_id)
     total = await db.scalar(select(func.count()).select_from(User).where(*filters)) or 0
     rows = (await db.scalars(select(User).where(*filters).order_by(User.full_name, User.id).limit(limit))).all()
     return {"items": [{"id": u.id, "full_name": u.full_name, "email": u.email, "role": u.role} for u in rows], "total": total}
