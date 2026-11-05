@@ -11824,3 +11824,29 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   database clock. E9 AuthZ unchanged. E10 a stored column is the follow-up if the pool outgrows per-row evaluation.
 - **Numbering:** no migration; API §12KP; no RBAC change.
 - **Feature ID authorized:** `hrc-021`. **Status:** built on `worktree-hrc-021`.
+
+### DEC-SCOPE-399 — Advanced multi-filter resume search (`hrc-019`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-019` (PDF §8 filter groups, §8.1, §8.2/§8.3, §16, §17 QA #6–8; PDF
+  classified `UNVERIFIED` and not readable in the build session, so the §8.2/§8.3 D example wording comes from the backlog's "+" case).
+  Scope approved by the owner 2026-11-01 (backlog Q-00). Dependencies hrc-010, 011, 012, 017, 021 and 026 merged. Q-19 (deeper nesting)
+  and Q-20 (p95 target) were not answered; the owner said to proceed with the recommended answers, so S1–S14 are **the builder's calls
+  (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-05-hrc-019-advanced-candidate-search-design.md`.
+- **Behaviour:** Find Candidates gains the §8 filter groups — skills (nice-to-have skills, categories, minimum level, months on each
+  skill), education (degree, specialisation, institution, passing years, CGPA; one row must satisfy them all), experience (fresher,
+  relevant range, designation, industry, employment type), location (country, state, city, preferred location, relocation, work mode),
+  preferences (role, employment type), recruitment data (primary recruiter me/nobody, registration dates in IST), documents and
+  applications (resume yes/no, document types, application stages, interviewed) and package (current and minimum ranges beside the
+  expected one, and "include unknown salary") — a sort (relevance, most matching skills, experience, lowest expected salary, newest
+  registration, recent activity, profile completeness) and a per-card "why matched". The panel is grouped in collapsible sections, every
+  filter is in the URL, and each active filter is a chip that clears on its own.
+- **Builder's calls:** S1 one endpoint, additive fields, unknown key still 422. S2 Q-19: no deeper nesting. S3 nice-to-have skills never
+  filter (alone they list who holds one) and feed the match sort and "why matched"; a category alone is a search. S4/S5 same-row semantics
+  for education and employment; CGPA compares only a plain 0–10 number. S8 registration dates are IST days. S9 every package filter,
+  "unknown" and the package sort are 403 without `candidates.compensation:view`; unknown = keep candidates without the figure for each
+  applied range. S10 a fixed sort whitelist; activity = the latest profile update, application change, website application, call or
+  message; completeness = hrc-010's Appendix B weights in SQL. S11 `match` from the page's skill rows (no query). S12 Q-20: no p95
+  confirmed; the query count is unchanged and every sort stays inside rec-013's 2 s budget on 10k candidates. S13 validation. S14 the
+  numbers below. Talent-pool rules do not gain the new filters.
+- **Numbering:** migration `0275_candidate_search_indexes` (pg_trgm + indexes, no data change); API §12KR; no RBAC change.
+- **Feature ID authorized:** `hrc-019`. **Status:** built on `worktree-hrc-019`.
