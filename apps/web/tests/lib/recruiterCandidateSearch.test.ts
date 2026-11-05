@@ -14,6 +14,7 @@ describe("rec-013 search state <-> URL", () => {
       text: '"AWS Certified" Kafka', all: ["Java", "Spring Boot"], any: [["AWS", "Azure"], ["SQL"]], verified: true, expMin: "2", expMax: "5", location: "Hyderabad",
       availability: ["immediate", "d15"], qualification: "B.Tech", salMin: "5", salMax: "10.5",
       sourceId: "0f8fad5b-d9cb-469f-a165-70867728950e", status: "available", engagement: "screened", offset: 50, // hrc-021
+      preferred: [], more: {}, sort: "relevance", // hrc-019: nothing new in this URL
     });
     expect(stateOf(paramsOf(state))).toEqual(state);
   });

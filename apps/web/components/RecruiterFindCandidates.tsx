@@ -12,17 +12,93 @@ import type { PickOption } from "@/lib/lookups";
 import { requirementCandidatesUrl } from "@/lib/recruiterApplications";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
 import {
-  availabilityOf, BAND_LABEL, BANDS, type CandidateCard, distinctTerms, EMPTY_SEARCH, EXPERIENCE_LABEL, experienceBand, GROUP_TERMS, isSearchResult,
-  MAX_GROUPS, MAX_TERMS, OTHER_LOCATION, PAGE_SIZE, paramsOf, requirementSearch, salaryText, SEARCH_URL, searchBody, type SearchResult,
-  type SearchState, searchText, stateOf, TEXT_MAX, unknownSkill,
+  activeFilters, availabilityOf, BAND_LABEL, BANDS, type CandidateCard, distinctTerms, EMPTY_SEARCH, EXPERIENCE_LABEL, experienceBand, FILTERS,
+  type FilterGroup, type FilterSpec, GROUP_TERMS, isSearchResult, matchSummary, MAX_GROUPS, MAX_TERMS, OTHER_LOCATION, PAGE_SIZE, paramsOf,
+  PREFERRED_MAX, requirementSearch, salaryText, SEARCH_URL, searchBody, type SearchResult, type SearchState, searchText, type SortKey, sortOptions,
+  stateOf, TEXT_MAX, unknownSkill,
 } from "@/lib/recruiterCandidateSearch";
 import { CANDIDATES_PATH, COMPENSATION_VIEW, ENGAGEMENTS, experienceLabel, STATUS_LABEL, STATUSES } from "@/lib/recruiterCandidates";
 import { STATUS_LABEL as SKILL_STATUS_LABEL } from "@/lib/recruiterCandidateSkills";
+import { SKILL_CATEGORIES_URL } from "@/lib/recruiterSkills";
 import { usePermissions } from "@/lib/usePermissions";
 
 type Failure = { message: string; retry: boolean; term?: string; suggestions?: string[] } | null;
 type Shortlisted = Record<string, { busy?: boolean; text: string; failed?: boolean }>;
-const termCount = (s: SearchState) => s.all.length + s.any.reduce((n, g) => n + g.length, 0);
+type Category = { id: string; name: string; active: boolean };
+const termCount = (s: SearchState) => s.all.length + s.any.reduce((n, g) => n + g.length, 0) + s.preferred.length;
+const GRID = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(11rem, 1fr))", gap: 12 } as const;
+const FIELD = { marginBottom: 0 } as const;
+
+/** hrc-019: one collapsible filter group. It opens when the search in the URL uses it (`count`), or by default for the groups that held
+ *  the rec-013 filters (they stayed in view before the regrouping). A closed group renders no controls until it is opened. */
+function Section({ title, count, open = false, children }: { title: string; count: number; open?: boolean; children: React.ReactNode }) {
+  const [shown, setShown] = useState(open || count > 0);
+  useEffect(() => {
+    if (count > 0) setShown(true);
+  }, [count]);
+  return (
+    <details open={shown} onToggle={(e) => setShown(e.currentTarget.open)} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "8px 12px" }}>
+      <summary style={{ fontWeight: 600, cursor: "pointer" }}>{count > 0 ? `${title} (${count})` : title}</summary>
+      {shown && <div style={{ ...GRID, marginTop: 10 }}>{children}</div>}
+    </details>
+  );
+}
+
+/** hrc-019: one FILTERS entry as a form control; its draft values are strings, checked by `stateOf` once they reach the URL. */
+function FilterField({ spec, values, categories, onChange }: {
+  spec: FilterSpec; values: string[]; categories: Category[]; onChange: (values: string[]) => void;
+}) {
+  const id = `find-${spec.param}`;
+  const one = values[0] ?? "";
+  const set = (value: string) => onChange(value ? [value] : []);
+  const toggle = (key: string, on: boolean) => onChange(on ? [...values, key] : values.filter((v) => v !== key));
+  if (spec.kind === "flag") {
+    return (
+      <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <input id={id} type="checkbox" checked={one === "1"} onChange={(e) => set(e.target.checked ? "1" : "")} /> {spec.label}
+      </label>
+    );
+  }
+  if (spec.kind === "multi" || spec.kind === "category") {
+    const options = spec.kind === "category" ? categories.filter((c) => c.active || values.includes(c.id)).map((c) => ({ key: c.id, label: c.name })) : spec.options ?? [];
+    return (
+      <fieldset style={{ border: 0, padding: 0, margin: 0, gridColumn: "1 / -1" }}>
+        <legend style={{ fontWeight: 600, marginBottom: 4 }}>{spec.label}</legend>
+        {options.length === 0 ? <p className="muted" style={{ margin: 0 }}>None to choose from yet.</p> : (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px" }}>
+            {options.map((o) => (
+              <label key={o.key} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <input type="checkbox" checked={values.includes(o.key)} onChange={(e) => toggle(o.key, e.target.checked)} /> {o.label}
+              </label>
+            ))}
+          </div>
+        )}
+      </fieldset>
+    );
+  }
+  if (spec.kind === "choice" || spec.kind === "yesno") {
+    return (
+      <div className="field" style={FIELD}>
+        <label htmlFor={id}>{spec.label}</label>
+        <select id={id} value={one} onChange={(e) => set(e.target.value)}>
+          <option value="">Any</option>
+          {spec.options?.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+        </select>
+      </div>
+    );
+  }
+  const input = {
+    text: { maxLength: 120 }, date: { type: "date" }, years: { type: "number", inputMode: "numeric", min: 0, max: 50 },
+    year: { type: "number", inputMode: "numeric", min: 1950, max: 2100 }, cgpa: { type: "number", inputMode: "decimal", min: 0, max: 10, step: 0.1 },
+    lakhs: { type: "number", inputMode: "decimal", min: 0, step: 0.5 },
+  }[spec.kind] as React.InputHTMLAttributes<HTMLInputElement>;
+  return (
+    <div className="field" style={FIELD}>
+      <label htmlFor={id}>{spec.label}</label>
+      <input id={id} {...input} value={one} onChange={(e) => set(e.target.value)} />
+    </div>
+  );
+}
 
 /** One list of skill chips: type a skill and press Enter (or Add); × removes it. The text box's draft is the parent's, so Search can add
  *  a skill typed but not yet added. */
@@ -76,6 +152,7 @@ export function Card({ c, writes, requirement, shortlisted, onShortlist, matchNo
     ["Source", c.source_detail ? `${c.source.name} — ${c.source_detail}` : c.source.name], ["Status", STATUS_LABEL[c.status] ?? c.status],
     ...(c.engagement ? [["Engagement", c.engagement.label] as [string, string]] : []), // hrc-021
   ];
+  const why = matchSummary(c.match); // hrc-019 S11
   return (
     <li className="action-card" style={{ gap: 10 }} aria-labelledby={`card-${c.id}`}>
       <div>
@@ -103,6 +180,15 @@ export function Card({ c, writes, requirement, shortlisted, onShortlist, matchNo
           </ul>
         )}
       </div>
+      {why && (
+        <div>
+          <span className="muted" style={{ fontSize: 13 }}>Why matched</span>
+          <p style={{ margin: "2px 0 0", fontSize: 14 }}>
+            {[why.matched.length ? `Matches: ${why.matched.join(", ")}` : "", why.missing.length ? `Missing nice-to-have: ${why.missing.join(", ")}` : ""]
+              .filter(Boolean).join(" · ")}
+          </p>
+        </div>
+      )}
       {c.snippet && c.snippet.length > 0 && (
         <div>
           <span className="muted" style={{ fontSize: 13 }}>From the resume</span>
@@ -152,6 +238,7 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
   const [version, setVersion] = useState(0);
   const [sources, setSources] = useState<CatalogueValue[]>([]);
   const [requirement, setRequirement] = useState<PickOption | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]); // hrc-019: the skill-category filter's choices and chip names
   const compensation = !!usePermissions()?.includes(COMPENSATION_VIEW); // hrc-001 H2: no salary filter without the grant
   const [shortlisted, setShortlisted] = useState<Shortlisted>({});
   const [selected, setSelected] = useState<Map<string, ShareCandidate>>(new Map()); // rec-019: kept across pages until shared
@@ -216,6 +303,16 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
     return () => controller.abort();
   }, [sourceFilter]);
 
+  useEffect(() => {
+    if (!sourceFilter) return; // QA-01: hr_team cannot read the Skills Master (the same roles the catalogue refuses), so no category filter
+    const controller = new AbortController(); // a list that fails to load leaves the category filter empty, never the page broken
+    fetch(`${SKILL_CATEGORIES_URL}?limit=100`, { signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((page: { items?: Category[] } | null) => setCategories(Array.isArray(page?.items) ? page.items.filter((c) => c && c.id && c.name) : []))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [sourceFilter]);
+
   function go(next: SearchState) {
     const query = paramsOf(next).toString();
     router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
@@ -226,7 +323,8 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
     event.preventDefault();
     const all = distinctTerms([...draft.all, texts.all ?? ""], MAX_TERMS);
     const any = draft.any.map((group, i) => distinctTerms([...group, texts[`any${i}`] ?? ""], GROUP_TERMS)).filter((g) => g.length);
-    const next = { ...draft, text: searchText(draft.text), all, any, offset: 0 };
+    const preferred = distinctTerms([...draft.preferred, texts.pref ?? ""], PREFERRED_MAX);
+    const next = { ...draft, text: searchText(draft.text), all, any, preferred, offset: 0 };
     if (!searchBody(next)) return go(next);
     jump.current = true;
     if (paramsOf(next).toString() === key && (result || failure)) {
@@ -254,6 +352,22 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
   const room = termCount(draft) < MAX_TERMS;
   const narrow = (changes: Partial<SearchState>) => go({ ...state, ...changes, offset: 0 });
   const searched = searchBody(state) !== null;
+  // hrc-019: the spec-driven groups, their applied-filter counts and the active-filter chips
+  const setMore = (param: string, values: string[]) => setDraft((d) => {
+    const more = { ...d.more };
+    if (values.length) more[param] = values;
+    else delete more[param];
+    return { ...d, more };
+  });
+  const offered = (spec: FilterSpec) => (!spec.package || compensation) && (spec.kind !== "category" || sourceFilter);
+  const fields = (group: FilterGroup) => FILTERS.filter((spec) => spec.group === group && offered(spec)).map((spec) => (
+    <FilterField key={spec.param} spec={spec} values={draft.more[spec.param] ?? []} categories={categories} onChange={(v) => setMore(spec.param, v)} />
+  ));
+  const applied = (group: FilterGroup, ...own: unknown[]) =>
+    FILTERS.filter((spec) => spec.group === group).reduce((n, spec) => n + (state.more[spec.param]?.length ?? 0), 0) + own.filter(Boolean).length;
+  const chips = activeFilters(state, {
+    categories: Object.fromEntries(categories.map((c) => [c.id, c.name])), sources: Object.fromEntries(sources.map((s) => [s.id, s.name])),
+  });
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -283,41 +397,56 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
             + Add an “at least one of” group
           </button>
         )}
+        <SkillChips id="find-pref" label="Nice to have (ranks, never excludes)" hint="Candidates holding these come first with “Most matching skills”."
+          terms={draft.preferred} text={texts.pref ?? ""} room={room && draft.preferred.length < PREFERRED_MAX}
+          onText={(v) => setTexts((t) => ({ ...t, pref: v }))} onChange={(preferred) => set("preferred", preferred)} />
         {!room && <p className="muted" role="status" style={{ margin: 0 }}>You can search for up to {MAX_TERMS} skills at once.</p>}
         <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <input type="checkbox" checked={draft.verified} onChange={(e) => set("verified", e.target.checked)} /> Verified skills only
         </label>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(11rem, 1fr))", gap: 12 }}>
-          <div className="field" style={{ marginBottom: 0 }}>
+        <Section title="More skill filters" count={applied("skills")}>{fields("skills")}</Section>
+        <Section title="Experience" count={applied("experience", state.expMin, state.expMax)} open>
+          <div className="field" style={FIELD}>
             <label htmlFor="find-exp-min">Experience from (years)</label>
             <input id="find-exp-min" type="number" inputMode="numeric" min={0} max={50} value={draft.expMin} onChange={(e) => set("expMin", e.target.value)} />
           </div>
-          <div className="field" style={{ marginBottom: 0 }}>
+          <div className="field" style={FIELD}>
             <label htmlFor="find-exp-max">Experience to (years)</label>
             <input id="find-exp-max" type="number" inputMode="numeric" min={0} max={50} value={draft.expMax} onChange={(e) => set("expMax", e.target.value)} />
           </div>
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="find-location">Location</label>
-            <input id="find-location" maxLength={120} value={draft.location} onChange={(e) => set("location", e.target.value)} />
-          </div>
-          <div className="field" style={{ marginBottom: 0 }}>
+          {fields("experience")}
+        </Section>
+        <Section title="Education" count={applied("education", state.qualification)}>
+          <div className="field" style={FIELD}>
             <label htmlFor="find-qualification">Qualification</label>
             <input id="find-qualification" maxLength={120} placeholder="e.g. B.Tech" value={draft.qualification} onChange={(e) => set("qualification", e.target.value)} />
           </div>
-          {compensation && (
-            <>
-              <div className="field" style={{ marginBottom: 0 }}>
-                <label htmlFor="find-sal-min">Expected salary from (₹ lakhs a year)</label>
-                <input id="find-sal-min" type="number" inputMode="decimal" min={0} step={0.5} value={draft.salMin} onChange={(e) => set("salMin", e.target.value)} />
-              </div>
-              <div className="field" style={{ marginBottom: 0 }}>
-                <label htmlFor="find-sal-max">Expected salary to (₹ lakhs a year)</label>
-                <input id="find-sal-max" type="number" inputMode="decimal" min={0} step={0.5} value={draft.salMax} onChange={(e) => set("salMax", e.target.value)} />
-              </div>
-            </>
-          )}
+          {fields("education")}
+        </Section>
+        <Section title="Location" count={applied("location", state.location)} open>
+          <div className="field" style={FIELD}>
+            <label htmlFor="find-location">Location</label>
+            <input id="find-location" maxLength={120} value={draft.location} onChange={(e) => set("location", e.target.value)} />
+          </div>
+          {fields("location")}
+        </Section>
+        <Section title="Preferences" count={applied("preferences")}>{fields("preferences")}</Section>
+        {compensation && (
+          <Section title="Package" count={applied("package", state.salMin, state.salMax)} open>
+            <div className="field" style={FIELD}>
+              <label htmlFor="find-sal-min">Expected salary from (₹ lakhs a year)</label>
+              <input id="find-sal-min" type="number" inputMode="decimal" min={0} step={0.5} value={draft.salMin} onChange={(e) => set("salMin", e.target.value)} />
+            </div>
+            <div className="field" style={FIELD}>
+              <label htmlFor="find-sal-max">Expected salary to (₹ lakhs a year)</label>
+              <input id="find-sal-max" type="number" inputMode="decimal" min={0} step={0.5} value={draft.salMax} onChange={(e) => set("salMax", e.target.value)} />
+            </div>
+            {fields("package")}
+          </Section>
+        )}
+        <Section title="Status and recruitment" count={applied("recruitment", state.sourceId, state.status, state.engagement)} open>
           {sourceFilter && (
-            <div className="field" style={{ marginBottom: 0 }}>
+            <div className="field" style={FIELD}>
               <label htmlFor="find-source">Candidate source</label>
               <select id="find-source" value={draft.sourceId} onChange={(e) => set("sourceId", e.target.value)}>
                 <option value="">All sources</option>
@@ -325,40 +454,55 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
               </select>
             </div>
           )}
-          <div className="field" style={{ marginBottom: 0 }}>
+          <div className="field" style={FIELD}>
             <label htmlFor="find-status">Status</label>
             <select id="find-status" value={draft.status} onChange={(e) => set("status", e.target.value)}>
               <option value="">All statuses</option>
               {STATUSES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
             </select>
           </div>
-          <div className="field" style={{ marginBottom: 0 }}>
+          <div className="field" style={FIELD}>
             <label htmlFor="find-engagement">Engagement</label>
             <select id="find-engagement" value={draft.engagement} onChange={(e) => set("engagement", e.target.value)}>
               <option value="">All engagement</option>
               {ENGAGEMENTS.map((e) => <option key={e.key} value={e.key}>{e.label}</option>)}
             </select>
           </div>
-        </div>
-        <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-          <legend style={{ fontWeight: 600, marginBottom: 4 }}>Availability (notice period)</legend>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-            {BANDS.map((b) => (
-              <label key={b.key} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <input type="checkbox" checked={draft.availability.includes(b.key)}
-                  onChange={(e) => set("availability", BANDS.map((x) => x.key).filter((k) => (k === b.key ? e.target.checked : draft.availability.includes(k))))} />
-                {b.label}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+          {fields("recruitment")}
+        </Section>
+        <Section title="Documents and applications" count={applied("records")}>{fields("records")}</Section>
+        <Section title="Availability (notice period)" count={state.availability.length} open>
+          <fieldset style={{ border: 0, padding: 0, margin: 0, gridColumn: "1 / -1" }}>
+            <legend className="visually-hidden">Availability (notice period)</legend>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+              {BANDS.map((b) => (
+                <label key={b.key} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input type="checkbox" checked={draft.availability.includes(b.key)}
+                    onChange={(e) => set("availability", BANDS.map((x) => x.key).filter((k) => (k === b.key ? e.target.checked : draft.availability.includes(k))))} />
+                  {b.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </Section>
         <div className="actions" style={{ gap: 8 }}>
           <button type="submit" className="btn">Search candidates</button>
           <button type="button" className="btn secondary" onClick={() => go(EMPTY_SEARCH)}>Clear all</button>
         </div>
       </form>
 
-      <div ref={resultsRef} tabIndex={-1} style={{ outline: "none", scrollMarginTop: 80 }}>
+      <div ref={resultsRef} tabIndex={-1} style={{ outline: "none", scrollMarginTop: 80, display: "grid", gap: 12 }}>
+      {searched && chips.length > 0 && ( // hrc-019 AC2: each filter can be cleared on its own
+        <ul aria-label="Active filters" style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {chips.map((chip) => (
+            <li key={chip.key} className="badge" style={{ alignItems: "center", gap: 4 }}>
+              {chip.label}
+              <button type="button" aria-label={`Remove ${chip.label}`} onClick={() => go(chip.clear(state))}
+                style={{ border: 0, background: "transparent", color: "inherit", padding: "0 2px", fontWeight: 800 }}>×</button>
+            </li>
+          ))}
+        </ul>
+      )}
       {!searched ? (
         <p className="muted" role="status">Add a skill or a resume search to search every candidate in the pool.</p>
       ) : failure ? (
@@ -382,7 +526,8 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
           )}
           <Results result={result} state={state} loading={loading} writes={writes} requirement={requirement} shortlisted={shortlisted}
             onRequirement={(r) => { setRequirement(r); setShortlisted({}); setSelected(new Map()); setSharing(null); }} onShortlist={shortlist} narrow={narrow}
-            page={(offset) => go({ ...state, offset })} selected={selected} onSelect={select} onShare={() => setSharing([...selected.values()])} />
+            page={(offset) => go({ ...state, offset })} selected={selected} onSelect={select} onShare={() => setSharing([...selected.values()])}
+            sorts={sortOptions(compensation)} onSort={(sort) => narrow({ sort })} />
         </>
       )}
       </div>
@@ -390,10 +535,11 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
   );
 }
 
-function Results({ result, state, loading, writes, requirement, shortlisted, onRequirement, onShortlist, narrow, page, selected, onSelect, onShare }: {
+function Results({ result, state, loading, writes, requirement, shortlisted, onRequirement, onShortlist, narrow, page, selected, onSelect, onShare, sorts, onSort }: {
   result: SearchResult; state: SearchState; loading: boolean; writes: boolean; requirement: PickOption | null; shortlisted: Shortlisted;
   onRequirement: (r: PickOption | null) => void; onShortlist: (c: CandidateCard) => void; narrow: (c: Partial<SearchState>) => void; page: (offset: number) => void;
   selected: Map<string, ShareCandidate>; onSelect: (c: CandidateCard, on: boolean) => void; onShare: () => void;
+  sorts: { key: SortKey; label: string }[]; onSort: (sort: SortKey) => void; // hrc-019 S10
 }) {
   const expanded = result.terms.filter((t) => t.also.length || t.skill.name.toLowerCase() !== t.term.toLowerCase());
   const facetButton = (label: string, count: number, onClick?: () => void, pressed = false) => count > 0 && ( // QA-04: empty rows are noise
@@ -415,7 +561,15 @@ function Results({ result, state, loading, writes, requirement, shortlisted, onR
   );
   const header = (
       <div>
-        <div role="status"><h2 style={{ fontSize: 22, margin: 0 }}>{result.total === 1 ? "1 candidate found" : `${result.total} candidates found`}</h2></div>
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+          <div role="status"><h2 style={{ fontSize: 22, margin: 0 }}>{result.total === 1 ? "1 candidate found" : `${result.total} candidates found`}</h2></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <label htmlFor="find-sort" style={{ fontSize: 14 }}>Sort by</label>
+            <select id="find-sort" value={state.sort} onChange={(e) => onSort(e.target.value as SortKey)}>
+              {sorts.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+            </select>
+          </div>
+        </div>
         {expanded.length > 0 && (
           <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
             {expanded.map((t) => `${t.term} → ${[t.skill.name, ...t.also].join(", ")}`).join("; ")}

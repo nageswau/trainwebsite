@@ -6,19 +6,43 @@ expression is ever parsed into SQL). Six queries whatever the pool or page size:
 
 rec-014 (DEC-SCOPE-154, FT1-FT6): an optional `text` matches the current resume's generated `search_vector` through
 websearch_to_tsquery('english', :text) -- the text is a bound parameter, never SQL -- ranks by relevance and adds `ts_headline`
-snippets. It adds two queries: the stop-word check and the page's snippets."""
+snippets. It adds two queries: the stop-word check and the page's snippets.
+
+hrc-019 (DEC-SCOPE-399, S1-S14): the §8 filter groups (skills, education, experience, location, preferences, recruitment data, documents,
+applications, package with the "unknown" option), a sort whitelist and a per-card "why matched" -- each filter one more WHERE condition
+and each sort a fixed ORDER BY, so the query count does not change."""
 
 import logging
 import re
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import and_, exists, false, func, literal, literal_column, or_, select, union_all
+from sqlalchemy import Date, Numeric, and_, case, cast, exists, false, func, literal, literal_column, or_, select, union_all
+from sqlalchemy.dialects.postgresql import JSONB, array
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.api.lookups import _pattern as like_pattern
-from app.models import CANDIDATE_SKILL_LEVELS, Candidate, CandidateResume, CandidateSkill, RecCandidateSource, Skill, SkillAlias, SkillRelated, User
+from app.models import (
+    CANDIDATE_SKILL_LEVELS,
+    Candidate,
+    CandidateDocument,
+    CandidateEducation,
+    CandidateEmployment,
+    CandidateResume,
+    CandidateSkill,
+    CareerApplication,
+    Interview,
+    JobApplication,
+    RecCandidateSource,
+    RecruiterCall,
+    RecruiterMessage,
+    Skill,
+    SkillAlias,
+    SkillCategoryTag,
+    SkillRelated,
+    User,
+)
 from app.schemas import CandidateSearch
 from app.services import candidate_engagement
 from app.services.candidates import pool_filter
@@ -72,7 +96,7 @@ async def resolve_terms(db: AsyncSession, body: CandidateSearch, *, strict: bool
     """Every distinct term (case-insensitive) → {skill, ids, also}. One query resolves all terms (a name wins over an alias, the
     services/skills.resolve rule); one reads the related pairs of every resolved skill. Not `strict` (a saved rec-015 pool rule), a term
     that is no longer an active skill resolves to {skill: None, ids: ∅}, which `filters` turns into "matches nobody" (P5)."""
-    texts = {t.lower(): t for t in [*body.all, *(t for group in body.any for t in group)]}
+    texts = {t.lower(): t for t in [*body.all, *(t for group in body.any for t in group), *body.preferred]}
     keys = list(texts)
     if not keys:
         return {}
@@ -105,21 +129,131 @@ async def resolve_terms(db: AsyncSession, body: CandidateSearch, *, strict: bool
     return out
 
 
-def _has(ids: set[UUID], verified_only: bool, min_level: str | None = None):
-    """hrc-017 (T8): with `min_level`, only a holding at that level or above counts."""
+def _has(ids: set[UUID], verified_only: bool, min_level: str | None = None, min_months: int | None = None):
+    """hrc-017 (T8): with `min_level`, only a holding at that level or above counts; hrc-019 (S3): with `min_months`, only one with at
+    least that many months on the skill."""
     conditions = [CandidateSkill.candidate_id == Candidate.id, CandidateSkill.skill_id.in_(sorted(ids))]
     if verified_only:
         conditions.append(CandidateSkill.status != "claimed")
     if min_level:
         conditions.append(CandidateSkill.level.in_(CANDIDATE_SKILL_LEVELS[CANDIDATE_SKILL_LEVELS.index(min_level):]))
+    if min_months is not None:
+        conditions.append(CandidateSkill.experience_months >= min_months)
     return exists().where(*conditions)
 
 
-def filters(body: CandidateSearch, terms: dict[str, dict]) -> list:
-    """The pool (AC5), not archived, one EXISTS per AND term, one per OR group, then the FS5 filters -- all ANDed."""
+IST = "Asia/Kolkata"  # S8: registration dates are business (IST) days
+CGPA = r"^[0-9]{1,2}(\.[0-9]{1,2})?$"  # S4: only a plain number is compared as a CGPA
+
+
+def _like(column, text: str | None):
+    pattern = like_pattern(text)
+    return column.ilike(pattern, escape="\\") if pattern else None
+
+
+def _listed(column, text: str):
+    """S6/S7: an entry of a JSON list of short texts contains `text`."""
+    entry = func.json_array_elements_text(column).table_valued("value").render_derived()
+    return select(literal(1)).select_from(entry).where(_like(entry.c.value, text)).exists()
+
+
+def _overlaps(column, values: list[str]):
+    """S6/S7: a JSON list of enum values holds any of `values`."""
+    return cast(column, JSONB).op("?|")(array(values))
+
+
+def _row(model, conditions: list):
+    """S4/S5: one profile row satisfies every condition (same-row semantics); None when no condition applies."""
+    conditions = [c for c in conditions if c is not None]
+    return exists().where(model.candidate_id == Candidate.id, *conditions) if conditions else None
+
+
+def _education(body: CandidateSearch):
+    E = CandidateEducation
+    out = [_like(E.degree, body.degree), _like(E.specialisation, body.specialisation), _like(E.institution, body.institution)]
+    if body.passing_year_min is not None:
+        out.append(E.year >= body.passing_year_min)
+    if body.passing_year_max is not None:
+        out.append(E.year <= body.passing_year_max)
+    if body.cgpa_min is not None or body.cgpa_max is not None:
+        grade = func.trim(E.grade)
+        number = case((grade.op("~")(CGPA), cast(grade, Numeric)), else_=None)
+        out.append(number.between(body.cgpa_min if body.cgpa_min is not None else 0, body.cgpa_max if body.cgpa_max is not None else 10))
+    return _row(E, out)
+
+
+def _employment(body: CandidateSearch):
+    J = CandidateEmployment
+    return _row(J, [_like(J.designation, body.designation), _like(J.industry, body.industry),
+                    J.employment_type.in_(body.employment_types) if body.employment_types else None])  # fmt: skip
+
+
+def _package(body: CandidateSearch) -> list:
+    """S9: each applied range on the normalised annual INR; `package_unknown` keeps a candidate whose figure is not provided."""
+    out = []
+    for column, low, high in ((Candidate.expected_annual_inr, body.salary_min, body.salary_max), (Candidate.current_annual_inr, body.current_min, body.current_max),
+                              (Candidate.minimum_annual_inr, body.minimum_min, body.minimum_max)):  # fmt: skip
+        bounds = [c for c in (column >= low if low is not None else None, column <= high if high is not None else None) if c is not None]
+        if bounds:
+            out.append(or_(and_(*bounds), column.is_(None)) if body.package_unknown else and_(*bounds))
+    return out
+
+
+def _more(body: CandidateSearch, terms: dict[str, dict], user_id: UUID | None) -> list:
+    """hrc-019 (S3-S8): the §8 filter groups. A rec-015 pool rule (built with model_construct) has every default: nothing is added."""
+    out = [_education(body), _employment(body)]
+    if body.category_ids:
+        tagged = exists().where(SkillCategoryTag.skill_id == Skill.id, SkillCategoryTag.category_id.in_(body.category_ids))
+        out.append(select(CandidateSkill.id).join(Skill, Skill.id == CandidateSkill.skill_id)
+                   .where(CandidateSkill.candidate_id == Candidate.id, or_(Skill.category_id.in_(body.category_ids), tagged)).exists())  # fmt: skip
+    if body.preferred and not (body.all or body.any or body.text or body.category_ids):  # S3: preferred alone lists who holds one
+        out.append(_has(set().union(*(terms[t.lower()]["ids"] for t in body.preferred)), body.verified_only))
+    if body.fresher is not None:
+        out.append(Candidate.experience_months == 0 if body.fresher else Candidate.experience_months > 0)
+    if body.relevant_min_months is not None:
+        out.append(Candidate.relevant_experience_months >= body.relevant_min_months)
+    if body.relevant_max_months is not None:
+        out.append(Candidate.relevant_experience_months <= body.relevant_max_months)
+    out += [_like(Candidate.country, body.country), _like(Candidate.state, body.state), _like(Candidate.city, body.city)]
+    if body.preferred_location:
+        out.append(_listed(Candidate.preferred_locations, body.preferred_location))
+    if body.willing_to_relocate is not None:
+        out.append(Candidate.willing_to_relocate.is_(body.willing_to_relocate))
+    if body.work_modes:
+        out.append(_overlaps(Candidate.work_modes, body.work_modes))
+    if body.preferred_role:
+        out.append(or_(_like(Candidate.preferred_role, body.preferred_role), _listed(Candidate.preferred_roles, body.preferred_role)))
+    if body.preferred_employment_types:
+        out.append(_overlaps(Candidate.employment_types, body.preferred_employment_types))
+    if body.owner == "me":
+        out.append(Candidate.owner_user_id == user_id)
+    elif body.owner == "unassigned":
+        out.append(Candidate.owner_user_id.is_(None))
+    registered = cast(func.timezone(IST, Candidate.created_at), Date)
+    if body.registered_from is not None:
+        out.append(registered >= body.registered_from)
+    if body.registered_to is not None:
+        out.append(registered <= body.registered_to)
+    if body.has_resume is not None:
+        resume = exists().where(CandidateResume.candidate_id == Candidate.id)
+        out.append(resume if body.has_resume else ~resume)
+    if body.document_types:
+        out.append(exists().where(CandidateDocument.candidate_id == Candidate.id, CandidateDocument.document_type.in_(body.document_types)))
+    if body.application_statuses:
+        out.append(exists().where(JobApplication.candidate_id == Candidate.id, JobApplication.status.in_(body.application_statuses)))
+    if body.interviewed is not None:
+        held = select(Interview.id).join(JobApplication, JobApplication.id == Interview.application_id).where(JobApplication.candidate_id == Candidate.id).exists()
+        out.append(held if body.interviewed else ~held)
+    return [c for c in [*out, *_package(body)] if c is not None]
+
+
+def filters(body: CandidateSearch, terms: dict[str, dict], user_id: UUID | None = None) -> list:
+    """The pool (AC5), not archived, one EXISTS per AND term, one per OR group (hrc-019: at the minimum level and months), then the FS5
+    filters and the hrc-019 groups -- all ANDed. `user_id` is the caller, for `owner=me` (S8)."""
     out = [*pool_filter(), Candidate.archived_at.is_(None)]
-    out += [_has(terms[t.lower()]["ids"], body.verified_only) for t in dict.fromkeys(t.lower() for t in body.all)]
-    out += [_has(set().union(*(terms[t.lower()]["ids"] for t in group)), body.verified_only) for group in body.any]
+    level, months = body.min_level, body.skill_min_months
+    out += [_has(terms[t.lower()]["ids"], body.verified_only, level, months) for t in dict.fromkeys(t.lower() for t in body.all)]
+    out += [_has(set().union(*(terms[t.lower()]["ids"] for t in group)), body.verified_only, level, months) for group in body.any]
     if body.experience_min_months is not None:
         out.append(Candidate.experience_months >= body.experience_min_months)
     if body.experience_max_months is not None:
@@ -129,10 +263,6 @@ def filters(body: CandidateSearch, terms: dict[str, dict]) -> list:
             out.append(column.ilike(pattern, escape="\\"))
     if body.availability:
         out.append(or_(*(_between(Candidate.notice_days, low, high) for key, low, high in AVAILABILITY_BANDS if key in body.availability)))
-    if body.salary_min is not None:
-        out.append(Candidate.expected_annual_inr >= body.salary_min)  # hrc-011 C6: the normalised figure
-    if body.salary_max is not None:
-        out.append(Candidate.expected_annual_inr <= body.salary_max)
     if body.source_id:
         out.append(Candidate.source_id == body.source_id)
     if body.status:
@@ -142,7 +272,7 @@ def filters(body: CandidateSearch, terms: dict[str, dict]) -> list:
     if body.text:  # FT1: the GIN index finds matching resumes; only a candidate's current one counts
         resume = aliased(CandidateResume)
         out.append(Candidate.id.in_(select(resume.candidate_id).where(resume.search_vector.op("@@")(_tsquery(body.text)), _current(resume))))
-    return out
+    return out + _more(body, terms, user_id)  # the expected-salary range is hrc-011 C6's normalised figure (now in `_package`)
 
 
 async def facets(db: AsyncSession, where: list) -> tuple[int, dict]:
@@ -174,20 +304,74 @@ async def facets(db: AsyncSession, where: list) -> tuple[int, dict]:
     }
 
 
-async def page(db: AsyncSession, where: list, terms: dict[str, dict], limit: int, offset: int, text: str | None = None) -> list[dict]:
-    """The page's cards, newest first (FS11) -- with text, the most relevant current resume first (FT5): one query for the candidates
-    with their source, one for all their skills."""
+def completeness():
+    """S10: hrc-010's Appendix B completeness percent (services/candidate_profile.COMPLETENESS) as one SQL expression, for sorting."""
+    def points(condition, weight: int):
+        return case((condition, weight), else_=0)
+
+    skills = select(func.count()).select_from(CandidateSkill).where(CandidateSkill.candidate_id == Candidate.id).scalar_subquery()
+    preferences = and_(func.json_array_length(Candidate.preferred_roles) > 0, func.json_array_length(Candidate.preferred_locations) > 0)
+    return (points(Candidate.email_verified_at.is_not(None), 10) + points(exists().where(CandidateEducation.candidate_id == Candidate.id), 15)
+            + points(skills >= 3, 15) + points(Candidate.experience_months.is_not(None), 15) + points(preferences, 15)
+            + points(exists().where(CandidateResume.candidate_id == Candidate.id), 20) + points(Candidate.expected_salary.is_not(None), 10))  # fmt: skip
+
+
+def last_activity():
+    """S10: the latest of the profile update, an application change, a website application, a call and a message (GREATEST skips NULLs)."""
+    def latest(column, owner):
+        return select(func.max(column)).where(owner == Candidate.id).scalar_subquery()
+
+    return func.greatest(Candidate.updated_at, latest(JobApplication.updated_at, JobApplication.candidate_id),
+                         latest(CareerApplication.created_at, CareerApplication.candidate_id), latest(RecruiterCall.occurred_at, RecruiterCall.candidate_id),
+                         latest(RecruiterMessage.sent_at, RecruiterMessage.candidate_id))  # fmt: skip
+
+
+def _distinct(values) -> list[str]:
+    return list(dict.fromkeys(v.lower() for v in values))
+
+
+def _sort(body: CandidateSearch | None, terms: dict[str, dict], text: str | None) -> list:
+    """S10: a whitelist of fixed orders, each ending newest first (FS11); `relevance` is rec-013/014's order."""
     order = [Candidate.created_at.desc(), Candidate.id.desc()]
-    if text:
+    key = body.sort if body is not None else "relevance"
+    if key == "match":
+        searched = _distinct([*body.all, *(t for g in body.any for t in g), *body.preferred])
+        held = [case((_has(terms[t]["ids"], body.verified_only), 1), else_=0) for t in searched if terms[t]["ids"]]
+        return [sum(held, literal(0)).desc(), *order]
+    first = {"experience": Candidate.experience_months.desc().nulls_last(), "package": Candidate.expected_annual_inr.asc().nulls_last(),
+             "activity": last_activity().desc(), "completeness": completeness().desc()}.get(key)  # fmt: skip
+    if first is not None:
+        return [first, *order]
+    if key == "relevance" and text:
         resume = aliased(CandidateResume)
         rank = select(func.ts_rank_cd(resume.search_vector, _tsquery(text))).where(resume.candidate_id == Candidate.id, _current(resume))
-        order.insert(0, rank.scalar_subquery().desc())
-    rows = (await db.execute(
-        select(Candidate, RecCandidateSource, candidate_engagement.expression()).join(RecCandidateSource, RecCandidateSource.id == Candidate.source_id)
-        .where(*where).order_by(*order).limit(limit).offset(offset)
-    )).all()
+        return [rank.scalar_subquery().desc(), *order]
+    return order
+
+
+def page_statement(body: CandidateSearch | None, where: list, terms: dict[str, dict], limit: int, offset: int, text: str | None = None):
+    text = body.text if body is not None else text
+    return (select(Candidate, RecCandidateSource, candidate_engagement.expression()).join(RecCandidateSource, RecCandidateSource.id == Candidate.source_id)
+            .where(*where).order_by(*_sort(body, terms, text)).limit(limit).offset(offset))  # fmt: skip
+
+
+def _match(body: CandidateSearch, terms: dict[str, dict], held: set[UUID]) -> dict:
+    """S11: each searched term and whether the candidate holds it (or an alias / related skill) -- from the rows already read."""
+    def line(key: str) -> dict:
+        t = terms[key]
+        return {"term": t["term"], "skill": t["skill"]["name"] if t["skill"] else None, "held": bool(t["ids"] & held)}
+
+    return {"required": [line(k) for k in _distinct([*body.all, *(t for g in body.any for t in g)])], "preferred": [line(k) for k in _distinct(body.preferred)]}
+
+
+async def page(db: AsyncSession, where: list, terms: dict[str, dict], limit: int, offset: int, text: str | None = None,
+               body: CandidateSearch | None = None) -> list[dict]:  # fmt: skip
+    """The page's cards, newest first (FS11) -- with text, the most relevant current resume first (FT5); hrc-019: in `body.sort`'s order,
+    with `match` (S11) when a search `body` is given: one query for the candidates with their source, one for all their skills."""
+    rows = (await db.execute(page_statement(body, where, terms, limit, offset, text))).all()
     matched = set().union(*(t["ids"] for t in terms.values()))
     skills: dict[UUID, list] = {c.id: [] for c, _, _ in rows}
+    holds: dict[UUID, set] = {c.id: set() for c, _, _ in rows}
     if skills:
         held = await db.execute(
             select(CandidateSkill.candidate_id, CandidateSkill.skill_id, Skill.name, CandidateSkill.level, CandidateSkill.status)
@@ -195,9 +379,10 @@ async def page(db: AsyncSession, where: list, terms: dict[str, dict], limit: int
         )
         for candidate_id, skill_id, name, level, status in held.all():
             skills[candidate_id].append({"name": name, "level": level, "status": status, "matched": skill_id in matched})
+            holds[candidate_id].add(skill_id)
         for items in skills.values():
             items.sort(key=lambda s: (not s["matched"], s["name"].lower()))
-    return [
+    cards = [
         {
             "id": c.id, "candidate_code": c.candidate_code, "name": c.name, "preferred_role": c.preferred_role, "current_company": c.current_company,
             "experience_months": c.experience_months, "location": c.location, "notice_days": c.notice_days, "expected_salary": c.expected_salary,
@@ -207,6 +392,10 @@ async def page(db: AsyncSession, where: list, terms: dict[str, dict], limit: int
         }
         for c, s, e in rows
     ]
+    if body is not None:
+        for card in cards:
+            card["match"] = _match(body, terms, holds[card["id"]])
+    return cards
 
 
 def _segments(headline: str) -> list[dict]:
@@ -237,15 +426,15 @@ async def snippets(db: AsyncSession, candidate_ids: list[UUID], text: str) -> di
     return {candidate_id: _segments(headline) for candidate_id, headline in rows.all()}
 
 
-async def search(db: AsyncSession, body: CandidateSearch, *, limit: int, offset: int) -> dict:
+async def search(db: AsyncSession, body: CandidateSearch, *, limit: int, offset: int, user_id: UUID | None = None) -> dict:
     terms = await resolve_terms(db, body)
-    where = filters(body, terms)
+    where = filters(body, terms, user_id)
     notice = None
     if body.text and not await db.scalar(select(func.numnode(_tsquery(body.text)))):
         where.append(false())  # FT3: only stop words -- the same shape, nothing in it
         notice = STOP_WORDS_NOTICE
     total, facet_counts = await facets(db, where)
-    items = await page(db, where, terms, limit, offset, body.text)
+    items = await page(db, where, terms, limit, offset, body=body)
     if body.text and items:
         found = await snippets(db, [item["id"] for item in items], body.text)
         for item in items:
