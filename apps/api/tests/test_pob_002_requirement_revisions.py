@@ -46,7 +46,7 @@ async def _patch(client, w, expected: int = 200, **body) -> dict:
 async def _revisions(client, job_id) -> dict:
     response = await client.get(f"{BASE}/{job_id}/revisions")
     assert response.status_code == 200, response.text
-    assert response.headers["cache-control"].startswith("no-store")
+    assert "no-store" in response.headers["cache-control"]
     return response.json()
 
 
@@ -221,7 +221,9 @@ async def test_only_owner_managers_set_the_backup_and_only_an_eligible_recruiter
     assert (await _patch(client, w, 422, backup_owner_user_id=str(w["manager"].id)))["detail"] == "Choose an active recruiter as the backup owner"
     inactive = await make_recruiter(db_session, w["manager"], active=False)
     await _patch(client, w, 422, backup_owner_user_id=str(inactive.id))
-    await login(client, w["manager"])
+    await login(client, w["manager"])  # a placement manager reads but never edits a requirement's fields (rec-007 WRITERS)
+    assert (await _patch(client, w, 403, backup_owner_user_id=str(w["mate"].id)))["detail"] == "Only the recruiter on this requirement can edit it"
+    await as_role(client, db_session, "super_admin", "global")
     assert (await _patch(client, w, backup_owner_user_id=str(w["mate"].id)))["requirement"]["backup_owner"]["id"] == str(w["mate"].id)
     cleared = await _patch(client, w, backup_owner_user_id=None)
     assert cleared["requirement"]["backup_owner"] is None
@@ -238,6 +240,7 @@ async def test_promoting_or_deactivating_the_backup_clears_it(client, db_session
     assert response.status_code == 200 and response.json()["requirement"]["backup_owner"] is None
     response = await client.post(f"{BASE}/{w['req']['id']}/assign", json={"recruiter_user_id": str(w["primary"].id)})
     assert response.status_code == 200, response.text
+    await login(client, w["primary"])
     await _patch(client, w, backup_owner_user_id=str(w["mate"].id))
     # `mate` primarily owns nothing open, so the deactivation goes through and releases the backup role
     admin = await as_role(client, db_session, "super_admin", "global")
@@ -302,5 +305,6 @@ async def test_view_without_edit_reads_the_terms_but_cannot_change_them(client, 
     read = (await client.get(f"{BASE}/{w['req']['id']}")).json()["requirement"]
     assert read["commercial_terms"]["can_edit"] is False and read["commercial_terms"]["payment_terms"]["value"] == "30 days from invoice"
     await _patch(client, w, 403, payment_terms="Net 1")
-    await login(client, w["manager"])  # the Team Lead sees the team's terms
-    assert (await client.get(f"{BASE}/{w['req']['id']}")).json()["requirement"]["commercial_terms"]["can_edit"] is True
+    await login(client, w["manager"])  # the Team Lead sees the team's terms (and, not editing requirement fields, never edits them here)
+    terms = (await client.get(f"{BASE}/{w['req']['id']}")).json()["requirement"]["commercial_terms"]
+    assert terms["payment_terms"]["value"] == "30 days from invoice" and terms["can_edit"] is False

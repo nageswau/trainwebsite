@@ -84,7 +84,7 @@ ROWS = [
     R("get", "/recruiter/requirements/{requirement}", **OWN),
     R("get", "/recruiter/requirements/{requirement}/history", **OWN),  # hrc-004 B1: the record's readers
     R("get", "/recruiter/requirements/{requirement}/revisions", **OWN),  # pob-002 (DEC-SCOPE-405 R5): the record's readers
-    R("get", "/recruiter/requirements/{requirement}/revisions/1", **OWN),
+    R("get", "/recruiter/requirements/{requirement}/revisions/{candidates_revision}", **OWN),
     R("patch", "/recruiter/requirements/{requirement}", {"location": "Bengaluru"}, **allow(200, "rec", "super"), **OWN_OUT),
     R("post", "/recruiter/requirements/{requirement}/assign", lambda w: {"recruiter_user_id": w["rec2_id"]}, **allow(200, "mgr", "super"), **OUT),
     R("post", "/recruiter/requirements/{requirement}/status", {"status": "shortlisting"}, **allow(200, "rec", "super"), **OWN_OUT),
@@ -257,5 +257,5 @@ async def build(client, db, w) -> None:
         "candidates_task": str(task.id), "candidates_routing_rule": str(rule.id), "candidates_saved_search": str(saved.id),
         "candidates_source": str(source.id), "candidates_java": str(java.id), "candidates_spare": str(spare.id), "candidates_archived": str(archived.id),
         "candidates_cv": str(cv.id), "candidates_document": str(document.id), "candidates_request": str(request.id), "candidates_skill": str(skill.id), "candidates_job_skill": str(job_skill.id), "candidates_jd_version": str(jd.version),
-        "candidates_pool": str(_POOL["id"]), "candidates_program": str(program.id), "candidates_co_owner": str(co_owner.id),
+        "candidates_pool": str(_POOL["id"]), "candidates_program": str(program.id), "candidates_co_owner": str(co_owner.id), "candidates_revision": "1",
     })  # fmt: skip

@@ -482,7 +482,7 @@ async def commercial_terms(db: AsyncSession, job: Job, company: Company) -> dict
         return {"value": own if own is not None else inherited[key], "inherited": own is None and inherited[key] is not None}
 
     return {
-        "fee": {"basis": fee_basis, "value": fee_value, "inherited": not own_fee and fee_basis is not None},
+        "fee": {"basis": fee_basis, "value": str(fee_value) if fee_value is not None else None, "inherited": not own_fee and fee_basis is not None},  # exact, as rec-031
         "payment_trigger": job.payment_trigger,
         "payment_trigger_label": TRIGGER_LABELS.get(job.payment_trigger) if job.payment_trigger else None,
         "payment_days": job.payment_days,
