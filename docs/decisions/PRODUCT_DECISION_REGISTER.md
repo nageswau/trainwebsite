@@ -11971,3 +11971,43 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Not built:** document delete/replace/versioning; DOCX uploads; BD relationship stages (pob-004).
 - **Numbering:** migration `0283_company_business_context`; API §12KZ; RBAC §2.299.
 - **Feature ID authorized:** `pob-003`. **Status:** built on `worktree-pob-003`.
+
+### DEC-SCOPE-408 — Template library governance and the composer everywhere (`pob-023`)
+
+- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-023`:
+  - §14 categories, features and workflow; §12 interview confirmation template.
+  - §18 AC "Template library supports adding, editing, approving, searching and reusing email, LinkedIn, WhatsApp and calling templates".
+  - The source is classified `UNVERIFIED` and the DOCX is not in the repo, so the full §14.1 placeholder list is not inspectable.
+- **Authority:** the owner assigned pob-023 on 2026-11-05 and said to proceed with the recommended answers, so G1–G12 are **the
+  builder's calls (`NEEDS_CONFIRMATION`)**. Dependency pob-001 (`DEC-SCOPE-403`) merged.
+- **Design:** `docs/superpowers/specs/2026-11-05-pob-023-template-governance-design.md`.
+- **Behaviour:**
+  - Email, LinkedIn, WhatsApp and calling-script templates, with a §14 category and metadata.
+  - Draft → Approved → Archived: recruiters add shared drafts, and the Team Lead (`placement_manager`) approves. Personal templates are
+    the author's only.
+  - Every content edit is a version, with the author, the editor and the last-used date.
+  - A fixed placeholder allow-list is filled from the party and an optional requirement or interview. `{package_range}` needs
+    `commercials.client.view`.
+  - LinkedIn and calling scripts copy to the clipboard with a logged copy.
+  - The composer (with LinkedIn and calling) is on the company/contact, candidate, requirement (which covers submissions) and interview
+    screens.
+- **Builder's calls:**
+  - G1: no SMS (no integration).
+  - G2: category backfill by kind.
+  - G3: metadata limits.
+  - G4: `status` replaces `active` (kept as a view; PATCH `active` approves or archives); restore → draft.
+  - G5: visibility is fixed at create; a manager's shared template is approved at once.
+  - G6: who edits, approves and archives.
+  - G7: versions on content only.
+  - G8: `{snake_case}` placeholders (`{{PackageRange}}` = `{package_range}`).
+  - G9: context scope.
+  - G10: a copy is an audit row, not a message.
+  - G11: the preview comes before send or copy (UI).
+  - G12: the screens.
+- **Not built:**
+  - SMS.
+  - Merging the UPC/overseas libraries.
+  - Automated sends (pob-022/027).
+  - Deletion.
+- **Numbering:** migration `0286_template_governance`; API §12LB; RBAC §2.301.
+- **Feature ID authorized:** `pob-023`. **Status:** built on `worktree-pob-023`.

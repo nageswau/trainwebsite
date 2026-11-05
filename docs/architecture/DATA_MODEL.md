@@ -2363,3 +2363,23 @@ interview-invite, profile-share and meeting-outcome writes). **`company_branches
 **`company_documents`** (`id`, `company_id` → companies RESTRICT, `kind` CHECK in the five kinds, `name`, `content_type`, `size_bytes`,
 `storage_key` (server-generated, never returned), `meeting_id` → recruiter_meetings, `uploaded_by_user_id`, `created_at`). The legacy
 `companies.branches` text is unchanged. The downgrade drops the tables and columns (stored files stay in object storage).
+
+## Template governance (`pob-023`, `DEC-SCOPE-408`; migration `0286_template_governance`, after `0283_company_business_context`)
+
+**`recruiter_message_templates`:**
+- `channel` CHECK adds `linkedin` and `call`. `kind` is nullable: null exactly for LinkedIn and call.
+- New columns:
+  - `category` (CHECK in company, linkedin, whatsapp, calling, college_tpo, candidate; backfilled from channel and kind)
+  - `purpose`, `language` (default English), `department`, `industry`, `role_type`
+  - `status` (draft, approved or archived): **replaces `active`**, true → approved, false → archived; the ORM keeps `active` as a hybrid
+  - `owner_user_id` (null = shared; CHECK that a personal template is never approved)
+  - `steps` (JSON, not null exactly for `call`)
+  - `version`, `created_by_user_id`, `updated_by_user_id`, `last_used_at`
+- The shared-name unique index becomes partial (`owner_user_id IS NULL`), and `uq_recruiter_message_templates_owner_name` covers
+  personal names.
+
+**`recruiter_template_versions`:** (`id`, `template_id` → templates CASCADE, `version`, unique per template, `content` JSON,
+`edited_by_user_id`, `created_at`). v1 is written for every existing row.
+
+The downgrade restores `active` and refuses while LinkedIn, call or personal templates exist. 0120's seed is column-aware, because a fresh
+database built by `create_all` has no `active` column.

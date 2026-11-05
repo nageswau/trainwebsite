@@ -2,13 +2,13 @@ import { Suspense } from "react";
 
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 import PortalShell from "@/components/PortalShell";
-import RecruiterTemplatesPanel from "@/components/RecruiterTemplatesPanel";
+import RecruiterTemplateLibrary from "@/components/RecruiterTemplateLibrary";
 import { serverApi } from "@/lib/api";
 import { RECRUITER_MANAGER_NAV, SUPER_ADMIN_NAV } from "@/lib/navigation";
 import { PLACEMENT_MANAGER_LABEL } from "@/lib/recruiter";
 import type { User } from "@/lib/types";
 
-// rec-026 (EVID-018 §19, MS3): the placement manager's WhatsApp and email message templates. Recruiters pick them in the composers on a
+// rec-026 (EVID-018 §19, MS3) + pob-023 (DEC-SCOPE-408): the Team Lead's view of the governed library -- approve drafts, edit, archive. Recruiters pick templates in the composers on a
 // company or candidate page; this screen is the manager's (and super_admin's). The API enforces who may read and write.
 export default async function RecruiterManagerTemplatesPage() {
   let user: User;
@@ -26,11 +26,11 @@ export default async function RecruiterManagerTemplatesPage() {
           <div>
             <div className="eyebrow">Recruiter CRM</div>
             <h2>Message templates</h2>
-            <p className="muted">WhatsApp and email messages recruiters start from. They can edit the text before sending. Use placeholders for the recipient&apos;s details. Deactivate a template to hide it — it is never deleted.</p>
+            <p className="muted">Email, LinkedIn, WhatsApp and calling templates the team starts from. Approve recruiters' drafts to share them; edits keep every version. Archive a template to hide it — it is never deleted.</p>
           </div>
         </div>
         <Suspense fallback={<p className="muted" role="status">Loading templates…</p>}>
-          <RecruiterTemplatesPanel />
+          <RecruiterTemplateLibrary approver />
         </Suspense>
       </div>
     </PortalShell>

@@ -3878,3 +3878,16 @@ The business context is part of the company record: it is read in the rec-003 co
 the same scope (out of scope 404), uploaded by `can_edit`. A `recruitment_agreement` follows §2.296: download needs
 `commercials.client.view`, upload needs view + edit; its row (name, date, uploader) stays listed. Pinned by
 `apps/api/tests/test_pob_003_company_context.py`, `test_pob_003_company_documents.py` and the rec-038 matrix rows.
+
+### 2.301 Recruiter template library governance *(added 2026-11-05 — `DEC-SCOPE-408`, pob-023)*
+
+- **Readers and writers:** `placement_team`, `placement_manager` and `super_admin`. rec-026's "manager only writes" is reversed by G6.
+- **Approver:** `placement_manager` (the Team Lead) and super_admin approve shared drafts; a manager also edits, archives and restores any
+  shared template.
+- **Authors:** a recruiter edits, archives and restores their own shared template while it is not approved.
+- **Personal templates:** visible, editable and usable only by their author, never by a manager; never approved.
+- **Hidden templates:** anything the caller cannot see is 404.
+- **Copies and context:** a copy needs the party's write right, as a send does. The render context goes through the requirement and
+  application scopes. `{package_range}` needs `commercials.client.view` (§2.296).
+
+Pinned by `apps/api/tests/test_pob_023_templates.py` and the rec-038 matrix rows.

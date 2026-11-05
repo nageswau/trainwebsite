@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
 
+import CopyComposer from "@/components/CopyComposer";
 import EmailComposer from "@/components/EmailComposer";
 import WhatsAppComposer from "@/components/WhatsAppComposer";
 import type { Page } from "@/lib/apiErrors";
-import { CHANNEL_LABEL, isPending, messageTitle, type Channel, type Party } from "@/lib/recruiterMessages";
+import { CHANNEL_LABEL, isPending, messageTitle, type Channel, type CopyChannel, type MessageContext, type Party } from "@/lib/recruiterMessages";
 import { getPage } from "@/lib/telecallerCatalogue";
 import { sentLabel, type ComposerTarget, type DeliveryStatus } from "@/lib/telecallerMessages";
 
@@ -44,21 +45,22 @@ function MessageItem({ message, showTo }: { message: MessageLine; showTo: boolea
 /** rec-026 (spec §5), shared with upc-012: a Messages section -- the list (newest first; pending emails polled), and for a writer a
  *  recipient picker (`picker`) with Send WhatsApp and Send email, each disabled with its reason when the recipient has no usable number /
  *  address. WhatsApp is recorded only on the composer's confirm; an email is queued and its status refreshes. `parties` is null while the
- *  owner is still loading them. */
-export default function MessagesSection({ listUrl, parties, picker, targetFor, canWrite, onChanged, noParties, wide = false }: {
+ *  owner is still loading them. pob-023 (G10/G12): `copy` (recruiter sections only) adds LinkedIn and calling-script copy mode, with the
+ *  record the messages are about. */
+export default function MessagesSection({ listUrl, parties, picker, targetFor, canWrite, onChanged, noParties, wide = false, copy }: {
   listUrl: string; parties: Party[] | null; picker: boolean; targetFor: (party: Party) => ComposerTarget; canWrite: boolean; onChanged?: () => void;
-  noParties: string; wide?: boolean;
+  noParties: string; wide?: boolean; copy?: { context?: MessageContext };
 }) {
   const [data, setData] = useState<Page<MessageLine> | null>(null);
   const [failed, setFailed] = useState(false);
   const [version, setVersion] = useState(0);
   const [partyId, setPartyId] = useState(parties?.[0]?.id ?? "");
-  const [composing, setComposing] = useState<Channel | null>(null);
+  const [composing, setComposing] = useState<Channel | CopyChannel | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const reasonId = useId();
   const pickerId = useId();
-  const opener = useRef<Record<Channel, HTMLButtonElement | null>>({ whatsapp: null, email: null });
-  const lastComposer = useRef<Channel | null>(null);
+  const opener = useRef<Record<Channel | CopyChannel, HTMLButtonElement | null>>({ whatsapp: null, email: null, linkedin: null, call: null });
+  const lastComposer = useRef<Channel | CopyChannel | null>(null);
   const reload = () => setVersion((n) => n + 1);
   const party = parties?.find((p) => p.id === partyId) ?? null;
 
@@ -107,6 +109,11 @@ export default function MessagesSection({ listUrl, parties, picker, targetFor, c
               aria-describedby={party.whatsappTo ? undefined : reasonId} onClick={() => { setComposing("whatsapp"); setNotice(null); }}>Send WhatsApp</button>
             <button ref={(el) => { opener.current.email = el; }} type="button" className="btn secondary small" disabled={!party.email}
               aria-describedby={party.email ? undefined : reasonId} onClick={() => { setComposing("email"); setNotice(null); }}>Send email</button>
+            {copy && (["linkedin", "call"] as const).map((c) => (
+              <button key={c} ref={(el) => { opener.current[c] = el; }} type="button" className="btn secondary small" onClick={() => { setComposing(c); setNotice(null); }}>
+                {c === "linkedin" ? "LinkedIn message" : "Calling script"}
+              </button>
+            ))}
           </div>
         )}
       </div>
@@ -128,6 +135,10 @@ export default function MessagesSection({ listUrl, parties, picker, targetFor, c
       )}
       {party && composing === "email" && party.email && (
         <EmailComposer key={party.id} target={targetFor(party)} onCancel={() => setComposing(null)} onSent={() => done(`Email to ${party.name} queued for sending.`)} />
+      )}
+      {party && copy && (composing === "linkedin" || composing === "call") && (
+        <CopyComposer key={`${party.id}-${composing}`} channel={composing} party={party} context={copy.context} onCancel={() => setComposing(null)}
+          onCopied={(text) => { setComposing(null); setNotice(text); }} />
       )}
       {failed ? (
         <div>

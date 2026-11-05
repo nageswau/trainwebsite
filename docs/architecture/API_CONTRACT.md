@@ -5971,3 +5971,54 @@ documents` multipart `kind`, `file`, `meeting_id?` → 201 `{document}`: 403 wit
 PDF/JPEG/PNG by content, 429 + `Retry-After` past 20 uploads an hour. `GET /recruiter/companies/documents/{document_id}/download` → the
 bytes as an attachment named `<kind>-<company code>.<ext>` (`no-store`, `nosniff`, sandbox CSP); an agreement needs
 `commercials.client.view` (403). Out of scope = 404 everywhere. Audit `recruiter_company_document.uploaded|downloaded`.
+
+## 12LB. Template library governance and copy mode (pob-023) — addendum, 2026-11-05
+
+`DEC-SCOPE-408`, migration `0286`.
+
+**Changed (additive):**
+- `GET /api/v1/recruiter/templates`:
+  - Accepts `channel=whatsapp|email|linkedin|call`, `category`, `status=draft|approved|archived`, `language` (case-insensitive) and
+    `mine=true`.
+  - `usable=true` returns what the caller may use in a composer: approved shared templates and their own non-archived personal ones.
+  - `q` matches the name or the purpose.
+  - The caller sees their own personal templates and the shared ones they may see: a recruiter sees approved ones and their own drafts;
+    a manager or super_admin sees all of them.
+  - Item fields add `category`, `purpose`, `language`, `department`, `industry`, `role_type`, `status`, `visibility` (`shared` or
+    `personal`), `steps`, `version`, `created_by`, `updated_by`, `created_at`, `updated_at`, `last_used_at`, `can_edit`, `can_approve`,
+    `can_archive` and `can_restore`.
+  - `active` stays and means approved; the `active` filter still works.
+- `POST /recruiter/templates`:
+  - Open to `placement_team` as well. A recruiter's shared template is a `draft`; a manager's or super_admin's is `approved`.
+  - New fields: `category` (omitted = derived from the channel and kind), the metadata, and `visibility` (default `shared`).
+  - `steps`: a `call` template needs 1–20 steps of ≤ 500 characters; any other channel with steps is 422.
+  - LinkedIn and call templates have no `kind` and no `subject`.
+  - Body limits: LinkedIn 2000, call 5000.
+  - Every `{…}` must be one of the 12 placeholders: `name`, `company`, `recruiter`, `designation`, `job_title`, `job_location`,
+    `package_range`, `candidate`, `interview_date`, `interview_time`, `interview_mode`, `interview_link`.
+- `PATCH /recruiter/templates/{id}`:
+  - A template the caller cannot see is 404.
+  - The channel and visibility are fixed (422).
+  - A content change needs `can_edit`: an approved shared template is the manager's (403); an archived one is 409. It increments
+    `version` and writes a version.
+  - `active: true` approves and `active: false` archives a shared template (manager only; personal 422).
+- `GET /recruiter/messages/render`:
+  - Accepts `job_id` **or** `interview_id`; both is 422.
+  - A requirement must be in the caller's scope and, for a contact, at the contact's company (404 "Job requirement not found").
+  - An interview must be in scope and the candidate's own, or at the contact's company (404 "Interview not found").
+  - `package_range` is empty without `commercials.client.view` and is then listed in `missing`.
+  - The response adds `steps`.
+- `POST /recruiter/messages`: accepts any usable template of the same channel, and sets the template's `last_used_at`.
+
+**New:**
+- `POST /recruiter/templates/{id}/approve | archive | restore` → the template. Approve: manager or super_admin, shared drafts only (409
+  otherwise). Archive and restore: the manager for shared templates, the author for their own personal template or unapproved draft.
+  Restore returns a template to `draft`.
+- `GET /recruiter/templates/{id}/versions` → `{items: [{version, created_at, edited_by, name, kind, category, subject, body, steps,
+  purpose, language, department, industry, role_type}], total}`, newest first.
+- `POST /recruiter/messages/copies`:
+  - Body `{channel: linkedin|call, template_id, contact_id | candidate_id}` → 201 `{template_id, channel, copied_at}`.
+  - The send's party rules apply (scope 404, right 403, state 409). A template that is not usable or of another channel is 422.
+  - It writes an audit row `recruiter_template.copy` (ids only) and is not a message: no last-contacted change, no cap.
+
+Audit actions `recruiter_template.approve|archive|restore|copy`.

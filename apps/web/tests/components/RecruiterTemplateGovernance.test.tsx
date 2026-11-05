@@ -1,0 +1,143 @@
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import RecruiterMessages from "@/components/RecruiterMessages";
+import RecruiterTemplateLibrary from "@/components/RecruiterTemplateLibrary";
+import type { GovernedTemplate } from "@/lib/recruiterMessages";
+
+const push = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }), usePathname: () => "/recruiter/templates", useSearchParams: () => new URLSearchParams() }));
+
+const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+const page = (items: unknown[]) => ({ items, total: items.length, limit: 25, offset: 0 });
+const tpl = (over: Partial<GovernedTemplate> = {}): GovernedTemplate => ({
+  id: "t1", channel: "linkedin", kind: null, name: "Connect note", subject: null, body: "Hi {name}", active: true, category: "linkedin",
+  purpose: "First touch", language: "English", department: null, industry: null, role_type: null, status: "approved", visibility: "shared",
+  steps: null, version: 2, created_by: { id: "u1", full_name: "Asha" }, updated_by: { id: "u2", full_name: "Meera Lead" }, created_at: "2026-11-01T05:00:00Z",
+  updated_at: "2026-11-02T05:00:00Z", last_used_at: null, can_edit: false, can_approve: false, can_archive: false, can_restore: false, ...over,
+});
+
+type Call = { url: string; init?: RequestInit };
+function serve(routes: (url: string) => Response, onWrite: (call: Call) => Response = () => res({}, 201)) {
+  const calls: Call[] = [];
+  vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
+    const call = { url: String(url), init };
+    calls.push(call);
+    return Promise.resolve(init?.method && init.method !== "GET" ? onWrite(call) : routes(String(url)));
+  }));
+  return calls;
+}
+const posts = (calls: Call[]) => calls.filter((c) => c.init?.method === "POST");
+const contacts = { items: [{ id: "k1", name: "Priya", active: true, mobile: "98765 43210", email: "p@abc.example.com", whatsapp_to: "919876543210" }], can_edit: true };
+
+beforeEach(() => push.mockReset());
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+describe("pob-023 copy mode (G10/G11)", () => {
+  it("copies a LinkedIn message only after the preview, with the requirement as context, and logs the copy (AC4)", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    const calls = serve((url) => {
+      if (url.includes("/contacts")) return res(contacts);
+      if (url.includes("/templates")) return res(page([tpl()]));
+      if (url.includes("/render")) return res({ template: tpl(), subject: null, body: "Hi Priya, Java Developer in Pune", steps: null, missing: [] });
+      return res(page([]));
+    });
+    render(<RecruiterMessages source={{ kind: "requirement", companyId: "co1", jobId: "j1" }} canWrite />);
+    fireEvent.click(await screen.findByRole("button", { name: "LinkedIn message" }));
+    expect(screen.queryByRole("button", { name: "Copy to clipboard" })).toBeNull(); // no copy before a preview
+    const picker = await screen.findByLabelText("Template");
+    await waitFor(() => expect(within(picker).getAllByRole("option")).toHaveLength(2));
+    expect(calls.some((c) => c.url.includes("channel=linkedin&usable=true"))).toBe(true);
+    fireEvent.change(picker, { target: { value: "t1" } });
+    await waitFor(() => expect((screen.getByLabelText(/Message \(preview/) as HTMLTextAreaElement).value).toBe("Hi Priya, Java Developer in Pune"));
+    expect(calls.some((c) => c.url.includes("render?template_id=t1&contact_id=k1&job_id=j1"))).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Copy to clipboard" }));
+    await screen.findByText("LinkedIn message for Priya copied and logged.");
+    expect(writeText).toHaveBeenCalledWith("Hi Priya, Java Developer in Pune");
+    expect(JSON.parse(String(posts(calls)[0].init?.body))).toEqual({ contact_id: "k1", channel: "linkedin", template_id: "t1" });
+  });
+
+  it("shows a calling script's numbered steps and copies them with the opening (AC5)", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    const script = tpl({ id: "c1", channel: "call", category: "calling", name: "Intro call", steps: ["Introduce yourself", "Ask about roles"] });
+    serve((url) => {
+      if (url.includes("/contacts")) return res(contacts);
+      if (url.includes("/templates")) return res(page([script]));
+      if (url.includes("/render")) return res({ template: script, subject: null, body: "Opening", steps: ["Introduce yourself", "Ask about roles"], missing: [] });
+      return res(page([]));
+    });
+    render(<RecruiterMessages source={{ kind: "company", companyId: "co1" }} canWrite />);
+    fireEvent.click(await screen.findByRole("button", { name: "Calling script" }));
+    fireEvent.change(await screen.findByLabelText("Template"), { target: { value: "c1" } });
+    const steps = await screen.findByRole("list", { name: "Steps" });
+    expect(within(steps).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["Introduce yourself", "Ask about roles"]);
+    fireEvent.click(screen.getByRole("button", { name: "Copy to clipboard" }));
+    await screen.findByText("Calling script for Priya copied and logged.");
+    expect(writeText).toHaveBeenCalledWith("Opening\n\n1. Introduce yourself\n2. Ask about roles");
+  });
+
+  it("does not log a copy the browser refused", async () => {
+    vi.stubGlobal("navigator", { clipboard: { writeText: vi.fn().mockRejectedValue(new Error("denied")) } });
+    const calls = serve((url) => {
+      if (url.includes("/contacts")) return res(contacts);
+      if (url.includes("/templates")) return res(page([tpl()]));
+      if (url.includes("/render")) return res({ template: tpl(), subject: null, body: "Hi", steps: null, missing: [] });
+      return res(page([]));
+    });
+    render(<RecruiterMessages source={{ kind: "company", companyId: "co1" }} canWrite />);
+    fireEvent.click(await screen.findByRole("button", { name: "LinkedIn message" }));
+    const picker = await screen.findByLabelText("Template");
+    await waitFor(() => expect(within(picker).getAllByRole("option")).toHaveLength(2));
+    fireEvent.change(picker, { target: { value: "t1" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Copy to clipboard" }));
+    await screen.findByText(/blocked the clipboard/);
+    expect(posts(calls)).toHaveLength(0);
+  });
+});
+
+describe("pob-023 RecruiterTemplateLibrary", () => {
+  it("adds a shared draft for a recruiter and says it waits for approval (AC1)", async () => {
+    const calls = serve(() => res(page([])), () => res(tpl({ status: "draft" }), 201));
+    render(<RecruiterTemplateLibrary approver={false} />);
+    expect(await screen.findByText("No templates yet. Add the first one above.")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Channel (required)"), { target: { value: "linkedin" } });
+    expect(screen.queryByLabelText("Kind (required)")).toBeNull(); // LinkedIn has no kind
+    fireEvent.change(screen.getByLabelText("Template name (required)"), { target: { value: "Connect note" } });
+    fireEvent.change(screen.getByLabelText("Message (required)"), { target: { value: "Hi {name} {salary}" } });
+    expect(screen.getByText("Unknown placeholder: {salary}")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Message (required)"), { target: { value: "Hi {name}" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add template" }));
+    await screen.findByText(/as a draft\. The Team Lead approves it/);
+    const body = JSON.parse(String(posts(calls)[0].init?.body));
+    expect(body).toMatchObject({ channel: "linkedin", category: "linkedin", name: "Connect note", body: "Hi {name}", visibility: "shared", language: "English" });
+    expect(body.kind).toBeUndefined();
+  });
+
+  it("lets the Team Lead approve a draft and read its versions (AC1, AC2)", async () => {
+    const draft = tpl({ id: "d1", channel: "whatsapp", kind: "follow_up", category: "whatsapp", name: "Chase JD", status: "draft", can_approve: true, can_edit: true, can_archive: true });
+    const calls = serve((url) => {
+      if (url.includes("/versions")) return res({ items: [{ version: 2, created_at: "2026-11-02T05:00:00Z", edited_by: { id: "u2", full_name: "Meera Lead" }, name: "Chase JD", subject: null, body: "Hello {name}" }], total: 1 });
+      return res(page([draft]));
+    }, () => res(tpl({ ...draft, status: "approved" })));
+    render(<RecruiterTemplateLibrary approver />);
+    const row = (await screen.findByText("Chase JD", { selector: "strong" })).closest("tr") as HTMLElement;
+    expect(within(row).getByText("Draft")).toBeTruthy();
+    fireEvent.click(within(row).getByRole("button", { name: /^Versions/ }));
+    expect(await screen.findByText(/Hello \{name\}/)).toBeTruthy();
+    fireEvent.click(within(row).getByRole("button", { name: /^Approve/ }));
+    await screen.findByText("Approved Chase JD. The team can use it now.");
+    expect(posts(calls)[0].url).toBe("/api/v1/recruiter/templates/d1/approve");
+  });
+
+  it("shows the API's error and a retry when the list fails", async () => {
+    serve(() => res({ detail: "boom" }, 500));
+    render(<RecruiterTemplateLibrary approver />);
+    expect(await screen.findByText("Unable to load the templates.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+  });
+});

@@ -3,17 +3,23 @@ import { useEffect, useState } from "react";
 
 import MessagesSection from "@/components/MessagesSection";
 import { contactsOf, type ContactList } from "@/lib/recruiterContacts";
-import { candidateMessagesUrl, companyMessagesUrl, recruiterTarget, type Party } from "@/lib/recruiterMessages";
+import { candidateMessagesUrl, companyMessagesUrl, recruiterTarget, type MessageContext, type Party } from "@/lib/recruiterMessages";
 
-type Source = { kind: "company"; companyId: string } | { kind: "candidate"; party: Party };
+/** pob-023 (G12): a requirement page writes to its company's contacts with the requirement as context; an interview writes to its
+ *  candidate with the interview as context. */
+type Source =
+  | { kind: "company"; companyId: string }
+  | { kind: "requirement"; companyId: string; jobId: string }
+  | { kind: "candidate"; party: Party; context?: MessageContext };
 
 /** rec-026 (spec §5): the Messages section of a company page (to one of its active contacts, chosen in the section) or a candidate page.
  *  `canWrite` is the API's `can_edit` on a party that is not archived. The section itself (upc-012 shares it) is `MessagesSection`; this
- *  loads the company's active contacts, again after each send. */
+ *  loads the company's active contacts, again after each send. pob-023: LinkedIn and calling copy mode, and a context record. */
 export default function RecruiterMessages({ source, canWrite, onChanged }: { source: Source; canWrite: boolean; onChanged?: () => void }) {
   const [contacts, setContacts] = useState<Party[] | null>(source.kind === "candidate" ? [source.party] : null);
   const [version, setVersion] = useState(0);
-  const companyId = source.kind === "company" ? source.companyId : null;
+  const companyId = source.kind === "candidate" ? null : source.companyId;
+  const context: MessageContext | undefined = source.kind === "requirement" ? { jobId: source.jobId } : source.kind === "candidate" ? source.context : undefined;
 
   useEffect(() => {
     if (!companyId || !canWrite) return;
@@ -27,12 +33,13 @@ export default function RecruiterMessages({ source, canWrite, onChanged }: { sou
 
   return (
     <MessagesSection
-      listUrl={source.kind === "company" ? companyMessagesUrl(source.companyId) : candidateMessagesUrl(source.party.id)}
+      listUrl={source.kind === "candidate" ? candidateMessagesUrl(source.party.id) : companyMessagesUrl(source.companyId)}
       parties={contacts}
-      picker={source.kind === "company"}
-      targetFor={recruiterTarget}
+      picker={source.kind !== "candidate"}
+      targetFor={(party) => recruiterTarget(party, context)}
       canWrite={canWrite}
       noParties="Add an active contact to send a message."
+      copy={{ context }}
       onChanged={() => {
         setVersion((n) => n + 1);
         onChanged?.();

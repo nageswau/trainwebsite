@@ -80,9 +80,17 @@ ROWS = [
     R("get", "/recruiter/candidates/{candidate}/calls", **allow(200, *POOL_READERS)),
     # rec-026 templates (MS3, R13: the manager's library; recruiters read active ones) and messages (§2.61)
     R("get", "/recruiter/templates", **allow(200, *CREATORS)),
-    R("post", "/recruiter/templates", lambda w: {"channel": "whatsapp", "kind": "follow_up", "name": tag("R38 T "), "body": "Hi {name}"}, **allow(201, *TEMPLATE_WRITERS)),
+    # pob-023 (DEC-SCOPE-408 G6): every library reader adds (a recruiter's shared template is a draft); an approved one is the manager's
+    R("post", "/recruiter/templates", lambda w: {"channel": "whatsapp", "kind": "follow_up", "name": tag("R38 T "), "body": "Hi {name}"}, **allow(201, *CREATORS)),
     R("patch", "/recruiter/templates/{activity_template}", {"body": "Hello {name}, {recruiter} here."}, **allow(200, *TEMPLATE_WRITERS)),
     R("get", "/recruiter/templates/{activity_template}/preview", **allow(200, *CREATORS)),
+    R("get", "/recruiter/templates/{activity_template}/versions", **allow(200, *CREATORS)),
+    # a shared draft / archived template nobody in the world wrote: invisible (404) to a recruiter, the manager's to approve / restore
+    R("post", "/recruiter/templates/{activity_draft}/approve", **allow(200, *TEMPLATE_WRITERS), **allow(404, "rec", "rec_out")),
+    R("post", "/recruiter/templates/{activity_template}/archive", **allow(200, *TEMPLATE_WRITERS)),
+    R("post", "/recruiter/templates/{activity_archived}/restore", **allow(200, *TEMPLATE_WRITERS), **allow(404, "rec", "rec_out")),
+    R("post", "/recruiter/messages/copies", lambda w: {"channel": "linkedin", "template_id": w["activity_linkedin"], "contact_id": w["contact"]},
+      **allow(201, *EDITORS), **allow(404, *OUT[:2])),
     R("post", "/recruiter/messages", lambda w: {"channel": "whatsapp", "contact_id": w["contact"], "body": "Hi"}, **allow(201, *EDITORS), **allow(404, *OUT)),
     # §2.61 / RM6: render is a template read -- the template readers' role first (the BDMs 403), then the contact's company scope (404)
     R("get", "/recruiter/messages/render?template_id={activity_template}&contact_id={contact}", **allow(200, "rec", "mgr", "super"), **allow(404, "rec_out", "mgr_out")),
@@ -148,6 +156,10 @@ async def build(client, db, w) -> None:
     call = await add(db, RecruiterCall(company_id=company_id, contact_id=contact_id, caller_user_id=rec.id, occurred_at=now(), direction="outgoing",
                                        outcome="connected"))  # fmt: skip
     template = await add(db, RecruiterMessageTemplate(channel="whatsapp", kind="follow_up", name=tag("R38 T "), body="Hi {name}, {recruiter} here.", active=True))
+    # pob-023: a shared draft, an archived template and an approved LinkedIn one
+    draft = await add(db, RecruiterMessageTemplate(channel="whatsapp", kind="follow_up", category="whatsapp", name=tag("R38 D "), body="Hi", status="draft"))
+    archived = await add(db, RecruiterMessageTemplate(channel="whatsapp", kind="follow_up", category="whatsapp", name=tag("R38 A "), body="Hi", status="archived"))
+    linkedin = await add(db, RecruiterMessageTemplate(channel="linkedin", kind=None, category="linkedin", name=tag("R38 L "), body="Hi {name}"))
     meeting = await add(db, RecruiterMeeting(meeting_code=tag("MTG-"), company_id=company_id, meeting_type="contract_discussion",
                                              starts_at=now() - timedelta(hours=1), mode="Online", created_by_user_id=rec.id))  # fmt: skip
     drive = await add(db, RecruitmentDrive(drive_code=tag("DRV-"), company_id=company_id, college_name="ABC College", drive_date=now().date() + timedelta(days=1),
@@ -165,7 +177,7 @@ async def build(client, db, w) -> None:
                                              due_date=now().date() + timedelta(days=30), amount=Decimal("150000.00"), created_by_user_id=rec.id))  # fmt: skip
     await db.commit()
     w.update({
-        "activity_fu": str(fu.id), "activity_call": str(call.id), "activity_template": str(template.id), "activity_meeting": str(meeting.id),
+        "activity_fu": str(fu.id), "activity_call": str(call.id), "activity_template": str(template.id), "activity_draft": str(draft.id), "activity_archived": str(archived.id), "activity_linkedin": str(linkedin.id),"activity_meeting": str(meeting.id),
         "activity_drive": str(drive.id), "activity_contract_company": str(second.id), "activity_contract": str(contract.id), "activity_invoice": str(invoice.id),
         "activity_document": str(document.id),
     })  # fmt: skip

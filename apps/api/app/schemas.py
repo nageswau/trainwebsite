@@ -6308,6 +6308,9 @@ TelAssetKind = Literal[TEL_ASSET_KINDS]
 TEL_CONTENT_FIELD_LABELS = {
     "name": "Name", "product_id": "Product", "steps": "Steps", "active": "Active", "channel": "Channel", "kind": "Kind",
     "asset_id": "Brochure", "subject": "Subject", "body": "Message",
+    # pob-023: the recruiter template library's fields
+    "category": "Category", "purpose": "Purpose", "language": "Language", "department": "Department", "industry": "Industry",
+    "role_type": "Role type", "visibility": "Visibility", "template_id": "Template", "contact_id": "Contact", "candidate_id": "Candidate",
 }
 _TEL_BODY_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")  # tabs and newlines are text in a message body
 TelContentName = _tel_name(160)
@@ -11162,27 +11165,59 @@ class RecMeetingOutcome(BaseModel):
 
 
 # --- rec-026 (DEC-SCOPE-135): recruiter message templates, WhatsApp and email --------------------------------------------------------
+RecTemplateChannel = Literal["whatsapp", "email", "linkedin", "call"]  # pob-023 G1
+# pob-023 G1: a calling script's steps; the count (1-20) and the channel are checked in the service, so the 422 is one sentence
+RecTemplateSteps = list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]] | None
+
+
 class RecTemplateCreate(BaseModel):
     """MS3. `kind` is a string checked against the channel's list in the service, so the 422 names the channel (tel-012's shape)."""
 
     model_config = ConfigDict(extra="forbid")
-    channel: TelChannel
-    kind: str
+    channel: RecTemplateChannel
+    kind: str | None = None
     name: TelContentName
     subject: TelSubject = None
     body: TelBody
+    # pob-023 (DEC-SCOPE-408): G2 a category (omitted = derived from the channel and kind), G3 metadata, G5 visibility, G1 calling steps
+    category: str | None = None
+    purpose: _rec_requirement_text_type(200) = None
+    language: _rec_requirement_text_type(40) = None
+    department: _rec_requirement_text_type(80) = None
+    industry: _rec_requirement_text_type(80) = None
+    role_type: _rec_requirement_text_type(80) = None
+    visibility: Literal["shared", "personal"] = "shared"
+    steps: RecTemplateSteps = None
 
 
 class RecTemplateUpdate(BaseModel):
-    """Omitted = unchanged. `channel` exists only so a change is refused with a sentence."""
+    """Omitted = unchanged. `channel` and `visibility` exist only so a change is refused with a sentence."""
 
     model_config = ConfigDict(extra="forbid")
-    channel: TelChannel = None
-    kind: str = None
+    channel: RecTemplateChannel = None
+    kind: str | None = None
     name: TelContentName = None
     subject: TelSubject = None
     body: TelBody = None
     active: StrictBool = None
+    category: str = None
+    purpose: _rec_requirement_text_type(200) = None
+    language: _rec_requirement_text_type(40) = None
+    department: _rec_requirement_text_type(80) = None
+    industry: _rec_requirement_text_type(80) = None
+    role_type: _rec_requirement_text_type(80) = None
+    visibility: Literal["shared", "personal"] = None
+    steps: RecTemplateSteps = None
+
+
+class RecTemplateCopy(BaseModel):
+    """pob-023 G10: a LinkedIn message or calling script copied for one party -- logged, never sent."""
+
+    model_config = ConfigDict(extra="forbid")
+    channel: Literal["linkedin", "call"]
+    template_id: UUID
+    contact_id: UUID | None = None
+    candidate_id: UUID | None = None
 
 
 class RecMessageParty(BaseModel):
