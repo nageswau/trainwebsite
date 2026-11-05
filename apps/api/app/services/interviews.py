@@ -18,6 +18,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.core.config import settings
 from app.models import (
     FEEDBACK_DECISIONS,
     AuditLog,
@@ -35,7 +36,7 @@ from app.models import (
 )
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import RecInterviewCreate, RecInterviewUpdate
-from app.services import applications, company_pipeline, mailer, recruitment_history
+from app.services import applications, calendar_ics, company_pipeline, mailer, recruitment_history
 from app.services import recruiter_requirements as requirements
 
 logger = logging.getLogger("app.recruiter")
@@ -43,8 +44,10 @@ logger = logging.getLogger("app.recruiter")
 ROUND_LABELS = {"hr_round": "HR Round", "technical_round": "Technical Round", "manager_round": "Manager Round", "final_round": "Final Round", "client_round": "Client Round"}
 STATUS_LABELS = {
     "scheduled": "Scheduled", "confirmed": "Confirmed", "completed": "Completed", "rescheduled": "Rescheduled", "no_show": "No Show",
-    "selected": "Selected", "rejected": "Rejected", "on_hold": "On Hold",
+    "selected": "Selected", "rejected": "Rejected", "on_hold": "On Hold", "cancelled": "Cancelled",
 }
+# hrc-028 (DEC-SCOPE-400 I1): the meeting platforms, in the models' order
+PLATFORM_LABELS = {"google_meet": "Google Meet", "microsoft_teams": "Microsoft Teams", "zoom": "Zoom", "zoho_meeting": "Zoho Meeting", "other": "Other"}
 OPEN = ("scheduled", "confirmed", "rescheduled")
 MOVES = {  # IV3: target -> the statuses it may come from
     "confirmed": ("scheduled", "rescheduled"),
@@ -56,6 +59,13 @@ MOVES = {  # IV3: target -> the statuses it may come from
 }
 AFTER_START = ("completed", "no_show", "selected", "rejected")  # AC2: only once the scheduled time has passed
 FINAL = ("selected", "rejected")
+CANCELLABLE = (*OPEN, "on_hold")  # hrc-028 (I3): not yet held; a cancelled interview is final
+CLOSED = (*FINAL, "cancelled")  # no edit
+# hrc-028 (I5): the PATCH fields the candidate reads -- a change to one of them notifies
+VISIBLE = ("round", "round_number", "mode", "platform", "meeting_url", "location", "phone_details", "instructions", "documents_required", "ends_at",
+           "time_zone", "interviewer")  # fmt: skip
+MAX_LENGTH = timedelta(hours=12)
+DEFAULT_LENGTH = timedelta(minutes=60)  # the invite's end when none is set
 
 
 def unreleased_status(status: str) -> str:
@@ -70,6 +80,7 @@ FEEDBACK_FIELDS = (
     "next_round", "final_decision",
 )
 IST = ZoneInfo("Asia/Kolkata")
+INVITE_KIND = "interview_invite"  # hrc-028 (I6): the delivery context the worker sends through the mailer with the .ics
 
 NOT_FOUND = "Interview not found"
 CLASH = "This candidate already has an interview scheduled at this time"
@@ -77,6 +88,9 @@ NOT_STARTED = "You can mark this once the interview time has passed"
 APPLICATION_CLOSED = "Interviews can be scheduled only for an open application"
 REQUIREMENT_ENDED = "Interviews cannot be scheduled on a closed or cancelled requirement"
 DECIDED = "This interview is already decided"
+CANCELLED = "This interview is cancelled"
+NOT_CANCELLABLE = "Only an interview that has not been held can be cancelled"
+END_ORDER = "Choose an end time after the start, within 12 hours"
 SAME_TIME = "Choose a different time to reschedule"
 CONTACT_INVALID = "Choose an active contact of this requirement's company"
 TIME_PAST = "Choose an interview time in the future"
@@ -98,8 +112,32 @@ def check_time(when: datetime, now: datetime) -> None:
         raise field_error("scheduled_at", TIME_PAST if when <= now else TIME_FAR, when.isoformat())
 
 
+def check_end(start: datetime, end: datetime | None) -> None:
+    """hrc-028 (I1): after the start and at most 12 hours later (ck_interviews_ends_after_start)."""
+    if end is not None and not start < end <= start + MAX_LENGTH:
+        raise field_error("ends_at", END_ORDER, end.isoformat())
+
+
 def round_label(key: str | None) -> str | None:
     return ROUND_LABELS.get(key, key) if key else None
+
+
+def round_text(interview: Interview) -> str:
+    """The round as the candidate reads it: "HR Round (round 2)"."""
+    label = round_label(interview.round) or "Interview"
+    return f"{label} (round {interview.round_number})" if interview.round_number else label
+
+
+def local_when(interview: Interview) -> str:
+    """hrc-028 (I2): the start and end in the candidate's zone with its UTC offset -- "12 Nov 2026, 10:00 AM – 11:00 AM Asia/Dubai (UTC+04:00)"."""
+    zone = ZoneInfo(interview.time_zone) if interview.time_zone else IST
+    start = interview.scheduled_at.astimezone(zone)
+    text = f"{start:%d %b %Y, %I:%M %p}"
+    if interview.ends_at is not None:
+        end = interview.ends_at.astimezone(zone)
+        text += f" – {end:%I:%M %p}" if end.date() == start.date() else f" – {end:%d %b %Y, %I:%M %p}"
+    offset = start.strftime("%z")
+    return f"{text} {'IST' if zone == IST else zone.key} (UTC{offset[:3]}:{offset[3:]})"
 
 
 def status_label(key: str) -> str:
@@ -130,11 +168,12 @@ async def check_clash(db: AsyncSession, candidate_id: UUID, when: datetime, excl
         raise HTTPException(409, CLASH)
 
 
-def _event(db: AsyncSession, interview: Interview, actor: User | None, event: str, *, from_status=None, old=None, note=None) -> None:
+def _event(db: AsyncSession, interview: Interview, actor: User | None, event: str, *, from_status=None, old=None, note=None, **link) -> None:
+    """`link`: a `details` event's old and new meeting link / location (hrc-028 I4)."""
     db.add(InterviewEvent(
         interview_id=interview.id, event=event, from_status=from_status, to_status=interview.status,
-        old_scheduled_at=old, new_scheduled_at=interview.scheduled_at if event != "status" else None, note=note,
-        actor_user_id=actor.id if actor else None,
+        old_scheduled_at=old, new_scheduled_at=interview.scheduled_at if event in ("scheduled", "rescheduled") else None, note=note,
+        actor_user_id=actor.id if actor else None, **link,
     ))
 
 
@@ -165,6 +204,7 @@ async def create(db: AsyncSession, user: User, application: JobApplication, job:
     if application.status not in applications.OPEN:
         raise HTTPException(409, APPLICATION_CLOSED)
     check_time(payload.scheduled_at, now)
+    check_end(payload.scheduled_at, payload.ends_at)
     await _check_contact(db, job.company_id, payload.contact_id)
     fields = payload.model_dump(exclude={"application_id", "scheduled_at", "notify"})
     interview = await insert(db, user, application, payload.scheduled_at, **fields)
@@ -187,16 +227,22 @@ async def load_for_write(db: AsyncSession, user: User, interview_id: UUID, route
 
 
 async def update(db: AsyncSession, user: User, interview: Interview, job: Job, payload: RecInterviewUpdate) -> list[str]:
-    """Only changed values count (no audit for none). Returns the changed field names."""
-    if interview.status in FINAL:
-        raise HTTPException(409, DECIDED)
-    changes = payload.model_dump(exclude_unset=True, exclude={"expected_updated_at"})
+    """Only changed values count (no audit for none). Returns the changed field names. hrc-028 (I4): a changed link or location is kept,
+    old and new, on a `details` event (staff history only)."""
+    if interview.status in CLOSED:
+        raise HTTPException(409, CANCELLED if interview.status == "cancelled" else DECIDED)
+    changes = payload.model_dump(exclude_unset=True, exclude={"expected_updated_at", "notify"})
     changed = sorted(key for key, value in changes.items() if getattr(interview, key) != value)
     if "contact_id" in changed:
         await _check_contact(db, job.company_id, changes["contact_id"], kept=interview.contact_id)
+    if "ends_at" in changed:
+        check_end(interview.scheduled_at, changes["ends_at"])
     before = {key: getattr(interview, key) for key in changed}
     for key in changed:
         setattr(interview, key, changes[key])
+    if {"meeting_url", "location"} & set(changed):
+        _event(db, interview, user, "details", from_status=interview.status, old_meeting_url=before.get("meeting_url", interview.meeting_url),
+               new_meeting_url=interview.meeting_url, old_location=before.get("location", interview.location), new_location=interview.location)
     if changed:
         audit(db, user, "update", interview, {"fields": changed, "changes": recruitment_history.diff(before, {key: changes[key] for key in changed})})
     return changed
@@ -214,11 +260,25 @@ async def reschedule(db: AsyncSession, user: User | None, interview: Interview, 
         raise field_error("scheduled_at", SAME_TIME, when.isoformat())
     await check_clash(db, application.candidate_id, when, exclude=interview.id)
     old, previous = interview.scheduled_at, interview.status
+    if interview.ends_at is not None:  # hrc-028 (I2): the duration is kept
+        interview.ends_at = when + (interview.ends_at - old)
     interview.scheduled_at, interview.status = when, "rescheduled"
     _event(db, interview, user, "rescheduled", from_status=previous, old=old, note=reason)
     if user is not None:
         audit(db, user, "reschedule", interview, {"from_status": previous, "changes": recruitment_history.diff(
             {"scheduled_at": old, "status": previous}, {"scheduled_at": when, "status": "rescheduled"})})
+
+
+def cancel(db: AsyncSession, user: User, interview: Interview, reason: str) -> str:
+    """hrc-028 (I3): from a status not yet held (409 otherwise); a `status` event carries the reason (never logged or audited as text). The
+    application does not move -- another round can be scheduled. Returns the previous status."""
+    if interview.status not in CANCELLABLE:
+        raise HTTPException(409, CANCELLED if interview.status == "cancelled" else NOT_CANCELLABLE)
+    previous = interview.status
+    interview.status, interview.cancel_reason = "cancelled", reason
+    _event(db, interview, user, "status", from_status=previous, note=reason)
+    audit(db, user, "cancel", interview, {"from": previous, "to": "cancelled", "changes": {"status": [previous, "cancelled"]}})
+    return previous
 
 
 def change_status(db: AsyncSession, user: User | None, interview: Interview, application: JobApplication, target: str, note: str | None, now: datetime) -> str:
@@ -307,28 +367,46 @@ async def _feedback(db: AsyncSession, ids: list[UUID]) -> dict[UUID, dict]:
 
 
 # --- notices (IV9, Q-20) ------------------------------------------------------------------------------------------------------------
-def _when(value: datetime) -> str:
-    return value.astimezone(IST).strftime("%d %b %Y, %I:%M %p IST")
-
-
 def _details(interview: Interview, job: Job, company: Company) -> list[str]:
-    lines = [f"Company: {company.name}", f"Requirement: {job.title}", f"Round: {round_label(interview.round)}", f"Date and time: {_when(interview.scheduled_at)}",
+    """hrc-028 (I2/I4): the time in the candidate's zone; once cancelled the link is never sent again, and the reason is."""
+    cancelled = interview.status == "cancelled"
+    lines = [f"Company: {company.name}", f"Requirement: {job.title}", f"Round: {round_text(interview)}", f"Date and time: {local_when(interview)}",
              f"Mode: {interview.mode}"]
-    lines += [f"{label}: {value}" for label, value in (("Meeting link", interview.meeting_url), ("Location", interview.location), ("Interviewer", interview.interviewer)) if value]
-    return lines
+    optional = (
+        ("Platform", PLATFORM_LABELS.get(interview.platform or "")), ("Meeting link", None if cancelled else interview.meeting_url),
+        ("Location", interview.location), ("Phone", interview.phone_details), ("Interviewer", interview.interviewer),
+        ("Instructions", interview.instructions), ("Documents to bring", interview.documents_required), ("Reason", interview.cancel_reason),
+    )
+    return lines + [f"{label}: {value}" for label, value in optional if value]
+
+
+def invite(interview: Interview, job: Job, company: Company, details: list[str]) -> tuple[str, str]:
+    """hrc-028 (I6): the .ics (UID per interview, SEQUENCE from the row) and its METHOD, built now so a queued email never changes."""
+    cancelled = interview.status == "cancelled"
+    end = interview.ends_at or interview.scheduled_at + DEFAULT_LENGTH
+    where = (interview.location or interview.mode) if cancelled else (interview.meeting_url or interview.location or interview.mode)
+    vevent = calendar_ics.event(uid=f"interview-{interview.id}@edusphere", sequence=interview.calendar_sequence, start=interview.scheduled_at, end=end,
+                                summary=f"Interview: {round_text(interview)} - {job.title} ({company.name})", location=where, description="\n".join(details),
+                                status="CANCELLED" if cancelled else "CONFIRMED", organizer=settings.smtp_from_email or None)
+    method = "CANCEL" if cancelled else "REQUEST"
+    return calendar_ics.calendar([vevent], method=method), method
 
 
 async def notify(db: AsyncSession, user: User, interview: Interview, application: JobApplication, job: Job, kind: str, enabled: bool) -> tuple[dict, list[UUID]]:
-    """On schedule and reschedule (`kind`): the candidate (in-app for a student, else a queued email) and the chosen contact (a queued
-    email naming the candidate by name and code only -- R8). Returns the summary and the email ids to publish after the commit."""
+    """On schedule, reschedule, a visible detail change and cancel (`kind`): the candidate (in-app plus the email delivery for a student, else
+    a queued email) and the chosen contact (a queued email naming the candidate by name and code only -- R8), each with the calendar invite
+    (hrc-028 I6; every notice after the first moves the SEQUENCE on). Returns the summary and the email ids to publish after the commit."""
     contact = await db.get(CompanyContact, interview.contact_id) if interview.contact_id else None
     if not enabled:
         return {"candidate": "off", "contact": "off" if contact else None}, []
     candidate = await db.get(Candidate, application.candidate_id)
     company = await db.get(Company, job.company_id)
+    if kind != "scheduled":
+        interview.calendar_sequence += 1
     title = f"Interview {kind}"
-    subject = f"{title}: {round_label(interview.round)} - {job.title}"[:200]
+    subject = f"{title}: {round_text(interview)} - {job.title}"[:200]
     details = _details(interview, job, company)
+    ics, method = invite(interview, job, company, details)
     summary: dict = {"candidate": None, "contact": None}
     emails: list[RecruiterMessage] = []
     smtp = mailer.smtp_configured()
@@ -337,19 +415,19 @@ async def notify(db: AsyncSession, user: User, interview: Interview, application
         item = Notification(user_id=student.id, title=title, body="\n".join(details), read=False, action_url="/it/student/job-applications")
         db.add(item)
         await db.flush()
-        await queue_deliveries(db, item, student)
+        await queue_deliveries(db, item, student, context={"kind": INVITE_KIND, "ics": ics, "method": method})
         summary["candidate"] = "in_app"
     elif not smtp or not candidate.email:
         summary["candidate"] = "email_off" if not smtp else "no_email"
     else:
-        emails.append(RecruiterMessage(candidate_id=candidate.id, body="\n".join([f"Dear {candidate.name},", "", *details]), subject=subject, **_mail(user)))
+        emails.append(RecruiterMessage(candidate_id=candidate.id, body="\n".join([f"Dear {candidate.name},", "", *details]), subject=subject, calendar_ics=ics, **_mail(user)))
         summary["candidate"] = "queued"
     if contact is not None:
         if not smtp or not contact.email:
             summary["contact"] = "email_off" if not smtp else "no_email"
         else:
             lines = [f"Dear {contact.name},", "", f"Candidate: {candidate.name} ({candidate.candidate_code})", *details]
-            emails.append(RecruiterMessage(company_id=company.id, contact_id=contact.id, body="\n".join(lines), subject=subject, **_mail(user)))
+            emails.append(RecruiterMessage(company_id=company.id, contact_id=contact.id, body="\n".join(lines), subject=subject, calendar_ics=ics, **_mail(user)))
             summary["contact"] = "queued"
     db.add_all(emails)
     await db.flush()
@@ -405,6 +483,8 @@ async def _history(db: AsyncSession, ids: list[UUID]) -> dict[UUID, list]:
         history[event.interview_id].append({
             "event": event.event, "from_status": event.from_status, "to_status": event.to_status, "old_scheduled_at": event.old_scheduled_at,
             "new_scheduled_at": event.new_scheduled_at, "note": event.note, "actor": {"id": actor.id, "full_name": actor.full_name} if actor else None,
+            "old_meeting_url": event.old_meeting_url, "new_meeting_url": event.new_meeting_url, "old_location": event.old_location,
+            "new_location": event.new_location,
             "created_at": event.created_at,
         })
     return history
@@ -417,6 +497,10 @@ def _out(user: User, now: datetime, history: dict, feedback: dict, i: Interview,
         "id": i.id, "code": i.interview_code, "round": i.round, "round_label": round_label(i.round), "scheduled_at": i.scheduled_at, "mode": i.mode,
         "meeting_url": i.meeting_url, "interviewer": i.interviewer, "location": i.location, "status": i.status, "status_label": status_label(i.status),
         "result": i.result, "updated_at": i.updated_at,  # hrc-003: the edit form's token
+        # hrc-028 (I1/I3)
+        "round_number": i.round_number, "ends_at": i.ends_at, "time_zone": i.time_zone, "local_when": local_when(i), "platform": i.platform,
+        "platform_label": PLATFORM_LABELS.get(i.platform) if i.platform else None, "phone_details": i.phone_details, "instructions": i.instructions,
+        "documents_required": i.documents_required, "cancel_reason": i.cancel_reason,
         "application": {"id": a.id, "status": a.status, "status_label": applications.label(a.status)},
         "candidate": {"id": c.id, "code": c.candidate_code, "name": c.name},
         "requirement": {"id": job.id, "code": job.requirement_code, "title": job.title},
@@ -424,8 +508,9 @@ def _out(user: User, now: datetime, history: dict, feedback: dict, i: Interview,
         "contact": None if contact is None else {"id": contact.id, "name": contact.name},
         "history": history[i.id],
         "allowed_statuses": [{"key": k, "label": STATUS_LABELS[k]} for k in allowed(i, now)] if writer else [],
-        "can_edit": writer and i.status not in FINAL,
+        "can_edit": writer and i.status not in CLOSED,
         "can_reschedule": writer and i.status in RESCHEDULABLE,
+        "can_cancel": writer and i.status in CANCELLABLE,
         "feedback": feedback.get(i.id),
         "can_feedback": can_feedback(user, i.status, i.id in feedback),
     }
@@ -455,7 +540,7 @@ def views(now: datetime) -> dict:
         "upcoming": (is_open & (IV.scheduled_at > now), (IV.scheduled_at, IV.id)),
         "awaiting_update": (or_(is_open & (IV.scheduled_at <= now), IV.status == "completed"), (IV.scheduled_at, IV.id)),
         "on_hold": (IV.status == "on_hold", (IV.scheduled_at.desc(), IV.id)),
-        "closed": (IV.status.in_(("selected", "rejected", "no_show")), (IV.scheduled_at.desc(), IV.id)),
+        "closed": (IV.status.in_(("selected", "rejected", "no_show", "cancelled")), (IV.scheduled_at.desc(), IV.id)),
     }
 
 

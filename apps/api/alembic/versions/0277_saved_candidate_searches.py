@@ -1,7 +1,7 @@
 """hrc-020 -- saved Find Candidates searches and the default `candidates.export` grant (placement managers).
 
 Revision ID: 0277_saved_candidate_searches
-Revises: 0275_candidate_search_indexes
+Revises: 0276_interview_completion
 
 docs/superpowers/specs/2026-11-05-hrc-020-saved-searches-export-design.md (DEC-SCOPE-401 X1, X12). One new table; 0001 builds a fresh
 database from the current models, which already carry it, so it is created only when missing (0256's idiom). The check and SEED are
@@ -15,7 +15,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0277_saved_candidate_searches"
-down_revision = "0275_candidate_search_indexes"
+down_revision = "0276_interview_completion"
 branch_labels = None
 depends_on = None
 

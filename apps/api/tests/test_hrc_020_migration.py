@@ -17,10 +17,10 @@ _spec = importlib.util.spec_from_file_location("_hrc_020_migration_0277", VERSIO
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0277_saved_candidate_searches", "0275_candidate_search_indexes"
+HEAD, BASE = "0277_saved_candidate_searches", "0276_interview_completion"
 
 
-def test_migration_chains_after_0275():
+def test_migration_chains_after_0276():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert HEAD in {r.revision for r in script.walk_revisions()}

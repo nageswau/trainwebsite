@@ -29,13 +29,13 @@ async def deliver_recruiter_email(message_id: UUID) -> str | None:
                 update(RM)
                 .where(RM.id == message_id, EMAIL, RM.delivery_status.in_(CLAIMABLE))
                 .values(delivery_status="sending", attempt_count=RM.attempt_count + 1)
-                .returning(RM.attempt_count, RM.sender_user_id, RM.subject, RM.body)
+                .returning(RM.attempt_count, RM.sender_user_id, RM.subject, RM.body, RM.calendar_ics)
             )
         ).one_or_none()
         await db.commit()
         if claimed is None:
             return None
-        attempt, sender_id, subject, body = claimed
+        attempt, sender_id, subject, body, ics = claimed  # hrc-028 (I6): an interview notice's invite, built when queued
         to_email = await db.scalar(  # the party's address now: exactly one of the joins matches (ck_recruiter_messages_party)
             select(func.coalesce(CompanyContact.email, Candidate.email))
             .select_from(RM)
@@ -46,7 +46,7 @@ async def deliver_recruiter_email(message_id: UUID) -> str | None:
         sender_name, sender_email = (await db.execute(select(User.full_name, User.email).where(User.id == sender_id))).one()  # FK RESTRICT
         await db.commit()  # end the read transaction before sending
 
-    status, error_type = await _send(to_email, subject or "", body, sender_name, sender_email)  # ck_recruiter_messages_email: never empty
+    status, error_type = await _send(to_email, subject or "", body, sender_name, sender_email, ics=ics)  # ck_recruiter_messages_email: never empty
     if status == "retry":
         status = "retrying" if attempt < MAX_ATTEMPTS else "failed"
     async with SessionLocal() as db:

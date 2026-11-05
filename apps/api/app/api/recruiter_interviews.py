@@ -16,7 +16,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import User
 from app.notifications.dispatch import enqueue_recruiter_email
-from app.schemas import RecInterviewCreate, RecInterviewFeedbackIn, RecInterviewReschedule, RecInterviewStatusChange, RecInterviewUpdate
+from app.schemas import RecInterviewCancel, RecInterviewCreate, RecInterviewFeedbackIn, RecInterviewReschedule, RecInterviewStatusChange, RecInterviewUpdate
 from app.services import applications
 from app.services import interviews as svc
 from app.services.bdm_appointments import db_now
@@ -72,7 +72,8 @@ async def schedule_interview(payload: RecInterviewCreate, user: User = Depends(g
 
 @router.patch("/interviews/{interview_id}")
 async def update_interview(interview_id: UUID, payload: RecInterviewUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    interview, _application, job = await svc.load_for_write(db, user, interview_id, "interview_update")
+    """hrc-028 (I5): a change the candidate can see notifies them (`notify`); the reply is the interview, plus `notifications` when sent."""
+    interview, application, job = await svc.load_for_write(db, user, interview_id, "interview_update")
 
     async def current() -> dict:
         return await svc.one(db, user, interview_id, await db_now(db))
@@ -80,10 +81,28 @@ async def update_interview(interview_id: UUID, payload: RecInterviewUpdate, user
     await require_fresh(db, stored=interview.updated_at, expected=payload.expected_updated_at, entity=("interview", interview.id),
                         action_prefix="recruiter_interview.", since=payload.expected_updated_at, current=current)
     changed = await svc.update(db, user, interview, job, payload)
+    notices, emails = None, []
+    if payload.notify and set(changed) & set(svc.VISIBLE):
+        notices, emails = await svc.notify(db, user, interview, application, job, "updated", True)
     await db.commit()
+    _publish(emails)
     if changed:
-        svc.log("recruiter_interview_updated", user, interview_id, fields=changed)
-    return await svc.one(db, user, interview_id, await db_now(db))
+        svc.log("recruiter_interview_updated", user, interview_id, fields=changed, notices=notices)
+    out = await svc.one(db, user, interview_id, await db_now(db))
+    return out if notices is None else {**out, "notifications": notices}
+
+
+@router.post("/interviews/{interview_id}/cancel")
+async def cancel_interview(interview_id: UUID, payload: RecInterviewCancel, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """hrc-028 (I3): from Scheduled, Confirmed, Rescheduled or On Hold (409 otherwise); the reason is required, shown to the candidate and
+    never logged; the notice carries a CANCEL invite."""
+    interview, application, job = await svc.load_for_write(db, user, interview_id, "interview_cancel")
+    previous = svc.cancel(db, user, interview, payload.reason)
+    notices, emails = await svc.notify(db, user, interview, application, job, "cancelled", payload.notify)
+    await db.commit()
+    _publish(emails)
+    svc.log("recruiter_interview_cancelled", user, interview_id, from_status=previous, notices=notices)
+    return {"interview": await svc.one(db, user, interview_id, await db_now(db)), "notifications": notices}
 
 
 @router.post("/interviews/{interview_id}/reschedule")
