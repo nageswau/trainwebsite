@@ -6,7 +6,7 @@ import { durationOf, endsAt, type RecInterview, zoneOptions } from "@/lib/recrui
 import { timelineEntry } from "@/lib/recruiterTimeline";
 import { recInterview } from "@/tests/helpers/recruiterInterviews";
 
-// hrc-028 (DEC-SCOPE-398 I1-I8): the new interview fields on the form and the item, Cancel with a required reason, the link history lines
+// hrc-028 (DEC-SCOPE-399 I1-I8): the new interview fields on the form and the item, Cancel with a required reason, the link history lines
 // and the candidate-zone time.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }), usePathname: () => "/recruiter/interviews",
   useSearchParams: () => new URLSearchParams() }));

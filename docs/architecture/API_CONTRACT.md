@@ -5865,9 +5865,9 @@ only, never accepted in a body. `GET /recruiter/candidates` takes an optional `e
 takes an optional `engagement` key (label "Engagement"); any other value is 422. The stored `status` field and its filter are unchanged.
 No new endpoint, permission or migration.
 
-## 12KQ. Interview completion, cancellation, link history and calendar (hrc-028) — addendum, 2026-11-05
+## 12KR. Interview completion, cancellation, link history and calendar (hrc-028) — addendum, 2026-11-05
 
-`DEC-SCOPE-398`, migration `0274_interview_completion`. **Changed (additive):** `POST /api/v1/recruiter/interviews` and
+`DEC-SCOPE-399`, migration `0274_interview_completion`. **Changed (additive):** `POST /api/v1/recruiter/interviews` and
 `PATCH /recruiter/interviews/{id}` accept `round_number` (1–20), `ends_at` (after `scheduled_at`, ≤ 12 h later; else 422 on `ends_at`),
 `time_zone` (IANA name, default `Asia/Kolkata`; unknown 422; PATCH cannot clear it), `platform` (`google_meet`, `microsoft_teams`, `zoom`,
 `zoho_meeting`, `other`), `phone_details` (≤ 200), `instructions` (≤ 2000, multi-line), `documents_required` (≤ 1000, multi-line). PATCH

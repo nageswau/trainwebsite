@@ -949,7 +949,7 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** medium.
 
 #### hrc-028: Interview model completion, cancellation, link history and calendar
-- **Status:** built as `DEC-SCOPE-398` (migration `0274_interview_completion`, API §12KQ, RBAC §2.291; builder's calls I1–I10,
+- **Status:** built as `DEC-SCOPE-399` (migration `0274_interview_completion`, API §12KR, RBAC §2.291; builder's calls I1–I10,
   `NEEDS_CONFIRMATION`); design `docs/superpowers/specs/2026-11-05-hrc-028-interview-completion-design.md`.
 - **Business requirement:** §10.1 fields; §10.2 sync rules; §16 calendar; §17 QA "Interview date, time, round and meeting link appear correctly … Rescheduling, cancellation and link replacement update the portal".
 - **Existing behavior:**

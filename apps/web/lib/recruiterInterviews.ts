@@ -18,7 +18,7 @@ export const STATUS_LABELS: Record<string, string> = {
   selected: "Selected", rejected: "Rejected", on_hold: "On Hold", cancelled: "Cancelled",
 };
 
-// hrc-028 (DEC-SCOPE-398 I1/I2): the meeting platforms (the API's order), the candidate's zone and the length of the interview.
+// hrc-028 (DEC-SCOPE-399 I1/I2): the meeting platforms (the API's order), the candidate's zone and the length of the interview.
 export const PLATFORMS = [
   { key: "google_meet", label: "Google Meet" },
   { key: "microsoft_teams", label: "Microsoft Teams" },

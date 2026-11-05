@@ -1284,7 +1284,7 @@ class JobApplicationStatusHistory(Base):
 # rec-020 (DEC-SCOPE-148, IV1/IV2): the EVID-018 §14 rounds and statuses, in source order. Migration 0133 repeats them
 # (test_rec_020_migration). Labels live in services/interviews.py and the web client.
 INTERVIEW_ROUNDS = ("hr_round", "technical_round", "manager_round", "final_round", "client_round")
-# hrc-028 (DEC-SCOPE-398 I3/I4): `cancelled` with its reason, the `details` event (a link/location change); migration 0274 repeats them.
+# hrc-028 (DEC-SCOPE-399 I3/I4): `cancelled` with its reason, the `details` event (a link/location change); migration 0274 repeats them.
 INTERVIEW_STATUSES = ("scheduled", "confirmed", "completed", "rescheduled", "no_show", "selected", "rejected", "on_hold", "cancelled")
 INTERVIEW_EVENTS = ("scheduled", "rescheduled", "status", "details")
 INTERVIEW_PLATFORMS = ("google_meet", "microsoft_teams", "zoom", "zoho_meeting", "other")
@@ -1372,7 +1372,7 @@ class Interview(Base, TimestampMixin):
     location: Mapped[str | None] = mapped_column(String(200), nullable=True)
     contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
     created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
-    # hrc-028 (DEC-SCOPE-398 I1): stored in UTC; `time_zone` is the zone the candidate reads the times in
+    # hrc-028 (DEC-SCOPE-399 I1): stored in UTC; `time_zone` is the zone the candidate reads the times in
     round_number: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     time_zone: Mapped[str] = mapped_column(String(64), default="Asia/Kolkata", server_default=text("'Asia/Kolkata'"))

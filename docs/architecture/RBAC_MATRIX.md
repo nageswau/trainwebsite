@@ -3833,7 +3833,7 @@ acts on a candidate subject. Deactivating a `placement_officer`, `placement_mana
 `session_version` and removes them as placement-officer owner and collaborator of every candidate. Pinned by
 `apps/api/tests/test_hrc_035_candidate_privacy.py` and the rec-038 matrix rows.
 
-### 2.291 Interview cancel *(added 2026-11-05 — `DEC-SCOPE-398`, hrc-028)*
+### 2.291 Interview cancel *(added 2026-11-05 — `DEC-SCOPE-399`, hrc-028)*
 
 `POST /recruiter/interviews/{id}/cancel` follows §2.74 exactly: rec-007's requirement scope through rec-017's `load_scoped`, so out of
 scope is 404 (the same as an unknown id); the writers (`placement_officer` on the requirement, `super_admin`) cancel; the manager and the

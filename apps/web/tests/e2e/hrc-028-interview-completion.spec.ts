@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// hrc-028 (DEC-SCOPE-398; AC1-AC4): the seeded recruiter schedules an interview for the seeded IT student with the new fields (round number,
+// hrc-028 (DEC-SCOPE-399; AC1-AC4): the seeded recruiter schedules an interview for the seeded IT student with the new fields (round number,
 // duration, the candidate's zone Asia/Dubai, platform, instructions), replaces the meeting link (history names it, the old link never shows),
 // the student's portal shows only the new link with the time in Dubai, then the recruiter cancels with a reason and the portal reads
 // "Cancelled — reason" with no link. The .ics itself is asserted in test_hrc_028_interviews.py (no mailbox in e2e).

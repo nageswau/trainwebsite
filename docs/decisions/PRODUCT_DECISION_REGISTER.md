@@ -11825,7 +11825,7 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** no migration; API §12KP; no RBAC change.
 - **Feature ID authorized:** `hrc-021`. **Status:** built on `worktree-hrc-021`.
 
-### DEC-SCOPE-398 — Interview model completion, cancellation, link history and calendar (`hrc-028`)
+### DEC-SCOPE-399 — Interview model completion, cancellation, link history and calendar (`hrc-028`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-028` (PDF §10.1 interview fields, §10.2 sync rules, §16 calendar, §17 QA
   #13/#14; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00). Dependency hrc-004 (`DEC-SCOPE-376`)
@@ -11845,5 +11845,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   portal shows round, role, company, time in zone, mode, the current link, details and "Cancelled — reason". I8 the recruiter form and item
   gain the fields, the candidate's time, Cancel with a reason and the history lines. I9 AuthZ unchanged (rec-017 writers; out of scope 404).
   I10 not built: auto-created meetings (Q-29), interviewer users, result release (hrc-030), a candidate-chosen zone on the profile.
-- **Numbering:** migration `0274_interview_completion`; API §12KQ; RBAC §2.291.
+- **Numbering:** migration `0274_interview_completion`; API §12KR; RBAC §2.291.
 - **Feature ID authorized:** `hrc-028`. **Status:** built on `worktree-hrc-028`.

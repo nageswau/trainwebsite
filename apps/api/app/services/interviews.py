@@ -46,7 +46,7 @@ STATUS_LABELS = {
     "scheduled": "Scheduled", "confirmed": "Confirmed", "completed": "Completed", "rescheduled": "Rescheduled", "no_show": "No Show",
     "selected": "Selected", "rejected": "Rejected", "on_hold": "On Hold", "cancelled": "Cancelled",
 }
-# hrc-028 (DEC-SCOPE-398 I1): the meeting platforms, in the models' order
+# hrc-028 (DEC-SCOPE-399 I1): the meeting platforms, in the models' order
 PLATFORM_LABELS = {"google_meet": "Google Meet", "microsoft_teams": "Microsoft Teams", "zoom": "Zoom", "zoho_meeting": "Zoho Meeting", "other": "Other"}
 OPEN = ("scheduled", "confirmed", "rescheduled")
 MOVES = {  # IV3: target -> the statuses it may come from

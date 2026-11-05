@@ -1,4 +1,4 @@
-"""hrc-028 -- migration 0274_interview_completion (DEC-SCOPE-398 I1/I3/I4/I6). The round trip runs in a throwaway database built from
+"""hrc-028 -- migration 0274_interview_completion (DEC-SCOPE-399 I1/I3/I4/I6). The round trip runs in a throwaway database built from
 scratch (the rec-006 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util

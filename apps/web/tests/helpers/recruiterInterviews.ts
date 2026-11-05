@@ -10,7 +10,7 @@ export const recInterview = (over: Partial<RecInterview> = {}): RecInterview => 
     actor: { id: "r1", full_name: "Riya Recruiter" }, created_at: "2026-10-09T05:30:00Z" }],
   allowed_statuses: [{ key: "confirmed", label: "Confirmed" }, { key: "on_hold", label: "On Hold" }], can_edit: true, can_reschedule: true,
   feedback: null, can_feedback: false, updated_at: "2026-10-09T05:30:00.123456+00:00",
-  // hrc-028 (DEC-SCOPE-398 I1/I3)
+  // hrc-028 (DEC-SCOPE-399 I1/I3)
   round_number: null, ends_at: null, time_zone: "Asia/Kolkata", local_when: "12 Oct 2026, 11:00 AM IST (UTC+05:30)", platform: null, platform_label: null,
   phone_details: null, instructions: null, documents_required: null, cancel_reason: null, can_cancel: true,
   ...over,
