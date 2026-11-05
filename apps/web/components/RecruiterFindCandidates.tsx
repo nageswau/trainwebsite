@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 
+import RecruiterSavedSearches from "@/components/RecruiterSavedSearches";
 import RecruiterShareDialog, { type ShareCandidate } from "@/components/RecruiterShareDialog";
 import SearchableSelect from "@/components/SearchableSelect";
 import { detailMessage, sendJson } from "@/lib/apiErrors";
@@ -12,7 +13,8 @@ import type { PickOption } from "@/lib/lookups";
 import { requirementCandidatesUrl } from "@/lib/recruiterApplications";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
 import {
-  activeFilters, availabilityOf, BAND_LABEL, BANDS, type CandidateCard, distinctTerms, EMPTY_SEARCH, EXPERIENCE_LABEL, experienceBand, FILTERS,
+  activeFilters, availabilityOf, BAND_LABEL, BANDS, type CandidateCard, distinctTerms, EMPTY_SEARCH, EXPERIENCE_LABEL, experienceBand, EXPORT_PERMISSION,
+  EXPORT_URL, FILTERS,
   type FilterGroup, type FilterSpec, GROUP_TERMS, isSearchResult, matchSummary, MAX_GROUPS, MAX_TERMS, OTHER_LOCATION, PAGE_SIZE, paramsOf,
   PREFERRED_MAX, requirementSearch, salaryText, SEARCH_URL, searchBody, type SearchResult, type SearchState, searchText, type SortKey, sortOptions,
   stateOf, TEXT_MAX, unknownSkill,
@@ -239,7 +241,11 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
   const [sources, setSources] = useState<CatalogueValue[]>([]);
   const [requirement, setRequirement] = useState<PickOption | null>(null);
   const [categories, setCategories] = useState<Category[]>([]); // hrc-019: the skill-category filter's choices and chip names
-  const compensation = !!usePermissions()?.includes(COMPENSATION_VIEW); // hrc-001 H2: no salary filter without the grant
+  const permissions = usePermissions();
+  const compensation = !!permissions?.includes(COMPENSATION_VIEW); // hrc-001 H2: no salary filter without the grant
+  const exports = !!permissions?.includes(EXPORT_PERMISSION); // hrc-020 X8: the API refuses the rest; the button is hidden
+  const [exporting, setExporting] = useState<"csv" | "xlsx" | null>(null);
+  const [exportError, setExportError] = useState("");
   const [shortlisted, setShortlisted] = useState<Shortlisted>({});
   const [selected, setSelected] = useState<Map<string, ShareCandidate>>(new Map()); // rec-019: kept across pages until shared
   const [sharing, setSharing] = useState<ShareCandidate[] | null>(null); // the selection when the dialog opened (QA-01)
@@ -334,6 +340,34 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
     go(next);
   }
 
+  /** hrc-020 (X8-X11): the applied search (the URL's, not the draft) as a file; the API checks the grant, the cap and the throttle. */
+  async function exportAs(format: "csv" | "xlsx") {
+    const body = searchBody(state);
+    if (!body || exporting) return;
+    setExporting(format);
+    setExportError("");
+    try {
+      const response = await fetch(`${EXPORT_URL}?format=${format}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        setExportError(detailMessage(data?.detail, "Unable to export these candidates."));
+        return;
+      }
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `candidates.${format}`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setExportError("Unable to export these candidates. Check your connection and try again.");
+    } finally {
+      setExporting(null);
+    }
+  }
+
   function replaceTerm(term: string, by: string) {
     const swap = (list: string[]) => distinctTerms(list.map((t) => (t.toLowerCase() === term.toLowerCase() ? by : t)));
     go({ ...state, all: swap(state.all), any: state.any.map(swap), offset: 0 });
@@ -371,6 +405,7 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
+      <RecruiterSavedSearches state={state} onLoad={(next) => go({ ...next, offset: 0 })} />
       <form role="search" aria-label="Find candidates" onSubmit={submit} className="action-card" style={{ gap: 14 }}>
         <div className="field" style={{ marginBottom: 0 }}>
           <label htmlFor="find-text">Resume search</label>
@@ -527,7 +562,18 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
           <Results result={result} state={state} loading={loading} writes={writes} requirement={requirement} shortlisted={shortlisted}
             onRequirement={(r) => { setRequirement(r); setShortlisted({}); setSelected(new Map()); setSharing(null); }} onShortlist={shortlist} narrow={narrow}
             page={(offset) => go({ ...state, offset })} selected={selected} onSelect={select} onShare={() => setSharing([...selected.values()])}
-            sorts={sortOptions(compensation)} onSort={(sort) => narrow({ sort })} />
+            sorts={sortOptions(compensation)} onSort={(sort) => narrow({ sort })}
+            exportBar={exports && result.total > 0 ? (
+              <div className="actions" style={{ gap: 6, alignItems: "center" }}>
+                <button type="button" className="btn secondary small" disabled={!!exporting} onClick={() => exportAs("csv")}>
+                  {exporting === "csv" ? "Exporting…" : "Export CSV"}
+                </button>
+                <button type="button" className="btn secondary small" disabled={!!exporting} onClick={() => exportAs("xlsx")}>
+                  {exporting === "xlsx" ? "Exporting…" : "Export Excel"}
+                </button>
+                {exportError && <span className="form-error" role="alert">{exportError}</span>}
+              </div>
+            ) : null} />
         </>
       )}
       </div>
@@ -535,11 +581,13 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
   );
 }
 
-function Results({ result, state, loading, writes, requirement, shortlisted, onRequirement, onShortlist, narrow, page, selected, onSelect, onShare, sorts, onSort }: {
+function Results({ result, state, loading, writes, requirement, shortlisted, onRequirement, onShortlist, narrow, page, selected, onSelect, onShare, sorts, onSort,
+  exportBar = null }: {
   result: SearchResult; state: SearchState; loading: boolean; writes: boolean; requirement: PickOption | null; shortlisted: Shortlisted;
   onRequirement: (r: PickOption | null) => void; onShortlist: (c: CandidateCard) => void; narrow: (c: Partial<SearchState>) => void; page: (offset: number) => void;
   selected: Map<string, ShareCandidate>; onSelect: (c: CandidateCard, on: boolean) => void; onShare: () => void;
   sorts: { key: SortKey; label: string }[]; onSort: (sort: SortKey) => void; // hrc-019 S10
+  exportBar?: React.ReactNode; // hrc-020: Export CSV / Excel for holders of `candidates.export`
 }) {
   const expanded = result.terms.filter((t) => t.also.length || t.skill.name.toLowerCase() !== t.term.toLowerCase());
   const facetButton = (label: string, count: number, onClick?: () => void, pressed = false) => count > 0 && ( // QA-04: empty rows are noise
@@ -576,6 +624,7 @@ function Results({ result, state, loading, writes, requirement, shortlisted, onR
           </p>
         )}
         {loading && <p className="muted" role="status" style={{ margin: "4px 0 0", fontSize: 13 }}>Updating results…</p>}
+        {exportBar && <div style={{ marginTop: 8 }}>{exportBar}</div>}
       </div>
   );
   const sectionProps = { "aria-label": "Search results", "aria-busy": loading, style: { display: "grid", gap: 12 } } as const;

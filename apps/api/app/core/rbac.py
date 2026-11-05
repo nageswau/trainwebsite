@@ -132,7 +132,8 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     # hrc-013 (DEC-SCOPE-391 I1, migration 0268 seeds it): recruiters and their managers import candidate files.
     "placement_team": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.import"),
     # hrc-014 (migration 0256 seeds merge); hrc-008 (DEC-SCOPE-385 V4, migration 0262 seeds publish): who sees a vacancy
-    "placement_manager": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.merge", "jobs.publish", "candidates.import"),
+    # hrc-020 (DEC-SCOPE-401 X12, migration 0277 seeds it): the Find Candidates export.
+    "placement_manager": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.merge", "jobs.publish", "candidates.import", "candidates.export"),
     # hrc-007 (DEC-SCOPE-380 A12; migration 0257 seeds it): the HR Manager is the vacancy approver.
     # hrc-035 (DEC-SCOPE-396 K7; migration 0273 seeds it): the HR Manager decides candidate deletion requests.
     "hr_manager": ("candidates.erase", "jobs.approve"),

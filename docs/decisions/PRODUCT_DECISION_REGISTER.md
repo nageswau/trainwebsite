@@ -11894,3 +11894,21 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   I10 not built: auto-created meetings (Q-29), interviewer users, result release (hrc-030), a candidate-chosen zone on the profile.
 - **Numbering:** migration `0276_interview_completion`; API §12KS; RBAC §2.291.
 - **Feature ID authorized:** `hrc-028`. **Status:** built on `worktree-hrc-028`.
+
+### DEC-SCOPE-401 — Saved searches and restricted export (`hrc-020`)
+
+- **Evidence:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` hrc-020 (§8.1 "Save common searches and filter presets; restrict exports to
+  authorised users"; §15 "Record who … exported") — DERIVED_WORKBOOK. Classification: builder's recommended calls, `NEEDS_CONFIRMATION`.
+- **Decision:** personal and shared saved Find Candidates searches (the search body, sort included, validated by the search's own rules)
+  and a CSV / XLSX export of the current search for holders of `candidates.export`, audited with its filters and row count.
+- **Builder's calls:** X1 a `saved_candidate_searches` table, names unique per owner (case-insensitive). X2 the stored filters are the
+  canonical search body, so a load runs the same search (AC1). X3 Find Candidates readers only. X4 own + shared visible; only the owner or
+  super_admin changes/deletes; someone else's personal search is 404, a shared one 403 on write. X5 package filters/sort need the
+  compensation grant to save; a shared one read without it has them removed and named. X6 filters the search no longer declares are
+  ignored on read with a notice. X7 50 saved searches per owner. X8 export order: reader role → `candidates.export` → body → compensation
+  → ccrm-035's `crm_exports.export` (lock, throttle, cap, audit, commit). X9 Q-21: a 5,000-row cap (422 beyond). X10 columns: the card's
+  facts, never contact details; expected salary only with the compensation grant; formula-guarded cells. X11 one `crm.export` audit row
+  (entity `candidate_search`), logs without filter values. X12 default holder `placement_manager` (super_admin implicitly); the HR Manager
+  cannot read candidates (hrc-002), so it is not seeded.
+- **Numbering:** migration `0277_saved_candidate_searches`; API §12KT; RBAC §2.294.
+- **Feature ID authorized:** `hrc-020`. **Status:** built on `worktree-hrc-020`.

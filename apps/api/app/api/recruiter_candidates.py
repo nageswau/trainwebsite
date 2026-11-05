@@ -7,7 +7,7 @@ is one transaction: role, row lock, rules, change, audit row, one commit here, t
 
 import re
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Response, UploadFile
@@ -15,6 +15,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api import crm_exports
 from app.api.agent_reports import NO_STORE
 from app.api.bdm import LIMIT, OFFSET, SEARCH
 from app.api.deps import get_current_user
@@ -22,7 +23,7 @@ from app.api.lookups import _pattern as like_pattern
 from app.api.portfolio_certificates import HEADERS
 from app.api.telecaller_catalogue import NOT_AN_OBJECT
 from app.core.database import get_db
-from app.models import Candidate, CandidateResume, RecCandidateSource, User
+from app.models import Candidate, CandidateResume, RecCandidateSource, SavedCandidateSearch, User
 from app.notifications.phone import normalise_phone
 from app.schemas import (
     CANDIDATE_FIELD_LABELS,
@@ -30,6 +31,7 @@ from app.schemas import (
     CANDIDATE_OWNERSHIP_LABELS,
     CANDIDATE_SEARCH_LABELS,
     RESUME_APPLY_LABELS,
+    SAVED_SEARCH_LABELS,
     CandidateAssignee,
     CandidateCreate,
     CandidateDetail,
@@ -43,16 +45,19 @@ from app.schemas import (
     CandidateStatus,
     CandidateUpdate,
     ResumeApply,
+    SavedSearchIn,
+    SavedSearchUpdate,
 )
 from app.services import candidate_documents as documents
 from app.services import candidate_duplicates as duplicates
-from app.services import candidate_engagement, candidate_merge, candidate_search, candidate_skills, compensation, course_skills, recruitment_history
+from app.services import candidate_engagement, candidate_merge, candidate_search, candidate_skills, compensation, course_skills, recruitment_history, saved_searches
 from app.services import candidate_ownership as ownership
 from app.services import candidate_previews as previews
 from app.services import candidate_privacy as privacy
 from app.services import candidate_profile as profile
 from app.services import candidates as svc
 from app.services import resume_extraction as extraction
+from app.services.permissions import user_has_grant
 from app.services.reports import placement as placement_reports
 from app.services.stale_guard import require_fresh
 from app.services.telecaller import _parse
@@ -60,6 +65,7 @@ from app.services.telecaller import _parse
 router = APIRouter(prefix="/recruiter/candidates", tags=["recruiter-candidates"])
 settings_router = APIRouter(prefix="/recruiter/candidate-ownership-settings", tags=["recruiter-candidates"])  # hrc-012 (O4)
 PHONE_DIGITS = re.compile(r"[0-9]+")  # ASCII only, like notifications.phone
+NO_EXPORT = "Your role cannot export candidates"  # hrc-020 X8
 
 
 @settings_router.get("", response_model=CandidateOwnershipSettingsOut)
@@ -155,15 +161,108 @@ async def search_candidates(
     """rec-013 (DEC-SCOPE-151): Find Candidates over the whole pool (R11) -- skill AND / OR groups expanded through aliases and related
     skills, the S2-§18 filters, the F1-F3 facets. Read only; the role check runs before the body is read."""
     svc.require_reader(user)
-    body = _parse(CandidateSearch, payload, NOT_AN_OBJECT, CANDIDATE_SEARCH_LABELS)
-    sees = await svc.sees_compensation(db, user)
-    if not sees and body.package():  # hrc-001 H2 / hrc-019 S9: a package range, "unknown" or the package sort would reveal the value
-        raise HTTPException(403, svc.NO_COMPENSATION)
+    body = _search_body(payload)
+    sees = await _compensation_allowed(db, user, body)
     result = await candidate_search.search(db, body, limit=limit, offset=offset, user_id=user.id)
     if not sees:
         svc.without_compensation(result["items"])
     candidate_search.log(user, body, result["total"])
     return result
+
+
+def _search_body(raw) -> CandidateSearch:
+    return _parse(CandidateSearch, raw, NOT_AN_OBJECT, CANDIDATE_SEARCH_LABELS)
+
+
+async def _compensation_allowed(db: AsyncSession, user: User, body: CandidateSearch) -> bool:
+    """hrc-001 H2 / hrc-019 S9: a package filter or sort without the grant is a 403; returns whether the caller sees compensation."""
+    sees = await svc.sees_compensation(db, user)
+    if not sees and body.package():
+        raise HTTPException(403, svc.NO_COMPENSATION)
+    return sees
+
+
+@router.post("/search/export")
+async def export_candidates(payload: Any = Body(...), format: Literal["csv", "xlsx"] = "csv", user: User = Depends(get_current_user),  # noqa: A002
+                            db: AsyncSession = Depends(get_db)):  # fmt: skip
+    """hrc-020 (DEC-SCOPE-401 X8-X11, AC2/AC3): the Find Candidates result as CSV / XLSX -- the reader role, then `candidates.export`,
+    then the body; ccrm-035's one export step (lock, throttle, cap, audit row with the filters and row count, commit, file)."""
+    svc.require_reader(user)
+    if not await user_has_grant(db, user, "candidates", "export"):
+        raise HTTPException(403, NO_EXPORT)
+    body = _search_body(payload)
+    sees = await _compensation_allowed(db, user, body)
+
+    async def build() -> dict:
+        return await candidate_search.export_table(db, body, user_id=user.id, cap=crm_exports.ROW_CAP, salary=sees)
+
+    return await crm_exports.export(db, user, entity_type="candidate_search", key="find_candidates", fmt=format, filters=saved_searches.stored(body),
+                                    filename="candidates", sheet_name="Candidates", build=build)  # fmt: skip
+
+
+# hrc-020 (DEC-SCOPE-401 X1-X7): saved searches -- declared before `/{candidate_id}` so they never reach the id routes.
+@router.get("/saved-searches")
+async def saved_search_list(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    svc.require_reader(user)
+    sees = await svc.sees_compensation(db, user)
+    return {"items": [saved_searches.out(row, owner, user, sees) for row, owner in await saved_searches.listed(db, user)]}
+
+
+async def _commit_saved(db: AsyncSession, row: SavedCandidateSearch) -> None:
+    try:
+        await db.commit()
+    except IntegrityError:  # the unique name index under a race
+        await db.rollback()
+        raise HTTPException(409, saved_searches.DUPLICATE) from None
+    await db.refresh(row)
+
+
+@router.post("/saved-searches", status_code=201)
+async def create_saved_search(payload: Any = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    svc.require_reader(user)
+    data = _parse(SavedSearchIn, payload, NOT_AN_OBJECT, SAVED_SEARCH_LABELS)
+    body = _search_body(data.filters)
+    sees = await _compensation_allowed(db, user, body)
+    await db.execute(select(User.id).where(User.id == user.id).with_for_update())  # one owner's saves queue: the cap and the name hold
+    await saved_searches.require_room(db, user)
+    if await saved_searches.name_taken(db, user.id, data.name):
+        raise HTTPException(409, saved_searches.DUPLICATE)
+    row = SavedCandidateSearch(owner_user_id=user.id, name=data.name, filters=saved_searches.stored(body), shared=data.shared)
+    db.add(row)
+    await _commit_saved(db, row)
+    saved_searches.log("saved_search.create", user, row)
+    return saved_searches.out(row, user.full_name, user, sees)
+
+
+@router.patch("/saved-searches/{search_id}")
+async def update_saved_search(search_id: UUID, payload: Any = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    svc.require_reader(user)
+    data = _parse(SavedSearchUpdate, payload, NOT_AN_OBJECT, SAVED_SEARCH_LABELS)
+    body = _search_body(data.filters) if data.filters is not None else None
+    sees = await _compensation_allowed(db, user, body) if body is not None else await svc.sees_compensation(db, user)
+    row = await saved_searches.load_for_write(db, user, search_id)
+    if data.name is not None:
+        if await saved_searches.name_taken(db, row.owner_user_id, data.name, exclude=row.id):
+            raise HTTPException(409, saved_searches.DUPLICATE)
+        row.name = data.name
+    if body is not None:
+        row.filters = saved_searches.stored(body)
+    if data.shared is not None:
+        row.shared = data.shared
+    await _commit_saved(db, row)
+    saved_searches.log("saved_search.update", user, row)
+    owner = user.full_name if row.owner_user_id == user.id else await db.scalar(select(User.full_name).where(User.id == row.owner_user_id))
+    return saved_searches.out(row, owner, user, sees)
+
+
+@router.delete("/saved-searches/{search_id}", status_code=204)
+async def delete_saved_search(search_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    svc.require_reader(user)
+    row = await saved_searches.load_for_write(db, user, search_id)
+    await db.delete(row)
+    await db.commit()
+    saved_searches.log("saved_search.delete", user, row)
+    return Response(status_code=204)
 
 
 @router.post("", response_model=CandidateDetail, response_model_exclude_unset=True, status_code=201)
