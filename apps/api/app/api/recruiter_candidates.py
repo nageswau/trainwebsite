@@ -43,6 +43,8 @@ from app.schemas import (
     CandidateStatus,
     CandidateUpdate,
     ResumeApply,
+    WebsiteRegistrationPage,
+    WebsiteRegistrationView,
 )
 from app.services import candidate_documents as documents
 from app.services import candidate_duplicates as duplicates
@@ -53,6 +55,7 @@ from app.services import candidate_privacy as privacy
 from app.services import candidate_profile as profile
 from app.services import candidates as svc
 from app.services import resume_extraction as extraction
+from app.services import website_registrations as registrations
 from app.services.reports import placement as placement_reports
 from app.services.stale_guard import require_fresh
 from app.services.telecaller import _parse
@@ -138,6 +141,15 @@ async def duplicate_check(
     """The form's live panel (on blur); the create and the edit re-check. An unparseable mobile matches nothing."""
     svc.require_writer(user)
     return {"matches": await svc.find_matches(db, *svc.keys(mobile, email), exclude_id=exclude_id)}
+
+
+@router.get("/website-registrations", response_model=WebsiteRegistrationPage)
+async def website_registration_list(view: WebsiteRegistrationView | None = None, limit: int = LIMIT, offset: int = OFFSET,
+                                    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):  # fmt: skip
+    """hrc-025 (DEC-SCOPE-402): the candidates the website created, newest first, with first contact, next follow-up, conversion and
+    the contact SLA. A recruiter reads their own and the unassigned queue; managers, super_admin, hr_team and the HR Manager read all."""
+    registrations.require_reader(user)
+    return await registrations.page(db, user, view, limit=limit, offset=offset)
 
 
 @router.get("/assignees", response_model=list[CandidateAssignee])

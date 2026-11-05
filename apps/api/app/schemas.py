@@ -10398,6 +10398,38 @@ class CandidatePage(BaseModel):
     offset: int
 
 
+# hrc-025 (DEC-SCOPE-402 N3/N4): the New Website Registrations list -- derived columns only, no contact details (N2).
+WEBSITE_REGISTRATION_VIEWS = ("unassigned", "new", "contacted", "screened", "active", "inactive", "duplicate_review")
+WebsiteRegistrationView = Literal[WEBSITE_REGISTRATION_VIEWS]
+
+
+class WebsiteRegistrationItem(BaseModel):
+    id: UUID
+    candidate_code: str
+    name: str
+    registered_at: datetime
+    location: str | None
+    skills: list[str]
+    skill_count: int
+    completeness: int
+    owner: RecPersonRef | None
+    engagement: CandidateEngagement | None
+    first_contact_at: datetime | None
+    next_follow_up_at: datetime | None
+    conversion: Literal["registered", "applied", "placed"]
+    contact_sla: Literal["met", "pending", "breached"]
+    duplicate_review: bool
+    can_open: bool
+
+
+class WebsiteRegistrationPage(BaseModel):
+    items: list[WebsiteRegistrationItem]
+    total: int
+    limit: int
+    offset: int
+    sla_hours: int
+
+
 class CandidateRef(BaseModel):
     id: UUID
     candidate_code: str

@@ -5913,3 +5913,13 @@ Notices (schedule, reschedule, update, cancel) carry an iCalendar invite: the st
 `{kind: "interview_invite", ics, method}`; a recruiter email row stores `calendar_ics`, attached as `invite.ics` by the worker.
 `GET /api/v1/portal/it/student/interview-schedule` rows are now `{id, title, round, role, company, when, mode, link, details, status}`
 (`link` null once cancelled; `status` "Cancelled — <reason>" for a cancel; decisions still read Completed).
+
+## 12KU. New Website Registrations workspace (hrc-025) — addendum, 2026-11-05
+
+`DEC-SCOPE-402`, no migration. **New:** `GET /api/v1/recruiter/candidates/website-registrations?view=&limit=&offset=` (declared before
+`/{candidate_id}`) → `{items, total, limit, offset, sla_hours}`. `view` ∈ `unassigned`, `new`, `contacted`, `screened`, `active`, `inactive`,
+`duplicate_review` (else 422); `limit` 1–100 (default 50). Each item: `{id, candidate_code, name, registered_at, location, skills[] (≤ 3,
+primary first), skill_count, completeness (0–100), owner {id, full_name, active} | null, engagement {key, label}, first_contact_at,
+next_follow_up_at, conversion (registered | applied | placed), contact_sla (met | pending | breached), duplicate_review, can_open}`. Only
+candidates with source Website, in the pool, not archived; newest first. No email or phone. Read only (no audit row). A `placement_team`
+caller gets their own and the unassigned ones; 403 for roles outside §2.295; 401 signed out.

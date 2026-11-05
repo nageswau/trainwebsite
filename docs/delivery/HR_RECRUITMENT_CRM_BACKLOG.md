@@ -856,6 +856,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** medium.
 
 #### hrc-025: New Website Registrations workspace
+- **Status (2026-11-05):** built — `DEC-SCOPE-402` (Q-26 and N1–N10 answered by the builder's recommended calls, `NEEDS_CONFIRMATION`:
+  Website-sourced candidates only, a 24-hour contact SLA, first contact derived from calls and messages, no migration; the HR Manager reads
+  this list only); design `docs/superpowers/specs/2026-11-05-hrc-025-website-registrations-workspace-design.md`; API §12KU; RBAC §2.295.
 - **Business requirement:** §6.2 list and filters; first-contact time, follow-up date, activities, conversion.
 - **Existing behavior:** nothing exists.
 - **Expected behavior:**
