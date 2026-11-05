@@ -6508,6 +6508,11 @@ class Candidate(Base, TimestampMixin):
         Index("ix_candidates_status", "status"),
         Index("ix_candidates_created_at", "created_at"),
         Index("ix_candidates_expected_annual_inr", "expected_annual_inr"),
+        # hrc-019 (DEC-SCOPE-399 S12): range filters and sorts. Migration 0275 also adds pg_trgm GIN indexes (location, education
+        # institution, employment designation) -- not declared here, so 0001's create_all never needs the extension.
+        Index("ix_candidates_current_annual_inr", "current_annual_inr"),
+        Index("ix_candidates_minimum_annual_inr", "minimum_annual_inr"),
+        Index("ix_candidates_experience_months", "experience_months"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     candidate_code: Mapped[str] = mapped_column(String(12), unique=True)

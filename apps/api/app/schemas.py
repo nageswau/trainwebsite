@@ -53,6 +53,7 @@ from app.models import (
     BDM_STAFF_MAX,
     BDM_TARGET_MAX,
     CANDIDATE_CONTACT_METHODS,
+    CANDIDATE_DOCUMENT_TYPES,
     CANDIDATE_ENGAGEMENTS,
     CANDIDATE_NOTE_MAX,
     CANDIDATE_SKILL_LEVELS,
@@ -11960,7 +11961,23 @@ CANDIDATE_SEARCH_LABELS = {
     "experience_max_months": "Maximum experience", "location": "Location", "availability": "Availability", "qualification": "Qualification",
     "salary_min": "Minimum salary", "salary_max": "Maximum salary", "source_id": "Candidate source", "status": "Status",
     "engagement": "Engagement", "text": "Resume search",
+    # hrc-019 (DEC-SCOPE-399 S3-S10)
+    "preferred": "Nice-to-have skills", "category_ids": "Skill categories", "min_level": "Minimum skill level",
+    "skill_min_months": "Experience on each skill", "degree": "Degree", "specialisation": "Specialisation", "institution": "Institution",
+    "passing_year_min": "Passing year from", "passing_year_max": "Passing year to", "cgpa_min": "Minimum CGPA", "cgpa_max": "Maximum CGPA",
+    "fresher": "Fresher", "relevant_min_months": "Minimum relevant experience", "relevant_max_months": "Maximum relevant experience",
+    "designation": "Designation", "industry": "Industry", "employment_types": "Employment type", "country": "Country", "state": "State",
+    "city": "City", "preferred_location": "Preferred location", "willing_to_relocate": "Willing to relocate", "work_modes": "Work mode",
+    "preferred_role": "Preferred role", "preferred_employment_types": "Preferred employment type", "owner": "Owner",
+    "registered_from": "Registered from", "registered_to": "Registered to", "has_resume": "Resume", "document_types": "Documents",
+    "application_statuses": "Application status", "interviewed": "Interviewed", "current_min": "Minimum current salary",
+    "current_max": "Maximum current salary", "minimum_min": "Minimum acceptable salary from", "minimum_max": "Minimum acceptable salary to",
+    "package_unknown": "Include unknown salary", "sort": "Sort",
 }
+# hrc-019 (S9/S10): the fields and the sort that reveal compensation -- 403 without `candidates.compensation:view`.
+CANDIDATE_SEARCH_PACKAGE_FIELDS = ("salary_min", "salary_max", "current_min", "current_max", "minimum_min", "minimum_max", "package_unknown")
+CANDIDATE_SEARCH_SORTS = ("relevance", "match", "experience", "package", "registered", "activity", "completeness")
+CANDIDATE_SEARCH_LIST_MAX = 10
 RESUME_SEARCH_MAX_CHARS = 200  # rec-014 FT4
 
 
@@ -11998,6 +12015,10 @@ class ProgramSkillsUpdate(BaseModel):
     skill_ids: list[UUID] = Field(max_length=60)
 
 
+SearchYear = Annotated[int | None, Field(ge=1950, le=2100)]  # hrc-019 S4
+SearchCgpa = Annotated[Decimal | None, Field(ge=0, le=10, max_digits=4, decimal_places=2)]
+
+
 class CandidateSearch(BaseModel):
     """`all` = every one of these skills (AND); each `any` group = at least one of its skills (OR), the groups ANDed with the rest."""
 
@@ -12016,16 +12037,75 @@ class CandidateSearch(BaseModel):
     status: CandidateStatus | None = None
     engagement: CandidateEngagementKey | None = None  # hrc-021 (DEC-SCOPE-397 E7)
     text: Annotated[StrictStr | None, AfterValidator(_resume_text)] = None  # rec-014: words in the current resume (websearch syntax)
+    # hrc-019 (DEC-SCOPE-399): S3 skills
+    preferred: Annotated[list[SearchTerm], Field(max_length=CANDIDATE_SEARCH_LIST_MAX)] = []
+    category_ids: Annotated[list[UUID], Field(max_length=CANDIDATE_SEARCH_LIST_MAX), AfterValidator(lambda v: list(dict.fromkeys(v)))] = []
+    min_level: Literal[CANDIDATE_SKILL_LEVELS] | None = None
+    skill_min_months: RecMonths = None
+    # S4 education (one row satisfies them all)
+    degree: SearchText = None
+    specialisation: SearchText = None
+    institution: SearchText = None
+    passing_year_min: SearchYear = None
+    passing_year_max: SearchYear = None
+    cgpa_min: SearchCgpa = None
+    cgpa_max: SearchCgpa = None
+    # S5 experience (designation, industry and employment type: one employment row)
+    fresher: StrictBool | None = None
+    relevant_min_months: RecMonths = None
+    relevant_max_months: RecMonths = None
+    designation: SearchText = None
+    industry: SearchText = None
+    employment_types: _choices(JOB_EMPLOYMENT_TYPES) = []
+    # S6 location / S7 preferences
+    country: SearchText = None
+    state: SearchText = None
+    city: SearchText = None
+    preferred_location: SearchText = None
+    willing_to_relocate: StrictBool | None = None
+    work_modes: _choices(JOB_WORK_MODES) = []
+    preferred_role: SearchText = None
+    preferred_employment_types: _choices(JOB_EMPLOYMENT_TYPES) = []
+    # S8 recruitment data, documents, applications
+    owner: Literal["me", "unassigned"] | None = None
+    registered_from: date | None = None
+    registered_to: date | None = None
+    has_resume: StrictBool | None = None
+    document_types: _choices(CANDIDATE_DOCUMENT_TYPES) = []
+    application_statuses: _choices(APPLICATION_STATUSES) = []
+    interviewed: StrictBool | None = None
+    # S9 package (normalised annual INR; grant only) and S10 sort
+    current_min: RecMoney = None
+    current_max: RecMoney = None
+    minimum_min: RecMoney = None
+    minimum_max: RecMoney = None
+    package_unknown: StrictBool = False
+    sort: Literal[CANDIDATE_SEARCH_SORTS] = "relevance"
 
     @model_validator(mode="after")
     def _limits(self):
-        terms = expression_terms(self.all, self.any)
-        if terms == 0 and self.text is None:
+        terms = expression_terms(self.all, self.any) + len(self.preferred)
+        if terms > CANDIDATE_SEARCH_MAX_TERMS:
+            raise ValueError(f"Search for at most {CANDIDATE_SEARCH_MAX_TERMS} skills at once")
+        if terms == 0 and self.text is None and not self.category_ids:
             raise ValueError("Add at least one skill or some resume search text")
         _experience_order(self.experience_min_months, self.experience_max_months)
-        if None not in (self.salary_min, self.salary_max) and self.salary_min > self.salary_max:
-            raise ValueError("The minimum salary cannot be above the maximum")
+        for low, high, message in (
+            (self.salary_min, self.salary_max, "The minimum salary cannot be above the maximum"),
+            (self.relevant_min_months, self.relevant_max_months, "The minimum relevant experience cannot be above the maximum"),
+            (self.passing_year_min, self.passing_year_max, "The first passing year cannot be after the last"),
+            (self.cgpa_min, self.cgpa_max, "The minimum CGPA cannot be above the maximum"),
+            (self.current_min, self.current_max, "The minimum current salary cannot be above the maximum"),
+            (self.minimum_min, self.minimum_max, "The lower minimum acceptable salary cannot be above the upper one"),
+            (self.registered_from, self.registered_to, "The registration from date cannot be after the to date"),
+        ):
+            if None not in (low, high) and low > high:
+                raise ValueError(message)
         return self
+
+    def package(self) -> bool:
+        """S9: whether the body filters or sorts on compensation."""
+        return self.sort == "package" or any(getattr(self, f) not in (None, False) for f in CANDIDATE_SEARCH_PACKAGE_FIELDS)
 
 
 def expression_terms(all_terms: list, any_groups: list[list]) -> int:

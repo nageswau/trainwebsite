@@ -666,6 +666,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** medium.
 
 #### hrc-019: Advanced multi-filter resume search
+- **Status (2026-11-05):** built — `DEC-SCOPE-399` (Q-19/Q-20 answered by the builder's recommended calls S1–S14, `NEEDS_CONFIRMATION`:
+  no deeper nesting, no p95 confirmed); design `docs/superpowers/specs/2026-11-05-hrc-019-advanced-candidate-search-design.md`; migration
+  `0275_candidate_search_indexes`; API §12KR; no RBAC change.
 - **Business requirement:** §8 filter groups; §8.1 behaviour; §8.2 examples; §8.3 A–D; §16 pagination and indexing; §17 QA #6–8.
 - **Existing behavior:**
   - **Built:** skills all/any with aliases, verified-only, a qualification/location contains match, experience and expected-salary ranges, notice bands, status, source, resume text search, facets, clear/reset, and the empty state.

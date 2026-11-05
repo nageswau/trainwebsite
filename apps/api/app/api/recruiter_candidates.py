@@ -157,9 +157,9 @@ async def search_candidates(
     svc.require_reader(user)
     body = _parse(CandidateSearch, payload, NOT_AN_OBJECT, CANDIDATE_SEARCH_LABELS)
     sees = await svc.sees_compensation(db, user)
-    if not sees and (body.salary_min is not None or body.salary_max is not None):  # hrc-001 H2: a range would reveal the value
+    if not sees and body.package():  # hrc-001 H2 / hrc-019 S9: a package range, "unknown" or the package sort would reveal the value
         raise HTTPException(403, svc.NO_COMPENSATION)
-    result = await candidate_search.search(db, body, limit=limit, offset=offset)
+    result = await candidate_search.search(db, body, limit=limit, offset=offset, user_id=user.id)
     if not sees:
         svc.without_compensation(result["items"])
     candidate_search.log(user, body, result["total"])

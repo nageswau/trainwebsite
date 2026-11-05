@@ -5877,6 +5877,22 @@ applied → 409 "Already applied"; a switched-on hard filter not met → 422 nam
 `POST /api/v1/workflows/it/jobs/{id}/apply` applies the same hard-filter gate (422). A portal candidate's application notices carry
 `action_url` `/it/careers/portal/jobs`.
 
+## 12KR. Advanced multi-filter resume search (hrc-019) — addendum, 2026-11-05
+
+`DEC-SCOPE-399`. **Changed (additive):** `POST /api/v1/recruiter/candidates/search` accepts these optional body fields (all default to
+"no filter"; labels in `CANDIDATE_SEARCH_LABELS`; an unknown key is still 422):
+`preferred` (≤ 10 skill terms, counted in the 20-term cap; never filters unless it is the only skill input), `category_ids` (≤ 10 ids),
+`min_level` (`beginner`…`expert`), `skill_min_months` (0–600); `degree`, `specialisation`, `institution` (contains, ≤ 120),
+`passing_year_min`/`_max` (1950–2100), `cgpa_min`/`_max` (0–10); `fresher` (bool), `relevant_min_months`/`_max`, `designation`,
+`industry`, `employment_types` (job employment types); `country`, `state`, `city`, `preferred_location`, `willing_to_relocate` (bool),
+`work_modes`; `preferred_role`, `preferred_employment_types`; `owner` (`me` | `unassigned`), `registered_from`/`_to` (`YYYY-MM-DD`, IST);
+`has_resume` (bool), `document_types`, `application_statuses`, `interviewed` (bool); `current_min`/`_max`, `minimum_min`/`_max` (annual
+INR), `package_unknown` (bool); `sort` (`relevance` default, `match`, `experience`, `package`, `registered`, `activity`, `completeness`).
+A search needs a skill term (`all`/`any`/`preferred`), a category or resume text. Inverted ranges are 422.
+**AuthZ:** any of `salary_min`, `salary_max`, `current_*`, `minimum_*`, `package_unknown: true` or `sort: "package"` without
+`candidates.compensation:view` is **403** before anything is read. **Response (additive):** each card gains `match`:
+`{required: [{term, skill, held}], preferred: [{term, skill, held}]}`. Talent-pool member cards are unchanged. No new endpoint or
+permission; migration `0275` adds indexes only.
 ## 12KS. Interview completion, cancellation, link history and calendar (hrc-028) — addendum, 2026-11-05
 
 `DEC-SCOPE-400`, migration `0274_interview_completion`. **Changed (additive):** `POST /api/v1/recruiter/interviews` and
