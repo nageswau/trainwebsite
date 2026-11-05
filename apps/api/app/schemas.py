@@ -12142,6 +12142,8 @@ class RecContractPermissions(BaseModel):
     can_edit: bool
     can_upload: bool
     can_renew: bool
+    can_view_terms: bool  # pob-001 (DEC-SCOPE-401 C5): `commercials.client.view`
+    can_edit_terms: bool  # ... and `.edit`, on a contract the caller may change
 
 
 class RecContractOut(BaseModel):
@@ -12153,10 +12155,11 @@ class RecContractOut(BaseModel):
     start_date: date | None
     end_date: date | None
     expired_on: date | None
-    fee_basis: RecContractFeeBasis | None
-    fee_value: Decimal | None
-    payment_terms: str | None
-    replacement_policy: str | None
+    # pob-001 C5: absent without `commercials.client.view` -- the routes answer with response_model_exclude_unset
+    fee_basis: RecContractFeeBasis | None = None
+    fee_value: Decimal | None = None
+    payment_terms: str | None = None
+    replacement_policy: str | None = None
     contract_document: RecContractDocumentOut | None
     mou_document: RecContractDocumentOut | None
     is_current: bool
@@ -12173,6 +12176,8 @@ class RecContractEnvelope(BaseModel):
 class RecCompanyContracts(BaseModel):
     current: RecContractOut | None
     previous: list[RecContractOut]
+    can_view_terms: bool  # pob-001 C5
+    can_edit_terms: bool
     can_start: bool
 
 

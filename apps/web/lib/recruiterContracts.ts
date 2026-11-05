@@ -28,11 +28,13 @@ export type ContractDocument = { name: string | null; content_type: string; uplo
 export type ContractPerson = { id: string; full_name: string; active: boolean };
 export type Contract = {
   id: string; status: ContractStatus; status_label: string; status_changed_at: string; agreement_type: string | null; start_date: string | null;
-  end_date: string | null; expired_on: string | null; fee_basis: FeeBasis | null; fee_value: string | null; payment_terms: string | null;
-  replacement_policy: string | null; contract_document: ContractDocument | null; mou_document: ContractDocument | null; is_current: boolean;
-  created_by: ContractPerson; permissions: { can_edit: boolean; can_upload: boolean; can_renew: boolean }; created_at: string; updated_at: string;
-};
-export type CompanyContracts = { current: Contract | null; previous: Contract[]; can_start: boolean };
+  end_date: string | null; expired_on: string | null; contract_document: ContractDocument | null; mou_document: ContractDocument | null;
+  is_current: boolean; created_by: ContractPerson; permissions: ContractPermissions; created_at: string; updated_at: string;
+} & Partial<ContractTerms>;
+// pob-001 (DEC-SCOPE-401 C5): the terms are absent without `commercials.client.view`; `can_view_terms` / `can_edit_terms` say which.
+export type ContractTerms = { fee_basis: FeeBasis | null; fee_value: string | null; payment_terms: string | null; replacement_policy: string | null };
+export type ContractPermissions = { can_edit: boolean; can_upload: boolean; can_renew: boolean; can_view_terms: boolean; can_edit_terms: boolean };
+export type CompanyContracts = { current: Contract | null; previous: Contract[]; can_start: boolean; can_view_terms: boolean; can_edit_terms: boolean };
 export type ContractEvent = {
   id: string; kind: "created" | "status" | "updated" | "document" | "renewed"; from_status: ContractStatus | null; from_label: string | null;
   to_status: ContractStatus; to_label: string; changed: string[]; actor: ContractPerson; created_at: string;
@@ -55,7 +57,7 @@ export const contractHistoryUrl = (contractId: string, offset = 0) => `${CONTRAC
 
 /** "₹50,000 per hire" or "8.33% of CTC"; "—" when no fee is recorded. */
 export function feeText(c: Pick<Contract, "fee_basis" | "fee_value">): string {
-  if (c.fee_basis === null || c.fee_value === null) return "—";
+  if (c.fee_basis == null || c.fee_value == null) return "—";
   const value = Number(c.fee_value);
   if (c.fee_basis === "percent_of_ctc") return `${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}% of CTC`;
   return `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })} per hire`;

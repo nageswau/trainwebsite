@@ -46,9 +46,11 @@ export default function RecruiterContractDocument({ companyId, contract, kind, o
       {doc ? (
         <p style={{ margin: 0 }}>
           {label}: {doc.name ?? "on file"} · uploaded {formatSchoolDateTime(doc.uploaded_at, true)}{" "}
-          <a className="btn ghost small" href={contractDocumentUrl(contract.id, kind)} download>
-            Download {noun} ({doc.content_type === "application/pdf" ? "PDF" : "image"})
-          </a>
+          {contract.permissions.can_view_terms && ( // pob-001 C5: the signed terms need `commercials.client.view`
+            <a className="btn ghost small" href={contractDocumentUrl(contract.id, kind)} download>
+              Download {noun} ({doc.content_type === "application/pdf" ? "PDF" : "image"})
+            </a>
+          )}
         </p>
       ) : (
         <p className="muted" style={{ margin: 0 }}>No {noun} on file.</p>

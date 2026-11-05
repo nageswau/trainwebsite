@@ -16,16 +16,19 @@ export default async function RecruiterRequirementPage({ params, searchParams }:
   const { id } = await params;
   const created = (await searchParams).created === "1";
   let user: User;
+  let permissions: string[] = [];
   let requirement: Requirement | null = null;
   let jd: Jd | null = null;
   try {
-    const [me, read, jdRead] = await Promise.allSettled([
+    const [me, read, jdRead, grants] = await Promise.allSettled([
       serverApi<User>("/api/v1/auth/me"),
       serverApi<{ requirement: Requirement }>(`${REQUIREMENTS_URL}/${encodeURIComponent(id)}`),
       serverApi<Jd>(jdUrl(encodeURIComponent(id))),
+      serverApi<{ permissions: string[] }>("/api/v1/auth/me/permissions"), // pob-001 C8: a failed read hides the revenue
     ]);
     if (me.status === "rejected") throw me.reason;
     user = me.value;
+    if (grants.status === "fulfilled") permissions = grants.value.permissions;
     if (jdRead.status === "fulfilled") jd = jdRead.value;
     if (read.status === "fulfilled") requirement = read.value.requirement;
     else if (!(read.reason instanceof ApiError && (read.reason.status === 404 || read.reason.status === 422))) throw read.reason;
@@ -37,7 +40,7 @@ export default async function RecruiterRequirementPage({ params, searchParams }:
     <PortalShell nav={nav} roleLabel={roleLabel} userName={user.full_name}>
       <div className="portal-content">
         {requirement ? (
-          <RecruiterRequirementDetail initial={requirement} initialJd={jd} created={created} showRevenue={canSeeRevenue(user.role)} />
+          <RecruiterRequirementDetail initial={requirement} initialJd={jd} created={created} showRevenue={canSeeRevenue(user.role, permissions)} />
         ) : (
           <div className="action-card">
             <h2>Job requirement not found</h2>

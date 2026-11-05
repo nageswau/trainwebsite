@@ -11846,3 +11846,25 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Not built:** the optional "new matching job" notice (hrc-032 owns every §13 trigger), an admin-set threshold, view analytics (hrc-034).
 - **Numbering:** no migration; API §12KQ; RBAC §2.292.
 - **Feature ID authorized:** `hrc-027`. **Status:** built on `worktree-hrc-027`.
+
+### DEC-SCOPE-401 — Placement Officer role alignment and commercial-data permissions (`pob-001`)
+
+- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-001` (doc header "Primary users", §17 role-based access for client
+  terms and vendor commercials, §18 AC "Permissions prevent unauthorised users from accessing … commercial information"; source classified
+  `UNVERIFIED`). The owner assigned pob-001 for build on 2026-11-05 and said to proceed with the recommended answers, so C1–C9 are **the
+  builder's calls (`NEEDS_CONFIRMATION`)** answering Q-01. Dependency hrc-002 (`DEC-SCOPE-374`) merged. Design
+  `docs/superpowers/specs/2026-11-05-pob-001-commercial-permissions-design.md`.
+- **Behaviour:** a contract's fee, payment terms, replacement policy and documents, a requirement's fee override, revenue, invoices,
+  receivables and the recruiter comparison's Revenue column need `commercials.client.view`; changing the terms needs `.edit` as well.
+  Without the grant the terms are absent from every contract response, every revenue route is 403, the comparison drops Revenue, and the
+  screens drop the rows, inputs, downloads, Revenue sections and the Receivables menu item.
+- **Builder's calls:** C1 Placement Officer/BDM = hrc-002's `placement_officer`, Team Lead = `placement_manager`, HR Manager = `hr_manager`;
+  no new role. C2 resources `commercials.client` (view, edit), `commercials.vendor` (view, edit), `candidates.contact` (view). C3 defaults
+  keep today's access: `placement_team` and `placement_manager` hold client view + edit, `bdm` holds client view (the assigned BDM reads
+  the contract); vendor and contact keys have no default holder (pob-010/012, pob-030 enforce them). C4 edit counts only with view. C5
+  contracts (absent fields, `can_view_terms`/`can_edit_terms`, 403 on terms writes and documents). C6 revenue routes need view; the fee
+  override needs edit on top of the manager role. C7 comparison `revenue_visible`. C8 web. C9 refusals logged without values.
+- **Not built:** vendor commercials (no vendor concept until pob-010); candidate phone/email hiding (pob-030's share gate); management
+  finance screens unchanged (`can_view_finance`).
+- **Numbering:** migration `0276_commercial_grants`; API §12KT; RBAC §2.295.
+- **Feature ID authorized:** `pob-001`. **Status:** built on `worktree-pob-001`.

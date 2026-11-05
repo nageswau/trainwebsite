@@ -13,6 +13,7 @@ const PAGE_RESOURCE: Record<string, string> = {
   "/it/admin/telecaller-reports": "reports.telecaller", "/overseas/admin/telecaller-reports": "reports.telecaller",
   "/telecaller/manager/reports": "reports.telecaller", "/it/coordinator/certificates": "certificates",
   "/it/hr/students": "student_progress", // nehn-017
+  "/recruiter/receivables": "commercials.client", // pob-001 (DEC-SCOPE-401 C8)
 };
 const withResources = (nav: NavItem[]): NavItem[] => nav.map((item) => (PAGE_RESOURCE[item.href] ? { ...item, resource: PAGE_RESOURCE[item.href] } : item));
 
@@ -159,7 +160,7 @@ export const TELECALLER_SIGN_IN = "/telecaller/sign-in";
 // rec-001 (DEC-SCOPE-116, Q-29): the recruiter's workspace, followed by the legacy placement screens it still works from; the
 // placement manager's pages (managers sign in at /admin). Later rec items add their pages here.
 const LEGACY_PLACEMENT = ["candidates", "company-requirements", "interviews", "offers", "reports"];
-export const RECRUITER_NAV: NavItem[] = [
+export const RECRUITER_NAV: NavItem[] = withResources([ // pob-001: Receivables needs commercials.client.view
   { label: "Dashboard", href: "/recruiter/dashboard" }, { label: "Companies", href: "/recruiter/companies" }, { label: "Profile", href: "/recruiter/profile" }, { label: "Skills Master", href: "/recruiter/skills" },
   { label: "Candidate Master", href: "/recruiter/candidates" }, // rec-009
   { label: "Find Candidates", href: "/recruiter/find-candidates" }, // rec-013
@@ -177,8 +178,8 @@ export const RECRUITER_NAV: NavItem[] = [
   { label: "Report library", href: "/recruiter/report-library" }, // nehn-016: students completing soon, the placement report
   ...LEGACY_PLACEMENT.map((x) => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, (c) => c.toUpperCase()), href: `/it/placement/${x}` })),
   MANAGEMENT_TASKS_NAV, // mgmt-028 (MT14)
-];
-export const RECRUITER_MANAGER_NAV: NavItem[] = [
+]);
+export const RECRUITER_MANAGER_NAV: NavItem[] = withResources([
   { label: "Dashboard", href: "/recruiter/dashboard" }, // rec-032: the team's figures; a manager still lands on Team
   { label: "Performance", href: "/recruiter/manager/performance" }, // rec-033: §24 per recruiter over a period
   { label: "Comparison", href: "/recruiter/performance" }, // rec-034: §25 BD + recruitment per recruiter
@@ -202,7 +203,7 @@ export const RECRUITER_MANAGER_NAV: NavItem[] = [
   { label: "Message templates", href: "/recruiter/manager/templates" }, // rec-026
   { label: "Report library", href: "/recruiter/manager/report-library" }, // nehn-016: students completing soon, the placement report
   MANAGEMENT_TASKS_NAV, // mgmt-028 (MT14)
-];
+]);
 
 // upc-001 (PU8): the EVID-020 §32 main menu, in source order, each entry naming the item that builds its page. An entry joins the
 // manager's sidebar once that item lands (it sets `live`); until then the dashboard lists it as coming soon, never as a dead link.

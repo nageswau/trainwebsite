@@ -21,9 +21,10 @@ const fieldsOf = (c: Contract | null): ContractFields => ({
 // rec-030 (spec §4): start (contract = null, a first contract or a renewal) or edit the current contract. Required markers follow the
 // chosen status (Active needs both dates) -- fast feedback only; the server enforces every rule and its 422 lands on the field. An edit
 // sends only what changed, plus `from_status` with a status change and the version it showed. A 409 with a code goes to the section,
-// which reloads; an overlap (CT8) stays on the form.
-export default function RecruiterContractForm({ companyId, contract, onSaved, onCancel, onConflict }: {
-  companyId: string; contract: Contract | null; onSaved: (c: Contract) => void; onCancel: () => void; onConflict: (text: string) => void;
+// which reloads; an overlap (CT8) stays on the form. pob-001 (DEC-SCOPE-401 C5): without `terms` (`commercials.client.edit`) the fee
+// and terms inputs are not offered -- left empty and unchanged, they are never sent.
+export default function RecruiterContractForm({ companyId, contract, terms, onSaved, onCancel, onConflict }: {
+  companyId: string; contract: Contract | null; terms: boolean; onSaved: (c: Contract) => void; onCancel: () => void; onConflict: (text: string) => void;
 }) {
   const expired = contract?.status === "expired";
   const [status, setStatus] = useState<ContractStatus>(contract?.status ?? "discussion");
@@ -102,26 +103,30 @@ export default function RecruiterContractForm({ companyId, contract, onSaved, on
           {error(f)}
         </div>
       ))}
-      <div className="field">
-        <label htmlFor={id("fee_basis")}>{FIELD_LABEL.fee_basis}</label>
-        <select id={id("fee_basis")} value={fields.fee_basis} onChange={(e) => set("fee_basis", e.target.value)} aria-describedby={describedBy("fee_basis")}>
-          <option value="">Not agreed yet</option>
-          {FEE_BASES.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}
-        </select>
-        {error("fee_basis")}
-      </div>
-      <div className="field">
-        <label htmlFor={id("fee_value")}>{FIELD_LABEL.fee_value}{fields.fee_basis === "percent_of_ctc" ? " (%)" : fields.fee_basis === "fixed" ? " (₹)" : ""}</label>
-        <input id={id("fee_value")} inputMode="decimal" value={fields.fee_value} onChange={(e) => set("fee_value", e.target.value)} aria-describedby={describedBy("fee_value")} />
-        {error("fee_value")}
-      </div>
-      {TERMS.map((f) => (
-        <div className="field" key={f}>
-          <label htmlFor={id(f)}>{FIELD_LABEL[f]}</label>
-          <textarea id={id(f)} value={fields[f]} onChange={(e) => set(f, e.target.value)} maxLength={2000} rows={3} aria-describedby={describedBy(f)} />
-          {error(f)}
-        </div>
-      ))}
+      {terms && (
+        <>
+          <div className="field">
+            <label htmlFor={id("fee_basis")}>{FIELD_LABEL.fee_basis}</label>
+            <select id={id("fee_basis")} value={fields.fee_basis} onChange={(e) => set("fee_basis", e.target.value)} aria-describedby={describedBy("fee_basis")}>
+              <option value="">Not agreed yet</option>
+              {FEE_BASES.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}
+            </select>
+            {error("fee_basis")}
+          </div>
+          <div className="field">
+            <label htmlFor={id("fee_value")}>{FIELD_LABEL.fee_value}{fields.fee_basis === "percent_of_ctc" ? " (%)" : fields.fee_basis === "fixed" ? " (₹)" : ""}</label>
+            <input id={id("fee_value")} inputMode="decimal" value={fields.fee_value} onChange={(e) => set("fee_value", e.target.value)} aria-describedby={describedBy("fee_value")} />
+            {error("fee_value")}
+          </div>
+          {TERMS.map((f) => (
+            <div className="field" key={f}>
+              <label htmlFor={id(f)}>{FIELD_LABEL[f]}</label>
+              <textarea id={id(f)} value={fields[f]} onChange={(e) => set(f, e.target.value)} maxLength={2000} rows={3} aria-describedby={describedBy(f)} />
+              {error(f)}
+            </div>
+          ))}
+        </>
+      )}
       <div className="actions">
         <button id={id("save")} type="submit" className="btn small" disabled={busy}>{busy ? "Saving…" : contract ? "Save contract" : "Start contract"}</button>
         <button type="button" className="btn secondary small" onClick={onCancel} disabled={busy}>Cancel</button>

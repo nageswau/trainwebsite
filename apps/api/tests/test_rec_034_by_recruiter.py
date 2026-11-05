@@ -406,5 +406,6 @@ async def test_the_read_is_a_fixed_number_of_statements(db_session):
         job = await _job(db_session, await _company(db_session, person, creator=person), person, creator=person)
         await _joined(db_session, await _application(db_session, job, person), person)
     await db_session.commit()
-    assert await _statements(db_session, manager) == empty == 3  # the team + one aggregate + the hires
-    assert await _statements(db_session, a) == 2  # a recruiter: no lookup
+    # the team + one aggregate + the hires; pob-001 C7 adds the fixed `commercials.client.view` read (override + role grant)
+    assert await _statements(db_session, manager) == empty == 3 + 2
+    assert await _statements(db_session, a) == 2 + 2  # a recruiter: no lookup

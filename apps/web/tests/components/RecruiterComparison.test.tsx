@@ -13,7 +13,7 @@ const row = (id: string | null, name: string, over: Partial<ComparisonRow> = {})
 const comparison = (over: Partial<Comparison> = {}): Comparison => ({
   date_from: "2026-10-01", date_to: "2026-10-11", recruiter: null,
   items: [row("r-1", "Asha"), row("r-2", "Ravi", { active: false, meetings: 0 })],
-  totals: row(null, "Total", { companies_contacted: 10, revenue: "300000.00" }), ...over,
+  totals: row(null, "Total", { companies_contacted: 10, revenue: "300000.00" }), revenue_visible: true, ...over,
 });
 const params = { from: "2026-10-01", to: "2026-10-11" };
 const view = (data: Comparison | null, extra: { error?: string; own?: boolean } = {}) =>

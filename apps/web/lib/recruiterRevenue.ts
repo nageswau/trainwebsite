@@ -35,7 +35,9 @@ export type CompanyRevenue = { requirements: CompanyRevenueRow[]; totals: Totals
 export type InvoicePage = { items: Invoice[]; total: number; limit: number; offset: number; counts: Record<ReceivableView, number>; outstanding_total: string };
 
 /** RV10: who sees revenue (the API answers 403 to anyone else, e.g. the BDM who reads the requirement). */
-export const canSeeRevenue = (role: string) => ["placement_team", "placement_manager", "super_admin"].includes(role);
+// RV10's roles, and (pob-001, DEC-SCOPE-401 C6/C8) the `commercials.client.view` grant -- the API refuses the revenue routes without it.
+export const canSeeRevenue = (role: string, permissions: readonly string[]) =>
+  ["placement_team", "placement_manager", "super_admin"].includes(role) && permissions.includes("commercials.client.view");
 export const INVOICES_URL = "/api/v1/recruiter/invoices";
 export const RECEIVABLES_PATH = "/recruiter/receivables";
 export const RECEIVABLES_LIMIT = 50;

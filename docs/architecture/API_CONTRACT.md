@@ -5876,3 +5876,16 @@ application: {code, status_label}|null, can_apply, blocked[]}` — no salary fie
 applied → 409 "Already applied"; a switched-on hard filter not met → 422 naming it. **Changed (behaviour):**
 `POST /api/v1/workflows/it/jobs/{id}/apply` applies the same hard-filter gate (422). A portal candidate's application notices carry
 `action_url` `/it/careers/portal/jobs`.
+
+## 12KT. Commercial-data permissions (pob-001) — addendum, 2026-11-05
+
+`DEC-SCOPE-401`. **Changed (additive):** `GET /api/v1/admin/permissions/catalogue` lists `commercials.client` (view, edit),
+`commercials.vendor` (view, edit) and `candidates.contact` (view). Contract responses (`GET|POST|PATCH /recruiter/companies/{id}/contracts`,
+`PUT …/contracts/document`) leave out `fee_basis`, `fee_value`, `payment_terms` and `replacement_policy` without
+`commercials.client.view` (absent, not null); `permissions` gains `can_view_terms` and `can_edit_terms`, and the company's contracts gain
+top-level `can_view_terms` and `can_edit_terms`. `GET /recruiter/performance/by-recruiter` gains `revenue_visible`; without the grant
+`revenue` is absent from every row and the total. **Changed (behaviour):** a contract POST/PATCH carrying any terms field (null included)
+without effective edit → 403 "Your role cannot view or change client commercial terms"; the contract/MoU upload needs effective edit and
+the download needs view (403, after the scope's 404). Every rec-031 revenue route (`GET /recruiter/requirements/{id}/revenue`,
+`PUT …/fee`, `POST /recruiter/invoices`, `…/payments`, `…/cancel`, `GET /recruiter/companies/{id}/revenue`, `GET /recruiter/invoices`)
+→ 403 "Your role cannot view client commercials" without view; `PUT …/fee` also needs edit (403) and `permissions.can_set_fee` follows it.

@@ -41,9 +41,9 @@ from app.models import (
 )
 from app.recruiter_stages import ORDER as COMPANY_STAGES
 from app.services import recruiter_companies as companies
+from app.services import recruiter_contracts, recruiter_revenue
 from app.services import recruiter_follow_ups as follow_ups
 from app.services import recruiter_requirements as requirements
-from app.services import recruiter_revenue
 from app.services.bdm_appointments import IST, today_ist
 from app.services.interviews import OPEN as OPEN_INTERVIEWS
 from app.services.recruiter import MANAGER_ROLE, ROLE
@@ -455,7 +455,11 @@ async def by_recruiter(db: AsyncSession, user: User, recruiter_id: UUID | None, 
         money = revenue.get(person.id, recruiter_revenue.ZERO)
         if person.active or any(counts.values()) or money:
             rows.append({"user_id": person.id, "full_name": person.full_name, "active": person.active, **counts, "revenue": money})
+    visible = await recruiter_contracts.sees_commercials(db, user)  # pob-001 C7: revenue needs commercials.client.view
+
     def out(row: dict) -> dict:
+        if not visible:
+            return {key: value for key, value in row.items() if key != "revenue"}
         return {**row, "revenue": f"{recruiter_revenue.money(row['revenue']):.2f}"}
 
     total = {key: sum(row[key] for row in rows) for key in (*BY_RECRUITER_COUNTS, "revenue")}
@@ -463,6 +467,7 @@ async def by_recruiter(db: AsyncSession, user: User, recruiter_id: UUID | None, 
     return {
         "date_from": first,
         "date_to": last,
+        "revenue_visible": visible,
         "recruiter": {"id": subject.id, "full_name": subject.full_name} if subject else None,
         "items": [out(row) for row in rows],
         "totals": None if user.role == ROLE else out({"user_id": None, "full_name": "Total", "active": True, **total}),

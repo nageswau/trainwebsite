@@ -25,13 +25,15 @@ function steps(c: Contract): { key: string; label: string; state: Step }[] {
 const day = (value: string | null) => (value ? formatCalendarDate(value) : display(value));
 
 function details(c: Contract): [string, ReactNode][] {
+  // pob-001 (DEC-SCOPE-401 C5): without `commercials.client.view` the API leaves the terms out; so do the rows
+  const terms: [string, ReactNode][] = c.permissions.can_view_terms
+    ? [["Recruitment fee", feeText(c)], ["Payment terms", multiline(c.payment_terms ?? null)], ["Replacement policy", multiline(c.replacement_policy ?? null)]]
+    : [];
   return [
     ["Agreement type", display(c.agreement_type)],
     ["Contract start date", day(c.start_date)],
     ["Contract end date", day(c.end_date)],
-    ["Recruitment fee", feeText(c)],
-    ["Payment terms", multiline(c.payment_terms)],
-    ["Replacement policy", multiline(c.replacement_policy)],
+    ...terms,
     ["Status changed", formatSchoolDateTime(c.status_changed_at, true)],
   ];
 }
@@ -66,7 +68,10 @@ export default function RecruiterCompanyContract({ companyId, onChanged }: { com
   function saved(next: Contract, text: string) {
     setMode("view");
     setFailure(null);
-    setData((d) => ({ current: next, previous: d?.previous ?? [], can_start: false }));
+    setData((d) => ({
+      current: next, previous: d?.previous ?? [], can_start: false,
+      can_view_terms: next.permissions.can_view_terms, can_edit_terms: d?.can_edit_terms ?? next.permissions.can_edit_terms,
+    }));
     onChanged(text);
     focus(id("edit"));
     void reload();
@@ -96,6 +101,7 @@ export default function RecruiterCompanyContract({ companyId, onChanged }: { com
   } else if (mode !== "view") {
     body = (
       <RecruiterContractForm companyId={companyId} contract={mode === "edit" ? current : null} onCancel={close} onConflict={conflicted}
+        terms={mode === "edit" ? !!current?.permissions.can_edit_terms : data.can_edit_terms}
         onSaved={(c) => saved(c, mode === "edit" ? "Contract saved." : current ? "Renewal started." : "Contract started.")} />
     );
   } else if (current === null) {
@@ -146,7 +152,7 @@ export default function RecruiterCompanyContract({ companyId, onChanged }: { com
           <ul style={{ margin: 0, paddingLeft: 18 }} aria-label="Previous contracts">
             {data.previous.map((p) => (
               <li key={p.id}>
-                <span className="badge">{p.status_label}</span> {day(p.start_date)} – {day(p.end_date)} · {feeText(p)}
+                <span className="badge">{p.status_label}</span> {day(p.start_date)} – {day(p.end_date)}{p.permissions.can_view_terms && ` · ${feeText(p)}`}
                 <RecruiterContractDocument companyId={companyId} contract={p} kind="contract" onUploaded={() => undefined} />
                 <RecruiterContractDocument companyId={companyId} contract={p} kind="mou" onUploaded={() => undefined} />
               </li>

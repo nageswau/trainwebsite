@@ -3838,3 +3838,12 @@ No new grant. `GET /candidate/jobs` and `POST /candidate/jobs/{id}/apply` admit 
 every other role is 403, anonymous 401. Neither route takes a candidate id: the caller's own record only. A job outside hrc-008's student
 visibility (internal, another segment, closed, past its date) is the same 404 as a missing one on both apply routes. Pinned by
 `apps/api/tests/test_hrc_027_candidate_jobs.py`.
+
+### 2.295 Client commercial terms *(added 2026-11-05 — `DEC-SCOPE-401`, pob-001)*
+
+`commercials.client.view` reads a contract's fee, payment terms, replacement policy and documents, revenue, invoices, receivables and the
+comparison's revenue; `.edit` (only together with view) changes the terms, uploads the documents and (with the manager role) overrides a
+requirement's fee. Defaults (migration 0276): `placement_team` and `placement_manager` view + edit, `bdm` view; super_admin holds all.
+A super admin revokes per role or per user (nehn-007 deny). `commercials.vendor.*` and `candidates.contact.view` are declared with no
+holder until pob-010/012 and pob-030 enforce them. The rec-031 role gate (RV10) and every record scope are unchanged and run first. Pinned
+by `apps/api/tests/test_pob_001_commercials.py` and `test_pob_001_migration.py`.

@@ -15,6 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import RECRUITER_CONTRACT_EXPIRING, AuditLog, Company, RecruiterContract, RecruiterContractEvent, User
+from app.services import permissions
 from app.services import recruiter_companies as companies
 from app.services.agent_orgs import retry_after
 from app.services.bdm_pipeline import _invalid
@@ -31,6 +32,7 @@ LABELS = {
     "expired": "Expired",
 }
 FIELDS = ("agreement_type", "start_date", "end_date", "fee_basis", "fee_value", "payment_terms", "replacement_policy")
+TERMS = ("fee_basis", "fee_value", "payment_terms", "replacement_policy")  # pob-001 C5: behind `commercials.client`
 DOCUMENT_KINDS = ("contract", "mou")
 RENEWABLE = ("signed", "active", "expired")  # CT7: a renewal follows a concluded contract
 NO_CONTRACT = "No contract yet"
@@ -52,6 +54,7 @@ UPLOAD_ACTION = "recruiter_contract.document_uploaded"
 UPLOAD_LIMIT = 20  # per user per rolling hour (bdm-005 M8)
 UPLOAD_WINDOW = timedelta(hours=1)
 THROTTLED = "Too many uploads. Try again later."
+NO_TERMS = "Your role cannot view or change client commercial terms"  # pob-001 C5
 
 logger = logging.getLogger("app.recruiter")
 
@@ -139,6 +142,26 @@ async def load_scoped_contract(db: AsyncSession, user: User, contract_id: UUID) 
     return row[0], row[1]
 
 
+async def sees_commercials(db: AsyncSession, user: User) -> bool:
+    """pob-001 (DEC-SCOPE-401): `commercials.client.view` -- the user's own override, else their role (at most two indexed reads)."""
+    return await permissions.user_has_grant(db, user, "commercials.client", "view")
+
+
+async def commercial_access(db: AsyncSession, user: User) -> tuple[bool, bool]:
+    """pob-001 C4: (view, edit) of the client commercials; `edit` counts only with `view`."""
+    view = await sees_commercials(db, user)
+    return view, view and await permissions.user_has_grant(db, user, "commercials.client", "edit")
+
+
+async def require_terms(db: AsyncSession, user: User, route: str, *, edit: bool, message: str = NO_TERMS) -> None:
+    """403 without `commercials.client.view` (or, with `edit`, the effective edit), logged with the actor, role and route only --
+    never the value that was sent."""
+    allowed = (await commercial_access(db, user))[1] if edit else await sees_commercials(db, user)
+    if not allowed:
+        logger.warning("recruiter_commercials_refused", extra={"extra_fields": {"actor_id": str(user.id), "role": user.role, "route": route}})
+        raise HTTPException(403, message)
+
+
 def can_write(user: User, company: Company) -> bool:
     return companies.permissions(user, company)["can_edit"]
 
@@ -209,8 +232,10 @@ def _document(contract: RecruiterContract, kind: str) -> dict | None:
     return {name: getattr(contract, f"{kind}_document_{name}") for name in ("name", "content_type", "uploaded_at")}
 
 
-async def contract_out(db: AsyncSession, user: User, company: Company, contract: RecruiterContract, on: date) -> dict:
+async def contract_out(db: AsyncSession, user: User, company: Company, contract: RecruiterContract, on: date, access: tuple[bool, bool] | None = None) -> dict:
+    """pob-001 C5: without `commercials.client.view` the terms are absent (the routes answer with response_model_exclude_unset)."""
     status = effective_status(contract, on)
+    view, edit = access or await commercial_access(db, user)
     editable = can_write(user, company) and contract.is_current
     creator = await db.get_one(User, contract.created_by_user_id)  # RESTRICT foreign key: always exists
     return {
@@ -218,13 +243,16 @@ async def contract_out(db: AsyncSession, user: User, company: Company, contract:
         "status": status,
         "status_label": LABELS[status],
         "status_changed_at": contract.status_changed_at,
-        **{f: getattr(contract, f) for f in FIELDS},
+        **{f: getattr(contract, f) for f in FIELDS if view or f not in TERMS},
         "expired_on": contract.end_date + timedelta(days=1) if status == "expired" and contract.end_date else None,
         "contract_document": _document(contract, "contract"),
         "mou_document": _document(contract, "mou"),
         "is_current": contract.is_current,
         "created_by": companies.person(creator),
-        "permissions": {"can_edit": editable, "can_upload": editable, "can_renew": editable and status in RENEWABLE},
+        "permissions": {
+            "can_edit": editable, "can_upload": editable and edit, "can_renew": editable and status in RENEWABLE,
+            "can_view_terms": view, "can_edit_terms": editable and edit,
+        },  # fmt: skip
         "created_at": contract.created_at,
         "updated_at": contract.updated_at,
     }
@@ -236,10 +264,13 @@ async def company_contracts_out(db: AsyncSession, user: User, company: Company) 
                              .order_by(RecruiterContract.created_at.desc(), RecruiterContract.id))).all()
     current = next((r for r in rows if r.is_current), None)
     renewable = current is None or effective_status(current, on) in RENEWABLE
+    access = await commercial_access(db, user)
     return {
-        "current": await contract_out(db, user, company, current, on) if current else None,
-        "previous": [await contract_out(db, user, company, r, on) for r in rows if not r.is_current],
+        "current": await contract_out(db, user, company, current, on, access) if current else None,
+        "previous": [await contract_out(db, user, company, r, on, access) for r in rows if not r.is_current],
         "can_start": can_write(user, company) and renewable,
+        "can_view_terms": access[0],  # pob-001 C5: for a first contract's form
+        "can_edit_terms": can_write(user, company) and access[1],
     }
 
 

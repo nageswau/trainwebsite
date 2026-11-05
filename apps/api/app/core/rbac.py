@@ -114,6 +114,13 @@ CATALOGUE: dict[str, dict] = {
     # hrc-035 (DEC-SCOPE-396 K7): `erase` -- decides candidates' "delete my data" requests and reads the retention rule (migration 0273).
     "candidates": {"label": "Candidates (export, import, merge, erase)", "actions": ("export", "import", "merge", "erase")},
     "results": {"label": "Interview results", "actions": ("release",)},
+    # pob-001 (DEC-SCOPE-401 C2/C4): client commercial terms -- a contract's fee, payment terms, replacement policy and documents, a
+    # requirement's fee, and the revenue priced from them. `edit` counts only together with `view`.
+    "commercials.client": {"label": "Client commercials (fees, terms, revenue)", "actions": ("view", "edit")},
+    # Declared ahead of their routes (hrc-002 R4 precedent), no default holder: vendor commercials (pob-010/012) and candidate phone and
+    # email (pob-030's share gate).
+    "commercials.vendor": {"label": "Vendor commercials", "actions": ("view", "edit")},
+    "candidates.contact": {"label": "Candidate contact details (phone, email)", "actions": ("view",)},
 }
 # The day-one grants, equal to the inline checks they replace (P3): admin.ensure_admin and telecaller_reports' REPORT_ROLES.
 # super_admin holds every key implicitly and never has rows (P5). Migration 0196 seeds a frozen copy.
@@ -121,6 +128,7 @@ _PAYMENT_ADMIN = ("payments.view", "payments.add", "discounts.add")
 _TELECALLER_REPORTS = ("reports.telecaller.view", "reports.telecaller.download")
 _TRAINING_REPORTS = ("reports.training.view", "reports.training.download")  # nehn-009 (migration 0210 seeds it); a trainer's rows are own batches
 _PLACEMENT_REPORTS = ("reports.placement.view", "reports.placement.download")  # nehn-016 (migration 0212 seeds it); rows = opted-in students
+_CLIENT_COMMERCIALS = ("commercials.client.view", "commercials.client.edit")  # pob-001 (migration 0276 seeds it)
 DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "it_admin": (
         _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure", "student_access.configure") + _TRAINING_REPORTS + _PLACEMENT_REPORTS + ("discounts.approve", "payments.refund")
@@ -130,12 +138,15 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "trainer": _TRAINING_REPORTS,
     # hrc-001 (DEC-SCOPE-371 H2, Q-03; migration 0250 seeds it): the recruiters and their managers see candidate compensation.
     # hrc-013 (DEC-SCOPE-391 I1, migration 0268 seeds it): recruiters and their managers import candidate files.
-    "placement_team": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.import"),
+    # pob-001 (DEC-SCOPE-401 C3, Q-01; migration 0276 seeds it): recruiters and their managers keep today's client commercials.
+    "placement_team": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.import") + _CLIENT_COMMERCIALS,
     # hrc-014 (migration 0256 seeds merge); hrc-008 (DEC-SCOPE-385 V4, migration 0262 seeds publish): who sees a vacancy
-    "placement_manager": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.merge", "jobs.publish", "candidates.import"),
+    "placement_manager": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.merge", "jobs.publish", "candidates.import") + _CLIENT_COMMERCIALS,
     # hrc-007 (DEC-SCOPE-380 A12; migration 0257 seeds it): the HR Manager is the vacancy approver.
     # hrc-035 (DEC-SCOPE-396 K7; migration 0273 seeds it): the HR Manager decides candidate deletion requests.
     "hr_manager": ("candidates.erase", "jobs.approve"),
+    # pob-001 (DEC-SCOPE-401 C3; migration 0276 seeds it): the assigned BDM keeps reading the company's contract terms (rec-030 R10).
+    "bdm": ("commercials.client.view",),
     "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
     "telecaller_manager": _TELECALLER_REPORTS,
     # nehn-030 (0201 seeds view); nehn-031 W3/W4 (0204 seeds issue, override): issuance is the coordinator's alone (DEC-ROLE-003).
