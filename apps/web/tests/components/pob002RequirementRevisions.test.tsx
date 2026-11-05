@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import RecruiterRequirementDetail from "@/components/RecruiterRequirementDetail";
 import RecruiterRequirementForm from "@/components/RecruiterRequirementForm";
 import RequirementRevisions from "@/components/RequirementRevisions";
+import { actionLabel, humanise } from "@/lib/recruiterHistory";
 import type { CommercialTerms, Requirement } from "@/lib/recruiterRequirements";
 import { requirementBody, revisionText, stepList, valuesOf, wire } from "@/lib/recruiterRequirements";
 
@@ -73,6 +74,14 @@ describe("pob-002 helpers", () => {
     expect(values.replacement_terms).toBe("Replace within 90 days");
     expect(values.interview_rounds).toBe("Technical\nHR");
     expect(requirementBody({ ...values, expected_tat_days: "30" }, values)).toEqual({ expected_tat_days: 30 });
+  });
+
+  it("QA-01: the Change history names the new fields in words", () => {
+    expect(humanise("expected_tat_days")).toBe("Expected turnaround (days)");
+    expect(humanise("decision_maker_contact")).toBe("Decision-maker");
+    expect(humanise("payment_days")).toBe("Payment due (days after joining)");
+    expect(actionLabel("recruiter_requirement.backup_released")).toBe("Backup owner removed (user deactivated)");
+    expect(humanise("salary_min")).toBe("Salary min"); // unchanged for everything else
   });
 
   it("reads stored values as words", () => {

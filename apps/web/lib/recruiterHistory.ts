@@ -14,8 +14,13 @@ export const historyPageUrl = (url: string, offset: number) => `${url}?limit=${H
 export const isHistoryPage = (body: unknown): body is HistoryPage =>
   typeof body === "object" && body !== null && Array.isArray((body as HistoryPage).items) && typeof (body as HistoryPage).total === "number";
 
+// pob-002 (QA-01): field names whose plain humanised form reads badly
+const FIELD_WORDS: Record<string, string> = {
+  expected_tat_days: "Expected turnaround (days)", payment_days: "Payment due (days after joining)", decision_maker_contact: "Decision-maker",
+};
+
 /** "salary_min" → "Salary min", "on_hold" → "On hold", "source_id" → "Source" (QA-02). */
-export const humanise = (key: string) => (key.charAt(0).toUpperCase() + key.slice(1)).replace(/_id$/, "").replace(/_/g, " ");
+export const humanise = (key: string) => FIELD_WORDS[key] ?? (key.charAt(0).toUpperCase() + key.slice(1)).replace(/_id$/, "").replace(/_/g, " ");
 
 const ACTIONS: Record<string, string> = {
   "recruiter_requirement.create": "Created",
@@ -26,6 +31,7 @@ const ACTIONS: Record<string, string> = {
   "recruiter_requirement.duplicate_override": "Saved despite a possible duplicate", // hrc-005
   "recruiter_requirement.owner_added": "Owner added", // hrc-006
   "recruiter_requirement.owner_removed": "Owner removed",
+  "recruiter_requirement.backup_released": "Backup owner removed (user deactivated)", // pob-002
   "job_description.create": "JD version saved",
   "job_description.upload": "JD file uploaded",
   "candidate.create": "Created",
