@@ -19,6 +19,7 @@ import {
   type InterviewFeedback,
   interviewOf,
   interviewUrl,
+  IST_ZONE,
   NOTE_MAX,
   type Notices,
   noticeText,
@@ -154,6 +155,36 @@ function RescheduleForm({ interview, onSaved, onCancel }: { interview: RecInterv
   );
 }
 
+/** hrc-028 (I3): cancel with a required reason (the candidate reads it) and the notice choice; the interview is then final. */
+function CancelForm({ interview, onSaved, onCancel }: { interview: RecInterview; onSaved: Saved; onCancel: () => void }) {
+  const id = useId();
+  const [reason, setReason] = useState("");
+  const [notify, setNotify] = useState(true);
+  const { busy, errors, setErrors, failure, run } = useSubmit(onSaved);
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!reason.trim()) return setErrors({ reason: "Enter the reason" });
+    void run(() => sendJson(interviewUrl(interview.id, "cancel"), "POST", { reason: reason.trim(), notify }));
+  }
+  return (
+    <form aria-label={`Cancel ${interview.code}`} className="action-card" noValidate onSubmit={submit} onKeyDown={(e) => e.key === "Escape" && onCancel()}>
+      <Field id={`${id}-reason`} label="Reason (required, shown to the candidate)" error={errors.reason}>
+        <textarea id={`${id}-reason`} autoFocus required aria-required="true" rows={2} maxLength={NOTE_MAX} value={reason} onChange={(e) => setReason(e.target.value)}
+          aria-invalid={errors.reason ? true : undefined} aria-describedby={errors.reason ? `${id}-reason-error` : undefined} />
+      </Field>
+      <label style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+        <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
+        Notify the candidate{interview.contact ? " and the contact" : ""}
+      </label>
+      <Problem failure={failure} />
+      <div className="actions">
+        <button type="submit" className="btn small" disabled={busy}>{busy ? "Cancelling…" : "Cancel interview"}</button>
+        <button type="button" className="btn secondary small" onClick={onCancel}>Keep interview</button>
+      </div>
+    </form>
+  );
+}
+
 const RATINGS = ["1", "2", "3", "4", "5"];
 const TEXTS = [["strengths", "Strengths"], ["weaknesses", "Weaknesses"], ["recruiter_comments", "Recruiter comments"], ["company_feedback", "Company feedback"]] as const;
 const RATING_FIELDS = [["technical_rating", "Technical"], ["communication_rating", "Communication"]] as const;
@@ -262,11 +293,26 @@ function FeedbackSummary({ code, feedback: f }: { code: string; feedback: Interv
   );
 }
 
+/** The IST start and end; a same-day end reads as a time only ("12 Oct 2026, 11:00 – 11:45 IST", QA-01). */
+function whenText(start: string, end: string | null): string {
+  const from = formatSchoolDateTime(start, true);
+  if (!end) return from;
+  const to = formatSchoolDateTime(end, true);
+  const [fromDay] = from.split(", ");
+  const [toDay, toTime] = to.split(", ");
+  return fromDay === toDay ? `${from.replace(/ IST$/, "")} – ${toTime}` : `${from} – ${to}`;
+}
+
 function historyText(h: InterviewEvent): string {
   const by = h.actor ? ` by ${h.actor.full_name}` : "";
   const note = h.note ? ` — ${h.note}` : "";
   const at = formatSchoolDateTime(h.created_at, true);
   if (h.event === "scheduled") return `Scheduled ${at}${by}`;
+  if (h.event === "details") { // hrc-028 (I4): the replaced link itself stays out of view
+    const parts = [h.old_meeting_url !== h.new_meeting_url && (h.new_meeting_url ? (h.old_meeting_url ? "Meeting link replaced" : "Meeting link added") : "Meeting link removed"),
+      h.old_location !== h.new_location && `Location changed from ${h.old_location ?? "none"} to ${h.new_location ?? "none"}`].filter(Boolean);
+    return `${parts.join("; ")} ${at}${by}`;
+  }
   if (h.event === "rescheduled") {
     const from = h.old_scheduled_at ? formatSchoolDateTime(h.old_scheduled_at, true) : "?";
     const to = h.new_scheduled_at ? formatSchoolDateTime(h.new_scheduled_at, true) : "?";
@@ -281,11 +327,13 @@ function historyText(h: InterviewEvent): string {
 export default function RecruiterInterviewItem({ interview: given, card = false, contacts = [], onChanged }: {
   interview: RecInterview; card?: boolean; contacts?: ContactOption[]; onChanged: (interview: RecInterview, notice: string, nextRound?: Round) => void;
 }) {
-  const [mode, setMode] = useState<"view" | "status" | "reschedule" | "edit" | "feedback">("view");
+  const [mode, setMode] = useState<"view" | "status" | "reschedule" | "edit" | "feedback" | "cancel">("view");
   const [latest, setLatest] = useState<RecInterview | null>(null); // hrc-003 QA-03: a stale edit's reload shows here until the list reloads
   const i = latest && latest.updated_at > given.updated_at ? latest : given;
   const id = useId();
-  const link = safeLink(i.meeting_url);
+  const cancelled = i.status === "cancelled";
+  const link = cancelled ? null : safeLink(i.meeting_url); // hrc-028 (I4): no link once cancelled
+  const round = i.round_label && i.round_number ? `${i.round_label} (round ${i.round_number})` : i.round_label;
   const done = (text: string) => (next: RecInterview, notices?: Notices) => {
     setMode("view");
     onChanged(next, [text, noticeText(notices)].filter(Boolean).join(" "));
@@ -297,11 +345,16 @@ export default function RecruiterInterviewItem({ interview: given, card = false,
   };
   const facts = [
     card && ["Requirement", `${i.requirement.title} · ${i.company.name}`],
-    ["When", formatSchoolDateTime(i.scheduled_at, true)],
+    ["When", whenText(i.scheduled_at, i.ends_at)],
+    i.time_zone !== IST_ZONE && ["Candidate's time", i.local_when], // hrc-028 (I2)
     ["Mode", i.mode],
+    i.platform_label && ["Platform", i.platform_label],
     i.interviewer && ["Interviewer", i.interviewer],
     i.location && ["Location", i.location],
+    i.phone_details && ["Phone", i.phone_details],
     i.contact && ["Contact", i.contact.name],
+    i.instructions && ["Instructions", i.instructions],
+    i.documents_required && ["Documents to bring", i.documents_required],
   ].filter(Boolean) as [string, string][];
   return (
     <li className="action-card" style={{ listStyle: "none", gap: 6 }} aria-labelledby={`${id}-title`}>
@@ -310,18 +363,19 @@ export default function RecruiterInterviewItem({ interview: given, card = false,
           {card ? (
             <Link href={`${REQUIREMENTS_PATH}/${encodeURIComponent(i.requirement.id)}`} style={LINK_STYLE}>{i.candidate.name}</Link>
           ) : (
-            i.round_label ?? "Interview"
+            round ?? "Interview"
           )}
         </strong>
-        {card && i.round_label && <span>{i.round_label}</span>}
+        {card && round && <span>{round}</span>}
         <span className="muted" style={{ fontSize: 13 }}>{i.code}</span>
         <span className="badge">{i.status_label}</span>
       </div>
+      {cancelled && i.cancel_reason && <p style={{ margin: 0, ...TEXT }}><strong>Cancelled — {i.cancel_reason}</strong></p>}
       <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: "4px 16px", margin: 0 }}>
         {facts.map(([term, value]) => (
           <div key={term}>
             <dt className="muted" style={{ fontSize: 13 }}>{term}</dt>
-            <dd style={{ margin: 0, overflowWrap: "anywhere" }}>{value}</dd>
+            <dd style={{ margin: 0, ...TEXT }}>{value}</dd>
           </div>
         ))}
       </dl>
@@ -340,10 +394,11 @@ export default function RecruiterInterviewItem({ interview: given, card = false,
       )}
       {mode === "status" && <StatusForm interview={i} onCancel={() => setMode("view")} onSaved={done("Status saved.")} />}
       {mode === "reschedule" && <RescheduleForm interview={i} onCancel={() => setMode("view")} onSaved={done("Interview rescheduled.")} />}
+      {mode === "cancel" && <CancelForm interview={i} onCancel={() => setMode("view")} onSaved={done("Interview cancelled.")} />}
       {mode === "edit" && <RecruiterInterviewForm interview={i} contacts={contacts} onCancel={() => setMode("view")} onSaved={done("Interview updated.")} onLatest={setLatest} />}
       {i.feedback && mode !== "feedback" && <FeedbackSummary code={i.code} feedback={i.feedback} />}
       {mode === "feedback" && <FeedbackForm interview={i} onCancel={() => setMode("view")} onSaved={feedbackSaved} />}
-      {mode === "view" && (i.allowed_statuses.length > 0 || i.can_reschedule || i.can_edit || i.can_feedback) && (
+      {mode === "view" && (i.allowed_statuses.length > 0 || i.can_reschedule || i.can_edit || i.can_feedback || i.can_cancel) && (
         <div className="actions" style={{ flexWrap: "wrap" }}>
           {i.allowed_statuses.length > 0 && (
             <button type="button" className="btn small" onClick={() => setMode("status")}>Change status<span className="visually-hidden"> of {i.code}</span></button>
@@ -356,6 +411,9 @@ export default function RecruiterInterviewItem({ interview: given, card = false,
             <button type="button" className={i.feedback ? "btn secondary small" : "btn small"} onClick={() => setMode("feedback")}>
               {i.feedback ? "Edit feedback" : "Record feedback"}<span className="visually-hidden"> for {i.code}</span>
             </button>
+          )}
+          {i.can_cancel && (
+            <button type="button" className="btn secondary small" onClick={() => setMode("cancel")}>Cancel interview<span className="visually-hidden"> {i.code}</span></button>
           )}
         </div>
       )}

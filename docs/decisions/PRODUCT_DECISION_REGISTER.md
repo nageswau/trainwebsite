@@ -11872,3 +11872,25 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   numbers below. Talent-pool rules do not gain the new filters.
 - **Numbering:** migration `0275_candidate_search_indexes` (pg_trgm + indexes, no data change); API §12KR; no RBAC change.
 - **Feature ID authorized:** `hrc-019`. **Status:** built on `worktree-hrc-019`.
+### DEC-SCOPE-400 — Interview model completion, cancellation, link history and calendar (`hrc-028`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-028` (PDF §10.1 interview fields, §10.2 sync rules, §16 calendar, §17 QA
+  #13/#14; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00). Dependency hrc-004 (`DEC-SCOPE-376`)
+  merged. The owner said to proceed with the recommended answers, so I1–I10 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-05-hrc-028-interview-completion-design.md`.
+- **Behaviour:** an interview gains round number, end time, the candidate's time zone, platform, phone details, instructions and documents
+  to bring; a recruiter can cancel it with a required reason (status `cancelled`, final); a changed meeting link or location is kept, old
+  and new, on a staff-only `details` event while every candidate surface shows only the current link (none once cancelled). Schedule,
+  reschedule, a candidate-visible detail change and cancel notify the candidate (and the chosen contact) with an `.ics` invite (METHOD
+  REQUEST / CANCEL, one UID per interview, SEQUENCE moved on every later notice); times read in the candidate's zone with its UTC offset.
+- **Builder's calls:** I1 fields and limits (round number 1–20; end after the start, ≤ 12 h; any IANA zone, default Asia/Kolkata; five
+  platforms). I2 stored UTC, entered in IST, shown in the candidate's zone; a reschedule keeps the duration; the past stays 422. I3 cancel
+  from Scheduled/Confirmed/Rescheduled/On Hold only (else 409), a `status` event carries the reason, the application does not move, the
+  slot leaves the clash check, Closed lists it. I4 `details` events with old/new link and location; the audit keeps redacting the URL. I5
+  notices on schedule, reschedule, a visible PATCH change (`notify`, default true) and cancel; interviewers wait for hrc-029. I6 the invite
+  is built when queued (student: delivery context `interview_invite`; email rows: `recruiter_messages.calendar_ics`). I7 the student
+  portal shows round, role, company, time in zone, mode, the current link, details and "Cancelled — reason". I8 the recruiter form and item
+  gain the fields, the candidate's time, Cancel with a reason and the history lines. I9 AuthZ unchanged (rec-017 writers; out of scope 404).
+  I10 not built: auto-created meetings (Q-29), interviewer users, result release (hrc-030), a candidate-chosen zone on the profile.
+- **Numbering:** migration `0276_interview_completion`; API §12KS; RBAC §2.291.
+- **Feature ID authorized:** `hrc-028`. **Status:** built on `worktree-hrc-028`.

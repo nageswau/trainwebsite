@@ -15,14 +15,46 @@ export type Round = (typeof ROUNDS)[number]["key"];
 /** §14 L638-L652: the history names statuses by key. */
 export const STATUS_LABELS: Record<string, string> = {
   scheduled: "Scheduled", confirmed: "Confirmed", completed: "Completed", rescheduled: "Rescheduled", no_show: "No Show",
-  selected: "Selected", rejected: "Rejected", on_hold: "On Hold",
+  selected: "Selected", rejected: "Rejected", on_hold: "On Hold", cancelled: "Cancelled",
 };
+
+// hrc-028 (DEC-SCOPE-400 I1/I2): the meeting platforms (the API's order), the candidate's zone and the length of the interview.
+export const PLATFORMS = [
+  { key: "google_meet", label: "Google Meet" },
+  { key: "microsoft_teams", label: "Microsoft Teams" },
+  { key: "zoom", label: "Zoom" },
+  { key: "zoho_meeting", label: "Zoho Meeting" },
+  { key: "other", label: "Other" },
+] as const;
+export const IST_ZONE = "Asia/Kolkata";
+/** Common candidate zones; the API accepts any IANA name, and a stored one outside this list is kept as an option. */
+export const TIME_ZONES = [
+  IST_ZONE, "Asia/Dubai", "Asia/Riyadh", "Asia/Qatar", "Asia/Singapore", "Asia/Tokyo", "Australia/Sydney", "Europe/London", "Europe/Berlin",
+  "America/New_York", "America/Chicago", "America/Los_Angeles",
+];
+export const zoneOptions = (stored?: string | null): string[] => (stored && !TIME_ZONES.includes(stored) ? [...TIME_ZONES, stored] : TIME_ZONES);
+export const DURATIONS = ["15", "30", "45", "60", "90", "120", "180", "240"];
+export const PHONE_MAX = 200;
+export const INSTRUCTIONS_MAX = 2000;
+export const DOCUMENTS_MAX = 1000;
+
+/** The interview's length in minutes as the form's select value ("" = no end set). */
+export function durationOf(i: Pick<RecInterview, "scheduled_at" | "ends_at">): string {
+  return i.ends_at ? String(Math.round((Date.parse(i.ends_at) - Date.parse(i.scheduled_at)) / 60000)) : "";
+}
+
+/** The end the API stores: the start plus the chosen minutes (null = none). */
+export function endsAt(startIso: string, minutes: string): string | null {
+  return minutes && startIso ? new Date(Date.parse(startIso) + Number(minutes) * 60000).toISOString() : null;
+}
 
 type PersonRef = { id: string; full_name: string };
 type StatusOption = { key: string; label: string };
 export type InterviewEvent = {
-  event: "scheduled" | "rescheduled" | "status"; from_status: string | null; to_status: string | null; old_scheduled_at: string | null;
+  event: "scheduled" | "rescheduled" | "status" | "details"; from_status: string | null; to_status: string | null; old_scheduled_at: string | null;
   new_scheduled_at: string | null; note: string | null; actor: PersonRef | null; created_at: string;
+  // hrc-028 (I4): a `details` event's replaced link / location -- staff only
+  old_meeting_url?: string | null; new_meeting_url?: string | null; old_location?: string | null; new_location?: string | null;
 };
 /** rec-021 (FB3): the decisions are the interview's own decision statuses. */
 export const DECISIONS = ["selected", "rejected", "on_hold"] as const;
@@ -43,6 +75,9 @@ export type RecInterview = {
   requirement: { id: string; code: string; title: string }; company: { id: string; name: string }; contact: { id: string; name: string } | null;
   history: InterviewEvent[]; allowed_statuses: StatusOption[]; can_edit: boolean; can_reschedule: boolean;
   feedback: InterviewFeedback | null; can_feedback: boolean; updated_at: string; // hrc-003: the edit form's token
+  // hrc-028 (I1/I3): `local_when` is the start and end in the candidate's zone, as the notices and the portal show it
+  round_number: number | null; ends_at: string | null; time_zone: string; local_when: string; platform: string | null; platform_label: string | null;
+  phone_details: string | null; instructions: string | null; documents_required: string | null; cancel_reason: string | null; can_cancel: boolean;
 };
 export type Notices = { candidate: string; contact: string | null };
 export type ApplicationInterviews = { items: RecInterview[]; can_schedule: boolean };
@@ -53,7 +88,7 @@ export type InterviewListPage = Page<RecInterview> & { counts: Record<InterviewV
 export const INTERVIEWS_URL = "/api/v1/recruiter/interviews";
 export const LIST_LIMIT = 50;
 export const NOTE_MAX = 500;
-export const interviewUrl = (id: string, action?: "reschedule" | "status" | "feedback") => `${INTERVIEWS_URL}/${encodeURIComponent(id)}${action ? `/${action}` : ""}`;
+export const interviewUrl = (id: string, action?: "reschedule" | "status" | "feedback" | "cancel") => `${INTERVIEWS_URL}/${encodeURIComponent(id)}${action ? `/${action}` : ""}`;
 export const applicationInterviewsUrl = (applicationId: string) => `/api/v1/recruiter/applications/${encodeURIComponent(applicationId)}/interviews`;
 
 export function interviewsUrl(view: InterviewView, offset = 0): string {
