@@ -104,6 +104,8 @@ from app.models import (
     LEDGER_VERTICALS,
     MEETING_KINDS,
     MEETING_STATUSES,
+    PANEL_ATTENDANCE,
+    PANEL_RECOMMENDATIONS,
     PARTNERSHIP_POTENTIALS,
     PARTNERSHIP_TARGET_KPI_KEYS,
     PARTNERSHIP_TARGET_MAX,
@@ -11373,6 +11375,49 @@ class RecInterviewFeedbackIn(BaseModel):
     def _no_next_round_after_rejected(cls, value, info: ValidationInfo):
         if value is not None and info.data.get("final_decision") == "rejected":
             raise ValueError("A rejected candidate has no next round")
+        return value
+
+
+# --- hrc-029 (DEC-SCOPE-405): the interview panel and its feedback ------------------------------------------------------------------
+class InterviewPanelMemberIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    user_id: UUID
+    is_lead: StrictBool = False
+
+
+class InterviewPanelIn(BaseModel):
+    """V2/V3: the whole panel -- a member left out is removed. At most 10, no one twice, at most one lead."""
+
+    model_config = ConfigDict(extra="forbid")
+    interviewers: list[InterviewPanelMemberIn] = Field(max_length=10)
+
+    @field_validator("interviewers")
+    @classmethod
+    def _distinct_one_lead(cls, value: list[InterviewPanelMemberIn]):
+        if len({m.user_id for m in value}) != len(value):
+            raise ValueError("Choose each interviewer once")
+        if sum(m.is_lead for m in value) > 1:
+            raise ValueError("Choose at most one lead interviewer")
+        return value
+
+
+class InterviewPanelFeedbackIn(BaseModel):
+    """V7: the whole form; attended needs a score and a recommendation, a no-show clears them (app.models.PANEL_FEEDBACK_CHECKS)."""
+
+    model_config = ConfigDict(extra="forbid")
+    attendance: Literal[PANEL_ATTENDANCE]
+    score: int | None = Field(default=None, ge=1, le=5, validate_default=True)
+    recommendation: Literal[PANEL_RECOMMENDATIONS] | None = Field(default=None, validate_default=True)
+    notes: _rec_requirement_text_type(2000, multiline=True) = None
+
+    @field_validator("score", "recommendation")
+    @classmethod
+    def _attended_needs_both(cls, value, info: ValidationInfo):
+        attendance = info.data.get("attendance")
+        if attendance == "no_show":
+            return None
+        if value is None and attendance == "attended":
+            raise ValueError("Choose a score" if info.field_name == "score" else "Choose a recommendation")
         return value
 
 

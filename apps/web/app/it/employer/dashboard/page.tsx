@@ -4,6 +4,7 @@ import EmployerJobsPanel from "@/components/EmployerJobsPanel";
 import EmployerCandidateSearchPanel from "@/components/EmployerCandidateSearchPanel";
 import EmployerInterviewsPanel from "@/components/EmployerInterviewsPanel";
 import EmployerSharedProfilesPanel from "@/components/EmployerSharedProfilesPanel";
+import InterviewerWorkspace from "@/components/InterviewerWorkspace";
 
 type EmployerProfile = {
   full_name: string;
@@ -55,6 +56,10 @@ export default async function EmployerDashboardPage() {
         </div>
         <div style={{ marginTop: 24 }}>
           <EmployerSharedProfilesPanel />
+        </div>
+        {/* hrc-029 (DEC-SCOPE-405 V12): the interviews a recruiter assigned this employer user to, with the resume and their feedback. */}
+        <div style={{ marginTop: 24 }}>
+          <InterviewerWorkspace heading="Interviews assigned to you" />
         </div>
         <div style={{ marginTop: 24 }}>
           <EmployerInterviewsPanel />

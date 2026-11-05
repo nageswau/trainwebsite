@@ -5954,3 +5954,25 @@ without effective edit → 403 "Your role cannot view or change client commercia
 the download needs view (403, after the scope's 404). Every rec-031 revenue route (`GET /recruiter/requirements/{id}/revenue`,
 `PUT …/fee`, `POST /recruiter/invoices`, `…/payments`, `…/cancel`, `GET /recruiter/companies/{id}/revenue`, `GET /recruiter/invoices`)
 → 403 "Your role cannot view client commercials" without view; `PUT …/fee` also needs edit (403) and `permissions.can_set_fee` follows it.
+
+## 12KX. Interview panel and the interviewer's workspace (hrc-029) — addendum, 2026-11-05
+
+`DEC-SCOPE-405`. **New (recruiter):** `GET /api/v1/recruiter/interviews/{id}/interviewer-options` → `{items: [{id, full_name, email, kind
+(internal|employer), kind_label}]}` — active `interviewer` users, then active employer users of the requirement's company; rec-017 writers
+only (403 for the manager/BDM readers, 404 out of scope). `PUT /api/v1/recruiter/interviews/{id}/interviewers {interviewers: [{user_id,
+is_lead}]}` (≤10, distinct, ≤1 lead; 422) replaces the panel → `{interview}`; 422 on `interviewers` for an ineligible user, 409 on a
+Selected/Rejected/Cancelled interview or when removing a member who has submitted feedback; new members get an in-app notification.
+**Changed (additive):** every recruiter interview item carries `interviewers: [{id, full_name, kind, kind_label, is_lead, feedback:
+{attendance, attendance_label, score, recommendation, recommendation_label, notes, updated_at} | null}]` (lead first) and `can_assign`.
+**New (panel member — roles `interviewer` and `employer`, any other role 403, signed out 401):** `GET /api/v1/interviewer/interviews
+?view=upcoming|past&limit&offset` → `{items, total, limit, offset, counts: {upcoming, past}}`; `GET /api/v1/interviewer/interviews/{id}`
+(not assigned, or an employer no longer at the requirement's company → 404); each item: `id, code, round_label, round_number,
+scheduled_at, ends_at, mode, platform_label, meeting_url (null once cancelled), location, phone_details, instructions, status,
+status_label (decisions read Completed), cancel_reason, is_lead, candidate {code, name, location, qualification, experience_months,
+current_company, skills}, requirement {code, title}, company {name}, has_resume, feedback, can_feedback, feedback_overdue`.
+`GET /api/v1/interviewer/interviews/{id}/resume` → the resume version shared at assignment (attachment, `private, no-store`), audited as
+`interviewer.resume_download`; 404 "Resume not available" without one, once cancelled, for an archived candidate or after the interview
+end + 7 days. `PUT /api/v1/interviewer/interviews/{id}/feedback {attendance: attended|no_show, score 1–5, recommendation:
+strong_yes|yes|no|strong_no, notes ≤2000}` → the item; attended needs score and recommendation (422 on each field), no-show clears them;
+409 before the interview time, when cancelled or decided. Panel feedback never changes the interview or the application. No candidate,
+student or employer-list route returns it.

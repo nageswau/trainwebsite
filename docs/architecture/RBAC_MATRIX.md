@@ -3870,3 +3870,13 @@ requirement's fee. Defaults (migration 0278): `placement_team` and `placement_ma
 A super admin revokes per role or per user (nehn-007 deny). `commercials.vendor.*` and `candidates.contact.view` are declared with no
 holder until pob-010/012 and pob-030 enforce them. The rec-031 role gate (RV10) and every record scope are unchanged and run first. Pinned
 by `apps/api/tests/test_pob_001_commercials.py` and `test_pob_001_migration.py`.
+
+### 2.298 Interview panel and interviewer access *(added 2026-11-05 — `DEC-SCOPE-405`, hrc-029)*
+
+Assigning a panel (`interviewer-options`, `PUT …/interviewers`) is a rec-017 write: `placement_team` (in scope) and super_admin; the
+manager and the assigned BDM read the panel on the interview but get 403 here; out of scope 404; every other role 403. The panel member
+routes (`/interviewer/interviews*`) take roles `interviewer` (kind internal) and `employer` (kind employer) only — any other role 403 —
+and resolve only the caller's own assignments: anything else is 404 (IDOR), and an employer's assignment counts only while their employer
+profile is the requirement's company. A member reads the candidate summary (no phone, email, LinkedIn or salary), the resume version shared
+at assignment within 7 days after the interview, and writes only their own feedback; they never read other members' or the recruiter's
+feedback. Pinned by `apps/api/tests/test_hrc_029_interview_panel.py` and the rec-038 matrix rows.

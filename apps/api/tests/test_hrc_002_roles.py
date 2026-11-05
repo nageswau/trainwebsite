@@ -108,7 +108,7 @@ async def test_interviewer_dashboard_has_no_data_yet(client, db_session):
     body = (await client.get(dashboard("interviewer"))).json()
     assert body["title"] == "Interviewer Dashboard"
     assert body["rows"] == [] and body["metrics"] == []
-    assert body["subtitle"] == "No interviews are assigned to you yet."
+    assert body["subtitle"] == "The interviews you are assigned to: the candidate summary, the resume shared with you and your feedback."
 
 
 @pytest.mark.asyncio

@@ -2067,7 +2067,7 @@ async def _recruitment_role(db: AsyncSession, user: User, section: str):
     if section != "dashboard":
         return None
     if user.role == "interviewer":
-        return _payload("Interviewer Dashboard", "No interviews are assigned to you yet.")
+        return _payload("Interviewer Dashboard", "The interviews you are assigned to: the candidate summary, the resume shared with you and your feedback.")
     jobs = (
         await db.execute(
             select(Job, Company).join(Company, Company.id == Job.company_id).where(Job.status.in_(JOB_OPEN_STATUSES)).order_by(Job.created_at.desc())

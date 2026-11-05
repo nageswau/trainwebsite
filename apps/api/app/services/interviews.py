@@ -28,6 +28,8 @@ from app.models import (
     Interview,
     InterviewEvent,
     InterviewFeedback,
+    InterviewInterviewer,
+    InterviewPanelFeedback,
     Job,
     JobApplication,
     Notification,
@@ -366,6 +368,42 @@ async def _feedback(db: AsyncSession, ids: list[UUID]) -> dict[UUID, dict]:
     }
 
 
+# hrc-029 (DEC-SCOPE-405 V7): the panel labels and a member's feedback as read (services/interview_panel.py writes them)
+KIND_LABELS = {"internal": "Internal interviewer", "employer": "Employer"}
+ATTENDANCE_LABELS = {"attended": "Attended", "no_show": "No-show"}
+RECOMMENDATION_LABELS = {"strong_yes": "Strongly recommend", "yes": "Recommend", "no": "Do not recommend", "strong_no": "Strongly do not recommend"}
+
+
+def panel_feedback_out(row: InterviewPanelFeedback | None) -> dict | None:
+    if row is None:
+        return None
+    return {
+        "attendance": row.attendance, "attendance_label": ATTENDANCE_LABELS[row.attendance], "score": row.score, "recommendation": row.recommendation,
+        "recommendation_label": RECOMMENDATION_LABELS.get(row.recommendation or ""), "notes": row.notes, "updated_at": row.updated_at,
+    }  # fmt: skip
+
+
+async def _panel(db: AsyncSession, ids: list[UUID]) -> dict[UUID, list[dict]]:
+    """hrc-029 (DEC-SCOPE-405 V9): each interview's panel, lead first, with every member's own feedback -- one query."""
+    if not ids:
+        return {}
+    rows = await db.execute(
+        select(InterviewInterviewer, User, InterviewPanelFeedback)
+        .join(User, User.id == InterviewInterviewer.user_id)
+        .outerjoin(InterviewPanelFeedback, (InterviewPanelFeedback.interview_id == InterviewInterviewer.interview_id) & (InterviewPanelFeedback.interviewer_user_id == User.id))
+        .where(InterviewInterviewer.interview_id.in_(ids))
+        .order_by(InterviewInterviewer.is_lead.desc(), func.lower(User.full_name), User.id)
+        .execution_options(populate_existing=True)
+    )
+    panel: dict[UUID, list[dict]] = {}
+    for member, person, feedback in rows:
+        panel.setdefault(member.interview_id, []).append({
+            "id": person.id, "full_name": person.full_name, "kind": member.kind, "kind_label": KIND_LABELS[member.kind], "is_lead": member.is_lead,
+            "feedback": panel_feedback_out(feedback),
+        })
+    return panel
+
+
 # --- notices (IV9, Q-20) ------------------------------------------------------------------------------------------------------------
 def _details(interview: Interview, job: Job, company: Company) -> list[str]:
     """hrc-028 (I2/I4): the time in the candidate's zone; once cancelled the link is never sent again, and the reason is."""
@@ -490,7 +528,7 @@ async def _history(db: AsyncSession, ids: list[UUID]) -> dict[UUID, list]:
     return history
 
 
-def _out(user: User, now: datetime, history: dict, feedback: dict, i: Interview, a: JobApplication, c: Candidate, job: Job, company: Company,
+def _out(user: User, now: datetime, history: dict, feedback: dict, panel: dict, i: Interview, a: JobApplication, c: Candidate, job: Job, company: Company,
          contact) -> dict:
     writer = applications.can_write(user)
     return {
@@ -513,13 +551,15 @@ def _out(user: User, now: datetime, history: dict, feedback: dict, i: Interview,
         "can_cancel": writer and i.status in CANCELLABLE,
         "feedback": feedback.get(i.id),
         "can_feedback": can_feedback(user, i.status, i.id in feedback),
+        "interviewers": panel.get(i.id, []),  # hrc-029 (V9)
+        "can_assign": writer and i.status not in CLOSED,
     }
 
 
 async def _items(db: AsyncSession, user: User, now: datetime, rows) -> list[dict]:
     ids = [row[0].id for row in rows]
-    history, feedback = await _history(db, ids), await _feedback(db, ids)
-    return [_out(user, now, history, feedback, *row) for row in rows]
+    history, feedback, panel = await _history(db, ids), await _feedback(db, ids), await _panel(db, ids)
+    return [_out(user, now, history, feedback, panel, *row) for row in rows]
 
 
 async def one(db: AsyncSession, user: User, interview_id: UUID, now: datetime) -> dict:

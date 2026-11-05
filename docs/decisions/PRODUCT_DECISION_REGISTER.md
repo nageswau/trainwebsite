@@ -11952,3 +11952,27 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   finance screens unchanged (`can_view_finance`).
 - **Numbering:** migration `0278_commercial_grants`; API §12KV; RBAC §2.296.
 - **Feature ID authorized:** `pob-001`. **Status:** built on `worktree-pob-001`.
+
+### DEC-SCOPE-405 — Interviewer and hiring-manager access with feedback (`hrc-029`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-029` (PDF §3 Hiring Manager/Interviewer "View assigned vacancies and
+  candidates, access necessary resumes, conduct interviews and submit feedback"; §9 "Record attendance and interviewer feedback"; PDF
+  classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00); the owner said to proceed with the recommended answers,
+  so V1–V12 are **the builder's calls (`NEEDS_CONFIRMATION`)** answering Q-12. Dependencies hrc-002 (`DEC-SCOPE-374`) and hrc-028
+  (`DEC-SCOPE-400`) merged. Design `docs/superpowers/specs/2026-11-05-hrc-029-interviewer-access-feedback-design.md`.
+- **Behaviour:** a rec-017 writer assigns an interview's panel — active internal `interviewer` users and active employer users of the
+  requirement's company, at most 10, one optional lead (`PUT /recruiter/interviews/{id}/interviewers`); each new member is notified. A
+  member opens "My interviews" (`/interviewer/interviews`, on the interviewer dashboard and the employer dashboard): only their own
+  assignments (404 otherwise; other roles 403), a candidate summary without contact details or salary, the resume version current when they
+  were assigned (download audited, until 7 days after the interview), and their own feedback form (attendance, score 1–5, recommendation,
+  notes) once the interview time has passed. The recruiter's interview reads list every member's feedback. Candidates never see it.
+- **Builder's calls:** V1 tables `interview_interviewers` and `interview_panel_feedback`. V2 eligibility. V3 writers assign; decided or
+  cancelled = 409; removing a member with feedback = 409. V4 resume snapshot at assignment. V5 7-day window after the end. V6 workspace
+  scope (an employer only while at the requirement's company; decisions read Completed — hrc-001 H3). V7 one fixed form; no-show clears
+  score and recommendation; 409 before the start, cancelled or decided. V8 panel feedback is advisory — never moves the interview or the
+  application; rec-021 feedback and `can_feedback` unchanged. V9 recruiter view `interviewers` + `can_assign`. V10 in-app assignment notice;
+  "Feedback overdue" is a flag (24 h after the end), no reminder job. V11 no candidate surface reads the tables. V12 web.
+- **Not built:** a configurable per-job/round feedback form (Q-12, no evidence of which fields vary); a panel decision rule (all/any/lead);
+  overdue reminder notifications; result release (hrc-030).
+- **Numbering:** migration `0280_interview_panel`; API §12KX; RBAC §2.298.
+- **Feature ID authorized:** `hrc-029`. **Status:** built on `worktree-hrc-029`.
