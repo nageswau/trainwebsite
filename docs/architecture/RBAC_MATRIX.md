@@ -3839,3 +3839,9 @@ acts on a candidate subject. Deactivating a `placement_officer`, `placement_mana
 scope is 404 (the same as an unknown id); the writers (`placement_officer` on the requirement, `super_admin`) cancel; the manager and the
 assigned BDM read only (403); every other role 403, anonymous 401. No new grant key. Pinned by `apps/api/tests/test_hrc_028_interviews.py`
 and the rec-038 matrix row.
+### 2.292 Candidate job recommendations *(added 2026-11-05 — `DEC-SCOPE-398`, hrc-027)*
+
+No new grant. `GET /candidate/jobs` and `POST /candidate/jobs/{id}/apply` admit only an `it_student` or a `candidate` (division `it`);
+every other role is 403, anonymous 401. Neither route takes a candidate id: the caller's own record only. A job outside hrc-008's student
+visibility (internal, another segment, closed, past its date) is the same 404 as a missing one on both apply routes. Pinned by
+`apps/api/tests/test_hrc_027_candidate_jobs.py`.
