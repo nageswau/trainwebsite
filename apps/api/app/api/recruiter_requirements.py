@@ -191,7 +191,7 @@ async def requirement_history(requirement_id: UUID, response: Response, limit: i
     return await recruitment_history.history(db, "job", job.id, ("recruiter_requirement.", "job_description."), limit=limit, offset=offset)
 
 
-# --- pob-002 (DEC-SCOPE-405 R5/R8): the revisions ---------------------------------------------------------------------------------
+# --- pob-002 (DEC-SCOPE-407 R5/R8): the revisions ---------------------------------------------------------------------------------
 @router.get("/{requirement_id}/revisions")
 async def requirement_revisions(requirement_id: UUID, response: Response, limit: int = Query(20, ge=1, le=100), offset: int = OFFSET,
                                 user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):  # fmt: skip

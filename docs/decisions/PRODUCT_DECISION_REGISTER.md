@@ -11953,7 +11953,50 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0278_commercial_grants`; API §12KV; RBAC §2.296.
 - **Feature ID authorized:** `pob-001`. **Status:** built on `worktree-pob-001`.
 
-### DEC-SCOPE-405 — Requirement versioning, hiring process and per-requirement commercials (`pob-002`)
+### DEC-SCOPE-405 — Interviewer and hiring-manager access with feedback (`hrc-029`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-029` (PDF §3 Hiring Manager/Interviewer "View assigned vacancies and
+  candidates, access necessary resumes, conduct interviews and submit feedback"; §9 "Record attendance and interviewer feedback"; PDF
+  classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00); the owner said to proceed with the recommended answers,
+  so V1–V12 are **the builder's calls (`NEEDS_CONFIRMATION`)** answering Q-12. Dependencies hrc-002 (`DEC-SCOPE-374`) and hrc-028
+  (`DEC-SCOPE-400`) merged. Design `docs/superpowers/specs/2026-11-05-hrc-029-interviewer-access-feedback-design.md`.
+- **Behaviour:** a rec-017 writer assigns an interview's panel — active internal `interviewer` users and active employer users of the
+  requirement's company, at most 10, one optional lead (`PUT /recruiter/interviews/{id}/interviewers`); each new member is notified. A
+  member opens "My interviews" (`/interviewer/interviews`, on the interviewer dashboard and the employer dashboard): only their own
+  assignments (404 otherwise; other roles 403), a candidate summary without contact details or salary, the resume version current when they
+  were assigned (download audited, until 7 days after the interview), and their own feedback form (attendance, score 1–5, recommendation,
+  notes) once the interview time has passed. The recruiter's interview reads list every member's feedback. Candidates never see it.
+- **Builder's calls:** V1 tables `interview_interviewers` and `interview_panel_feedback`. V2 eligibility. V3 writers assign; decided or
+  cancelled = 409; removing a member with feedback = 409. V4 resume snapshot at assignment. V5 7-day window after the end. V6 workspace
+  scope (an employer only while at the requirement's company; decisions read Completed — hrc-001 H3). V7 one fixed form; no-show clears
+  score and recommendation; 409 before the start, cancelled or decided. V8 panel feedback is advisory — never moves the interview or the
+  application; rec-021 feedback and `can_feedback` unchanged. V9 recruiter view `interviewers` + `can_assign`. V10 in-app assignment notice;
+  "Feedback overdue" is a flag (24 h after the end), no reminder job. V11 no candidate surface reads the tables. V12 web.
+- **Not built:** a configurable per-job/round feedback form (Q-12, no evidence of which fields vary); a panel decision rule (all/any/lead);
+  overdue reminder notifications; result release (hrc-030).
+- **Numbering:** migration `0284_interview_panel`; API §12KX; RBAC §2.298.
+- **Feature ID authorized:** `hrc-029`. **Status:** built on `worktree-hrc-029`.
+
+### DEC-SCOPE-406 — Company business context, last contact and a document store (`pob-003`)
+
+- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-003` (§3.1 business context, relationship "last contact and next
+  action", documents, branch locations; source classified `UNVERIFIED`). The owner assigned pob-003 on 2026-11-05 and said to proceed with
+  the recommended answers, so D1–D9 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Dependency pob-001 (`DEC-SCOPE-403`) merged.
+  Design `docs/superpowers/specs/2026-11-05-pob-003-company-business-context-design.md`.
+- **Behaviour:** a company carries structured branch locations, products/services, departments hiring, likely skill demand (Skills
+  Master), hiring locations and target roles (company create/PATCH); `last_contacted_at` (latest call, message or completed meeting,
+  recomputed by every write path, indexed, list sort `last_contacted`); and a document store (company profile, vendor onboarding form,
+  recruitment agreement, job description, meeting notes) with an audit row per upload and download.
+- **Builder's calls:** D1 branches are a separate table; the legacy free-text `branches` is kept and relabelled "Branch notes". D2 lists of
+  ≤ 20 × 120, deduplicated case-insensitively. D3 a new skill must be active; a kept inactive one stays. D4 recomputed (not max-ed) from
+  the source rows, never bumping `updated_at`. D5 sort most recent first, never last. D6 append-only store, ≤ 200 per company, 20 uploads
+  per user per hour, optional meeting link (same company). D7 PDF/JPEG/PNG only. D8 agreements follow `commercials.client` (view to
+  download, effective edit to upload; listed regardless). D9 oversize answers 413 (not the draft's 422).
+- **Not built:** document delete/replace/versioning; DOCX uploads; BD relationship stages (pob-004).
+- **Numbering:** migration `0283_company_business_context`; API §12KZ; RBAC §2.299.
+- **Feature ID authorized:** `pob-003`. **Status:** built on `worktree-pob-003`.
+
+### DEC-SCOPE-407 — Requirement versioning, hiring process and per-requirement commercials (`pob-002`)
 
 - **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-002` (§7 "Revisions should be versioned rather than silently
   replacing the original details"; field groups Hiring process, Commercial terms, Ownership "backup owner"; source classified
@@ -11974,24 +12017,6 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   promoted to primary or deactivated (one audit row).
 - **Not built:** the vendor link (`vendor_id`) waits for pob-010; reverting to a revision; revisions from the employer and
   `/workflows/it/jobs` paths.
-- **Numbering:** migration `0284_job_revisions` (rechained after pob-003 0283); API §12KX; RBAC §2.298.
+- **Numbering:** migration `0285_job_revisions` (rechained after hrc-029's `0284_interview_panel`); API §12LA; RBAC §2.300 — renumbered
+  from 405/12KX/2.298 at merge, which hrc-029 took.
 - **Feature ID authorized:** `pob-002`. **Status:** built on `worktree-pob-002`.
-
-### DEC-SCOPE-406 — Company business context, last contact and a document store (`pob-003`)
-
-- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-003` (§3.1 business context, relationship "last contact and next
-  action", documents, branch locations; source classified `UNVERIFIED`). The owner assigned pob-003 on 2026-11-05 and said to proceed with
-  the recommended answers, so D1–D9 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Dependency pob-001 (`DEC-SCOPE-403`) merged.
-  Design `docs/superpowers/specs/2026-11-05-pob-003-company-business-context-design.md`.
-- **Behaviour:** a company carries structured branch locations, products/services, departments hiring, likely skill demand (Skills
-  Master), hiring locations and target roles (company create/PATCH); `last_contacted_at` (latest call, message or completed meeting,
-  recomputed by every write path, indexed, list sort `last_contacted`); and a document store (company profile, vendor onboarding form,
-  recruitment agreement, job description, meeting notes) with an audit row per upload and download.
-- **Builder's calls:** D1 branches are a separate table; the legacy free-text `branches` is kept and relabelled "Branch notes". D2 lists of
-  ≤ 20 × 120, deduplicated case-insensitively. D3 a new skill must be active; a kept inactive one stays. D4 recomputed (not max-ed) from
-  the source rows, never bumping `updated_at`. D5 sort most recent first, never last. D6 append-only store, ≤ 200 per company, 20 uploads
-  per user per hour, optional meeting link (same company). D7 PDF/JPEG/PNG only. D8 agreements follow `commercials.client` (view to
-  download, effective edit to upload; listed regardless). D9 oversize answers 413 (not the draft's 422).
-- **Not built:** document delete/replace/versioning; DOCX uploads; BD relationship stages (pob-004).
-- **Numbering:** migration `0283_company_business_context`; API §12KZ; RBAC §2.299.
-- **Feature ID authorized:** `pob-003`. **Status:** built on `worktree-pob-003`.

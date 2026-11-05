@@ -4,7 +4,7 @@ import { useEffect, useId, useState } from "react";
 import LocalTime from "@/components/LocalTime";
 import { REQUIREMENTS_URL, type RevisionDetail, type RevisionItem, type RevisionPage, revisionText } from "@/lib/recruiterRequirements";
 
-/** pob-002 (DEC-SCOPE-405 R5): the requirement's revisions, newest first. "View revision n" reads that revision's values and what changed
+/** pob-002 (DEC-SCOPE-407 R5): the requirement's revisions, newest first. "View revision n" reads that revision's values and what changed
  *  against an earlier revision (the one before it unless another is chosen). The API leaves out client terms the caller may not see.
  *  The page re-keys it after a save (the requirement's updated_at), so it re-reads. */
 export default function RequirementRevisions({ requirementId }: { requirementId: string }) {

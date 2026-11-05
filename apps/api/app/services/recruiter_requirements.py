@@ -420,7 +420,7 @@ async def check_references(db: AsyncSession, values: dict, stored: Job | None) -
             raise HTTPException(422, refusal)
 
 
-# --- pob-002 (DEC-SCOPE-405 R6-R9): the decision-maker, the backup owner and the per-requirement terms --------------------------------
+# --- pob-002 (DEC-SCOPE-407 R6-R9): the decision-maker, the backup owner and the per-requirement terms --------------------------------
 DECISION_MAKER_INVALID = "Choose an active contact of this company as the decision-maker"
 BACKUP_INVALID = "Choose an active recruiter as the backup owner"
 BACKUP_IS_PRIMARY = "The primary owner cannot also be the backup owner"

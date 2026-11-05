@@ -8,7 +8,7 @@ import { actionLabel, humanise } from "@/lib/recruiterHistory";
 import type { CommercialTerms, Requirement } from "@/lib/recruiterRequirements";
 import { requirementBody, revisionText, stepList, valuesOf, wire } from "@/lib/recruiterRequirements";
 
-// pob-002 (DEC-SCOPE-405): revisions (R5), the hiring process (R6), the per-requirement terms (R7/R8) and the backup owner (R9). The
+// pob-002 (DEC-SCOPE-407): revisions (R5), the hiring process (R6), the per-requirement terms (R7/R8) and the backup owner (R9). The
 // server decides every rule; these check what is shown, what is sent and how a failure reads.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }), usePathname: () => "/x" }));
 

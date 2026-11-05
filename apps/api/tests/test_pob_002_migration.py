@@ -1,4 +1,4 @@
-"""pob-002 -- migration 0284_job_revisions (DEC-SCOPE-405 R1/R6/R7/R9): the chain, the frozen checks and the round trip in a throwaway
+"""pob-002 -- migration 0285_job_revisions (DEC-SCOPE-407 R1/R6/R7/R9): the chain, the frozen checks and the round trip in a throwaway
 database (the hrc-001 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,11 +13,11 @@ from app.core.config import settings
 from app.models import JOB_REVISION_CHECKS, JOB_TERMS_CHECKS
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_pob_002_migration_0284", VERSIONS / "0284_job_revisions.py")
+_spec = importlib.util.spec_from_file_location("_pob_002_migration_0285", VERSIONS / "0285_job_revisions.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0284_job_revisions", "0283_company_business_context"
+HEAD, BASE = "0285_job_revisions", "0284_interview_panel"
 NEW_COLUMNS = {"interview_rounds", "screening_steps", "decision_maker_contact_id", "expected_tat_days", "payment_trigger", "payment_days",
                "payment_terms", "replacement_terms", "backup_owner_user_id"}  # fmt: skip
 

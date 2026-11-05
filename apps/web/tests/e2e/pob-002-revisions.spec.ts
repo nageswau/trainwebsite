@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// pob-002 (DEC-SCOPE-405): a recruiter edits a requirement -- headcount 2 -> 3, the hiring process and the requirement's own payment
+// pob-002 (DEC-SCOPE-407): a recruiter edits a requirement -- headcount 2 -> 3, the hiring process and the requirement's own payment
 // terms -- and revision 2 shows the diff while revision 1 stays readable; the contract's terms show as "From the contract" until
 // overridden; on a phone the open revision never scrolls sideways.
 

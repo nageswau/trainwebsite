@@ -63,7 +63,7 @@ const TEXT: Partial<Record<FormField, Text>> = {
   required_skills: { label: "Required skills", max: 3000, multiline: true, hint: "One per comma or line" },
   preferred_skills: { label: "Preferred skills", max: 3000, multiline: true, hint: "One per comma or line" },
   description: { label: "Job description", max: 10000, multiline: true },
-  // pob-002 (DEC-SCOPE-405 R6/R7)
+  // pob-002 (DEC-SCOPE-407 R6/R7)
   interview_rounds: { label: "Interview rounds", max: 1300, multiline: true, hint: "One round per line, in order (at most 10)" },
   screening_steps: { label: "Screening steps", max: 1300, multiline: true, hint: "One step per line, in order (at most 10)" },
   expected_tat_days: { label: "Expected turnaround (days)", max: 3, hint: "The client's target from requirement to joining" },
@@ -448,7 +448,7 @@ export default function RecruiterRequirementForm({
           {vocabularyField("priority")}
         </div>
       </fieldset>
-      {/* pob-002 (DEC-SCOPE-405 R6): the client's hiring process */}
+      {/* pob-002 (DEC-SCOPE-407 R6): the client's hiring process */}
       <fieldset className="form-section">
         <legend>Hiring process</legend>
         <div className="form-grid">

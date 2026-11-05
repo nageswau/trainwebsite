@@ -1,4 +1,4 @@
-"""pob-002 (DEC-SCOPE-405) -- requirement revisions (R1-R5), the hiring process (R6), per-requirement terms behind pob-001's gate (R7/R8)
+"""pob-002 (DEC-SCOPE-407) -- requirement revisions (R1-R5), the hiring process (R6), per-requirement terms behind pob-001's gate (R7/R8)
 and the backup owner (R9). Names are unique per test (the database is shared and never truncated)."""
 
 import uuid

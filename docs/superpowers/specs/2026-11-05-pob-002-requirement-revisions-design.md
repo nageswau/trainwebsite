@@ -4,7 +4,7 @@
   the original details"; field groups "Hiring process", "Commercial terms", "Ownership: … backup owner and approval status", "vendor if
   applicable"; source classified `UNVERIFIED`). The owner assigned pob-002 for build on 2026-11-05 and said to proceed with the recommended
   answers, so R1–R12 below (including Q-02) are **the builder's calls (`NEEDS_CONFIRMATION`)**. Dependencies merged: hrc-004
-  (`DEC-SCOPE-376`), hrc-005 (`DEC-SCOPE-381`), hrc-006 (`DEC-SCOPE-384`), pob-001 (`DEC-SCOPE-403`). Decision `DEC-SCOPE-405`.
+  (`DEC-SCOPE-376`), hrc-005 (`DEC-SCOPE-381`), hrc-006 (`DEC-SCOPE-384`), pob-001 (`DEC-SCOPE-403`). Decision `DEC-SCOPE-407`.
 
 ## Intent
 A job requirement's PATCH overwrites its columns. The hrc-004 audit keeps an old → new diff, but you cannot read the requirement as it
@@ -144,4 +144,4 @@ open"). Nothing new.
 - `navigation` is unchanged.
 
 ## Numbering
-Migration `0281_job_revisions` (hrc-029 holds 0279/0280), `DEC-SCOPE-405`, API §12KX, RBAC §2.298. All are re-checked at merge.
+Migration `0285_job_revisions` (after hrc-029's `0284_interview_panel`), `DEC-SCOPE-407`, API §12LA, RBAC §2.300 (renumbered at merge).

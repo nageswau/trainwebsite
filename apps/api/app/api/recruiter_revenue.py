@@ -39,7 +39,7 @@ async def set_fee(requirement_id: UUID, payload: RecFeeOverride, user: User = De
     before = {"basis": job.fee_basis, "value": str(svc.money(job.fee_value))} if job.fee_basis else None
     after = {"basis": payload.fee_basis, "value": str(svc.money(payload.fee_value))} if payload.fee_basis else None
     if before != after:
-        snapshot_before = await revisions.snapshot(db, job)  # pob-002 (DEC-SCOPE-405 R2): the fee is in the requirement's revisions
+        snapshot_before = await revisions.snapshot(db, job)  # pob-002 (DEC-SCOPE-407 R2): the fee is in the requirement's revisions
         job.fee_basis, job.fee_value = payload.fee_basis, svc.money(payload.fee_value) if payload.fee_basis else None
         svc.audit(db, user, "fee_set", "job", job.id, {"from": before, "to": after})
         await db.flush()

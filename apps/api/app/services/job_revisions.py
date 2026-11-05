@@ -1,4 +1,4 @@
-"""pob-002 (DEC-SCOPE-405 R1-R5, R8): a job requirement's revisions -- one append-only snapshot of its material fields per save that changed
+"""pob-002 (DEC-SCOPE-407 R1-R5, R8): a job requirement's revisions -- one append-only snapshot of its material fields per save that changed
 any of them.
 
 Functions only; nothing here commits -- the writing route owns the transaction and has locked the job row (`load_scoped(lock=True)`), so

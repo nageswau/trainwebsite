@@ -16,7 +16,7 @@ from app.services.recruiter import ROLE
 from app.services.recruiter_companies import person
 
 OFFICER_ROLE = "placement_officer"
-BACKUP = "backup"  # pob-002 (DEC-SCOPE-405 R9): the picker's role for `jobs.backup_owner_user_id` (not a job_assignments role)
+BACKUP = "backup"  # pob-002 (DEC-SCOPE-407 R9): the picker's role for `jobs.backup_owner_user_id` (not a job_assignments role)
 ROLE_LABELS = {"primary": "Primary owner", "placement_officer": "Placement officer owner", "collaborator": "Collaborator"}
 ELIGIBLE = {"collaborator": (ROLE, OFFICER_ROLE), "placement_officer": (OFFICER_ROLE,)}  # O3
 INVALID = {"collaborator": "Choose an active recruiter or placement officer", "placement_officer": "Choose an active placement officer"}
@@ -52,7 +52,7 @@ async def set_primary(db: AsyncSession, actor: User, job: Job, target_id: UUID) 
         await db.delete(row)
     if job.assigned_recruiter_user_id:
         _record(db, job.id, job.assigned_recruiter_user_id, "primary", "removed", actor, "reassign")
-    if job.backup_owner_user_id == target_id:  # pob-002 (DEC-SCOPE-405 R9): the backup promoted is no longer the backup
+    if job.backup_owner_user_id == target_id:  # pob-002 (DEC-SCOPE-407 R9): the backup promoted is no longer the backup
         job.backup_owner_user_id = None
     job.assigned_recruiter_user_id = target_id
     _record(db, job.id, target_id, "primary", "added", actor, "reassign")
@@ -97,7 +97,7 @@ async def release(db: AsyncSession, actor: User, user: User) -> int:
     for row in rows:
         _record(db, row.job_id, user.id, row.role, "removed", actor, "deactivated")
         await db.delete(row)
-    # pob-002 (DEC-SCOPE-405 R9): and stops being a backup owner -- one audit row per job (the hrc-004 History shows it), not a co-owner row
+    # pob-002 (DEC-SCOPE-407 R9): and stops being a backup owner -- one audit row per job (the hrc-004 History shows it), not a co-owner row
     backups = (await db.scalars(select(Job).where(Job.backup_owner_user_id == user.id).order_by(Job.id).with_for_update())).all()
     for job in backups:
         job.backup_owner_user_id = None

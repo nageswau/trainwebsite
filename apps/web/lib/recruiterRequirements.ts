@@ -45,7 +45,7 @@ export type Requirement = RequirementRow & {
   updated_by: Person | null;
   owners: Owner[]; // hrc-006: besides the primary (`assigned_recruiter`)
   visibility: VisibilityDetail; // hrc-008
-  // pob-002 (DEC-SCOPE-405 R6/R7/R9): the hiring process, the terms (absent without commercials.client.view) and the backup owner
+  // pob-002 (DEC-SCOPE-407 R6/R7/R9): the hiring process, the terms (absent without commercials.client.view) and the backup owner
   backup_owner?: Person | null; interview_rounds?: string[]; screening_steps?: string[]; decision_maker?: DecisionMaker | null;
   expected_tat_days?: number | null; commercial_terms?: CommercialTerms;
 };

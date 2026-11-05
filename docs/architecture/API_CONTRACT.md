@@ -5955,21 +5955,27 @@ the download needs view (403, after the scope's 404). Every rec-031 revenue rout
 `PUT …/fee`, `POST /recruiter/invoices`, `…/payments`, `…/cancel`, `GET /recruiter/companies/{id}/revenue`, `GET /recruiter/invoices`)
 → 403 "Your role cannot view client commercials" without view; `PUT …/fee` also needs edit (403) and `permissions.can_set_fee` follows it.
 
-## 12KX. Requirement revisions, hiring process and per-requirement terms (pob-002) — addendum, 2026-11-05
+## 12KX. Interview panel and the interviewer's workspace (hrc-029) — addendum, 2026-11-05
 
-`DEC-SCOPE-405`. **New:** `GET /api/v1/recruiter/requirements/{id}/revisions?limit&offset` → `{items: [{revision, author, reason,
-created_at, changed_fields: [{field, label}]}], total, limit, offset}`, newest first; `GET …/revisions/{n}?compare_to=m` → `{revision,
-author, reason, created_at, compared_to, values: [{field, label, value}], changes: [{field, label, before, after}] | null}` (default
-compare n-1; none for revision 1). Both: the requirement's read scope (404), an unknown revision 404, `Cache-Control: private, no-store`;
-commercial fields are left out without `commercials.client.view`. **Changed (additive):** `POST|PATCH /recruiter/requirements` accept
-`interview_rounds`, `screening_steps` (≤10 × ≤120), `decision_maker_contact_id`, `expected_tat_days` (1–365), `payment_trigger`,
-`payment_days` (1–365, with and only with `days_after_joining`), `payment_terms`, `replacement_terms` (≤2000), `backup_owner_user_id`, and
-PATCH `revision_reason` (≤500). The requirement detail gains `backup_owner`, `interview_rounds`, `screening_steps`, `decision_maker`
-`{id, name, designation, active}`, `expected_tat_days` and, with the grant, `commercial_terms` `{fee: {basis, value, inherited},
-payment_trigger, payment_trigger_label, payment_days, payment_terms: {value, inherited}, replacement_terms: {value, inherited}, can_edit}`.
-`GET …/assignment-options` accepts `role=backup`. **Errors:** a terms field without effective edit → 403 "Your role cannot view or change
-client commercial terms"; a backup change by anyone but the primary, the backup or super_admin → 403; the primary as backup → 409; an
-ineligible backup or decision-maker, or a days/trigger mismatch → 422.
+`DEC-SCOPE-405`. **New (recruiter):** `GET /api/v1/recruiter/interviews/{id}/interviewer-options` → `{items: [{id, full_name, email, kind
+(internal|employer), kind_label}]}` — active `interviewer` users, then active employer users of the requirement's company; rec-017 writers
+only (403 for the manager/BDM readers, 404 out of scope). `PUT /api/v1/recruiter/interviews/{id}/interviewers {interviewers: [{user_id,
+is_lead}]}` (≤10, distinct, ≤1 lead; 422) replaces the panel → `{interview}`; 422 on `interviewers` for an ineligible user, 409 on a
+Selected/Rejected/Cancelled interview or when removing a member who has submitted feedback; new members get an in-app notification.
+**Changed (additive):** every recruiter interview item carries `interviewers: [{id, full_name, kind, kind_label, is_lead, feedback:
+{attendance, attendance_label, score, recommendation, recommendation_label, notes, updated_at} | null}]` (lead first) and `can_assign`.
+**New (panel member — roles `interviewer` and `employer`, any other role 403, signed out 401):** `GET /api/v1/interviewer/interviews
+?view=upcoming|past&limit&offset` → `{items, total, limit, offset, counts: {upcoming, past}}`; `GET /api/v1/interviewer/interviews/{id}`
+(not assigned, or an employer no longer at the requirement's company → 404); each item: `id, code, round_label, round_number,
+scheduled_at, ends_at, mode, platform_label, meeting_url (null once cancelled), location, phone_details, instructions, status,
+status_label (decisions read Completed), cancel_reason, is_lead, candidate {code, name, location, qualification, experience_months,
+current_company, skills}, requirement {code, title}, company {name}, has_resume, feedback, can_feedback, feedback_overdue`.
+`GET /api/v1/interviewer/interviews/{id}/resume` → the resume version shared at assignment (attachment, `private, no-store`), audited as
+`interviewer.resume_download`; 404 "Resume not available" without one, once cancelled, for an archived candidate or after the interview
+end + 7 days. `PUT /api/v1/interviewer/interviews/{id}/feedback {attendance: attended|no_show, score 1–5, recommendation:
+strong_yes|yes|no|strong_no, notes ≤2000}` → the item; attended needs score and recommendation (422 on each field), no-show clears them;
+409 before the interview time, when cancelled or decided. Panel feedback never changes the interview or the application. No candidate,
+student or employer-list route returns it.
 
 ## 12KZ. Company business context, last contact and documents (pob-003) — addendum, 2026-11-05
 
@@ -5987,3 +5993,19 @@ documents` multipart `kind`, `file`, `meeting_id?` → 201 `{document}`: 403 wit
 PDF/JPEG/PNG by content, 429 + `Retry-After` past 20 uploads an hour. `GET /recruiter/companies/documents/{document_id}/download` → the
 bytes as an attachment named `<kind>-<company code>.<ext>` (`no-store`, `nosniff`, sandbox CSP); an agreement needs
 `commercials.client.view` (403). Out of scope = 404 everywhere. Audit `recruiter_company_document.uploaded|downloaded`.
+
+## 12LA. Requirement revisions, hiring process and per-requirement terms (pob-002) — addendum, 2026-11-05
+
+`DEC-SCOPE-407`. **New:** `GET /api/v1/recruiter/requirements/{id}/revisions?limit&offset` → `{items: [{revision, author, reason,
+created_at, changed_fields: [{field, label}]}], total, limit, offset}`, newest first; `GET …/revisions/{n}?compare_to=m` → `{revision,
+author, reason, created_at, compared_to, values: [{field, label, value}], changes: [{field, label, before, after}] | null}` (default
+compare n-1; none for revision 1). Both: the requirement's read scope (404), an unknown revision 404, `Cache-Control: private, no-store`;
+commercial fields are left out without `commercials.client.view`. **Changed (additive):** `POST|PATCH /recruiter/requirements` accept
+`interview_rounds`, `screening_steps` (≤10 × ≤120), `decision_maker_contact_id`, `expected_tat_days` (1–365), `payment_trigger`,
+`payment_days` (1–365, with and only with `days_after_joining`), `payment_terms`, `replacement_terms` (≤2000), `backup_owner_user_id`, and
+PATCH `revision_reason` (≤500). The requirement detail gains `backup_owner`, `interview_rounds`, `screening_steps`, `decision_maker`
+`{id, name, designation, active}`, `expected_tat_days` and, with the grant, `commercial_terms` `{fee: {basis, value, inherited},
+payment_trigger, payment_trigger_label, payment_days, payment_terms: {value, inherited}, replacement_terms: {value, inherited}, can_edit}`.
+`GET …/assignment-options` accepts `role=backup`. **Errors:** a terms field without effective edit → 403 "Your role cannot view or change
+client commercial terms"; a backup change by anyone but the primary, the backup or super_admin → 403; the primary as backup → 409; an
+ineligible backup or decision-maker, or a days/trigger mismatch → 422.

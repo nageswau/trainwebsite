@@ -37,7 +37,7 @@
 ### Task 1: Model + migration 0281
 **Files:**
 - Modify: `apps/api/app/models.py` (Job columns, `JOB_REVISION_CHECKS`, `JOB_PAYMENT_TRIGGERS`, `class JobRevision`)
-- Create: `apps/api/alembic/versions/0281_job_revisions.py`
+- Create: `apps/api/alembic/versions/0285_job_revisions.py`
 - Test: `apps/api/tests/test_pob_002_migration.py`
 
 **Produces:** `Job.interview_rounds: list|None` (JSON), `screening_steps`, `decision_maker_contact_id`, `expected_tat_days`,
@@ -45,7 +45,7 @@
 changed_fields, reason, author_user_id, created_at)`; `JOB_TERMS_CHECKS` dict (frozen in the migration as `CHECKS`).
 
 - [ ] **Write the tests:**
-  - `test_chain` (revision `0281_job_revisions`, down `0280_interview_panel`);
+  - `test_chain` (revision `0285_job_revisions`, down `0284_interview_panel`);
   - `test_checks_are_frozen_copies` (`_migration.CHECKS == {**JOB_TERMS_CHECKS, **JOB_REVISION_CHECKS}`);
   - `test_round_trip` (upgrade adds the table and columns; downgrade drops them; existing jobs keep their rows).
 - [ ] **Run them:** they fail (no file). **Implement. Run:** pass. **Commit.**
@@ -124,6 +124,6 @@ changed_fields, reason, author_user_id, created_at)`; `JOB_TERMS_CHECKS` dict (f
 - [ ] **RED → GREEN.** Then tsc, eslint and vitest on the touched files. **Commit.**
 
 ### Task 6: Docs + e2e
-- Add `DEC-SCOPE-405`, API §12KX, RBAC §2.298, DATA_MODEL, the backlog status line and the RTM row if one exists.
+- Add `DEC-SCOPE-407`, API §12LA, RBAC §2.300, DATA_MODEL, the backlog status line and the RTM row if one exists.
 - Add the e2e spec `tests/e2e/pob-002-revisions.spec.ts`: edit headcount, view revision 2's diff, mobile width without sideways scroll.
 - **Commit.**

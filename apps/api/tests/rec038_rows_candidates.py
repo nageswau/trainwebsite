@@ -83,7 +83,7 @@ ROWS = [
     R("post", "/recruiter/requirements", _new_requirement, **allow(201, "rec", "mgr", "super"), rec_out=404, mgr_out=404),
     R("get", "/recruiter/requirements/{requirement}", **OWN),
     R("get", "/recruiter/requirements/{requirement}/history", **OWN),  # hrc-004 B1: the record's readers
-    R("get", "/recruiter/requirements/{requirement}/revisions", **OWN),  # pob-002 (DEC-SCOPE-405 R5): the record's readers
+    R("get", "/recruiter/requirements/{requirement}/revisions", **OWN),  # pob-002 (DEC-SCOPE-407 R5): the record's readers
     R("get", "/recruiter/requirements/{requirement}/revisions/{candidates_revision}", **OWN),
     R("patch", "/recruiter/requirements/{requirement}", {"location": "Bengaluru"}, **allow(200, "rec", "super"), **OWN_OUT),
     R("post", "/recruiter/requirements/{requirement}/assign", lambda w: {"recruiter_user_id": w["rec2_id"]}, **allow(200, "mgr", "super"), **OUT),
