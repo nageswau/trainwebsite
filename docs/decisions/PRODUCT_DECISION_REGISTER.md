@@ -11996,6 +11996,30 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0283_company_business_context`; API §12KZ; RBAC §2.299.
 - **Feature ID authorized:** `pob-003`. **Status:** built on `worktree-pob-003`.
 
+### DEC-SCOPE-407 — Requirement versioning, hiring process and per-requirement commercials (`pob-002`)
+
+- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-002` (§7 "Revisions should be versioned rather than silently
+  replacing the original details"; field groups Hiring process, Commercial terms, Ownership "backup owner"; source classified
+  `UNVERIFIED`). The owner assigned pob-002 for build on 2026-11-05 and said to proceed with the recommended answers, so R1–R12 (including
+  Q-02) are **the builder's calls (`NEEDS_CONFIRMATION`)**. Dependencies hrc-004 (`DEC-SCOPE-376`), hrc-005 (`DEC-SCOPE-381`), hrc-006
+  (`DEC-SCOPE-384`) and pob-001 (`DEC-SCOPE-403`) merged. Design `docs/superpowers/specs/2026-11-05-pob-002-requirement-revisions-design.md`.
+- **Behaviour:** every recruiter create and every save that changes a material field (an edit, or a manager's fee override) writes one
+  append-only `job_revisions` snapshot (author, optional reason, the changed fields); a save with no change writes none. The requirement
+  page lists the revisions, opens any one with its values and its diff against an earlier revision. A requirement gains interview rounds,
+  screening steps, a decision-maker (an active contact of its company), an expected turnaround, a payment trigger (on joining / N days
+  after joining / on invoice), its own payment and replacement terms (empty = the current contract's, shown "From the contract"), and a
+  backup owner.
+- **Builder's calls:** R3 a requirement created before pob-002 gets a baseline revision 1 (no author) at its first changing save. R4 status,
+  owners, visibility and weights are not material (they have their own history). R8 the terms and their revision values follow pob-001:
+  absent without `commercials.client.view`, a terms PATCH needs effective edit (403); the hrc-004 History records them as "changed". R9
+  (Q-02 = always co-access): the backup owner, an active recruiter, reads, edits and manages the owners like the primary; it is set by
+  the primary, the backup or super_admin through the edit (placement managers keep not editing requirement fields, rec-007), cleared when
+  promoted to primary or deactivated (one audit row).
+- **Not built:** the vendor link (`vendor_id`) waits for pob-010; reverting to a revision; revisions from the employer and
+  `/workflows/it/jobs` paths.
+- **Numbering:** migration `0285_job_revisions` (rechained after hrc-029's `0284_interview_panel`); API §12LA; RBAC §2.300 — renumbered
+  from 405/12KX/2.298 at merge, which hrc-029 took.
+- **Feature ID authorized:** `pob-002`. **Status:** built on `worktree-pob-002`.
 ### DEC-SCOPE-409 — Result approval and release (`hrc-030`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-030` (PDF §9 "publish only after release conditions"; §10.2 "Release
