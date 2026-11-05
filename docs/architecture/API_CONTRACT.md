@@ -6010,9 +6010,38 @@ payment_trigger, payment_trigger_label, payment_days, payment_terms: {value, inh
 client commercial terms"; a backup change by anyone but the primary, the backup or super_admin → 403; the primary as backup → 409; an
 ineligible backup or decision-maker, or a days/trigger mismatch → 422.
 
+## 12LD. College placement profiles (pob-013) — addendum, 2026-11-05
+
+`DEC-SCOPE-410`. A college-module college or university organization (bdm-002) gains a placement profile kept by the placement team; the
+organization row, its MoU and its commercials stay the BDM's. Readers: `placement_team` (with a recruiter profile) and `placement_manager`
+see every active one; `bdm`/`bdm_manager` their bdm-002 scope; `super_admin` all; other roles 403; out of scope (or archived, for the
+placement team) 404. Writers: `placement_team`, `super_admin` and the assigned BDM; managers 403; archived 409 "Restore this organization
+first". Every write locks the organization row, writes one `bdm_organization.placement_*` audit row and returns `{college}`.
+
+| Method | Path | Body | Success |
+|---|---|---|---|
+| GET | `/recruiter/colleges?q=&city=&course=&pass_out_year=&limit=&offset=` | — | 200 `{items:[{id, code, name, org_type, city, state, assigned_bdm_name, course_count, next_pass_out_year, archived}], total, limit, offset}` |
+| GET | `/recruiter/colleges/{org_id}` | — | 200 `{college}` |
+| PUT | `/recruiter/colleges/{org_id}/profile` | `{drive_process?, eligibility_rules?}` (≤ 2000, multi-line; omitted = cleared) | 200 |
+| POST | `/recruiter/colleges/{org_id}/courses` | `{department?, course}` (≤ 120) | 201; duplicate 409 "This course is already listed"; > 100 409 |
+| DELETE | `/recruiter/colleges/{org_id}/courses/{course_id}` | — | 200; with batches 409 "Remove this course's batches first" |
+| POST | `/recruiter/colleges/{org_id}/batches` | `{pass_out_year (2000–2100), course_id?, pass_out_date? (in that year), student_count? (0–100,000), notes? (≤ 500)}` | 201; another college's course 422 |
+| DELETE | `/recruiter/colleges/{org_id}/batches/{batch_id}` | — | 200 |
+| POST | `/recruiter/colleges/{org_id}/calendar` | `{title, kind, starts_on, ends_on? (≥ start), notes?}`; kind ∈ pre_placement_talk, campus_drive, assessment, interview, exam, holiday, other | 201 |
+| DELETE | `/recruiter/colleges/{org_id}/calendar/{event_id}` | — | 200 |
+| POST | `/recruiter/colleges/{org_id}/interactions` | `{channel, occurred_at (aware, ≤ now + 5 min), contact_id?, summary (≤ 2000), next_step? (≤ 500)}`; channel ∈ meeting, call, email, whatsapp, visit, other | 201; future 422; another college's contact 422 |
+| PATCH | `/recruiter/colleges/{org_id}/contacts/{contact_id}` | `{office_details? (≤ 300), preferred_contact_method? ∈ email, phone, whatsapp, in_person, linkedin}` | 200 |
+
+`college`: `{id, code, name, org_type, city, state, website, student_count, affiliation, college_type, courses_note, relationship_stage,
+assigned_bdm_name, archived, permissions: {can_edit}, profile: {drive_process, eligibility_rules, updated_at, updated_by_name}, contacts[]
+(bdm-002 fields + office_details, preferred_contact_method), courses[], batches[] (with the course name), calendar[] (by start date),
+interactions[] (latest 50, newest first, with logged_by_name), interaction_total, drives[] (rec-029, ≤ 20: drive_code, drive_date, job_role,
+status)}`. No MoU, pipeline, assignment, phone/email of the organization or commercial field. `relationship_stage` is the bdm-004 stage
+label (the §6.1 status mapping is `NEEDS_CONFIRMATION`). The bdm-002 contact output is unchanged.
+
 ## 12LC. Interview result approval and release (hrc-030) — addendum, 2026-11-05
 
-`DEC-SCOPE-409`, migration `0287`. **New:**
+`DEC-SCOPE-409`, migration `0289`. **New:**
 - `GET /api/v1/recruiter/interview-results?state=pending_approval|released&limit&offset` — `results.release` holders (else 403). Page
   `{items, total, limit, offset, counts: {pending_approval, released}}`; waiting oldest first, published newest first. Item: `id, outcome
   (selected|rejected), outcome_label (Selected|Not selected), is_final, state, state_label, candidate_message, release_mode (auto|approval|

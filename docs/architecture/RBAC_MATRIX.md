@@ -3896,10 +3896,29 @@ A requirement's revisions are read by its readers (rec-007 scope; outside it 404
 the recruiter's scope (and a placement manager's team scope) and holds `can_manage_owners`, like the primary; the backup is changed by
 the primary, the backup or super_admin. No new grant. Pinned by `apps/api/tests/test_pob_002_requirement_revisions.py`.
 
+### 2.303 College placement profiles *(added 2026-11-05 — `DEC-SCOPE-410`, pob-013)*
+
+A cross-module scope (BDM ↔ recruiter) on `/recruiter/colleges` only; the bdm-002 `caller_scope` is reused for BDM callers and **not**
+widened, so every `/bdm/*` route (organization edit, contacts, MoU, appointments, activities) keeps refusing `placement_team` (403
+"BDM role required").
+
+| Role | Read (list, detail) | Write (profile, courses, batches, calendar, TPO interactions, TPO contact details) |
+|---|---|---|
+| `placement_team` (with a recruiter profile) | every active college-module college/university | yes |
+| `placement_manager` | every active college-module college/university | 403 |
+| `bdm` | bdm-002 scope (own module; archived included) | the assigned BDM only; others 403 |
+| `bdm_manager` | bdm-002 scope (the team's) | 403 |
+| `super_admin` | all | yes |
+| any other role (incl. `placement_officer`, `hr_team`, `it_admin`) | 403 | 403 |
+
+Out of scope 404 (including another module's university and, for the placement roles, an archived organization); archived 409 for
+writers. `placement_officer` (DEC-SCOPE-403 C1) is not granted — `NEEDS_CONFIRMATION`. Pinned by
+`apps/api/tests/test_pob_013_college_placement.py` and the rec-038 matrix rows (`rec038_rows_activity.py`).
+
 ### 2.302 Interview result approval and release *(added 2026-11-05 — `DEC-SCOPE-409`, hrc-030)*
 
 `results.release` (declared by hrc-002, §2.275 R4) now gates the result queue, the settings read and `release`; default holder
-`hr_manager` (migration 0287 seeds it; super_admin holds every key). The queue is division-wide, as `jobs.approve` (§2.278). A holder can
+`hr_manager` (migration 0289 seeds it; super_admin holds every key). The queue is division-wide, as `jobs.approve` (§2.278). A holder can
 never publish a decision they recorded (403). Changing the auto-release switch is super_admin only. `GET /candidate/results` is the
 caller's own (a candidate or IT student; anyone else 403) — no id is taken from the caller. Recording a decision stays rec-017's writers'
 (§2.74). Pinned by `apps/api/tests/test_hrc_030_results.py`, `test_hrc_030_migration.py` and the rec-038 matrix rows.

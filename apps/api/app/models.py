@@ -1529,7 +1529,7 @@ class InterviewPanelFeedback(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
 
 
-# hrc-030 (DEC-SCOPE-409 R1/R4): an interview decision as a result waiting for release, and the global release switch. Migration 0287
+# hrc-030 (DEC-SCOPE-409 R1/R4): an interview decision as a result waiting for release, and the global release switch. Migration 0289
 # repeats INTERVIEW_RESULT_CHECKS (test_hrc_030_migration asserts they stay identical).
 RESULT_OUTCOMES = ("selected", "rejected")
 RESULT_STATES = ("pending_approval", "released")
@@ -1567,7 +1567,7 @@ class InterviewResult(Base, TimestampMixin):
 
 
 class ResultReleaseSetting(Base, TimestampMixin):
-    """hrc-030 (R4): the one global row (id 1, seeded by migration 0287) -- release automatically, or wait for a `results.release` holder."""
+    """hrc-030 (R4): the one global row (id 1, seeded by migration 0289) -- release automatically, or wait for a `results.release` holder."""
 
     __tablename__ = "result_release_settings"
     id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
@@ -4686,6 +4686,8 @@ class BdmTripExpense(Base, TimestampMixin):
 
 BDM_ORG_TYPES = ("college", "university", "agent", "school", "corporate", "training_institute", "other")
 BDM_CONTACT_ROLES = ("principal", "dean", "hod", "placement_officer", "counselor", "management", "owner", "other")
+PLACEMENT_CONTACT_METHODS = ("email", "phone", "whatsapp", "in_person", "linkedin")  # pob-013 P10
+PLACEMENT_CONTACT_METHOD_CHECK = "preferred_contact_method IS NULL OR preferred_contact_method IN ('email', 'phone', 'whatsapp', 'in_person', 'linkedin')"
 # bdm-003 (DEC-SCOPE-065, spec §4): the type-specific profile. `board` keeps ENH-009's exact values so bdm-018 can copy it onto
 # `schools.board`; the other enums are lower snake case like `org_type`. Grades: -2 Nursery, -1 LKG, 0 UKG, then 1-12.
 BDM_ORG_SOURCES = ("referral", "website", "event", "cold_call", "walk_in", "other")
@@ -4815,6 +4817,7 @@ class BdmOrganizationContact(Base, TimestampMixin):
         CheckConstraint(f"role IS NULL OR {_in_list('role', BDM_CONTACT_ROLES)}", name="ck_bdm_organization_contacts_role"),
         Index("ix_bdm_organization_contacts_org", "organization_id"),
         Index("uq_bdm_organization_contacts_primary", "organization_id", unique=True, postgresql_where=text("is_primary")),
+        CheckConstraint(PLACEMENT_CONTACT_METHOD_CHECK, name="ck_bdm_organization_contacts_preferred_method"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
@@ -4825,6 +4828,104 @@ class BdmOrganizationContact(Base, TimestampMixin):
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    # pob-013 (DEC-SCOPE-410 P10): the TPO's office and preferred contact method, set from the placement profile only.
+    office_details: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    preferred_contact_method: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+
+# pob-013 (DEC-SCOPE-410 P5-P9): a college's placement profile, kept by the placement team beside the BDM-owned organization (P1: the
+# organization row itself is never written). Migration 0288 repeats the CHECK strings; test_pob_013_migration asserts they stay identical.
+PLACEMENT_EVENT_KINDS = ("pre_placement_talk", "campus_drive", "assessment", "interview", "exam", "holiday", "other")
+TPO_INTERACTION_CHANNELS = ("meeting", "call", "email", "whatsapp", "visit", "other")
+PLACEMENT_CHECKS = {
+    "ck_bdm_org_placement_batches_year": "pass_out_year BETWEEN 2000 AND 2100",
+    "ck_bdm_org_placement_batches_students": "student_count IS NULL OR student_count BETWEEN 0 AND 100000",
+    "ck_bdm_org_placement_events_kind": _in_list("kind", PLACEMENT_EVENT_KINDS),
+    "ck_bdm_org_placement_events_window": "ends_on IS NULL OR ends_on >= starts_on",
+    "ck_bdm_org_tpo_interactions_channel": _in_list("channel", TPO_INTERACTION_CHANNELS),
+}
+
+
+class BdmOrgPlacementProfile(Base, TimestampMixin):
+    """pob-013 P5: one row per organization, created at the first save."""
+
+    __tablename__ = "bdm_org_placement_profiles"
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"), primary_key=True)
+    drive_process: Mapped[str | None] = mapped_column(Text, nullable=True)
+    eligibility_rules: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class BdmOrgCourse(Base, TimestampMixin):
+    """pob-013 P6: a structured department + course. `course_key` is the normalized "department|course" (unique per organization)."""
+
+    __tablename__ = "bdm_org_courses"
+    __table_args__ = (UniqueConstraint("organization_id", "course_key", name="uq_bdm_org_courses_key"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    department: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    course: Mapped[str] = mapped_column(String(120))
+    course_key: Mapped[str] = mapped_column(String(250))
+
+
+class BdmOrgPlacementBatch(Base, TimestampMixin):
+    """pob-013 P7: a graduating batch. A course with batches cannot be deleted (RESTRICT)."""
+
+    __tablename__ = "bdm_org_placement_batches"
+    __table_args__ = (
+        CheckConstraint(PLACEMENT_CHECKS["ck_bdm_org_placement_batches_year"], name="ck_bdm_org_placement_batches_year"),
+        CheckConstraint(PLACEMENT_CHECKS["ck_bdm_org_placement_batches_students"], name="ck_bdm_org_placement_batches_students"),
+        Index("ix_bdm_org_placement_batches_org_year", "organization_id", "pass_out_year"),
+        Index("ix_bdm_org_placement_batches_course", "course_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    course_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_org_courses.id", ondelete="RESTRICT"), nullable=True)
+    pass_out_year: Mapped[int] = mapped_column(SmallInteger)
+    pass_out_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    student_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class BdmOrgPlacementEvent(Base, TimestampMixin):
+    """pob-013 P8: a placement calendar entry (dates only)."""
+
+    __tablename__ = "bdm_org_placement_events"
+    __table_args__ = (
+        CheckConstraint(PLACEMENT_CHECKS["ck_bdm_org_placement_events_kind"], name="ck_bdm_org_placement_events_kind"),
+        CheckConstraint(PLACEMENT_CHECKS["ck_bdm_org_placement_events_window"], name="ck_bdm_org_placement_events_window"),
+        Index("ix_bdm_org_placement_events_org_start", "organization_id", "starts_on"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    title: Mapped[str] = mapped_column(String(200))
+    kind: Mapped[str] = mapped_column(String(30))
+    starts_on: Mapped[date] = mapped_column(Date)
+    ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class BdmOrgTpoInteraction(Base):
+    """pob-013 P9: an append-only TPO interaction, separate from bdm_activities (BDM metrics stay unchanged). `contact_name` is the
+    contact's name at save, kept when bdm-002 hard-deletes the contact (`contact_id` -> NULL)."""
+
+    __tablename__ = "bdm_org_tpo_interactions"
+    __table_args__ = (
+        CheckConstraint(PLACEMENT_CHECKS["ck_bdm_org_tpo_interactions_channel"], name="ck_bdm_org_tpo_interactions_channel"),
+        Index("ix_bdm_org_tpo_interactions_org_occurred", "organization_id", "occurred_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organization_contacts.id", ondelete="SET NULL"), nullable=True)
+    contact_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    channel: Mapped[str] = mapped_column(String(20))
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    summary: Mapped[str] = mapped_column(Text)
+    next_step: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    logged_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class BdmPipelineEvent(Base):

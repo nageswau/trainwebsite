@@ -12021,6 +12021,27 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   from 405/12KX/2.298 at merge, which hrc-029 took.
 - **Feature ID authorized:** `pob-002`. **Status:** built on `worktree-pob-002`.
 
+### DEC-SCOPE-410 — College/TPO placement profile on the BDM organisation and placement-team access (`pob-013`)
+
+- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-013` (§6.1 institution profile, TPO contacts, placement profile,
+  status; §6.2 research/identify; §18 AC "Placement Officer can create and track TPO records for colleges and universities"; source
+  classified `UNVERIFIED`). The owner assigned pob-013 on 2026-11-05 and said to proceed with the recommended answers, so P1–P15 (answering
+  Q-10) are **the builder's calls (`NEEDS_CONFIRMATION`)**. Dependency pob-001 (`DEC-SCOPE-403`) merged. Design
+  `docs/superpowers/specs/2026-11-05-pob-013-college-placement-profile-design.md`.
+- **Behaviour:** the placement team opens "Colleges" from the recruiter menu, searches college-module colleges and universities by name,
+  course, graduating year and location, and keeps on each a placement profile — structured courses, graduating batches, a placement
+  calendar, the drive process and eligibility rules, TPO office details and preferred contact method, and an append-only TPO interaction
+  log — beside the BDM-owned record. The same section appears on the BDM organization page (the assigned BDM edits; managers read).
+- **Builder's calls:** P1 side tables, the organization row never written. P2 `bdm_type = college` and org_type college/university. P3
+  readers. P4 writers (`placement_team`, `super_admin`, assigned BDM; both managers read only). P5 profile PUT. P6 courses (unique, ≤ 100).
+  P7 batches (year 2000–2100, date in that year, ≤ 200). P8 calendar (seven kinds, ≤ 500). P9 interactions separate from `bdm_activities`
+  (BDM metrics unchanged). P10 two contact columns written only through the placement route. P11 search. P12 relationship stage shown read
+  only. P13 no MoU/commercial data; BDM routes unchanged. P14 drives listed read only. P15 `placement_officer` not granted.
+- **Not built / `NEEDS_CONFIRMATION`:** the §6.1 status-label mapping (the labels are not in the repository); `placement_officer` access;
+  editing a batch or calendar entry in place (remove and re-add); student data (pob-014); vacancy sharing and outcomes (pob-015).
+- **Numbering:** migration `0288_college_placement`; API §12LD; RBAC §2.303.
+- **Feature ID authorized:** `pob-013`. **Status:** built on `worktree-pob-013`.
+
 ### DEC-SCOPE-409 — Result approval and release (`hrc-030`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-030` (PDF §9 "publish only after release conditions"; §10.2 "Release
@@ -12048,5 +12069,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   interviewer workspace (hrc-001 H3 still applies there); the full candidate-portal results section (hrc-031).
 - **QA fixes:** QA-01 the super admin (the only setting editor) gets an "Interview Result Approvals" menu link; QA-02 the queue page pages
   through `?offset=` (Previous / Next page) instead of stopping at the first 50.
-- **Numbering:** migration `0287_interview_results` (after `0285_job_revisions`); API §12LC; RBAC §2.302.
+- **Numbering:** migration `0289_interview_results` (after pob-013's `0288_college_placement`); API §12LC; RBAC §2.302.
 - **Feature ID authorized:** `hrc-030`. **Status:** built on `worktree-hrc-030`.

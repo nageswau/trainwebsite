@@ -1,4 +1,4 @@
-"""hrc-030 -- migration 0287_interview_results (DEC-SCOPE-409 R1/R4/R5): the results table, the global release setting, the frozen checks,
+"""hrc-030 -- migration 0289_interview_results (DEC-SCOPE-409 R1/R4/R5): the results table, the global release setting, the frozen checks,
 the `results.release` grant for the HR Manager, the chain and the round trip, in a throwaway database (the hrc-020 pattern). Plain tests:
 alembic/env.py calls asyncio.run()."""
 
@@ -14,16 +14,16 @@ from app.core.rbac import DEFAULT_GRANTS
 from app.models import InterviewResult
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_hrc_030_migration_0287", VERSIONS / "0287_interview_results.py")
+_spec = importlib.util.spec_from_file_location("_hrc_030_migration_0289", VERSIONS / "0289_interview_results.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0287_interview_results", "0285_job_revisions"
+HEAD, BASE = "0289_interview_results", "0288_college_placement"
 TABLES = ("interview_results", "result_release_settings")
 GRANT = "SELECT 1 FROM role_permissions WHERE role = 'hr_manager' AND resource = 'results' AND action = 'release'"
 
 
-def test_migration_chains_after_0285_and_is_the_single_head():
+def test_migration_chains_after_0288_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert HEAD in {r.revision for r in script.walk_revisions()} and len(script.get_heads()) == 1

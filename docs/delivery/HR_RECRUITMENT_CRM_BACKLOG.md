@@ -1029,7 +1029,7 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** large. **Risk:** high.
 
 #### hrc-030: Result approval and release
-- **Status:** built as `DEC-SCOPE-409` (migration `0287_interview_results`, API §12LC, RBAC §2.302; R1–R13 are the builder's calls
+- **Status:** built as `DEC-SCOPE-409` (migration `0289_interview_results`, API §12LC, RBAC §2.302; R1–R13 are the builder's calls
   answering Q-30, `NEEDS_CONFIRMATION`: a global auto-release switch, no withdrawal after release); design
   `docs/superpowers/specs/2026-11-05-hrc-030-result-release-design.md`.
 - **Business requirement:** §9 "publish only after release conditions"; §10.2 "Release results automatically only if configured; otherwise require approval and a Publish Result action"; §13 "Feedback submitted → approval queue; Result approved → publish + notify"; §17 QA "results remain hidden until … release … appear only in the correct candidate account".

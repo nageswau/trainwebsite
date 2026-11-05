@@ -1,7 +1,7 @@
 """hrc-030 -- interview results and their release, the global release switch and the default `results.release` grant (HR Manager).
 
-Revision ID: 0287_interview_results
-Revises: 0285_job_revisions
+Revision ID: 0289_interview_results
+Revises: 0288_college_placement
 
 docs/superpowers/specs/2026-11-05-hrc-030-result-release-design.md (DEC-SCOPE-409 R1/R4/R5). Two new tables; 0001 builds a fresh database
 from the current models, which already carry them, so each is created only when missing (0277's idiom). CHECKS and SEED are frozen copies
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0287_interview_results"
-down_revision = "0285_job_revisions"
+revision = "0289_interview_results"
+down_revision = "0288_college_placement"
 branch_labels = None
 depends_on = None
 

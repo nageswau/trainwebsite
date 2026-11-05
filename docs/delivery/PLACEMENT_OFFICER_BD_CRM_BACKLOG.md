@@ -468,6 +468,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** medium.
 
 #### pob-013: College/TPO profile on the BDM organisation and placement-officer access
+- **Status:** built (`DEC-SCOPE-410`, 2026-11-05); Q-10 answered by the builder's calls P1–P15 (`NEEDS_CONFIRMATION`); the §6.1 status-label mapping and `placement_officer` access remain open.
 - **Business requirement:** §6.1 institution profile, TPO contacts, placement profile, relationship, status; §6.2 research/identify; §18 AC "Placement Officer can create and track TPO records for colleges and universities".
 - **Existing behavior:**
   - Colleges are `BdmOrganization` (bdm_type college) with contacts (`placement_officer` role), MoUs, appointments, activities and trips.
