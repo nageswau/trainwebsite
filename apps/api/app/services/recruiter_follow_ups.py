@@ -93,10 +93,11 @@ async def list_page(db: AsyncSession, user: User, due: str, now: datetime, limit
     return {**out, "day": today_ist(now), "counts": {view: n or 0 for view, n in zip(conditions, counts, strict=True)}}
 
 
-async def company_page(db: AsyncSession, user: User, company_id: UUID, now: datetime, limit: int, offset: int) -> dict:
-    """A company's follow-ups: open ones by due time, then done / cancelled newest first."""
+async def company_page(db: AsyncSession, user: User, company_id: UUID, now: datetime, limit: int, offset: int, contact_id: UUID | None = None) -> dict:
+    """A company's follow-ups: open ones by due time, then done / cancelled newest first. pob-005 D11: optionally about one contact."""
     order = (case((IS_OPEN, 0), else_=1), case((IS_OPEN, FU.due_at)).asc(), func.coalesce(FU.completed_at, FU.cancelled_at).desc(), FU.id)
-    return await _page(db, user, now, [FU.company_id == company_id], order, limit, offset)
+    where = [FU.company_id == company_id, *([FU.contact_id == contact_id] if contact_id else [])]
+    return await _page(db, user, now, where, order, limit, offset)
 
 
 async def one(db: AsyncSession, user: User, fu_id: UUID, now: datetime) -> dict:

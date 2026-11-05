@@ -38,7 +38,7 @@ from app.models import (
 )
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import RecInterviewCreate, RecInterviewUpdate
-from app.services import applications, calendar_ics, company_pipeline, mailer, recruiter_companies, recruitment_history
+from app.services import applications, calendar_ics, company_pipeline, contact_status, mailer, recruiter_companies, recruitment_history
 from app.services import recruiter_requirements as requirements
 
 logger = logging.getLogger("app.recruiter")
@@ -461,7 +461,9 @@ async def notify(db: AsyncSession, user: User, interview: Interview, application
         emails.append(RecruiterMessage(candidate_id=candidate.id, body="\n".join([f"Dear {candidate.name},", "", *details]), subject=subject, calendar_ics=ics, **_mail(user)))
         summary["candidate"] = "queued"
     if contact is not None:
-        if not smtp or not contact.email:
+        if contact.status == "do_not_contact":  # pob-005 D6: the interview goes ahead; this person is not emailed
+            summary["contact"] = "do_not_contact"
+        elif not smtp or not contact.email:
             summary["contact"] = "email_off" if not smtp else "no_email"
         else:
             lines = [f"Dear {contact.name},", "", f"Candidate: {candidate.name} ({candidate.candidate_code})", *details]
@@ -471,6 +473,7 @@ async def notify(db: AsyncSession, user: User, interview: Interview, application
     await db.flush()
     if summary["contact"] == "queued":
         await recruiter_companies.refresh_last_contact(db, company.id)  # pob-003 D4: the invite emailed to the client contact
+        await contact_status.advance(db, user, [contact.id], "contacted", "interview")  # pob-005 D4
     return summary, [m.id for m in emails]
 
 

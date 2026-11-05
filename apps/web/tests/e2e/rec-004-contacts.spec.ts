@@ -17,6 +17,9 @@ const MANAGER = "placement.manager@edusphere.local";
 test("Add Recruiter creates a company with its primary contact; five contacts, one primary; the manager reads only", async ({ page }) => {
   test.setTimeout(120_000);
   const name = `E2E Rec004 ${Date.now()} Technologies`;
+  // pob-005: a mobile / email already on file asks "Save anyway?" -- Ravi's are unique per run so this flow is not about duplicates
+  const raviEmail = `ravi-${Date.now()}@e2e-rec004.example.com`;
+  const raviMobile = `9${String(Date.now()).slice(-9)}`;
   await signIn(page, "it", RECRUITER, "/recruiter/dashboard");
   await page.goto("/recruiter/companies");
   await page.getByRole("link", { name: "Add recruiter" }).first().click();
@@ -46,15 +49,15 @@ test("Add Recruiter creates a company with its primary contact; five contacts, o
     await editor.getByLabel("Contact name (required)").fill(person);
     await editor.getByLabel("Role").selectOption({ label: role });
     if (person === "Ravi HR") {
-      await editor.getByLabel("Email").fill("ravi@e2e-rec004.example.com");
-      await editor.getByLabel("Mobile").fill("90000 00001");
+      await editor.getByLabel("Email").fill(raviEmail);
+      await editor.getByLabel("Mobile").fill(raviMobile);
     }
     await editor.getByRole("button", { name: "Save contact" }).click();
     await expect(contacts.getByRole("status")).toHaveText("Contact added.");
   }
   await expect(cards).toHaveCount(5);
   await expect(contacts.getByText("Primary", { exact: true })).toHaveCount(1); // AC2
-  await expect(contacts.getByText("ravi@e2e-rec004.example.com").first()).toBeVisible();
+  await expect(contacts.getByText(raviEmail).first()).toBeVisible();
 
   // C2: the primary can't be deactivated while others are active; move it first.
   await contacts.getByRole("button", { name: "Deactivate Priya Sharma" }).click();
@@ -76,5 +79,6 @@ test("Add Recruiter creates a company with its primary contact; five contacts, o
   await signIn(page, "admin", MANAGER, "/recruiter/manager/team");
   await page.goto(detailUrl);
   await expect(cards).toHaveCount(5);
-  await expect(contacts.getByRole("button")).toHaveCount(0);
+  await expect(contacts.getByRole("button", { name: /^(Edit|Make primary|Deactivate|Reactivate|Add contact)\b/ })).toHaveCount(0);
+  await expect(contacts.getByRole("button", { name: /^Activity\b/ })).toHaveCount(5); // pob-005: reading a contact's activity is not a write
 });

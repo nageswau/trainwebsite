@@ -3895,3 +3895,11 @@ A requirement's revisions are read by its readers (rec-007 scope; outside it 404
 `commercials.client.view` (§2.296). Writing the per-requirement terms needs effective `commercials.client.edit`. The backup owner is in
 the recruiter's scope (and a placement manager's team scope) and holds `can_manage_owners`, like the primary; the backup is changed by
 the primary, the backup or super_admin. No new grant. Pinned by `apps/api/tests/test_pob_002_requirement_revisions.py`.
+
+### 2.303 Contact status, duplicates and replies *(added 2026-11-05 — `DEC-SCOPE-410`, pob-005)*
+
+A contact's new fields and status follow the company (rec-004 §2.51): readers see them, `can_edit` (the assigned recruiter, super_admin)
+changes them. The duplicate check is a read of the company's scope, and names only contacts at companies in the caller's scope (others
+are counted). Logging a reply needs `can_edit` on the message's company (out of scope 404). The per-contact timeline and follow-ups are
+the company's readers'. Do Not Contact refuses outreach for every role. No new grant. Pinned by
+`apps/api/tests/test_pob_005_contact_status.py` and the rec-038 rows.

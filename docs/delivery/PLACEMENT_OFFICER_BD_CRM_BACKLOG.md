@@ -211,6 +211,8 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** medium.
 
 #### pob-005: Contact status, decision-maker, source/verification and per-contact timeline
+- **Status:** built (`DEC-SCOPE-410`, 2026-11-05); D1–D11 are the builder's calls (`NEEDS_CONFIRMATION`); Q-05 answered as "add at the new
+  company, deactivate the old" (builder's call); duplicates warn and never refuse.
 - **Business requirement:** §3.2 "Record the contact's role, professional email, phone, LinkedIn URL, source and verification date"; §3.3 decision-maker, preferred contact method, contact status set, "timeline against both the contact and the company", "reminders and tasks for each contact", duplicate prevention.
 - **Existing behavior:** multiple contacts with a primary flag, designation, department, role catalogue, LinkedIn and notes. Preferred channel covers call, WhatsApp and email only. There is no decision-maker flag, source, verification date, status or per-contact timeline. There is no contact duplicate check (the index exists but is unused). Follow-ups optionally carry a contact.
 - **Expected behavior:**

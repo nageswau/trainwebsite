@@ -2363,3 +2363,12 @@ interview-invite, profile-share and meeting-outcome writes). **`company_branches
 **`company_documents`** (`id`, `company_id` → companies RESTRICT, `kind` CHECK in the five kinds, `name`, `content_type`, `size_bytes`,
 `storage_key` (server-generated, never returned), `meeting_id` → recruiter_meetings, `uploaded_by_user_id`, `created_at`). The legacy
 `companies.branches` text is unchanged. The downgrade drops the tables and columns (stored files stay in object storage).
+
+## Contact status and decision-maker (`pob-005`, `DEC-SCOPE-410`; migration `0288_contact_status`, after `0285_job_revisions`)
+
+**`company_contacts`** gains `is_decision_maker` (bool, default false), `source` (varchar 32, CHECK `ck_company_contacts_source`),
+`verified_on` (date), `status` (varchar 24, not null, default `not_contacted`, CHECK `ck_company_contacts_status`) and `status_changed_at`
+(timestamptz); `ck_company_contacts_channel` adds `linkedin`; `ix_company_contacts_email` backs the duplicate check. `status` is
+backfilled from existing activity (a non-cancelled meeting → meeting_scheduled; an incoming or connected call → replied; any call, message
+or share → contacted). **`recruiter_messages`** gains `replied_at` (timestamptz). Status changes are `recruiter_company.contact_status`
+audit rows. The downgrade clears LinkedIn channels and drops the columns.

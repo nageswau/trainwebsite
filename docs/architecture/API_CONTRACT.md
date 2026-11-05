@@ -6009,3 +6009,18 @@ payment_trigger, payment_trigger_label, payment_days, payment_terms: {value, inh
 `GET …/assignment-options` accepts `role=backup`. **Errors:** a terms field without effective edit → 403 "Your role cannot view or change
 client commercial terms"; a backup change by anyone but the primary, the backup or super_admin → 403; the primary as backup → 409; an
 ineligible backup or decision-maker, or a days/trigger mismatch → 422.
+
+## 12LD. Contact status, decision-maker, duplicates and per-contact timeline (pob-005) — addendum, 2026-11-05
+
+`DEC-SCOPE-410`. **Changed (additive):** `POST /recruiter/companies/{id}/contacts` and `PATCH /recruiter/contacts/{id}` accept
+`is_decision_maker` (bool), `source` (`linkedin|company_website|referral|job_portal|event|inbound|other`|null), `verified_on` (date, not in
+the future) and `status` (`not_contacted|contacted|replied|meeting_scheduled|not_interested|do_not_contact`); `preferred_channel` adds
+`linkedin`. Each list item gains those fields plus `status_changed_at` and the derived `follow_up_due`. Message items gain `replied_at`.
+`GET /recruiter/companies/{id}/timeline` and `GET /recruiter/companies/{id}/follow-ups` accept `contact_id` (another company's contact →
+404); the timeline adds kinds `message_reply` (both views) and `contact_status` (per-contact view only; `event` is the cause).
+**New:** `GET /recruiter/companies/{id}/contacts/duplicates?mobile=&email=&exclude=` → `{matches: [{id, name, active, company: {id, name},
+same_company, on: ["mobile"|"email"]}], others}` (≤10 matches, in the caller's scope only; `others` counts the rest; company read scope,
+404). `POST /recruiter/messages/{id}/reply` `{replied_at?}` → the message (contact messages only, else 422; not before `sent_at`, not in
+the future → 422; set once, a repeat returns it unchanged; `can_edit` 403, out of scope 404, archived 409). **Errors:** a Do Not Contact
+contact → 409 "This contact has asked not to be contacted" on `POST /recruiter/messages`, an outgoing `POST /recruiter/calls`, a profile
+share to them, and a meeting create/edit that adds them.

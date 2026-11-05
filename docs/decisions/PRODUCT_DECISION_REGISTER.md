@@ -12020,3 +12020,26 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0285_job_revisions` (rechained after hrc-029's `0284_interview_panel`); API §12LA; RBAC §2.300 — renumbered
   from 405/12KX/2.298 at merge, which hrc-029 took.
 - **Feature ID authorized:** `pob-002`. **Status:** built on `worktree-pob-002`.
+
+### DEC-SCOPE-410 — Contact status, decision-maker, source/verification and per-contact timeline (`pob-005`)
+
+- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-005` (§3.2 "Record the contact's role, professional email, phone,
+  LinkedIn URL, source and verification date"; §3.3 decision-maker, preferred contact method, contact status set, "timeline against both
+  the contact and the company", duplicate prevention; source classified `UNVERIFIED`). The owner assigned pob-005 for build on 2026-11-05
+  and said to proceed with the recommended answers, so D1–D11 (including Q-05) are **the builder's calls (`NEEDS_CONFIRMATION`)**. No
+  dependencies. Design `docs/superpowers/specs/2026-11-05-pob-005-contact-status-design.md`.
+- **Behaviour:** a company contact gains a decision-maker flag, a source (LinkedIn, company website, referral, job portal, event, they
+  contacted us, other), a verified-on date (not in the future) and LinkedIn as a preferred channel. Its status (Not contacted, Contacted,
+  Replied, Meeting scheduled, Not interested, Do not contact) moves forward automatically: a message, a profile share, an interview invite
+  or an outgoing unanswered call → Contacted; a connected or incoming call or a reply logged on a message → Replied; a meeting with them →
+  Meeting scheduled. It never moves backwards or out of Not interested / Do not contact; any status can be set by hand (`can_edit`).
+  "Follow-up due" is derived from an open follow-up due now. Each change is an audit row shown on the contact's own timeline.
+- **Do Not Contact** is enforced server-side (409 "This contact has asked not to be contacted"): message sends, outgoing call logging,
+  profile shares and meeting invitations; an incoming call and a reply are still recorded; an interview invite skips their email.
+- **Builder's calls:** D7 a reply is logged on a message (`POST /recruiter/messages/{id}/reply`, contact messages only, set once). D8
+  duplicates (same normalised mobile or email, any company) **warn, never refuse** — the editor asks "Save anyway?"; contacts outside the
+  caller's scope are counted, never named. D9 (Q-05) a person who moves company is added again at the new company (the duplicate warning
+  links the old record) and the old one deactivated; nothing moves. D10 the per-contact timeline and D11 follow-ups take `?contact_id=`.
+- **Not built:** a manager-only reopen of Do Not Contact (`NEEDS_CONFIRMATION`); inbound message capture; contact merge (pob-006).
+- **Numbering:** migration `0288_contact_status` (after `0285_job_revisions`); API §12LD; RBAC §2.303 — re-checked at merge.
+- **Feature ID authorized:** `pob-005`. **Status:** built on `worktree-pob-005`.

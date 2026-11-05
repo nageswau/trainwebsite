@@ -770,11 +770,17 @@ class CompanyAssignmentHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# rec-004 (DEC-SCOPE-125): migration 0110 repeats COMPANY_CONTACT_CHECKS (test_rec_004_migration asserts they stay identical).
-COMPANY_CONTACT_CHANNELS = ("call", "whatsapp", "email")
+# rec-004 (DEC-SCOPE-125): migration 0110 repeats COMPANY_CONTACT_CHECKS. pob-005 (DEC-SCOPE-410 D1-D3) adds LinkedIn, the source and
+# status catalogues; migration 0288 keeps the frozen copy of the checks it changed (test_pob_005_migration asserts they stay identical).
+COMPANY_CONTACT_CHANNELS = ("call", "whatsapp", "email", "linkedin")
+COMPANY_CONTACT_SOURCES = ("linkedin", "company_website", "referral", "job_portal", "event", "inbound", "other")
+# Stored statuses; "Follow-up due" is derived (an open follow-up due now). The first four are the automatic progression (D4).
+COMPANY_CONTACT_STATUSES = ("not_contacted", "contacted", "replied", "meeting_scheduled", "not_interested", "do_not_contact")
 COMPANY_CONTACT_CHECKS = {
     "ck_company_contacts_channel": f"preferred_channel IS NULL OR preferred_channel IN ({', '.join(repr(c) for c in COMPANY_CONTACT_CHANNELS)})",
     "ck_company_contacts_primary_active": "NOT is_primary OR active",
+    "ck_company_contacts_source": f"source IS NULL OR source IN ({', '.join(repr(s) for s in COMPANY_CONTACT_SOURCES)})",
+    "ck_company_contacts_status": f"status IN ({', '.join(repr(s) for s in COMPANY_CONTACT_STATUSES)})",
 }
 
 
@@ -789,6 +795,7 @@ class CompanyContact(Base, TimestampMixin):
         Index("ix_company_contacts_company", "company_id"),
         Index("uq_company_contacts_primary", "company_id", unique=True, postgresql_where=text("is_primary")),
         Index("ix_company_contacts_mobile", "mobile_normalized"),
+        Index("ix_company_contacts_email", "email"),  # pob-005 D8: the duplicate check (emails are stored lower-cased)
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
@@ -806,6 +813,12 @@ class CompanyContact(Base, TimestampMixin):
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
     created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    # pob-005 (DEC-SCOPE-410 D1): decision-maker, where we found them and when that was checked, and the outreach status
+    is_decision_maker: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    source: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    verified_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(24), default="not_contacted", server_default=text("'not_contacted'"))
+    status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     @validates("mobile")
     def _derive_mobile_normalized(self, _key: str, mobile: str | None) -> str | None:
@@ -7398,6 +7411,7 @@ class RecruiterMessage(Base, TimestampMixin):
     attempt_count: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     calendar_ics: Mapped[str | None] = mapped_column(Text, nullable=True)  # hrc-028 (I6): an interview invite, built when queued
+    replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # pob-005 D7: a reply logged by hand
 
 
 # upc-026 (DEC-SCOPE-139, spec §2): the §28 document centre. The 12 kinds in source order (DC1); the commission agreement is never

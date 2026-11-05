@@ -4,7 +4,7 @@ company's whole list, because a primary change touches two rows."""
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -21,6 +21,20 @@ router = APIRouter(prefix="/recruiter", tags=["recruiter-contacts"])
 async def list_contacts(company_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     company = await companies.load_scoped(db, user, company_id)
     return await svc.list_out(db, user, company)
+
+
+@router.get("/companies/{company_id}/contacts/duplicates")
+async def contact_duplicates(
+    company_id: UUID,
+    mobile: str | None = Query(None, max_length=40),
+    email: str | None = Query(None, max_length=255),
+    exclude: UUID | None = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """pob-005 D8: a warning, never a refusal -- other contacts with this mobile or email. Read only (no audit); company read scope (404)."""
+    company = await companies.load_scoped(db, user, company_id)
+    return await svc.duplicates(db, user, company, mobile, email, exclude)
 
 
 @router.post("/companies/{company_id}/contacts", status_code=201, response_model=RecContactList)

@@ -18,6 +18,7 @@ from app.models import (
     RecruiterFollowUp,
     RecruiterInvoice,
     RecruiterMeeting,
+    RecruiterMessage,
     RecruiterMessageTemplate,
     RecruitmentDrive,
 )
@@ -87,6 +88,8 @@ ROWS = [
     # §2.61 / RM6: render is a template read -- the template readers' role first (the BDMs 403), then the contact's company scope (404)
     R("get", "/recruiter/messages/render?template_id={activity_template}&contact_id={contact}", **allow(200, "rec", "mgr", "super"), **allow(404, "rec_out", "mgr_out")),
     R("get", "/recruiter/companies/{company}/messages", **allow(200, *IN_SCOPE), **allow(404, *OUT)),
+    # pob-005 D7 (§2.303): a reply logged on a contact message -- the company's can_edit
+    R("post", "/recruiter/messages/{activity_message}/reply", {}, **allow(200, *EDITORS), **allow(404, *OUT)),
     R("get", "/recruiter/candidates/{candidate}/messages", **allow(200, *POOL_READERS)),
     # rec-027 timeline (§2.107): the company's by scope (hr 403), the candidate's by the pool (bdm 403)
     R("get", "/recruiter/companies/{company}/timeline", **allow(200, *IN_SCOPE), **allow(404, *OUT)),
@@ -147,6 +150,7 @@ async def build(client, db, w) -> None:
     fu = await add(db, RecruiterFollowUp(company_id=company_id, due_at=now() + timedelta(days=1), reason="offer_status", created_by_user_id=rec.id))
     call = await add(db, RecruiterCall(company_id=company_id, contact_id=contact_id, caller_user_id=rec.id, occurred_at=now(), direction="outgoing",
                                        outcome="connected"))  # fmt: skip
+    message = await add(db, RecruiterMessage(company_id=company_id, contact_id=contact_id, sender_user_id=rec.id, channel="whatsapp", body="Hi", sent_at=now()))
     template = await add(db, RecruiterMessageTemplate(channel="whatsapp", kind="follow_up", name=tag("R38 T "), body="Hi {name}, {recruiter} here.", active=True))
     meeting = await add(db, RecruiterMeeting(meeting_code=tag("MTG-"), company_id=company_id, meeting_type="contract_discussion",
                                              starts_at=now() - timedelta(hours=1), mode="Online", created_by_user_id=rec.id))  # fmt: skip
@@ -167,5 +171,5 @@ async def build(client, db, w) -> None:
     w.update({
         "activity_fu": str(fu.id), "activity_call": str(call.id), "activity_template": str(template.id), "activity_meeting": str(meeting.id),
         "activity_drive": str(drive.id), "activity_contract_company": str(second.id), "activity_contract": str(contract.id), "activity_invoice": str(invoice.id),
-        "activity_document": str(document.id),
+        "activity_document": str(document.id), "activity_message": str(message.id),
     })  # fmt: skip

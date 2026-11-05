@@ -118,6 +118,8 @@ from app.models import (
     QUAL_STUDY_LEVELS,
     QUALIFICATION_LEVELS,
     RANKING_SYSTEMS,
+    COMPANY_CONTACT_SOURCES,
+    COMPANY_CONTACT_STATUSES,
     RECRUITER_CALL_DIRECTIONS,
     RECRUITER_CALL_MAX_SECONDS,
     RECRUITER_CALL_OUTCOMES,
@@ -9742,12 +9744,16 @@ RecContactMobile = _rec_contact_optional(40)
 RecContactEmail = _rec_contact_optional(255)
 RecContactLinkedIn = _rec_contact_optional(300, before=_bdm_website_prefix)
 RecContactNotes = _rec_contact_optional(2000, before=_bdm_newlines)
-RecContactChannel = Literal["call", "whatsapp", "email"]
+RecContactChannel = Literal["call", "whatsapp", "email", "linkedin"]  # pob-005 D2: LinkedIn
+RecContactSource = Literal[COMPANY_CONTACT_SOURCES]
+RecContactStatus = Literal[COMPANY_CONTACT_STATUSES]  # pob-005 D3: "follow-up due" is derived, never sent
+RecContactVerifiedOn = Annotated[date | None, AfterValidator(lambda v: _not_future(v, "verified_future", "Verified on can't be in the future"))]
 
 
 class RecContactUpdate(BaseModel):
-    """PATCH: omitted = unchanged, null = clear; a sent null on name / is_primary / active fails the non-nullable type. `is_primary: true`
-    makes this the primary (false is refused: choose another); `active` deactivates or reactivates (C2)."""
+    """PATCH: omitted = unchanged, null = clear; a sent null on name / is_primary / active / is_decision_maker / status fails the
+    non-nullable type. `is_primary: true` makes this the primary (false is refused: choose another); `active` deactivates or reactivates
+    (C2); `status` is a manual status change (pob-005 D5)."""
 
     model_config = ConfigDict(extra="forbid")
     name: BdmContactName = None
@@ -9759,6 +9765,10 @@ class RecContactUpdate(BaseModel):
     linkedin_url: RecContactLinkedIn = None
     preferred_channel: RecContactChannel | None = None
     notes: RecContactNotes = None
+    is_decision_maker: StrictBool = None
+    source: RecContactSource | None = None
+    verified_on: RecContactVerifiedOn = None
+    status: RecContactStatus = None
     is_primary: StrictBool = None
     active: StrictBool = None
 
@@ -9774,10 +9784,24 @@ class RecContactIn(BaseModel):
     linkedin_url: RecContactLinkedIn = None
     preferred_channel: RecContactChannel | None = None
     notes: RecContactNotes = None
+    is_decision_maker: StrictBool = False
+    source: RecContactSource | None = None
+    verified_on: RecContactVerifiedOn = None
+    status: RecContactStatus = "not_contacted"
     is_primary: StrictBool = False
 
 
-REC_CONTACT_FIELDS = ("name", "designation", "department", "role_id", "mobile", "email", "linkedin_url", "preferred_channel", "notes")
+REC_CONTACT_FIELDS = (
+    "name", "designation", "department", "role_id", "mobile", "email", "linkedin_url", "preferred_channel", "notes", "is_decision_maker", "source",
+    "verified_on",
+)  # fmt: skip
+
+
+class RecMessageReply(BaseModel):
+    """pob-005 D7: when the contact replied -- now when omitted; the service checks it against the message's send time."""
+
+    model_config = ConfigDict(extra="forbid")
+    replied_at: AwareDatetime | None = None
 
 
 class RecCompanyUpdate(BaseModel):
@@ -9943,7 +9967,8 @@ class RecTimelineRow(BaseModel):
 
     id: UUID
     kind: Literal["stage", "call", "message", "meeting", "follow_up", "requirement", "share", "share_response", "contract", "application", "interview", "offer",
-                  "note", "task", "assignment", "profile", "screening"]  # hrc-016 T9: the candidate timeline's new kinds
+                  "note", "task", "assignment", "profile", "screening",  # hrc-016 T9: the candidate timeline's new kinds
+                  "message_reply", "contact_status"]  # pob-005 D10: a logged reply; a contact's status change (per-contact view only)
     at: datetime
     actor: LeadStageActor | None
     event: str | None
@@ -10116,6 +10141,13 @@ class RecContactOut(BaseModel):
     last_contacted_at: datetime | None  # C6: the latest call (rec-025) or message (rec-026 MS10); meetings join with rec-028
     next_follow_up_at: datetime | None = None  # rec-024 FU9: the earliest open follow-up about this contact
     whatsapp_to: str | None = None  # rec-026 MS6: the wa.me number (E.164 digits), None when the mobile is unusable
+    # pob-005 (DEC-SCOPE-410 D1/D3): `follow_up_due` is derived (an open follow-up about this contact is due now or earlier)
+    is_decision_maker: bool = False
+    source: str | None = None
+    verified_on: date | None = None
+    status: str = "not_contacted"
+    status_changed_at: datetime | None = None
+    follow_up_due: bool = False
     created_at: datetime
     updated_at: datetime
 
