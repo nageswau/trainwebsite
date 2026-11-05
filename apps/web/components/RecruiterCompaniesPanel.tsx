@@ -14,7 +14,8 @@ import { PAGE_SIZE } from "@/lib/telecaller";
 // The API scopes the rows. Filters and the page live in the URL (BdmOrganizationsPanel's pattern), so refresh keeps the place and Back
 // returns to the previous view; the current rows stay on screen while the next page loads. Below 980px each row is a card of labelled
 // lines (the house `.telecaller-list` layout, QA-02).
-type Filters = { offset: number; q: string; city: string; priority: string; leadSource: string; industry: string; assigned: string; archived: boolean };
+type Filters = { offset: number; q: string; city: string; priority: string; leadSource: string; industry: string; assigned: string; archived: boolean; sort: string };
+const SORTS = [{ id: "last_contacted", name: "Last contacted" }]; // pob-003 D5; "" = by name (the API default)
 type Team = { id: string; full_name: string; active: boolean }[];
 
 function readFilters(params: URLSearchParams): Filters {
@@ -29,6 +30,7 @@ function readFilters(params: URLSearchParams): Filters {
     industry: params.get("industry_id") ?? "",
     assigned: params.get("assigned") ?? "",
     archived: params.get("archived") === "1",
+    sort: SORTS.some((s) => s.id === params.get("sort")) ? (params.get("sort") as string) : "",
   };
 }
 
@@ -42,6 +44,7 @@ function toUrl(f: Filters): URLSearchParams {
   if (f.industry) next.set("industry_id", f.industry);
   if (f.assigned) next.set("assigned", f.assigned);
   if (f.archived) next.set("archived", "1");
+  if (f.sort) next.set("sort", f.sort);
   return next;
 }
 
@@ -175,6 +178,7 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false }
             onChange={(v) => go({ assigned: v })}
           />
         )}
+        <Picker id="company-sort" label="Sort by" value={filters.sort} all="Name" options={SORTS} onChange={(v) => go({ sort: v })} />
         <label style={CHECKBOX_ROW}>
           <input type="checkbox" checked={filters.archived} onChange={(e) => go({ archived: e.target.checked })} />
           Show archived
@@ -183,7 +187,7 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false }
           Search
         </button>
         {filtered && (
-          <button type="button" className="btn secondary small" onClick={() => go({ q: "", city: "", priority: "", leadSource: "", industry: "", assigned: "", archived: false })}>
+          <button type="button" className="btn secondary small" onClick={() => go({ q: "", city: "", priority: "", leadSource: "", industry: "", assigned: "", archived: false, sort: filters.sort })}>
             Clear filters
           </button>
         )}
@@ -240,6 +244,7 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false }
                   <th scope="col">Lead source</th>
                   <th scope="col">Industry</th>
                   <th scope="col">Recruiter</th>
+                  <th scope="col">Last contact</th>
                   <th scope="col">Next follow-up</th>
                 </tr>
               </thead>
@@ -267,6 +272,7 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false }
                     <td data-label="Lead source">{display(r.lead_source?.name)}</td>
                     <td data-label="Industry">{display(r.industry?.name)}</td>
                     <td data-label="Recruiter">{personName(r.assigned_recruiter)}</td>
+                    <td data-label="Last contact" style={{ whiteSpace: "nowrap" }}>{r.last_contacted_at ? formatSchoolDateTime(r.last_contacted_at) : "—"}</td>
                     <td data-label="Next follow-up" style={{ whiteSpace: "nowrap" }}>{r.next_follow_up_at ? formatSchoolDateTime(r.next_follow_up_at) : "—"}</td>
                   </tr>
                 ))}

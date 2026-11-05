@@ -7,7 +7,7 @@ import logging
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import func, literal_column, or_, select
+from sqlalchemy import delete, func, literal_column, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
@@ -15,12 +15,18 @@ from app.models import (
     AuditLog,
     Company,
     CompanyAssignmentHistory,
+    CompanyBranch,
+    CompanySkillDemand,
     RecCampaign,
     RecCompanySize,
     RecIndustry,
     RecLeadSource,
+    RecruiterCall,
     RecruiterFollowUp,
+    RecruiterMeeting,
+    RecruiterMessage,
     RecruiterProfile,
+    Skill,
     User,
 )
 from app.recruiter_stages import label as stage_label
@@ -55,6 +61,10 @@ LOOKUPS = {  # field -> (model, the word in its 422)
     "lead_source_id": (RecLeadSource, "lead source"),
     "campaign_id": (RecCampaign, "campaign"),
 }
+
+
+SKILL_INACTIVE = "Choose an active skill"
+BRANCH_FIELDS = ("city", "state", "country")
 
 
 def name_key(name: str) -> str:
@@ -175,6 +185,55 @@ async def employer_lead_source_id(db: AsyncSession) -> UUID | None:
     return await db.scalar(select(RecLeadSource.id).where(func.lower(RecLeadSource.name) == EMPLOYER_LEAD_SOURCE, RecLeadSource.active.is_(True)))
 
 
+async def stored_relations(db: AsyncSession, company_id: UUID) -> tuple[list[dict], list[UUID]]:
+    """pob-003 D1/D3: the branch rows and the skill-demand ids, each in the saved order."""
+    branches = (await db.scalars(select(CompanyBranch).where(CompanyBranch.company_id == company_id).order_by(CompanyBranch.position))).all()
+    skills = (await db.scalars(select(CompanySkillDemand.skill_id).where(CompanySkillDemand.company_id == company_id).order_by(CompanySkillDemand.position))).all()
+    return [{f: getattr(b, f) for f in BRANCH_FIELDS} for b in branches], list(skills)
+
+
+async def save_relations(db: AsyncSession, company_id: UUID, values: dict) -> list[str]:
+    """pob-003 D1/D3: replace the sent sets (`branch_locations`, `skill_demand_ids`) when they differ from the stored ones; returns the
+    changed field names. A newly added skill must exist and be active (FOR SHARE: a concurrent deactivation waits); a kept one may not be."""
+    branches, skills = await stored_relations(db, company_id)
+    changed = []
+    if "branch_locations" in values:
+        sent = [{f: b.get(f) for f in BRANCH_FIELDS} for b in values["branch_locations"]]  # exclude_unset drops an unsent state/country
+        if sent != branches:
+            await db.execute(delete(CompanyBranch).where(CompanyBranch.company_id == company_id))
+            db.add_all(CompanyBranch(company_id=company_id, position=i, **b) for i, b in enumerate(sent))
+            changed.append("branch_locations")
+    if "skill_demand_ids" in values:
+        sent_ids = list(values["skill_demand_ids"])
+        added = set(sent_ids) - set(skills)
+        if added:
+            active = (await db.scalars(select(Skill.id).where(Skill.id.in_(added), Skill.active.is_(True)).with_for_update(read=True))).all()
+            if len(active) != len(added):
+                raise HTTPException(422, SKILL_INACTIVE)
+        if sent_ids != skills:
+            await db.execute(delete(CompanySkillDemand).where(CompanySkillDemand.company_id == company_id))
+            db.add_all(CompanySkillDemand(company_id=company_id, skill_id=s, position=i) for i, s in enumerate(sent_ids))
+            changed.append("skill_demand_ids")
+    return changed
+
+
+async def refresh_last_contact(db: AsyncSession, company_id: UUID | None) -> None:
+    """pob-003 D4: recompute `last_contacted_at` from the company's calls, messages and completed meetings, in the caller's transaction.
+    The row is locked first and the UPDATE is a new statement, so it sees every concurrent writer that committed before it (a later one
+    recomputes after us). `updated_at` is kept: activity is not an edit of the company."""
+    if company_id is None:
+        return
+    await db.execute(select(Company.id).where(Company.id == company_id).with_for_update())
+    latest = func.greatest(
+        select(func.max(RecruiterCall.occurred_at)).where(RecruiterCall.company_id == company_id).scalar_subquery(),
+        select(func.max(RecruiterMessage.sent_at)).where(RecruiterMessage.company_id == company_id).scalar_subquery(),
+        select(func.max(RecruiterMeeting.starts_at)).where(RecruiterMeeting.company_id == company_id, RecruiterMeeting.status == "completed").scalar_subquery(),
+    )
+    await db.execute(
+        update(Company).where(Company.id == company_id).values(last_contacted_at=latest, updated_at=Company.updated_at).execution_options(synchronize_session=False)
+    )
+
+
 def person(user: User | None) -> dict | None:
     return {"id": user.id, "full_name": user.full_name, "active": user.active} if user else None
 
@@ -199,6 +258,7 @@ def row_out(user: User, company: Company, industry, source, recruiter: User | No
         "stage_label": stage_label(company.stage),
         "lost": company.lost_at is not None,
         "next_follow_up_at": next_follow_up_at,
+        "last_contacted_at": company.last_contacted_at,  # pob-003 D4
     }
 
 
@@ -242,9 +302,24 @@ async def company_out(db: AsyncSession, user: User, company: Company, *, refresh
         ],
         "pipeline": pipeline_out(user, company),
         "contract": await company_contract_ref(db, company),  # rec-030 CT10
+        **await context_out(db, company),  # pob-003
         "archived_at": company.archived_at,
         "created_at": company.created_at,
         "updated_at": company.updated_at,
+    }
+
+
+async def context_out(db: AsyncSession, company: Company) -> dict:
+    """pob-003 D1-D3: the business context of the detail."""
+    branches, skill_ids = await stored_relations(db, company.id)
+    skills = {s.id: s for s in (await db.scalars(select(Skill).where(Skill.id.in_(skill_ids)))).all()} if skill_ids else {}
+    return {
+        "products_services": company.products_services,
+        "departments_hiring": company.departments_hiring or [],
+        "hiring_locations": company.hiring_locations or [],
+        "target_roles": company.target_roles or [],
+        "branch_locations": branches,
+        "skill_demand": [ref(skills[i]) for i in skill_ids],
     }
 
 

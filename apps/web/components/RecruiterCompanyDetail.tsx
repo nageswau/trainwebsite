@@ -6,6 +6,8 @@ import BdmConfirm from "@/components/BdmConfirm";
 import { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import LocalTime from "@/components/LocalTime";
 import RecruiterCalls from "@/components/RecruiterCalls";
+import RecruiterCompanyBusiness from "@/components/RecruiterCompanyBusiness";
+import RecruiterCompanyDocuments from "@/components/RecruiterCompanyDocuments";
 import RecruiterCompanyContacts from "@/components/RecruiterCompanyContacts";
 import RecruiterCompanyContract from "@/components/RecruiterCompanyContract";
 import RecruiterCompanyRevenue from "@/components/RecruiterCompanyRevenue";
@@ -31,7 +33,8 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 // the company the API returns (no refetch). Contacts are rec-004's section; rec-005 adds the pipeline and its history (reloaded after
 // each pipeline write); rec-024 the follow-ups (a change re-reads the company's Next follow-up); rec-028 the meetings; rec-030 the contract
 // (a write re-reads the company's Contract status).
-// rec-027: the Timeline section re-reads its first page after any of those writes.
+// rec-027: the Timeline section re-reads its first page after any of those writes. pob-003 adds the business context, the documents and
+// "Last contact" (a call, message or meeting change re-reads the company, so it moves in place).
 function linkOrText(url: string | null) {
   const safe = safeLink(url);
   return safe ? (
@@ -189,11 +192,12 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
     ["State", display(company.state)],
     ["Country", display(company.country)],
     ["Head office", display(company.head_office)],
-    ["Branches", multiline(company.branches)],
+    ["Branch notes", multiline(company.branches)], // pob-003: structured branches are in Business context
     ["Company description", multiline(company.description)],
     ["Lead source", display(company.lead_source?.name)],
     ["Campaign", display(company.campaign?.name)],
     ["Priority", company.priority ? PRIORITY_LABEL[company.priority] : "—"],
+    ["Last contact", company.last_contacted_at ? formatSchoolDateTime(company.last_contacted_at, true) : "—"], // pob-003 D4
     ["Next follow-up", company.next_follow_up_at ? formatSchoolDateTime(company.next_follow_up_at, true) : "None scheduled"], // rec-024 FU9
     ["Contract status", company.contract ? company.contract.status_label : "No contract yet"], // rec-030 CT10
     ["Recruiter (account manager)", personName(company.assigned_recruiter)],
@@ -268,6 +272,7 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
       )}
       {/* Re-keyed on archive/restore (the list's `can_edit` follows the company's state) and on a follow-up, call, meeting or message change
           (each contact's next follow-up and Last contacted). */}
+      <RecruiterCompanyBusiness company={company} onSaved={(c, saved) => changed(c, saved ? "Business context saved." : "No changes to save.")} />
       <RecruiterCompanyContacts key={`${company.id}-${company.archived}-${followUpChanges}-${meetingChanges}-${messageChanges}`} companyId={company.id} />
       <RecruiterCalls key={`calls-${company.id}-${company.archived}`} party={{ kind: "contact", companyId: company.id }} canWrite={p.can_edit}
         onChanged={(result) => {
@@ -278,8 +283,9 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
       <RecruiterCompanyMeetings key={`meetings-${company.id}-${company.archived}`} companyId={company.id} canWrite={p.can_edit} onChanged={() => void meetingChanged()} />
       <RecruiterCompanyContract key={`contract-${company.id}-${company.archived}`} companyId={company.id} onChanged={(text) => void contractChanged(text)} />
       {showRevenue && <RecruiterCompanyRevenue companyId={company.id} />}
+      <RecruiterCompanyDocuments key={`documents-${company.id}-${company.archived}`} companyId={company.id} />
       <RecruiterMessages key={`messages-${company.id}-${company.archived}`} source={{ kind: "company", companyId: company.id }} canWrite={p.can_edit}
-        onChanged={() => { setMessageChanges((n) => n + 1); touched(); }} />
+        onChanged={() => { setMessageChanges((n) => n + 1); void followUpChanged(); }} />
       <RecruiterCompanyPipeline
         company={company}
         onChanged={(c, text) => {

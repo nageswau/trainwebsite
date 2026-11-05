@@ -3870,3 +3870,11 @@ requirement's fee. Defaults (migration 0278): `placement_team` and `placement_ma
 A super admin revokes per role or per user (nehn-007 deny). `commercials.vendor.*` and `candidates.contact.view` are declared with no
 holder until pob-010/012 and pob-030 enforce them. The rec-031 role gate (RV10) and every record scope are unchanged and run first. Pinned
 by `apps/api/tests/test_pob_001_commercials.py` and `test_pob_001_migration.py`.
+
+### 2.299 Company business context and documents *(added 2026-11-05 — `DEC-SCOPE-406`, pob-003)*
+
+The business context is part of the company record: it is read in the rec-003 company scope (§2.47) and written by the company's
+`can_edit` (the assigned recruiter or super_admin; a manager or the assigned BDM is 403; archived 409). Documents: listed and downloaded in
+the same scope (out of scope 404), uploaded by `can_edit`. A `recruitment_agreement` follows §2.296: download needs
+`commercials.client.view`, upload needs view + edit; its row (name, date, uploader) stays listed. Pinned by
+`apps/api/tests/test_pob_003_company_context.py`, `test_pob_003_company_documents.py` and the rec-038 matrix rows.

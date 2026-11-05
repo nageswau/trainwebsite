@@ -4,6 +4,7 @@ Every `{company_id}` resolves through `services.recruiter_companies.load_scoped`
 scope, row lock, change, audit, one commit here. Lists are {items, total, limit, offset}, ordered by name then id."""
 
 from datetime import UTC, datetime
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -12,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.api import company_documents
 from app.api.bdm import LIMIT, OFFSET, SEARCH, _matching
 from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
@@ -19,6 +21,8 @@ from app.core.database import get_db
 from app.models import Company, RecIndustry, RecLeadSource, User
 from app.schemas import (
     REC_COMPANY_FIELDS,
+    REC_COMPANY_RELATIONS,
+    REC_CONTEXT_LIST_LABELS,
     RecBdmOptionPage,
     RecCompanyAssign,
     RecCompanyCreate,
@@ -72,6 +76,7 @@ async def list_companies(
     city: str | None = Query(None, max_length=120),
     assigned: str | None = Query(None, max_length=36),
     include_archived: bool = False,
+    sort: Literal["name", "last_contacted"] = "name",  # pob-003 D5
     limit: int = LIMIT,
     offset: int = OFFSET,
     user: User = Depends(get_current_user),
@@ -97,7 +102,7 @@ async def list_companies(
         .outerjoin(RecLeadSource, RecLeadSource.id == Company.lead_source_id)
         .outerjoin(Recruiter, Recruiter.id == Company.assigned_recruiter_user_id)
         .where(*filters)
-        .order_by(func.lower(Company.name), Company.id)
+        .order_by(*(() if sort == "name" else (Company.last_contacted_at.desc().nulls_last(),)), func.lower(Company.name), Company.id)
         .limit(limit)
         .offset(offset)
     )
@@ -125,6 +130,7 @@ async def create_company(payload: RecCompanyCreate, user: User = Depends(get_cur
         if payload.assigned_recruiter_user_id not in (None, user.id):
             raise HTTPException(403, "Only a placement manager can choose the recruiter")
     values = payload.model_dump(include=set(REC_COMPANY_FIELDS))
+    values.update({k: [] for k in REC_CONTEXT_LIST_LABELS if values[k] is None})  # pob-003: an unsent list is empty, never NULL
     await svc.check_references(db, values, None)
     target = None
     if user.role != ROLE and payload.assigned_recruiter_user_id:
@@ -135,9 +141,11 @@ async def create_company(payload: RecCompanyCreate, user: User = Depends(get_cur
         company.assigned_recruiter_user_id = user.id
     db.add(company)
     await _flush(db)
+    relations = await svc.save_relations(db, company.id, payload.model_dump(include=set(REC_COMPANY_RELATIONS), exclude_unset=True))  # pob-003
     if target is not None:
         svc.record_assignment(db, user, company, target.id)
-    svc.audit(db, user, "create", company.id, {"code": company.company_code, "fields": sorted(k for k, v in values.items() if v is not None)})
+    filled = [k for k, v in values.items() if v is not None and v != []] + relations
+    svc.audit(db, user, "create", company.id, {"code": company.company_code, "fields": sorted(filled)})
     if overrides:
         svc.audit(db, user, "duplicate_override", company.id, {"match_count": overrides})
     if payload.contact:  # rec-004 C7 "+ Add Recruiter": the first contact (primary) in the same transaction
@@ -159,13 +167,15 @@ async def update_company(company_id: UUID, payload: RecCompanyUpdate, user: User
     duplicate check."""
     company = await svc.load_scoped(db, user, company_id, lock=True)
     svc.require(user, company, "can_edit", "update")
-    changes = payload.model_dump(exclude_unset=True, exclude={"confirm_duplicate"})
+    changes = payload.model_dump(exclude_unset=True, exclude={"confirm_duplicate", *REC_COMPANY_RELATIONS})
     await svc.check_references(db, changes, company)
     changed = sorted(k for k, v in changes.items() if getattr(company, k) != v)
     overrides = await svc.check_name(db, changes["name"], payload.confirm_duplicate, company.id) if "name" in changed else 0
+    relations = await svc.save_relations(db, company.id, payload.model_dump(include=set(REC_COMPANY_RELATIONS), exclude_unset=True))  # pob-003
+    for key in changed:
+        setattr(company, key, changes[key])
+    changed = sorted(changed + relations)
     if changed:
-        for key in changed:
-            setattr(company, key, changes[key])
         await _flush(db)
         svc.audit(db, user, "update", company.id, {"fields": changed})
         if overrides:
@@ -211,3 +221,6 @@ async def assign_company(company_id: UUID, payload: RecCompanyAssign, user: User
     await db.commit()
     svc.log("recruiter_company_assigned", user, company.id, to_user_id=str(target.id))
     return {"company": await svc.company_out(db, user, company)}
+
+
+router.include_router(company_documents.router)  # pob-003 (DEC-SCOPE-406 D6): /{company_id}/documents, /documents/{id}/download
