@@ -6431,6 +6431,8 @@ class SkillRelated(Base):
 
 # rec-009 (DEC-SCOPE-122, spec §3): the central candidate master. Q-08: the status is set by hand, from these values.
 CANDIDATE_STATUSES = ("available", "interviewing", "placed", "not_looking", "do_not_contact")
+# hrc-021 (DEC-SCOPE-397 E2): the derived engagement status keys -- never stored; services/candidate_engagement computes and labels them.
+CANDIDATE_ENGAGEMENTS = ("new", "uncontacted", "contacted", "screened", "shortlisted", "active", "inactive", "placed", "not_interested", "do_not_contact")
 # On the metadata so 0001's create_all builds it for a fresh database; 0107 creates it IF NOT EXISTS.
 CANDIDATE_CODE_SEQ = Sequence("candidate_code_seq", metadata=Base.metadata)
 CANDIDATE_CHECKS = {  # migration 0107 repeats these strings; test_rec_009_migration asserts they stay identical

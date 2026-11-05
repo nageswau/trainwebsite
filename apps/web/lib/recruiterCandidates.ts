@@ -8,7 +8,18 @@ export type CandidateItem = {
   id: string; candidate_code: string; name: string; location: string | null; experience_months: number | null; preferred_role: string | null;
   source: SourceRef; source_detail: string | null; status: CandidateStatus; archived: boolean; created_at: string;
   owner?: OwnerRef | null; // hrc-012: the primary recruiter; null = unassigned
+  engagement?: CandidateEngagement | null; // hrc-021: derived by the API from activity, applications and the manual flags
 };
+// hrc-021 (DEC-SCOPE-397 E2): the derived engagement status -- never sent, only read and filtered on. In the design's precedence order.
+export const ENGAGEMENTS = [
+  { key: "new", label: "New" }, { key: "uncontacted", label: "Uncontacted" }, { key: "contacted", label: "Contacted" },
+  { key: "screened", label: "Screened" }, { key: "shortlisted", label: "Shortlisted" }, { key: "active", label: "Active" },
+  { key: "inactive", label: "Inactive" }, { key: "placed", label: "Placed" }, { key: "not_interested", label: "Not interested" },
+  { key: "do_not_contact", label: "Do not contact" },
+] as const;
+export type CandidateEngagement = (typeof ENGAGEMENTS)[number];
+/** A URL value the API would accept, or "" (a hand-edited value is ignored, as the other filters do). */
+export const engagementOf = (value: string | null) => (ENGAGEMENTS.some((e) => e.key === value) ? value! : "");
 // hrc-012 (DEC-SCOPE-382): who owns a candidate. Visibility is unchanged -- ownership feeds "My candidates", notices and handover.
 export type OwnerRef = { id: string; full_name: string; active: boolean };
 export type CandidateOwnership = {

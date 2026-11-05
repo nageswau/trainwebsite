@@ -724,6 +724,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** small. **Risk:** low.
 
 #### hrc-021: Candidate status model alignment
+- **Status:** built as `DEC-SCOPE-397` (no migration, API §12KP, no RBAC change; Q-22 answered by the builder's recommended call,
+  option (a) derived, `NEEDS_CONFIRMATION`); design `docs/superpowers/specs/2026-11-05-hrc-021-candidate-engagement-status-design.md`.
 - **Business requirement:** §8 candidate status "new registration, uncontacted, screened, shortlisted, active, inactive, placed, not interested"; §6.2 filters "contacted, screened, active, inactive, duplicate-review".
 - **Existing behavior:** `CANDIDATE_STATUSES` are available, interviewing, placed, not_looking and do_not_contact (`models.py:5614`).
 - **Expected behavior:** per Q-22, either:
