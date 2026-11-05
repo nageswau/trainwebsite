@@ -20,7 +20,7 @@ test("a recruiter finds a college by course and keeps its placement profile", as
   const tag = Date.now().toString(36);
   await signIn(page, BDM);
   const created = await page.request.post("/api/v1/bdm/organizations", {
-    data: { org_type: "college", name: `POB13 College ${tag}`, city: "Kochi", state: "Kerala", courses: `Mechatronics${tag}`,
+    data: { org_type: "college", name: `POB13 College ${tag}`, city: "Kochi", state: "Kerala", profile: { courses: `Mechatronics${tag}` },
             contacts: [{ name: "Ms Iyer", designation: "TPO", role: "placement_officer", is_primary: true }] },
   });
   expect(created.status(), await created.text()).toBe(201);
@@ -81,6 +81,6 @@ test("a recruiter finds a college by course and keeps its placement profile", as
 
   await page.setViewportSize({ width: 375, height: 800 });
   await page.goto(`/recruiter/colleges/${org.id}`);
-  await expect(page.getByRole("heading", { name: "Placement" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Placement", exact: true })).toBeVisible();
   expect(await noSideScroll(page)).toBe(true);
 });

@@ -36,7 +36,7 @@ async def _ok(response, status: int = 200) -> dict:
 
 @pytest.mark.asyncio
 async def test_ac1_a_recruiter_views_a_college_adds_a_batch_and_calendar_entry_and_logs_a_tpo_meeting(client, db_session):
-    w = await _world(client, db_session, courses="B.Tech CSE, MBA")
+    w = await _world(client, db_session, profile={"courses": "B.Tech CSE, MBA"})
     oid = w["org"]["id"]
     college = await _ok(await client.get(url(oid)))
     assert college["code"] == w["org"]["code"] and college["permissions"] == {"can_edit": True}
@@ -108,7 +108,7 @@ async def test_ac3_search_by_course_graduating_year_and_location(client, db_sess
 @pytest.mark.asyncio
 async def test_the_bdm_free_text_courses_are_searchable_too(client, db_session):
     tag = uuid.uuid4().hex[:6]
-    w = await _world(client, db_session, courses=f"Aeronautics{tag}")
+    w = await _world(client, db_session, profile={"courses": f"Aeronautics{tag}"})
     assert [r["id"] for r in (await client.get(BASE, params={"course": f"aeronautics{tag}"})).json()["items"]] == [w["org"]["id"]]
 
 
@@ -272,7 +272,8 @@ async def test_tpo_contact_office_and_preferred_method(client, db_session):
     oid = w["org"]["id"]
     contact = (await _ok(await client.get(url(oid))))["contacts"][0]["id"]
     college = await _ok(await client.patch(url(oid, "contacts", contact), json={"office_details": "Placement cell, Block A", "preferred_contact_method": "whatsapp"}))
-    assert college["contacts"][0] | {"id": None} >= {"office_details": "Placement cell, Block A", "preferred_contact_method": "whatsapp"}
+    saved = college["contacts"][0]
+    assert (saved["office_details"], saved["preferred_contact_method"]) == ("Placement cell, Block A", "whatsapp")
     assert (await client.patch(url(oid, "contacts", contact), json={"preferred_contact_method": "fax"})).status_code == 422
     assert (await client.patch(url(oid, "contacts", contact), json={"name": "Renamed"})).status_code == 422  # BDM fields stay on bdm-002
     unchanged = await client.patch(url(oid, "contacts", contact), json={"preferred_contact_method": "whatsapp"})
