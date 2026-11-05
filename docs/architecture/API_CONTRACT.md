@@ -5895,7 +5895,7 @@ A search needs a skill term (`all`/`any`/`preferred`), a category or resume text
 permission; migration `0275` adds indexes only.
 ## 12KS. Interview completion, cancellation, link history and calendar (hrc-028) — addendum, 2026-11-05
 
-`DEC-SCOPE-400`, migration `0274_interview_completion`. **Changed (additive):** `POST /api/v1/recruiter/interviews` and
+`DEC-SCOPE-400`, migration `0276_interview_completion`. **Changed (additive):** `POST /api/v1/recruiter/interviews` and
 `PATCH /recruiter/interviews/{id}` accept `round_number` (1–20), `ends_at` (after `scheduled_at`, ≤ 12 h later; else 422 on `ends_at`),
 `time_zone` (IANA name, default `Asia/Kolkata`; unknown 422; PATCH cannot clear it), `platform` (`google_meet`, `microsoft_teams`, `zoom`,
 `zoho_meeting`, `other`), `phone_details` (≤ 200), `instructions` (≤ 2000, multi-line), `documents_required` (≤ 1000, multi-line). PATCH

@@ -1,8 +1,8 @@
 """hrc-028 -- the interview fields (round number, end, time zone, platform, phone, instructions, documents, cancel reason, calendar
 sequence), the `cancelled` status, the `details` event with the old and new link/location, and the invite text on a recruiter email.
 
-Revision ID: 0274_interview_completion
-Revises: 0273_candidate_privacy
+Revision ID: 0276_interview_completion
+Revises: 0275_candidate_search_indexes
 
 docs/superpowers/specs/2026-11-05-hrc-028-interview-completion-design.md (DEC-SCOPE-400). 0001 builds a fresh database from the current
 models, which already carry the columns, so each column/check is added only when missing (0222's idiom); the status and event CHECKs
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0274_interview_completion"
-down_revision = "0273_candidate_privacy"
+revision = "0276_interview_completion"
+down_revision = "0275_candidate_search_indexes"
 branch_labels = None
 depends_on = None
 

@@ -47,7 +47,7 @@ the times in their own time zone.
   a candidate-chosen time zone on the profile.
 
 ## Numbering
-Migration `0274_interview_completion` (after `0273_candidate_privacy`); API §12KS; RBAC §2.291.
+Migration `0276_interview_completion` (after `0275_candidate_search_indexes`); API §12KS; RBAC §2.291.
 
 ## Acceptance criteria
 1. After a link replacement the portal shows only the new link; the old one is kept on a `details` event.

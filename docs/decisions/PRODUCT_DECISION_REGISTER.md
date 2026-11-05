@@ -11892,5 +11892,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   portal shows round, role, company, time in zone, mode, the current link, details and "Cancelled — reason". I8 the recruiter form and item
   gain the fields, the candidate's time, Cancel with a reason and the history lines. I9 AuthZ unchanged (rec-017 writers; out of scope 404).
   I10 not built: auto-created meetings (Q-29), interviewer users, result release (hrc-030), a candidate-chosen zone on the profile.
-- **Numbering:** migration `0274_interview_completion`; API §12KS; RBAC §2.291.
+- **Numbering:** migration `0276_interview_completion`; API §12KS; RBAC §2.291.
 - **Feature ID authorized:** `hrc-028`. **Status:** built on `worktree-hrc-028`.

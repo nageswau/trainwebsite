@@ -32,7 +32,7 @@ def test_migration_chains_and_there_is_a_single_head():
 def test_models_match_the_migration():
     from app.models import INTERVIEW_CHECKS, INTERVIEW_EVENT_CHECKS, INTERVIEW_ROUNDS, INTERVIEW_STATUSES, Interview, InterviewEvent
 
-    # hrc-028 (0274) adds `cancelled`, the `details` event and its own checks: 0133's copies are the rows before it
+    # hrc-028 (0276) adds `cancelled`, the `details` event and its own checks: 0133's copies are the rows before it
     assert _migration.CHECKS["ck_interviews_round"] == INTERVIEW_CHECKS["ck_interviews_round"]
     assert set(_migration.CHECKS) < set(INTERVIEW_CHECKS) and set(_migration.EVENT_CHECKS) == set(INTERVIEW_EVENT_CHECKS)
     assert _migration.ROUNDS == INTERVIEW_ROUNDS and _migration.STATUSES == INTERVIEW_STATUSES[:-1] == ("scheduled", "confirmed", "completed", "rescheduled", "no_show", "selected", "rejected", "on_hold")

@@ -1284,7 +1284,7 @@ class JobApplicationStatusHistory(Base):
 # rec-020 (DEC-SCOPE-148, IV1/IV2): the EVID-018 §14 rounds and statuses, in source order. Migration 0133 repeats them
 # (test_rec_020_migration). Labels live in services/interviews.py and the web client.
 INTERVIEW_ROUNDS = ("hr_round", "technical_round", "manager_round", "final_round", "client_round")
-# hrc-028 (DEC-SCOPE-400 I3/I4): `cancelled` with its reason, the `details` event (a link/location change); migration 0274 repeats them.
+# hrc-028 (DEC-SCOPE-400 I3/I4): `cancelled` with its reason, the `details` event (a link/location change); migration 0276 repeats them.
 INTERVIEW_STATUSES = ("scheduled", "confirmed", "completed", "rescheduled", "no_show", "selected", "rejected", "on_hold", "cancelled")
 INTERVIEW_EVENTS = ("scheduled", "rescheduled", "status", "details")
 INTERVIEW_PLATFORMS = ("google_meet", "microsoft_teams", "zoom", "zoho_meeting", "other")
