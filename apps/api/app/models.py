@@ -7614,6 +7614,22 @@ class TalentPool(Base, TimestampMixin):
     created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
 
+
+class SavedCandidateSearch(Base, TimestampMixin):
+    """hrc-020 (DEC-SCOPE-401 X1/X2): a user's named Find Candidates search -- `filters` is the search body (`schemas.CandidateSearch`,
+    canonical, sort included); `shared` shows it to every candidate reader. Migration 0277 repeats this table."""
+
+    __tablename__ = "saved_candidate_searches"
+    __table_args__ = (
+        CheckConstraint("char_length(name) BETWEEN 1 AND 80", name="ck_saved_candidate_searches_name"),
+        Index("uq_saved_candidate_searches_name", "owner_user_id", text("lower(name)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    owner_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    name: Mapped[str] = mapped_column(String(80))
+    filters: Mapped[dict] = mapped_column(JSON, default=dict)
+    shared: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"), index=True)
+
 # rec-019 (DEC-SCOPE-160, spec §2): profile sharing (EVID-018 §11). One share is one requirement, one company and one channel; each item is
 # one candidate with the company's response. Email / WhatsApp shares point at their `recruiter_messages` row and carry a contact; Portal /
 # Other have no message. Migration 0142 repeats these (test_rec_019_migration pins them).

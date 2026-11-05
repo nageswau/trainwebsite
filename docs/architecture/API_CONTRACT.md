@@ -5893,3 +5893,21 @@ A search needs a skill term (`all`/`any`/`preferred`), a category or resume text
 `candidates.compensation:view` is **403** before anything is read. **Response (additive):** each card gains `match`:
 `{required: [{term, skill, held}], preferred: [{term, skill, held}]}`. Talent-pool member cards are unchanged. No new endpoint or
 permission; migration `0275` adds indexes only.
+
+## 12KT. Saved candidate searches and the Find Candidates export (hrc-020) — addendum, 2026-11-05
+
+`DEC-SCOPE-401`. **New.** All under `/api/v1/recruiter/candidates`, for Find Candidates readers (recruiters, placement managers,
+super_admin, hr_team); other roles 403 before the body is read, anonymous 401.
+- `GET /saved-searches` → `{items: [{id, name, filters, ignored, shared, mine, can_edit, owner: {id, name}, updated_at}]}` — the caller's
+  own and every shared search (own first, by name). `filters` is a Find Candidates body (§12KR); `ignored` names keys the search no longer
+  declares and, without `candidates.compensation:view`, the package filters / package sort that were removed.
+- `POST /saved-searches` `{name (1–80), filters, shared?}` → **201** the row. `filters` is validated as a search body (its 422 sentences);
+  package filters or sort without the compensation grant 403; a duplicate name (per owner, case-insensitive) 409; more than 50 → 422.
+- `PATCH /saved-searches/{id}` `{name?, filters?, shared?}` (at least one) → 200 the row. `DELETE /saved-searches/{id}` → 204. Owner or
+  super_admin only: an invisible id is 404, a shared search of someone else 403.
+- `POST /search/export?format=csv|xlsx` with a search body → the file (`candidates.csv` / `.xlsx`, `Cache-Control: private, no-store`).
+  Needs `candidates.export` (403 "Your role cannot export candidates", checked before the body); package filters without the compensation
+  grant 403; more than 5,000 rows 422; more than 30 exports in 10 minutes 429 with `Retry-After`. Columns: Candidate ID, Name, Preferred
+  role, Current company, Experience (years), Location, Notice (days), Skills, Source, Status, Engagement, and Expected salary (₹ a year)
+  only with the compensation grant; never contact details. One audit row `crm.export` (`entity_type` `candidate_search`, `entity_id`
+  `find_candidates`, metadata `{format, filters, rows}`). Migration `0277` adds the table and seeds the grant.

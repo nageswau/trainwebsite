@@ -3838,3 +3838,11 @@ No new grant. `GET /candidate/jobs` and `POST /candidate/jobs/{id}/apply` admit 
 every other role is 403, anonymous 401. Neither route takes a candidate id: the caller's own record only. A job outside hrc-008's student
 visibility (internal, another segment, closed, past its date) is the same 404 as a missing one on both apply routes. Pinned by
 `apps/api/tests/test_hrc_027_candidate_jobs.py`.
+### 2.294 Saved candidate searches and the candidate export *(added 2026-11-05 — `DEC-SCOPE-401`, hrc-020)*
+
+`candidates.export` (declared by hrc-002) now has its route: `POST /recruiter/candidates/search/export`. Default holder `placement_manager`
+(migration 0277 seeds it; `super_admin` holds every key); recruiters, hr_team and others only through Roles & permissions or a user
+override (a deny wins). The caller must also be a Find Candidates reader. Saved searches (`/recruiter/candidates/saved-searches`) need no
+grant: any reader keeps their own and sees shared ones; only the owner or `super_admin` changes or deletes one. Compensation stays behind
+`candidates.compensation:view` (filters refused, the salary column left out). Pinned by `apps/api/tests/test_hrc_020_export.py` and
+`apps/api/tests/test_hrc_020_saved_searches.py`.

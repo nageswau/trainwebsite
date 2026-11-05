@@ -312,6 +312,59 @@ export function searchBody(state: SearchState): Record<string, unknown> | null {
   return body;
 }
 
+// --- hrc-020 (DEC-SCOPE-401): saved searches and the export ---------------------------------------------------------------------------
+export const SAVED_SEARCHES_URL = `${CANDIDATES_URL}/saved-searches`;
+export const EXPORT_URL = `${SEARCH_URL}/export`;
+export const EXPORT_PERMISSION = "candidates.export";
+export type SavedSearch = {
+  id: string; name: string; filters: Record<string, unknown>; ignored: string[]; shared: boolean; mine: boolean; can_edit: boolean;
+  owner: { id: string; name: string };
+};
+
+export function isSavedSearch(data: unknown): data is SavedSearch {
+  const d = data as Partial<SavedSearch> | null;
+  return !!d && typeof d.id === "string" && typeof d.name === "string" && !!d.filters && typeof d.filters === "object" && !Array.isArray(d.filters)
+    && Array.isArray(d.ignored) && typeof d.mine === "boolean";
+}
+
+const text = (v: unknown) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
+const texts = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+const yearsOf = (months: unknown) => (typeof months === "number" ? String(Math.floor(months / 12)) : "");
+function lakhsOf(rupees: unknown): string {
+  const n = typeof rupees === "number" || typeof rupees === "string" ? Number(rupees) : NaN;
+  return rupees === "" || !Number.isFinite(n) ? "" : String(Math.round(n / 1000) / 100);
+}
+
+function moreValues(spec: FilterSpec, value: unknown): string[] {
+  switch (spec.kind) {
+    case "multi": case "category": return texts(value);
+    case "years": return [yearsOf(value)];
+    case "lakhs": return [lakhsOf(value)];
+    case "flag": return [value === true ? "1" : ""];
+    case "yesno": return [value === true ? "1" : value === false ? "0" : ""];
+    default: return [text(value)];
+  }
+}
+
+/** X2 / AC1: a saved search body back to the page's state -- the inverse of `searchBody` (months → whole years, rupees → lakhs), then
+ *  through the URL rules (`stateOf`), so a value the page would refuse is dropped exactly as a hand-edited URL's would be. */
+export function stateOfBody(body: Record<string, unknown>): SearchState {
+  const more: Record<string, string[]> = {};
+  for (const spec of FILTERS) {
+    const values = spec.body in body ? moreValues(spec, body[spec.body]).filter(Boolean) : [];
+    if (values.length) more[spec.param] = values;
+  }
+  const state: SearchState = {
+    ...EMPTY_SEARCH,
+    text: text(body.text), all: texts(body.all), any: Array.isArray(body.any) ? body.any.map(texts).filter((g) => g.length) : [],
+    preferred: texts(body.preferred), verified: body.verified_only === true, expMin: yearsOf(body.experience_min_months),
+    expMax: yearsOf(body.experience_max_months), location: text(body.location), availability: texts(body.availability) as Band[],
+    qualification: text(body.qualification), salMin: lakhsOf(body.salary_min), salMax: lakhsOf(body.salary_max), sourceId: text(body.source_id),
+    status: text(body.status), engagement: text(body.engagement), sort: (text(body.sort) || "relevance") as SortKey, more,
+  };
+  return stateOf(paramsOf(state));
+}
+
 export function experienceBand(key: string): { expMin: string; expMax: string } | null {
   const years = EXPERIENCE_YEARS[key as ExperienceKey];
   return years ? { expMin: years[0], expMax: years[1] } : null;
