@@ -1438,6 +1438,54 @@ class InterviewEvent(Base):
     new_location: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
+# hrc-029 (DEC-SCOPE-405 V1/V7): the interview panel and each member's own feedback
+INTERVIEWER_KINDS = ("internal", "employer")
+PANEL_ATTENDANCE = ("attended", "no_show")
+PANEL_RECOMMENDATIONS = ("strong_yes", "yes", "no", "strong_no")
+INTERVIEW_INTERVIEWER_CHECKS = {"ck_interview_interviewers_kind": "kind IN (" + ", ".join(f"'{s}'" for s in INTERVIEWER_KINDS) + ")"}
+PANEL_FEEDBACK_CHECKS = {
+    "ck_interview_panel_feedback_attendance": "attendance IN (" + ", ".join(f"'{s}'" for s in PANEL_ATTENDANCE) + ")",
+    "ck_interview_panel_feedback_score": "score IS NULL OR score BETWEEN 1 AND 5",
+    "ck_interview_panel_feedback_recommendation": "recommendation IS NULL OR recommendation IN (" + ", ".join(f"'{s}'" for s in PANEL_RECOMMENDATIONS) + ")",
+    "ck_interview_panel_feedback_attended": "attendance = 'no_show' OR (score IS NOT NULL AND recommendation IS NOT NULL)",
+}
+
+
+class InterviewInterviewer(Base):
+    """hrc-029 (V1-V5): one person on an interview's panel -- an internal `interviewer` user or an employer user of the requirement's company.
+    `resume_id` is the resume version shared with them (the candidate's current one when assigned). At most one lead per interview."""
+
+    __tablename__ = "interview_interviewers"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in INTERVIEW_INTERVIEWER_CHECKS.items()),
+        UniqueConstraint("interview_id", "user_id", name="uq_interview_interviewers_user"),
+        Index("uq_interview_interviewers_lead", "interview_id", unique=True, postgresql_where=text("is_lead")),
+        Index("ix_interview_interviewers_user", "user_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    interview_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("interviews.id", ondelete="RESTRICT"))
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(10))
+    is_lead: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    resume_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidate_resumes.id", ondelete="RESTRICT"), nullable=True)
+    assigned_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class InterviewPanelFeedback(Base, TimestampMixin):
+    """hrc-029 (V7/V8): one panel member's own feedback on an interview, replaced by each save. Advisory: it never moves the interview or the
+    application. Internal: no candidate, student or employer-list route reads this table, and the audit keeps field names only."""
+
+    __tablename__ = "interview_panel_feedback"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in PANEL_FEEDBACK_CHECKS.items())
+    interview_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("interviews.id", ondelete="RESTRICT"), primary_key=True)
+    interviewer_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), primary_key=True)
+    attendance: Mapped[str] = mapped_column(String(10))
+    score: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    recommendation: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+
+
 class PlacementProfile(Base, TimestampMixin):
     __tablename__ = "placement_profiles"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)

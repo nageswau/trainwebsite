@@ -997,6 +997,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** medium.
 
 #### hrc-029: Interviewer and hiring-manager access with feedback
+- **Status:** built as `DEC-SCOPE-405` (migration `0284_interview_panel`, API §12KX, RBAC §2.298; V1–V12 are the builder's calls
+  answering Q-12, `NEEDS_CONFIRMATION`: one fixed feedback form, advisory panel feedback, a 7-day resume window); design
+  `docs/superpowers/specs/2026-11-05-hrc-029-interviewer-access-feedback-design.md`.
 - **Business requirement:** §3 Hiring Manager/Interviewer "View assigned vacancies and candidates, access necessary resumes, conduct interviews and submit feedback"; §9 "Record attendance and interviewer feedback".
 - **Existing behavior:** no interviewer role exists; `Interview.interviewer` is free text. Employers can schedule and view but **cannot submit feedback** (`interviews.py:257`, recruiter-only).
 - **Expected behavior:**

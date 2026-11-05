@@ -8,17 +8,29 @@ state, validation, change, history, side effects, audit, one commit here; then t
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.bdm import LIMIT, OFFSET
 from app.api.deps import get_current_user
+from app.api.portfolio_certificates import HEADERS as DOWNLOAD_HEADERS
 from app.core.database import get_db
 from app.models import User
 from app.notifications.dispatch import enqueue_recruiter_email
-from app.schemas import RecInterviewCancel, RecInterviewCreate, RecInterviewFeedbackIn, RecInterviewReschedule, RecInterviewStatusChange, RecInterviewUpdate
-from app.services import applications
+from app.schemas import (
+    InterviewPanelFeedbackIn,
+    InterviewPanelIn,
+    RecInterviewCancel,
+    RecInterviewCreate,
+    RecInterviewFeedbackIn,
+    RecInterviewReschedule,
+    RecInterviewStatusChange,
+    RecInterviewUpdate,
+)
+from app.services import applications, candidates
+from app.services import interview_panel as panel
 from app.services import interviews as svc
+from app.services import profile_sharing as sharing
 from app.services.bdm_appointments import db_now
 from app.services.stale_guard import require_fresh
 
@@ -140,3 +152,58 @@ async def save_interview_feedback(interview_id: UUID, payload: RecInterviewFeedb
     await db.commit()
     svc.log("recruiter_interview_feedback_saved", user, interview_id, final_decision=sent["final_decision"], from_status=previous)
     return {"interview": await svc.one(db, user, interview_id, now)}
+
+
+# --- hrc-029 (DEC-SCOPE-405): the interview panel -------------------------------------------------------------------------------------
+@router.get("/interviews/{interview_id}/interviewer-options")
+async def interviewer_options(interview_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """V2: the internal interviewers and the requirement company's employer users a writer can assign."""
+    job = await panel.load_for_options(db, user, interview_id)
+    return {"items": await panel.options(db, job)}
+
+
+@router.put("/interviews/{interview_id}/interviewers")
+async def assign_interviewers(interview_id: UUID, payload: InterviewPanelIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """V3: the whole panel replaces the saved one; newly added people are notified (V10)."""
+    interview, application, job = await svc.load_for_write(db, user, interview_id, "interview_panel")
+    added = await panel.assign(db, user, interview, application, job, payload.interviewers)
+    await db.commit()
+    svc.log("recruiter_interview_panel_saved", user, interview_id, size=len(payload.interviewers), added=len(added))
+    return {"interview": await svc.one(db, user, interview_id, await db_now(db))}
+
+
+interviewer_router = APIRouter(prefix="/interviewer", tags=["interviewer"])
+
+
+@interviewer_router.get("/interviews")
+async def my_interviews(view: Literal["upcoming", "past"] = "upcoming", limit: int = LIMIT, offset: int = OFFSET,
+                        user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):  # fmt: skip
+    """V6: the interviews the caller (an internal interviewer or an employer user) is assigned to; other roles 403."""
+    return await panel.list_page(db, user, view, await db_now(db), limit, offset)
+
+
+@interviewer_router.get("/interviews/{interview_id}")
+async def my_interview(interview_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """V6: not assigned = 404, the same as a missing id."""
+    return await panel.one(db, user, interview_id, await db_now(db))
+
+
+@interviewer_router.get("/interviews/{interview_id}/resume")
+async def my_interview_resume(interview_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """V4/V5: the resume version shared with the caller, inside the access window; audited before any byte leaves."""
+    resume, candidate = await panel.resume(db, user, interview_id, await db_now(db))
+    data = candidates.read_file(resume)
+    await db.commit()
+    svc.log("interviewer_resume_downloaded", user, interview_id)
+    name = sharing.resume_name(candidate, resume)
+    return Response(content=data, media_type=resume.content_type, headers={**DOWNLOAD_HEADERS, "Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@interviewer_router.put("/interviews/{interview_id}/feedback")
+async def save_my_feedback(interview_id: UUID, payload: InterviewPanelFeedbackIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """V7: the caller's own feedback, created or replaced; never moves the interview (V8). The notes are never logged."""
+    now = await db_now(db)
+    changed = await panel.save_feedback(db, user, interview_id, payload.model_dump(), now)
+    await db.commit()
+    svc.log("interviewer_feedback_saved", user, interview_id, fields=changed)
+    return await panel.one(db, user, interview_id, now)

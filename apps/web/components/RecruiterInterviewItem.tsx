@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { type FormEvent, type ReactNode, useId, useRef, useState } from "react";
 
+import InterviewPanelSection from "@/components/InterviewPanelSection";
 import RecruiterInterviewForm, { type ContactOption } from "@/components/RecruiterInterviewForm";
 import ReturnToLoginLink from "@/components/ReturnToLoginLink";
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
@@ -327,7 +328,7 @@ function historyText(h: InterviewEvent): string {
 export default function RecruiterInterviewItem({ interview: given, card = false, contacts = [], onChanged }: {
   interview: RecInterview; card?: boolean; contacts?: ContactOption[]; onChanged: (interview: RecInterview, notice: string, nextRound?: Round) => void;
 }) {
-  const [mode, setMode] = useState<"view" | "status" | "reschedule" | "edit" | "feedback" | "cancel">("view");
+  const [mode, setMode] = useState<"view" | "status" | "reschedule" | "edit" | "feedback" | "cancel" | "panel">("view");
   const [latest, setLatest] = useState<RecInterview | null>(null); // hrc-003 QA-03: a stale edit's reload shows here until the list reloads
   const i = latest && latest.updated_at > given.updated_at ? latest : given;
   const id = useId();
@@ -398,6 +399,9 @@ export default function RecruiterInterviewItem({ interview: given, card = false,
       {mode === "edit" && <RecruiterInterviewForm interview={i} contacts={contacts} onCancel={() => setMode("view")} onSaved={done("Interview updated.")} onLatest={setLatest} />}
       {i.feedback && mode !== "feedback" && <FeedbackSummary code={i.code} feedback={i.feedback} />}
       {mode === "feedback" && <FeedbackForm interview={i} onCancel={() => setMode("view")} onSaved={feedbackSaved} />}
+      {/* hrc-029 (DEC-SCOPE-405 V9): the panel and each member's own feedback */}
+      <InterviewPanelSection interview={i} editing={mode === "panel"} showActions={mode === "view"} onEdit={() => setMode("panel")}
+        onDone={(next) => (next ? done("Interview panel saved.")(next) : setMode("view"))} />
       {mode === "view" && (i.allowed_statuses.length > 0 || i.can_reschedule || i.can_edit || i.can_feedback || i.can_cancel) && (
         <div className="actions" style={{ flexWrap: "wrap" }}>
           {i.allowed_statuses.length > 0 && (
