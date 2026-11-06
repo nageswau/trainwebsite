@@ -202,6 +202,9 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .funnel-note { margin-top: 16px; }
 /* upc-028: a partner without enough data to score -- a neutral pill, not a band colour; the health pill never wraps in the ranking. */
 .badge.health-unknown { background: #eef1f5; color: var(--muted); }
+.badge.zero-supply { background: #fdecea; color: #a12622; } /* hrc-034 */
+.recruitment-insights tbody th { text-align: left; text-transform: none; letter-spacing: normal; font-size: inherit; background: none; color: inherit; } /* hrc-034 QA-02: a row header keeps its name's case */
+@media (max-width: 640px) { .recruitment-insights .table.stack td::before { flex: none; } } /* hrc-034 QA-01: the label never squeezes */
 .table td > :is(.badge, .status) { white-space: nowrap; }
 /* QA28-01: four short columns -- no wide-table minimum, so Weight and Points stay on screen on a phone (Measure wraps instead). */
 .table.health-breakdown { min-width: 0; }

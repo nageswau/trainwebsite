@@ -6134,3 +6134,19 @@ an approved knock-out unanswered, an override without a reason or a failed knock
 
 **Comparison:** `GET requirements/{id}/screening-comparison?version=` → `{version, versions, questions, rows, truncated}`; each candidate's latest session on
 that version (default current), best score first, at most 50 (most recently screened when capped). 404 unknown version; no form or no sessions is an empty 200.
+
+## 12LJ. Skill demand, portal analytics and data quality (hrc-034) — addendum, 2026-11-06
+
+`DEC-SCOPE-416`. All routes are `GET`, under `/api/v1/recruiter/recruitment-insights`, need `reports.recruitment_insights.view` (401 signed out, 403
+otherwise) and only read. `limit` is 1-100, default 50; `offset` is at least 0.
+
+| Route | Query | Returns |
+|---|---|---|
+| `/skill-demand` | `sort` = `demand` or `supply`; `limit`; `offset` | `figures`, `items` (`skill_id`, `name`, `category`, `required_jobs`, `preferred_jobs`, `open_jobs`, `supply`, `zero_supply`), `total`, `limit`, `offset`, `sort` |
+| `/skill-demand/vacancies` | `n` = 1-100, default 5; `limit`; `offset` | `n`, `items` (`id`, `code`, `title`, `company`, `matches`, `reason`), `total`, `limit`, `offset`, `checked` (at most 200), `open_jobs` |
+| `/portal-analytics` | `from`, `to`: default this IST month; at most 366 days; never future (422) | `from`, `to`, `registrations` (`total`, `verified`), `completion` (`label`, `count`), `funnel` (`key`, `label`, `events`, `people`, `dropped`), `first_recorded` |
+| `/data-quality` | | `figures` (`key`, `label`, `definition`, `value`, `href`: null without the action page's grant) |
+| `/data-quality/{figure}` | `limit`; `offset` | `figure`, `columns`, `items`, `total` (equals the figure), `limit`, `offset`; an unknown figure is 404 |
+
+`GET /candidate/jobs` now writes `job_view` events for the cards it returns, and `POST /candidate/jobs/{id}/apply` and `POST /workflows/it/jobs/{id}/apply`
+write `apply_start` and `apply_submit`. Their requests and responses are unchanged.

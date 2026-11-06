@@ -144,6 +144,7 @@ from app.services import (
     appointment_invites,
     audit_changes,
     candidate_jobs,
+    portal_events,
     counselor_students,
     course_skills,
     document_access,
@@ -2296,6 +2297,8 @@ async def apply_job(job_id: UUID, payload: dict, user: User = Depends(get_curren
     resume_url = payload.get("resume_url") or user.profile.get("resume_url")
     item = await applications.create(db, user, job, candidate, "sourced", "Applied from the student portal", resume_url=resume_url)
     await applications.send_receipt(db, item, job)  # hrc-026 (AC4)
+    await portal_events.record(db, user.id, portal_events.APPLY_START, [job.id])  # hrc-034 (I3)
+    await portal_events.record(db, user.id, portal_events.APPLY_SUBMIT, [job.id])
     await _audit(db, user, "job.apply", "job_application", item.id, {"job_id": job_id})
     await db.commit()
     await db.refresh(item)

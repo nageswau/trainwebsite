@@ -12167,3 +12167,25 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   (pob-021).
 - **Numbering:** migration `0292_screening_sessions` (after `0291_recruitment_notices`); API §12LH; RBAC §2.307.
 - **Feature ID authorized:** `pob-020`. **Status:** built on `worktree-pob-020`.
+
+### DEC-SCOPE-416 — Skill demand, portal analytics and data-quality dashboards (`hrc-034`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-034`, Appendix B (PDF §14, §16, §17 QA; PDF classified `UNVERIFIED`). Scope approved by the
+  owner 2026-11-01 (backlog Q-00); the owner said to proceed with the recommended answers, so I1–I6 are **the builder's calls (`NEEDS_CONFIRMATION`)**.
+  Dependencies hrc-013, hrc-014, hrc-018, hrc-027 and hrc-032 merged. Design `docs/superpowers/specs/2026-11-06-hrc-034-recruitment-insights-design.md`.
+- **I1 Access:** new catalogue resource `reports.recruitment_insights` (`view`): `hr_manager`, `placement_manager`, `partner`; `super_admin` implicitly. The
+  backlog names "HR Manager, management"; `placement_manager` is added because it already handles the duplicates, imports and failed deliveries these
+  pages report. Separate from hrc-033's scoped `reports.recruitment`, because these figures count the whole pool.
+- **I2 Skill demand:** demand = distinct open jobs per Skills-Master skill; supply = distinct active pool candidates holding it directly (related skills do
+  not count); zero supply is flagged in text. Vacancies short of candidates = `matching.matches` total below N (default 5), newest 200 open jobs, and the
+  answer says when more exist.
+- **I3 Portal analytics:** `portal_events` holds ids only, one row per person, job, kind and IST day. A `job_view` is a card returned on the Jobs page, which
+  has no detail view. `apply_start` commits before the eligibility gates, so a refused attempt stays as a drop-off. Anonymous careers visitors are not
+  counted. Period rules as `telecaller_performance.date_range`.
+- **I4 Retention (Q-31):** a daily job deletes events older than 400 days; no rollup.
+- **I5 Data quality:** the duplicate and failed-notification figures reuse the pages they equal. "Incomplete" is under 60%; "required fields" are a required
+  skill, description, on-site location, qualification, minimum experience, employment type and vacancies (no source defines them). Failed-notification
+  rows omit the recipient and error. A failed import is retried by correcting and re-uploading the row (hrc-013).
+- **I6 Frontend:** three server-rendered pages under `/recruiter/insights`, one nav entry per affected role.
+- **Numbering:** migration `0294_portal_events`; API §12LJ; RBAC §2.309.
+- **Feature ID authorized:** `hrc-034`. **Status:** built on `worktree-hrc-034`.

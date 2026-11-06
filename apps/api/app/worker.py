@@ -317,10 +317,19 @@ def new_matches_task():
     return _run_with_fresh_pool(run_new_matches)
 
 
+@celery.task
+def portal_events_retention_task():
+    """hrc-034 (DEC-SCOPE-416 I4): daily via beat. Idempotent."""
+    from app.services.portal_events import run_retention
+
+    return _run_with_fresh_pool(run_retention)
+
+
 celery.conf.beat_schedule = {
     "enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0},
     "hrc032-feedback-overdue": {"task": "app.worker.feedback_overdue_task", "schedule": crontab(minute=10)},
     "hrc032-new-matches": {"task": "app.worker.new_matches_task", "schedule": crontab(minute=40)},
+    "hrc034-portal-events-retention": {"task": "app.worker.portal_events_retention_task", "schedule": crontab(hour=19, minute=15)},  # UTC = 00:45 IST
     "agn017-daily-reminders": {"task": "app.worker.send_daily_reminders_task", "schedule": crontab(hour=2, minute=30)},  # UTC = 08:00 IST
     "ccrm030-counselor-reminders": {"task": "app.worker.send_counselor_reminders_task", "schedule": crontab(hour=2, minute=45)},  # UTC = 08:15 IST
     "ccrm021-document-expiry": {"task": "app.worker.expire_documents_task", "schedule": crontab(hour=18, minute=35)},  # UTC = 00:05 IST

@@ -3959,3 +3959,11 @@ Default holders, editable like every catalogue key. Deliveries of notices from o
 Out of a caller's scope = 404. Compensation answers and the checklist's `expected_salary` in a session need `candidates.compensation.view` (hrc-001 H2); scores stay
 visible; a caller without it who answers a Compensation question gets 403. Answers, notes and scorecards reach no student, employer, `hr_team` or public route; the audit
 carries ids and the recommendation only. No new grant. Pinned by `apps/api/tests/test_pob_020_screening.py`, `test_hrc_001_access.py` and the rec-038 rows.
+
+### 2.309 Recruitment insights *(added 2026-11-06 — `DEC-SCOPE-416`, hrc-034)*
+
+`reports.recruitment_insights.view` opens the three report pages: `hr_manager`, `placement_manager`, `partner`; `super_admin` implicitly; seeded by migration
+`0294_portal_events`. Every other role gets 403, including `placement_team`, `placement_officer`, `hr_team` and `it_admin`. The figures count the whole pool,
+so there is no per-record scope, and no row carries a candidate's name, contact details or pay. A figure links to its action page only with that page's own
+grant (`candidates.merge`, `candidates.import`, `notifications.retry`). Pinned by `apps/api/tests/test_hrc_034_insights.py` and
+`apps/web/tests/e2e/hrc-034-insights.spec.ts`.
