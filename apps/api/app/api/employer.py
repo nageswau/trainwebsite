@@ -182,7 +182,7 @@ async def update_employer_job(job_id: UUID, payload: EmployerJobUpdate, user: Us
             setattr(job, key, value)
     if changes:
         job.updated_by_user_id = user.id  # hrc-005 V6: Last Updated By
-        await review.flag(db, user, job, eligible_before)
+        await review.notify_changed(db, user, job, eligible_before)  # hrc-009 (R7) + hrc-032 (N3)
     # `date` values aren't JSON-serializable directly -- the JSON column's own
     # serializer would fail at commit time otherwise.
     audit_changes = {k: (v.isoformat() if isinstance(v, date) else v) for k, v in changes.items()}

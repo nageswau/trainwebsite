@@ -204,7 +204,7 @@ async def test_notices_open_a_page_the_recipient_can_reach(client, db_session, p
     await login(client, recruiter)
     await _interview(client, application_id, notify=True)
     application = await db_session.get(JobApplication, application_id, populate_existing=True)
-    await applications._notify(db_session, application, "Interview result", "Message")
+    await applications.notify_candidate(db_session, application, "it.interview.result_published")
     await offers._notify_received(db_session, application)
     await db_session.commit()
     rows = (await db_session.scalars(select(Notification).where(Notification.user_id == user_id))).all()

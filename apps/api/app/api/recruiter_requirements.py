@@ -253,7 +253,7 @@ async def update_requirement(requirement_id: UUID, payload: RecRequirementUpdate
         after = await svc.audited_values(db, job, [k for k in changed if k != "skills"], skills=skills_sent)
         svc.audit(db, user, "update", job.id, {"fields": changed, "changes": recruitment_history.diff(before, after)})
         _audit_override(db, user, job, overrides, payload.duplicate_reason)
-        await review.flag(db, user, job, eligible_before)
+        await review.notify_changed(db, user, job, eligible_before)  # hrc-009 (R7) + hrc-032 (N3)
         await revisions.record(db, user, job, snapshot_before, payload.revision_reason)  # pob-002 R2: one revision per changing save
     await db.commit()
     if changed:
@@ -269,6 +269,7 @@ async def change_requirement_status(requirement_id: UUID, payload: RecRequiremen
     previous = await svc.change_status(db, user, job, payload.status, payload.note)
     job.updated_by_user_id = user.id
     svc.audit(db, user, "status", job.id, {"from": previous, "to": payload.status, "changes": {"status": [previous, payload.status]}})
+    await review.notify_changed(db, user, job)  # hrc-032 (N3)
     await db.commit()
     svc.log("recruiter_requirement_status_changed", user, job.id, from_status=previous, to_status=payload.status)
     return {"requirement": await svc.requirement_out(db, user, job)}
@@ -292,6 +293,7 @@ async def _decide(db: AsyncSession, user: User, requirement_id: UUID, approve: b
     previous = await svc.decide(db, user, job, approve, note)
     action = "approve" if approve else "reject"
     svc.audit(db, user, action, job.id, {"from": previous, "to": job.status, "note": note, "changes": {"status": [previous, job.status]}})
+    await review.notify_changed(db, user, job)  # hrc-032 (N3): the owners hear the approver's answer
     await db.commit()
     svc.log(f"recruiter_requirement_{action}d", user, job.id)
     return {"requirement": await svc.requirement_out(db, user, job)}
@@ -420,7 +422,7 @@ async def set_skill_weights(requirement_id: UUID, payload: RecSkillWeights, user
         rows[w.id].min_level = levels.get(w.id, rows[w.id].min_level)
     if changed or changes:
         svc.audit(db, user, "weights", job.id, {"skills": changed, **({"changes": changes} if changes else {})})
-        await review.flag(db, user, job, eligible_before)
+        await review.notify_changed(db, user, job, eligible_before)
     await db.commit()
     if changed or changes:
         svc.log("recruiter_requirement_weights_changed", user, job.id, skills=len(changed), hard_filters=len(switches))
@@ -471,6 +473,7 @@ async def add_owner(requirement_id: UUID, payload: RecRequirementOwnerAdd, user:
     target = await owners.add(db, user, job, payload.user_id, payload.role)
     job.updated_by_user_id = user.id
     svc.audit(db, user, "owner_added", job.id, {"user_id": str(target.id), "role": payload.role, "changes": {owners.ROLE_LABELS[payload.role]: [None, target.full_name]}})
+    await owners.notify_assigned(db, user, job, target.id)  # hrc-032 (N3)
     await db.commit()
     svc.log("recruiter_requirement_owner_added", user, job.id, user_id=str(target.id), role=payload.role)
     return {"requirement": await svc.requirement_out(db, user, job)}

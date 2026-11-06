@@ -301,8 +301,26 @@ def convert_candidate_preview_task(kind: str, row_id: str):
     return _run_with_fresh_pool(lambda: convert(kind, row_id))
 
 
+@celery.task
+def feedback_overdue_task():
+    """hrc-032 (DEC-SCOPE-413 N6): hourly via beat. Idempotent (`interviews.overdue_notified_at`)."""
+    from app.services.recruitment_notices import run_feedback_overdue
+
+    return _run_with_fresh_pool(run_feedback_overdue)
+
+
+@celery.task
+def new_matches_task():
+    """hrc-032 (DEC-SCOPE-413 N7): hourly via beat. Idempotent (`jobs.match_notified_at`)."""
+    from app.services.recruitment_notices import run_new_matches
+
+    return _run_with_fresh_pool(run_new_matches)
+
+
 celery.conf.beat_schedule = {
     "enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0},
+    "hrc032-feedback-overdue": {"task": "app.worker.feedback_overdue_task", "schedule": crontab(minute=10)},
+    "hrc032-new-matches": {"task": "app.worker.new_matches_task", "schedule": crontab(minute=40)},
     "agn017-daily-reminders": {"task": "app.worker.send_daily_reminders_task", "schedule": crontab(hour=2, minute=30)},  # UTC = 08:00 IST
     "ccrm030-counselor-reminders": {"task": "app.worker.send_counselor_reminders_task", "schedule": crontab(hour=2, minute=45)},  # UTC = 08:15 IST
     "ccrm021-document-expiry": {"task": "app.worker.expire_documents_task", "schedule": crontab(hour=18, minute=35)},  # UTC = 00:05 IST

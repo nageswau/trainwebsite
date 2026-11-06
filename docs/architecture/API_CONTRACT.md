@@ -6088,3 +6088,16 @@ archived or merged; someone else's document 404) and `GET /workflows/it/student/
 `action_url` of a candidate's new application, result and offer notices is `/it/careers/portal/applications`, and of interview notices
 `/it/careers/portal/interviews`; a student's are unchanged. The application and interview payloads carry `stack: true` (labelled rows on a
 phone). No migration.
+
+## 12LG. Recruitment notifications and delivery exceptions (hrc-032) — addendum, 2026-11-06
+
+`DEC-SCOPE-413`. Both routes need `notifications.retry` (403 otherwise; signed out 401).
+
+- `GET /api/v1/recruiter/notification-exceptions?type=&channel=email|whatsapp|sms&limit=1..100&offset=` → `{items, total, limit, offset, types: [{key, label}]}`.
+  Newest failure first. An item is `{source: "delivery"|"email", id, type, type_label, recipient, channel, error, attempts, failed_at}`; `error` has URLs
+  masked and is null for an email. Never a body, subject or address. An unknown `channel` is 422; an unknown `type` matches nothing.
+- `POST /api/v1/recruiter/notification-exceptions/{source}/{id}/retry` → `{id, source, status: "queued"}`. Out of scope or missing 404; no longer failed
+  409 (a double click sends once). Audited as `notification.retry`.
+- Additive: notices gain event types (`GET /workflows/notifications`' `event_type`). Changed text: `it.application.updated` and
+  `it.interview.result_published` are fixed text (see `DEC-SCOPE-413` N4/N5).
+- Beat: `hrc032-feedback-overdue` and `hrc032-new-matches`, hourly.

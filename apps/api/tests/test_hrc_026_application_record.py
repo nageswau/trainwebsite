@@ -132,7 +132,7 @@ async def test_returning_from_an_internal_stage_to_the_same_visible_stage_sends_
     assert len(await _notices(db_session, student)) == 1
     await _status(client, app_id, "interview")
     notices = await _notices(db_session, student)
-    assert len(notices) == 2 and notices[-1].body == "Your application status is now Interview."
+    assert len(notices) == 2 and notices[-1].event_type == "it.application.updated"  # hrc-032 (N5): fixed text, the stage stays in the portal
 
 
 @pytest.mark.asyncio
@@ -240,7 +240,7 @@ async def test_the_reason_never_reaches_the_student(client, db_session):
     _, _, student, app_id = await _student_on_board(client, db_session)
     await _status(client, app_id, "rejected", rejection_reason="salary_mismatch")
     notices = await _notices(db_session, student)
-    assert notices[-1].body == "Your application status is now Rejected."
+    assert notices[-1].event_type == "it.application.updated" and "reject" not in notices[-1].body.lower()  # hrc-032 (N5)
     await login(client, student)
     portal = (await client.get("/api/v1/portal/it/student/job-applications")).text
     assert "salary" not in portal.lower() and "Salary expectations" not in portal
