@@ -85,7 +85,7 @@ export default function RecruiterScreeningQuestions({ rows, catalogue, onChange 
             </label>
             {r.format === "yes_no" && r.category !== "compensation" && (
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <input type="checkbox" checked={r.is_knockout} onChange={(e) => update(r.key, { is_knockout: e.target.checked, expected_answer: e.target.checked ? r.expected_answer || "yes" : r.expected_answer })} />
+                <input type="checkbox" checked={r.is_knockout} onChange={(e) => update(r.key, { is_knockout: e.target.checked, expected_answer: e.target.checked ? (r.expected_answer.trim().toLowerCase() === "no" ? "no" : "yes") : r.expected_answer })} />
                 <span>Knock-out<span className="visually-hidden"> (question {n})</span></span>
               </label>
             )}

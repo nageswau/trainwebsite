@@ -334,6 +334,22 @@ describe("RecruiterScreeningBank", () => {
 });
 
 describe("QA fixes", () => {
+  it.each([["Yes", "yes", "Yes"], ["No", "no", "No"], ["Must hold one", "yes", "Yes"]])("QA-03: ticking Knock-out on a question expecting %s sends %s and shows it", async (typed, sent, shown) => {
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (String(url).includes("/screening/questions")) return res({ items: [] });
+      if (init?.method) return res({ form: form({ version: 3 }) });
+      return res(formRead({ form: form({ questions: [question({ format: "yes_no", format_label: "Yes / No", expected_answer: typed })] }) }));
+    });
+    render(<RecruiterScreeningForm requirementId="R1" />);
+    fireEvent.click(screen.getByRole("button", { name: "Show screening form" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit questions" }));
+    fireEvent.click(screen.getByLabelText("Knock-out (question 1)"));
+    expect(screen.getByLabelText("Candidate must answer (question 1)")).toHaveDisplayValue(shown);
+    fireEvent.click(screen.getByRole("button", { name: "Save new version" }));
+    await waitFor(() => expect(posted("PUT").length).toBe(1));
+    expect(posted("PUT")[0].body.questions[0]).toMatchObject({ is_knockout: true, expected_answer: sent });
+  });
+
   it("QA-02: comparison columns are short labels with the questions listed once", async () => {
     fetchMock.mockImplementation(async (url: string) => {
       if (String(url).includes("screening-comparison")) {
