@@ -7,7 +7,7 @@ commits). `confirm` is the "keep it where it is" answer; a status move (`applica
 import logging
 
 from fastapi import HTTPException
-from sqlalchemy import func, select, update
+from sqlalchemy import func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Job, JobApplication, User

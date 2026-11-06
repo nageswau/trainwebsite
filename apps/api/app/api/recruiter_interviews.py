@@ -32,8 +32,8 @@ from app.schemas import (
 from app.services import applications, candidates
 from app.services import interview_panel as panel
 from app.services import interview_results as results
-from app.services import notification_exceptions as exceptions
 from app.services import interviews as svc
+from app.services import notification_exceptions as exceptions
 from app.services import profile_sharing as sharing
 from app.services.bdm_appointments import db_now
 from app.services.stale_guard import require_fresh
