@@ -12,6 +12,7 @@ import RecruiterRequirementMatches from "@/components/RecruiterRequirementMatche
 import RecruiterRecordHistory from "@/components/RecruiterRecordHistory";
 import RecruiterRequirementRevenue from "@/components/RecruiterRequirementRevenue";
 import RecruiterShares from "@/components/RecruiterShares";
+import RecruiterScreeningForm from "@/components/RecruiterScreeningForm";
 import { ApprovalDecision, SubmitForApproval, SubmittedLine } from "@/components/RequirementApproval";
 import { OwnersCard, OwnershipHistory } from "@/components/RequirementOwners";
 import RequirementRevisions from "@/components/RequirementRevisions";
@@ -365,6 +366,7 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
         <>
           <RecruiterRequirementCandidates requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} refreshKey={shortlists + shares} version={r.updated_at}
             onShared={() => setShares((n) => n + 1)} />
+          <RecruiterScreeningForm requirementId={r.id} />
           {p.can_view_matches && (
             <RecruiterRequirementMatches requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} version={r.updated_at}
               onRequirementChanged={setRequirement} onShortlisted={() => setShortlists((n) => n + 1)} onShared={() => setShares((n) => n + 1)} />

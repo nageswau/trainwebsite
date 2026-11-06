@@ -2384,3 +2384,12 @@ snapshot, `channel` CHECK, `occurred_at`, `summary` text, `next_step` 500, `logg
 backfilled from existing activity (a non-cancelled meeting → meeting_scheduled; an incoming or connected call → replied; any call, message
 or share → contacted). **`recruiter_messages`** gains `replied_at` (timestamptz). Status changes are `recruiter_company.contact_status`
 audit rows. The downgrade clears LinkedIn channels and drops the columns.
+
+## Screening forms and sessions (`pob-020`, `DEC-SCOPE-414`; migration `0292_screening_sessions`, after `0291_recruitment_notices`)
+
+**`screening_questions`** the bank (category, question, format, choices, evaluation_criteria, expected_answer, active; unique category + lower(question)).
+**`screening_forms`** `job_id` NULL = a template (name unique, case-insensitive), else the requirement's one form; version, knockout_status + approver, is_default, archived_at.
+**`screening_form_questions`** one immutable row per form + version + position, a copy of the question plus is_knockout (yes/no only). **`screening_sessions`** per application
+(kind form|legacy, form_id + form_version, screener, notes, recommendation pass|hold|reject, knock-out triggered/overridden/reason, legacy_snapshot; never edited). **`screening_answers`**
+per session + form question (answer, score 0–5). `application_screenings` is unchanged; the migration copies each row to one legacy session and seeds the default template. The downgrade
+drops the five tables.
