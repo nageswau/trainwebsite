@@ -1413,6 +1413,132 @@ class ApplicationScreening(Base, TimestampMixin):
     screened_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
+# pob-020 (DEC-SCOPE-412): the question bank, versioned forms and kept sessions. Migration 0291 repeats these (test_pob_020_migration).
+SCREENING_CATEGORIES = ("experience", "technical", "communication", "availability", "compensation")
+SCREENING_FORMATS = ("text", "yes_no", "numeric", "choice", "rating")
+SCREENING_RECOMMENDATIONS = ("pass", "hold", "reject")
+SCREENING_SESSION_KINDS = ("form", "legacy")
+SCREENING_KNOCKOUT_STATUSES = ("none", "pending", "approved")
+_SCREENING_QUESTION_CHECKS = {
+    "category": "category IN (" + ", ".join(f"'{c}'" for c in SCREENING_CATEGORIES) + ")",
+    "format": "format IN (" + ", ".join(f"'{f}'" for f in SCREENING_FORMATS) + ")",
+}
+SCREENING_BANK_CHECKS = {f"ck_screening_questions_{name}": sql for name, sql in _SCREENING_QUESTION_CHECKS.items()}
+SCREENING_FORM_QUESTION_CHECKS = {
+    **{f"ck_screening_form_questions_{name}": sql for name, sql in _SCREENING_QUESTION_CHECKS.items()},
+    "ck_screening_form_questions_knockout": "NOT is_knockout OR format = 'yes_no'",
+}
+SCREENING_FORM_CHECKS = {"ck_screening_forms_knockout": "knockout_status IN (" + ", ".join(f"'{s}'" for s in SCREENING_KNOCKOUT_STATUSES) + ")"}
+SCREENING_SESSION_CHECKS = {
+    "ck_screening_sessions_kind": "kind IN (" + ", ".join(f"'{k}'" for k in SCREENING_SESSION_KINDS) + ")",
+    "ck_screening_sessions_recommendation": "recommendation IN (" + ", ".join(f"'{r}'" for r in SCREENING_RECOMMENDATIONS) + ")",
+    "ck_screening_sessions_form": "(kind = 'form') = (form_id IS NOT NULL AND form_version IS NOT NULL)",
+    "ck_screening_sessions_override": "NOT knockout_overridden OR override_reason IS NOT NULL",
+}
+SCREENING_ANSWER_CHECKS = {"ck_screening_answers_score": "score IS NULL OR score BETWEEN 0 AND 5"}
+
+
+class ScreeningQuestion(Base, TimestampMixin):
+    """pob-020: the bank. A form copies what it uses, so an edit here never changes a form; rows are archived (`active`), never deleted."""
+
+    __tablename__ = "screening_questions"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in SCREENING_BANK_CHECKS.items()),
+        Index("uq_screening_questions_question", "category", text("lower(question)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    category: Mapped[str] = mapped_column(String(20))
+    question: Mapped[str] = mapped_column(String(500))
+    format: Mapped[str] = mapped_column(String(10))
+    choices: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    evaluation_criteria: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    expected_answer: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+
+class ScreeningForm(Base, TimestampMixin):
+    """pob-020 (S4, S7): `job_id` NULL is a reusable template, otherwise the requirement's one form. `version` is the current version of
+    its question rows; the knock-out approval belongs to that version."""
+
+    __tablename__ = "screening_forms"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in SCREENING_FORM_CHECKS.items()),
+        Index("uq_screening_forms_template_name", text("lower(name)"), unique=True, postgresql_where=text("job_id IS NULL")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    job_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"), nullable=True, unique=True)
+    name: Mapped[str] = mapped_column(String(120))
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    knockout_status: Mapped[str] = mapped_column(String(10), default="none", server_default=text("'none'"))
+    knockout_approved_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    knockout_approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+
+class ScreeningFormQuestion(Base):
+    """pob-020 (S4): one question of one form version, immutable once written."""
+
+    __tablename__ = "screening_form_questions"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in SCREENING_FORM_QUESTION_CHECKS.items()),
+        UniqueConstraint("form_id", "version", "position", name="uq_screening_form_questions_position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    form_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("screening_forms.id", ondelete="CASCADE"))
+    version: Mapped[int] = mapped_column(Integer)
+    position: Mapped[int] = mapped_column(SmallInteger)
+    question_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("screening_questions.id", ondelete="SET NULL"), nullable=True)
+    category: Mapped[str] = mapped_column(String(20))
+    question: Mapped[str] = mapped_column(String(500))
+    format: Mapped[str] = mapped_column(String(10))
+    choices: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    evaluation_criteria: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    expected_answer: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_knockout: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+
+
+class ScreeningSession(Base, TimestampMixin):
+    """pob-020 (S2, S4, S11): one screening of one application, never edited. `legacy` rows are snapshots of the rec-018 checklist. Answers,
+    notes and the snapshot are internal: no employer, student or hr_team route reads this table, and the audit keeps ids only."""
+
+    __tablename__ = "screening_sessions"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in SCREENING_SESSION_CHECKS.items()),
+        Index("ix_screening_sessions_application", "application_id", "created_at"),
+        Index("ix_screening_sessions_form", "form_id", "form_version"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(10))
+    form_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("screening_forms.id", ondelete="RESTRICT"), nullable=True)
+    form_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    screened_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    recommendation: Mapped[str] = mapped_column(String(10))
+    knockout_triggered: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    knockout_overridden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    override_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    legacy_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class ScreeningAnswer(Base):
+    """pob-020: one answer of one session, with its optional score."""
+
+    __tablename__ = "screening_answers"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in SCREENING_ANSWER_CHECKS.items()),
+        UniqueConstraint("session_id", "form_question_id", name="uq_screening_answers_question"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    session_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("screening_sessions.id", ondelete="CASCADE"))
+    form_question_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("screening_form_questions.id", ondelete="RESTRICT"))
+    answer: Mapped[str] = mapped_column(String(2000))
+    score: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+
+
 class Interview(Base, TimestampMixin):
     """rec-020 (IV1-IV7): one interview round of one application. services/interviews.py is the status writer for the recruiter routes;
     `result` is the legacy free-text outcome the /workflows and employer screens still read. `round` and `created_by_user_id` are NULL on

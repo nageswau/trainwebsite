@@ -11,7 +11,7 @@ import secrets
 import uuid
 from datetime import timedelta
 
-from app.models import CandidateResume, Company, Interview, InterviewResult, JobApplication, JobOffer, ProfileShare, ProfileShareItem, RecruiterMessage
+from app.models import CandidateResume, Company, Interview, InterviewResult, JobApplication, JobOffer, ProfileShare, ProfileShareItem, RecruiterMessage, ScreeningForm, ScreeningQuestion
 from app.services import candidates as candidate_svc
 from app.services import offers as offer_svc
 from app.services import profile_sharing
@@ -21,6 +21,7 @@ READ = ("rec", "mgr", "super", "bdm")  # rec-007 requirement scope: the recruite
 OUT = ("rec_out", "mgr_out", "bdm_out")  # the same roles outside the record's scope: 404, the same as an unknown id (IDOR)
 WRITE = ("rec", "super")  # rec-017 `applications.WRITERS` (rec-007's `can_edit` holders); the manager and the BDM read only (403)
 LISTS = (*READ, *OUT)  # a list is filtered by the scope, so an out-of-scope caller gets 200 with none of the world's rows
+SCREENING_MANAGERS = ("rec", "rec_out", "mgr", "mgr_out", "super")  # pob-020 S13: no requirement is involved, so no scope applies
 _FILES: dict[str, str] = {}  # one stored object per kind for the whole run (replacing a letter or proof keeps the old object)
 
 
@@ -48,6 +49,21 @@ ROWS = [
     # rec-018 -- screening (§2.75): the readers read, the writers save (the manager and BDM 403 after the scope check)
     R("get", "/recruiter/applications/{application}/screening", **allow(200, *READ), **allow(404, *OUT)),
     R("put", "/recruiter/applications/{application}/screening", {"result": "hold"}, **allow(200, *WRITE), **allow(404, *OUT)),
+    # pob-020 (§2.305): the bank and templates are global to recruiters and Team Leads; the form follows the requirement scope. The world's
+    # requirement has no form, so a form write that passes the checks stops at a stable 4xx (the rows stay independent of each other).
+    R("get", "/recruiter/screening/questions", **allow(200, *SCREENING_MANAGERS)),
+    R("post", "/recruiter/screening/questions", lambda w: {"category": "technical", "text": tag("R38 question "), "format": "text"}, **allow(201, *SCREENING_MANAGERS)),
+    R("patch", "/recruiter/screening/questions/{screening_question}", {"active": True}, **allow(200, *SCREENING_MANAGERS)),
+    R("get", "/recruiter/screening/templates", **allow(200, *SCREENING_MANAGERS)),
+    R("post", "/recruiter/screening/templates", lambda w: {"name": tag("R38 template "), "questions": [{"category": "technical", "text": "Q?", "format": "text"}]}, **allow(201, *SCREENING_MANAGERS)),
+    R("patch", "/recruiter/screening/templates/{screening_template}", {"archived": False}, **allow(200, *SCREENING_MANAGERS)),
+    R("get", "/recruiter/requirements/{requirement}/screening-form", **allow(200, *READ), **allow(404, *OUT)),
+    R("post", "/recruiter/requirements/{requirement}/screening-form", lambda w: {"template_id": str(uuid.uuid4())}, **allow(422, "rec", "mgr", "super"), bdm=403, **allow(404, *OUT)),
+    R("put", "/recruiter/requirements/{requirement}/screening-form", {"questions": [{"category": "technical", "text": "Q?", "format": "text"}]}, **allow(409, "rec", "mgr", "super"), bdm=403, **allow(404, *OUT)),
+    R("post", "/recruiter/requirements/{requirement}/screening-form/approve-knockouts", {"version": 1}, **allow(409, "mgr", "super"), rec=403, bdm=403, **allow(404, *OUT)),
+    R("get", "/recruiter/requirements/{requirement}/screening-comparison", **allow(200, *READ), **allow(404, *OUT)),
+    R("get", "/recruiter/applications/{application}/screening-sessions", **allow(200, *READ), **allow(404, *OUT)),
+    R("post", "/recruiter/applications/{application}/screening-sessions", {"form_version": 1, "answers": [], "recommendation": "hold"}, **allow(409, *WRITE), **allow(404, *OUT)),
     # rec-019 -- profile sharing (§2.86): share / respond are the writers'; the employer reads its company's Portal shares; the public
     # resume link needs no session (the token is the credential, S7), so every caller -- anonymous too -- gets the file
     R("post", "/recruiter/shares", lambda w: {"requirement_id": w["requirement"], "candidate_ids": [w["candidate"]], "channel": "other", "note": tag("R38 ")},
@@ -108,6 +124,8 @@ async def build(client, db, w) -> None:
     rec, student = w["users"]["rec"], w["users"]["student"]
     company = await db.get(Company, uuid.UUID(w["company"]))
     job = await make_job(db, company, rec)
+    w["screening_question"] = str((await add(db, ScreeningQuestion(category="technical", question=tag("R38 bank "), format="text"))).id)
+    w["screening_template"] = str((await add(db, ScreeningForm(name=tag("R38 form ")))).id)
 
     async def application(status: str, candidate_id=None, student_id=None) -> JobApplication:
         candidate_id = candidate_id or (await make_candidate(db, rec)).id

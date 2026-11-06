@@ -3929,3 +3929,17 @@ changes them. The duplicate check is a read of the company's scope, and names on
 are counted). Logging a reply needs `can_edit` on the message's company (out of scope 404). The per-contact timeline and follow-ups are
 the company's readers'. Do Not Contact refuses outreach for every role. No new grant. Pinned by
 `apps/api/tests/test_pob_005_contact_status.py` and the rec-038 rows.
+
+### 2.305 Screening forms, bank, sessions and comparison *(added 2026-11-06 — `DEC-SCOPE-412`, pob-020)*
+
+| Action | placement_team | placement_manager (Team Lead) | super_admin | assigned BDM | everyone else |
+|---|---|---|---|---|---|
+| Read/edit the bank and templates | ✓ | ✓ | ✓ | 403 | 403 |
+| Read a requirement's form, sessions, comparison | in scope | in scope | ✓ | in scope | 403 |
+| Create or edit a requirement's form | in scope | in scope | ✓ | 403 | 403 |
+| Approve knock-outs | 403 | in scope | ✓ | 403 | 403 |
+| Record a session | in scope | 403 | ✓ | 403 | 403 |
+
+Out of a caller's scope = 404. Compensation answers and the checklist's `expected_salary` in a session need `candidates.compensation.view` (hrc-001 H2); scores stay
+visible; a caller without it who answers a Compensation question gets 403. Answers, notes and scorecards reach no student, employer, `hr_team` or public route; the audit
+carries ids and the recommendation only. No new grant. Pinned by `apps/api/tests/test_pob_020_screening.py`, `test_hrc_001_access.py` and the rec-038 rows.
