@@ -1125,7 +1125,7 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** low.
 
 #### hrc-033: Operational recruitment dashboards
-- **Status:** built as `DEC-SCOPE-415` (migration `0293_recruitment_report_grants`, a seed only; API §12LI; RBAC §2.308; D1–D10 are the builder's calls,
+- **Status:** built as `DEC-SCOPE-415` (migration `0295_recruitment_report_grants`, a seed only; API §12LI; RBAC §2.308; D1–D10 are the builder's calls,
   `NEEDS_CONFIRMATION`; branch is not a working filter, Q-04); design `docs/superpowers/specs/2026-11-06-hrc-033-operational-recruitment-dashboards-design.md`.
 - **Business requirement:** §14 recruitment funnel, vacancy dashboard, recruiter dashboard, placement officer dashboard, interview dashboard.
 - **Existing behavior:**
@@ -1149,6 +1149,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** low.
 
 #### hrc-034: Skill demand, portal analytics and data-quality dashboards
+- **Status:** built as `DEC-SCOPE-416` (migration `0294_portal_events`, API §12LJ, RBAC §2.309; I1–I6 are the builder's calls, `NEEDS_CONFIRMATION`); design
+  `docs/superpowers/specs/2026-11-06-hrc-034-recruitment-insights-design.md`.
 - **Business requirement:** §14 skill demand, candidate portal analytics, data-quality dashboard; §16 "integration logs"; §17 QA "Failed imports, synchronisation events and notifications are visible and retryable".
 - **Existing behavior:** none of the three exist. There is only the candidate `/duplicate-check`.
 - **Expected behavior:**
@@ -1421,7 +1423,7 @@ That is about 29 migrations. With the 24 in the IT Counselor backlog, about 53 r
 | Q-28 | Stage catalogue: which stages are stored and which derived from interviews/offers; receipt for recruiter-created applications? | 026 |
 | Q-29 | Auto-create Google/Zoho meetings for interviews, or paste links? | 028 |
 | Q-30 | Can a released result be withdrawn? | 030 |
-| Q-31 | Retention periods (DPDP), anonymisation rules, portal-event rollup; shared with itc-033 | 034, 035 |
+| Q-31 | Retention periods (DPDP), anonymisation rules, portal-event rollup; shared with itc-033. hrc-034 deletes events after 400 days with no rollup (`NEEDS_CONFIRMATION`) | 034, 035 |
 
 ---
 
@@ -1469,6 +1471,10 @@ Field-level coverage:
 | Ageing vacancy (hrc-033) | An open job with `today − opened_on` > N days, banded 0–15/16–30/31–60/60+ |
 | Funnel stage counts (hrc-033) | Distinct candidates per cohort (registration month) who reached each stage, from history tables |
 | Vacancies with insufficient candidates (hrc-034) | Open jobs with fewer than N candidates passing the hard filters |
+| Skill demand and supply (hrc-034) | Demand: distinct open jobs listing a Skills-Master skill. Supply: distinct active pool candidates holding it directly |
+| Portal funnel (hrc-034) | Distinct people per `portal_events` kind in the period; drop-off is the previous step minus this one |
+| Incomplete profile (hrc-034) | An active pool candidate under 60% profile completeness |
+| Job missing fields (hrc-034) | An open job without a required skill, description, on-site location, qualification, minimum experience, employment type or vacancies |
 | Results awaiting approval (hrc-033) | Result records in `pending_approval` |
 | Vacancy opened on (hrc-033, as built) | `requirement_date`, else the IST date of `created_at`; `Job` has no `opened_on` |
 | Funnel stage reached (hrc-033, as built) | An application now in, or ever moved into, that stage or a later one, so stages are monotonic |

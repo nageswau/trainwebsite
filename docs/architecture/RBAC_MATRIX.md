@@ -3969,3 +3969,11 @@ own plus unassigned candidates; a placement manager the team's requirements and 
 they are officer of on that board, and their assigned ones elsewhere; the rest read everything. A role granted the key with no defined scope gets 403.
 A filter outside the scope reads as zero. Records carry no contact details, compensation or result; `it_admin` and `partner` see candidate codes without
 names. Pinned by `apps/api/tests/test_hrc_033_dashboards.py` and `apps/web/tests/e2e/hrc-033-recruitment-dashboards.spec.ts`.
+
+### 2.309 Recruitment insights *(added 2026-11-06 — `DEC-SCOPE-416`, hrc-034)*
+
+`reports.recruitment_insights.view` opens the three report pages: `hr_manager`, `placement_manager`, `partner`; `super_admin` implicitly; seeded by migration
+`0294_portal_events`. Every other role gets 403, including `placement_team`, `placement_officer`, `hr_team` and `it_admin`. The figures count the whole pool,
+so there is no per-record scope, and no row carries a candidate's name, contact details or pay. A figure links to its action page only with that page's own
+grant (`candidates.merge`, `candidates.import`, `notifications.retry`). Pinned by `apps/api/tests/test_hrc_034_insights.py` and
+`apps/web/tests/e2e/hrc-034-insights.spec.ts`.

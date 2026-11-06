@@ -65,7 +65,7 @@ on the others. On the Placement Officer board it means the officer.
 same); `company_branches` is unlinked from jobs. The form shows it disabled with that reason. `NEEDS_CONFIRMATION`: Q-04. A chosen employer or job also binds candidate figures to the caller's requirement scope.
 
 ### Access (D7)
-New catalogue resource `reports.recruitment` (`view`, `download`), seeded by migration `0293_recruitment_report_grants` (a seed only, no schema):
+New catalogue resource `reports.recruitment` (`view`, `download`), seeded by migration `0295_recruitment_report_grants` (a seed only, no schema):
 `placement_team`, `placement_manager`, `hr_manager`, `placement_officer`, `it_admin`, `partner`; `super_admin` implicitly. `reports.placement` is
 not reused, because it also opens student rows in the report library.
 

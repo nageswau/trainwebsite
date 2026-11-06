@@ -114,6 +114,12 @@ ROWS = [
     # hrc-032 (§2.306): the Delivery exceptions are `notifications.retry`'s (hr_manager, placement_manager, super_admin); an id that is not a failed delivery is 404
     R("get", "/recruiter/notification-exceptions", **allow(200, "hr_mgr", "mgr", "mgr_out", "super")),
     R("post", "/recruiter/notification-exceptions/{exception_source}/{hiring_result}/retry", {}, **allow(404, "hr_mgr", "mgr", "mgr_out", "super")),
+    # hrc-034 (DEC-SCOPE-416 I1): `reports.recruitment_insights.view` opens the whole-pool reports
+    R("get", "/recruiter/recruitment-insights/skill-demand", **allow(200, "hr_mgr", "mgr", "mgr_out", "super")),
+    R("get", "/recruiter/recruitment-insights/skill-demand/vacancies", **allow(200, "hr_mgr", "mgr", "mgr_out", "super")),
+    R("get", "/recruiter/recruitment-insights/portal-analytics", **allow(200, "hr_mgr", "mgr", "mgr_out", "super")),
+    R("get", "/recruiter/recruitment-insights/data-quality", **allow(200, "hr_mgr", "mgr", "mgr_out", "super")),
+    R("get", "/recruiter/recruitment-insights/data-quality/{insight_figure}", **allow(200, "hr_mgr", "mgr", "mgr_out", "super")),
 ]
 # fmt: on
 PATH_VALUES = {}
@@ -121,6 +127,7 @@ PATH_VALUES = {}
 
 async def build(client, db, w) -> None:
     w["exception_source"] = "delivery"  # hrc-032
+    w["insight_figure"] = "duplicates"  # hrc-034
     """On the group's own requirement (rec's, on the world's company): an application in Interview with a scheduled and a completed
     interview, a Selected one without an offer, one with an Offer Received offer and its letter, one with an Accepted offer (joining
     pending) and its proof, the student's own Selected application with an offer and its letter, and a candidate with a resume shared

@@ -16,7 +16,7 @@ from sqlalchemy import exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import JOB_OPEN_STATUSES, AuditLog, Candidate, CandidateSkill, Company, Job, JobApplication, JobSkill, SkillRelated, User
-from app.services import applications, job_visibility, matching
+from app.services import applications, job_visibility, matching, portal_events
 from app.services import candidate_portal as portal
 
 logger = logging.getLogger("app.candidate_jobs")
@@ -133,6 +133,7 @@ async def listing(db: AsyncSession, user: User, *, view: str, q: str | None, lim
         "all": cards,
     }  # sorted() is stable, so equal scores stay newest first; unscored matching jobs follow the scored ones
     chosen = groups[view]
+    await portal_events.record(db, user.id, portal_events.JOB_VIEW, [card["id"] for card in chosen[offset: offset + limit]])  # hrc-034 (I3): the route commits
     logger.info("candidate_jobs_listed", extra={"extra_fields": {"user_id": str(user.id), "view": view, "visible": len(cards), "shown": len(chosen)}})
     return {
         "view": view, "q": q, "items": chosen[offset: offset + limit], "total": len(chosen), "limit": limit, "offset": offset,
@@ -152,6 +153,9 @@ async def apply(db: AsyncSession, user: User, job_id: UUID) -> JobApplication:
     job = await db.scalar(select(Job).where(Job.id == job_id, *await _visible(db, user)))
     if job is None:
         raise HTTPException(404, NOT_FOUND)
+    # hrc-034 (I3): committed before the gates, so a refused attempt stays as a real drop-off
+    await portal_events.record(db, user.id, portal_events.APPLY_START, [job.id])
+    await db.commit()
     student = user.role == "it_student"
     candidate = await applications.candidate_for_student(db, user) if student else await portal.own(db, user)
     if await db.scalar(select(JobApplication.id).where(JobApplication.job_id == job.id, JobApplication.candidate_id == candidate.id)):
@@ -160,6 +164,7 @@ async def apply(db: AsyncSession, user: User, job_id: UUID) -> JobApplication:
     note = "Applied from the student portal" if student else "Applied from the candidate portal"
     item = await applications.create(db, user, job, candidate, "sourced", note, resume_url=user.profile.get("resume_url") if student else None)
     await applications.send_receipt(db, item, job)  # hrc-026 (AC4)
+    await portal_events.record(db, user.id, portal_events.APPLY_SUBMIT, [job.id])  # hrc-034 (I3)
     db.add(AuditLog(user_id=user.id, action="job.apply", entity_type="job_application", entity_id=str(item.id), metadata_json={"job_id": str(job.id)}))
     logger.info("candidate_job_applied", extra={"extra_fields": {"user_id": str(user.id), "job_id": str(job.id), "application_id": str(item.id)}})
     return item

@@ -16,6 +16,7 @@ export const MANAGEMENT_RECRUITMENT_DASHBOARDS_NAV: NavItem = { label: "Recruitm
 // itc-017 (DEC-SCOPE-368 F2): the IT fee accounts workspace, grant-driven like Payments.
 export const MANAGEMENT_IT_ACCOUNTS_NAV: NavItem = { label: "IT fee accounts", href: "/management/it-accounts", resource: "payments" };
 export const MANAGEMENT_IT_REPORTS_NAV: NavItem = { label: "IT reports", href: "/management/it-reports" };
+export const MANAGEMENT_INSIGHTS_NAV: NavItem = { label: "Recruitment insights", href: "/recruiter/insights/skill-demand" }; // hrc-034: the partner's grant
 export const MANAGEMENT_ROLE_LABEL: Record<string, string> ={ partner: "Partner", accountant: "Accountant", super_admin: "Super Administrator" };
 
 // mgmt-001 (MG8/MG9): the EVID-017 §33 pillars, plus Business Intelligence with §1's Strategy entries, each entry naming the item
@@ -73,7 +74,8 @@ export function managementNavFor(tiers: ManagementTiers, pillars: ManagementPill
   if (!tiers.operational && tiers.finance) payments.push(MANAGEMENT_IT_REPORTS_NAV);
   // hrc-033 (DEC-SCOPE-415): grant-driven like Payments, and not a Command Center pillar: it lives with the recruitment screens.
   const dashboards = tiers.operational ? [MANAGEMENT_RECRUITMENT_DASHBOARDS_NAV] : [];
-  return [{ label: "Command Center", href: MANAGEMENT_HOME }, { label: "Management activity", href: MANAGEMENT_ACTIVITY }, ...live, ...dashboards, ...payments, ...myTasks];
+  const insights = tiers.operational ? [MANAGEMENT_INSIGHTS_NAV] : [];
+  return [{ label: "Command Center", href: MANAGEMENT_HOME }, { label: "Management activity", href: MANAGEMENT_ACTIVITY }, ...live, ...dashboards, ...insights, ...payments, ...myTasks];
 }
 
 // mgmt-002 (DEC-SCOPE-187 MA5-MA7): GET /management/activity. The API lists only the kinds the caller's tier may see and returns the

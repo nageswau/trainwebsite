@@ -1,7 +1,7 @@
 """hrc-033 -- the default `reports.recruitment.view` / `.download` grants: the five operational recruitment dashboards.
 
-Revision ID: 0293_recruitment_report_grants
-Revises: 0292_screening_sessions
+Revision ID: 0295_recruitment_report_grants
+Revises: 0294_portal_events
 
 docs/superpowers/specs/2026-11-06-hrc-033-operational-recruitment-dashboards-design.md (DEC-SCOPE-415 D7). Seed only, no schema change: SEED is a
 frozen copy of the new `rbac.DEFAULT_GRANTS` keys at this revision. A row that is already there is left alone; no existing row changes. The
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0293_recruitment_report_grants"
-down_revision = "0292_screening_sessions"
+revision = "0295_recruitment_report_grants"
+down_revision = "0294_portal_events"
 branch_labels = None
 depends_on = None
 
