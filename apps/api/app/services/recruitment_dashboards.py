@@ -1,4 +1,4 @@
-"""hrc-033 (DEC-SCOPE-414, spec docs/superpowers/specs/2026-11-06-hrc-033-operational-recruitment-dashboards-design.md): the five operational
+"""hrc-033 (DEC-SCOPE-415, spec docs/superpowers/specs/2026-11-06-hrc-033-operational-recruitment-dashboards-design.md): the five operational
 recruitment dashboards -- funnel, vacancy, recruiter, placement officer, interview.
 
 Every figure is declared once, as a record kind and a predicate. Its value and its drill-down are built from that one predicate by `_where`,

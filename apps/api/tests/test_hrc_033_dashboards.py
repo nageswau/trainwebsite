@@ -1,4 +1,4 @@
-"""hrc-033 -- the five operational recruitment dashboards (DEC-SCOPE-414; design docs/superpowers/specs/2026-11-06-hrc-033-operational-recruitment-dashboards-design.md).
+"""hrc-033 -- the five operational recruitment dashboards (DEC-SCOPE-415; design docs/superpowers/specs/2026-11-06-hrc-033-operational-recruitment-dashboards-design.md).
 AC: each figure equals its drill-down count; the funnel stages are monotonic for one cohort. The database is shared and never truncated, so
 exact figures are read through this test's own employer or job filter; rows are planted directly with controlled timestamps."""
 

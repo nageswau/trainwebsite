@@ -12,7 +12,7 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models import CANDIDATE_ENGAGEMENTS, ApplicationScreening, Candidate, CareerApplication, JobApplication, JobApplicationStatusHistory, RecruiterCall, RecruiterMessage
+from app.models import CANDIDATE_ENGAGEMENTS, ApplicationScreening, Candidate, CareerApplication, JobApplication, JobApplicationStatusHistory, RecruiterCall, RecruiterMessage, ScreeningSession
 from app.services.candidate_privacy import CLOSED_APPLICATIONS
 
 LABELS = ("New", "Uncontacted", "Contacted", "Screened", "Shortlisted", "Active", "Inactive", "Placed", "Not interested", "Do not contact")
@@ -53,7 +53,11 @@ def expression():
         (or_(open_application, pipeline(since(ACTIVE_DAYS))), "active"),
         (~or_(Candidate.created_at >= quiet, called(quiet), pipeline(quiet)), "inactive"),  # E6
         (reached(SHORTLISTED_ON), "shortlisted"),
-        (or_(select(S.application_id).join(A, A.id == S.application_id).where(A.candidate_id == Candidate.id).exists(), reached(("screened",))), "screened"),
+        (or_(
+            select(S.application_id).join(A, A.id == S.application_id).where(A.candidate_id == Candidate.id).exists(),
+            select(ScreeningSession.id).join(A, A.id == ScreeningSession.application_id).where(A.candidate_id == Candidate.id).exists(),  # pob-020 (S14)
+            reached(("screened",)),
+        ), "screened"),
         (called(), "contacted"),
         (Candidate.owner_user_id.is_not(None), "uncontacted"),
         else_="new",

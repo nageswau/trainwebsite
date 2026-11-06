@@ -1,4 +1,4 @@
-"""hrc-033 (DEC-SCOPE-414, API §12LH): the five operational recruitment dashboards -- a board's figures, the records behind one figure, and the
+"""hrc-033 (DEC-SCOPE-415, API §12LI): the five operational recruitment dashboards -- a board's figures, the records behind one figure, and the
 board as a file. `reports.recruitment` opens the route; `services/recruitment_dashboards.py` decides the records in the caller's scope."""
 
 from datetime import date

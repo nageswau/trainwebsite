@@ -99,7 +99,7 @@ CATALOGUE: dict[str, dict] = {
     "reports.training": {"label": "Training reports", "actions": ("view", "download")},
     # nehn-016 (DEC-SCOPE-312): the recruiter's placement reports -- students completing soon and the student placement report.
     "reports.placement": {"label": "Placement reports", "actions": ("view", "download")},
-    # hrc-033 (DEC-SCOPE-414 D7): the five operational recruitment dashboards; record scope stays in services/recruitment_dashboards.py.
+    # hrc-033 (DEC-SCOPE-415 D7): the five operational recruitment dashboards; record scope stays in services/recruitment_dashboards.py.
     "reports.recruitment": {"label": "Recruitment dashboards", "actions": ("view", "download")},
     # nehn-018 (DEC-SCOPE-304): which student features unlock at which payment state.
     "student_access": {"label": "Student access rules", "actions": ("configure",)},
@@ -133,7 +133,7 @@ _TELECALLER_REPORTS = ("reports.telecaller.view", "reports.telecaller.download")
 _TRAINING_REPORTS = ("reports.training.view", "reports.training.download")  # nehn-009 (migration 0210 seeds it); a trainer's rows are own batches
 _PLACEMENT_REPORTS = ("reports.placement.view", "reports.placement.download")  # nehn-016 (migration 0212 seeds it); rows = opted-in students
 _CLIENT_COMMERCIALS = ("commercials.client.view", "commercials.client.edit")  # pob-001 (migration 0278 seeds it)
-_RECRUITMENT_REPORTS = ("reports.recruitment.download", "reports.recruitment.view")  # hrc-033 (migration 0292 seeds it)
+_RECRUITMENT_REPORTS = ("reports.recruitment.download", "reports.recruitment.view")  # hrc-033 (migration 0293 seeds it)
 DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "it_admin": (
         _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure", "student_access.configure") + _TRAINING_REPORTS + _PLACEMENT_REPORTS + ("discounts.approve", "payments.refund") + _RECRUITMENT_REPORTS
@@ -155,7 +155,7 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     # hrc-007 (DEC-SCOPE-380 A12; migration 0257 seeds it): the HR Manager is the vacancy approver.
     # hrc-035 (DEC-SCOPE-396 K7; migration 0273 seeds it): the HR Manager decides candidate deletion requests.
     # hrc-030 (DEC-SCOPE-409 R5; migration 0289 seeds it): the HR Manager publishes interview results.
-    "hr_manager": ("candidates.erase", "jobs.approve", "notifications.retry", *_RECRUITMENT_REPORTS, "results.release"),  # hrc-033 (0292): the dashboards
+    "hr_manager": ("candidates.erase", "jobs.approve", "notifications.retry", *_RECRUITMENT_REPORTS, "results.release"),  # hrc-033 (0293): the dashboards
     "placement_officer": _RECRUITMENT_REPORTS,  # hrc-033: their own dashboard, scoped to what they are officer of
     "partner": _RECRUITMENT_REPORTS,  # hrc-033: figures and codes; the operational tier reads recruitment (mgmt-025 RC2)
     # pob-001 (DEC-SCOPE-403 C3; migration 0278 seeds it): the assigned BDM keeps reading the company's contract terms (rec-030 R10).

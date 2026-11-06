@@ -1,4 +1,4 @@
-// hrc-033 (DEC-SCOPE-414, API §12LH): the five operational recruitment dashboards. The API decides access, scope, every figure and its
+// hrc-033 (DEC-SCOPE-415, API §12LI): the five operational recruitment dashboards. The API decides access, scope, every figure and its
 // definition (services/recruitment_dashboards.py); this file only reads and builds addresses, so refresh, back and shared links keep the state.
 import { isCalendarDate } from "@/lib/formatDate";
 

@@ -8,11 +8,13 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import SCREENING_RESULTS, ApplicationScreening, JobApplication, User
+from app.models import SCREENING_RESULTS, ApplicationScreening, JobApplication, ScreeningSession, User
 from app.services import applications, candidates
 
 AUDIT = "recruiter_application.screening"
 LABELS = {"shortlisted": "Shortlisted", "hold": "Hold", "rejected": "Rejected", "need_more_info": "Need More Information"}
+RECOMMENDATION_LABELS = {"pass": "Pass", "hold": "Hold", "reject": "Reject"}  # pob-020: a screening session's recommendation
+LEGACY_RECOMMENDATION = {"shortlisted": "pass", "hold": "hold", "rejected": "reject", "need_more_info": "hold"}  # S3; migration 0292 repeats it
 FIELDS = (
     "qualification_verified",
     "experience_verified",
@@ -75,6 +77,12 @@ async def read(db: AsyncSession, user: User, application: JobApplication) -> dic
     }
 
 
+def _history(application_id, user_id, sent: dict) -> ScreeningSession:
+    """pob-020 (S2): the row above stays the one current checklist; each changed save also leaves a session that is never edited."""
+    snapshot = {f: float(sent[f]) if f == "expected_salary" and sent[f] is not None else sent[f] for f in FIELDS}
+    return ScreeningSession(application_id=application_id, kind="legacy", screened_by_user_id=user_id, notes=sent["remarks"], recommendation=LEGACY_RECOMMENDATION[sent["result"]], legacy_snapshot=snapshot)
+
+
 async def save(db: AsyncSession, user: User, application: JobApplication, sent: dict) -> str | None:
     """SC4: 409 unless open. SC5: replace the one current row, auditing the changed names; an unchanged form writes nothing. SC3: move
     the status. Returns the previous status when it moved, else None."""
@@ -89,6 +97,7 @@ async def save(db: AsyncSession, user: User, application: JobApplication, sent: 
         for field in FIELDS:
             setattr(row, field, sent[field])
         row.screened_by_user_id, row.updated_at = user.id, await db.scalar(select(func.now()))
+        db.add(_history(application.id, user.id, sent))
         applications.audit(db, user, "screening", application, {"fields": sorted(changed), "result": sent["result"]})
     target, origins = MOVES.get(sent["result"], (None, ()))
     if target is None or application.status not in origins:

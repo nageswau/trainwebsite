@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.api import recruiter_screening
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import APPLICATION_STATUSES, ApplicationScreening, Candidate, Company, Job, JobApplication, User
@@ -179,3 +180,6 @@ async def candidate_applications(candidate_id: UUID, user: User = Depends(get_cu
             for a, job, company in rows
         ]
     }
+
+
+router.include_router(recruiter_screening.router)  # pob-020

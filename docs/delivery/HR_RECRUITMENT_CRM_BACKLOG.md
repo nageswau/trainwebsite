@@ -1125,7 +1125,7 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** low.
 
 #### hrc-033: Operational recruitment dashboards
-- **Status:** built as `DEC-SCOPE-414` (migration `0292_recruitment_report_grants`, a seed only; API §12LH; RBAC §2.307; D1–D10 are the builder's calls,
+- **Status:** built as `DEC-SCOPE-415` (migration `0293_recruitment_report_grants`, a seed only; API §12LI; RBAC §2.308; D1–D10 are the builder's calls,
   `NEEDS_CONFIRMATION`; branch is not a working filter, Q-04); design `docs/superpowers/specs/2026-11-06-hrc-033-operational-recruitment-dashboards-design.md`.
 - **Business requirement:** §14 recruitment funnel, vacancy dashboard, recruiter dashboard, placement officer dashboard, interview dashboard.
 - **Existing behavior:**

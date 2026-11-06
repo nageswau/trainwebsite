@@ -14,7 +14,7 @@ const PAGE_RESOURCE: Record<string, string> = {
   "/telecaller/manager/reports": "reports.telecaller", "/it/coordinator/certificates": "certificates",
   "/it/hr/students": "student_progress", // nehn-017
   "/recruiter/receivables": "commercials.client", // pob-001 (DEC-SCOPE-403 C8)
-  "/recruiter/recruitment-dashboards": "reports.recruitment", // hrc-033 (DEC-SCOPE-414)
+  "/recruiter/recruitment-dashboards": "reports.recruitment", // hrc-033 (DEC-SCOPE-415)
 };
 const withResources = (nav: NavItem[]): NavItem[] => nav.map((item) => (PAGE_RESOURCE[item.href] ? { ...item, resource: PAGE_RESOURCE[item.href] } : item));
 
@@ -179,6 +179,7 @@ export const RECRUITER_NAV: NavItem[] = withResources([ // pob-001: Receivables 
   { label: "Colleges", href: "/recruiter/colleges" }, // pob-013: college placement profiles (TPO records)
   { label: "My Performance", href: "/recruiter/performance" }, // rec-034: §25, their own row
   { label: "Recruitment dashboards", href: "/recruiter/recruitment-dashboards" }, // hrc-033
+  { label: "Screening Bank", href: "/recruiter/screening-bank" }, // pob-020: questions and form templates
   { label: "Report library", href: "/recruiter/report-library" }, // nehn-016: students completing soon, the placement report
   { label: "Notifications", href: "/recruiter/notifications" }, // hrc-032: their own notices, by type
   ...LEGACY_PLACEMENT.map((x) => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, (c) => c.toUpperCase()), href: `/it/placement/${x}` })),
@@ -211,6 +212,7 @@ export const RECRUITER_MANAGER_NAV: NavItem[] = withResources([
   { label: "Campus Drives", href: "/recruiter/drives" }, // rec-029: the team's drives, read only
   { label: "Colleges", href: "/recruiter/colleges" }, // pob-013: college placement profiles, read only
   { label: "Message templates", href: "/recruiter/manager/templates" }, // rec-026
+  { label: "Screening Bank", href: "/recruiter/manager/screening-bank" }, // pob-020: questions and form templates
   { label: "Report library", href: "/recruiter/manager/report-library" }, // nehn-016: students completing soon, the placement report
   MANAGEMENT_TASKS_NAV, // mgmt-028 (MT14)
 ]);
