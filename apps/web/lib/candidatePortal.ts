@@ -16,6 +16,12 @@ export const CANDIDATE_PORTAL_HOME = "/it/careers/portal/profile";
 export const CANDIDATE_NAV: NavItem[] = [
   { label: "Candidate profile", href: CANDIDATE_PORTAL_HOME },
   { label: "Jobs", href: "/it/careers/portal/jobs" }, // hrc-027
+  // hrc-031 (DEC-SCOPE-412): the rest of the §11 sections
+  { label: "My applications", href: "/it/careers/portal/applications" },
+  { label: "Interviews", href: "/it/careers/portal/interviews" },
+  { label: "My results", href: "/it/careers/portal/results" },
+  { label: "Documents", href: "/it/careers/portal/documents" },
+  { label: "Notifications", href: "/it/careers/portal/notifications" },
   { label: "Privacy", href: "/it/careers/portal/privacy" },
 ];
 

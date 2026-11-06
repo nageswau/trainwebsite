@@ -231,6 +231,9 @@ async def link(db: AsyncSession, kind: str, row, mode: str, filename_stem: str) 
 
 
 async def own_candidate(db: AsyncSession, user: User, *, lock: bool = False) -> Candidate | None:
-    """D8: the caller's own candidate row while it is in the pool (opted in, not archived)."""
-    stmt = select(Candidate).where(Candidate.user_id == user.id, Candidate.opted_in.is_(True), Candidate.archived_at.is_(None))
+    """D8: the caller's own candidate row while it is in the pool (opted in, not archived). hrc-031 (DEC-SCOPE-412 P4): an external candidate
+    needs no pool -- leaving it keeps their applications, and what was asked for them."""
+    stmt = select(Candidate).where(Candidate.user_id == user.id, Candidate.merged_into_id.is_(None), Candidate.archived_at.is_(None))
+    if user.role != "candidate":
+        stmt = stmt.where(Candidate.opted_in.is_(True))
     return await db.scalar(stmt.with_for_update() if lock else stmt)

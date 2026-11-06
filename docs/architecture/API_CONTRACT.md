@@ -6074,3 +6074,17 @@ same_company, on: ["mobile"|"email"]}], others}` (≤10 matches, in the caller's
 the future → 422; set once, a repeat returns it unchanged; `can_edit` 403, out of scope 404, archived 409). **Errors:** a Do Not Contact
 contact → 409 "This contact has asked not to be contacted" on `POST /recruiter/messages`, an outgoing `POST /recruiter/calls`, a profile
 share to them, and a meeting create/edit that adds them.
+
+## 12LF. Candidate portal completion (hrc-031) — addendum, 2026-11-06
+
+`DEC-SCOPE-412`. **New:** `GET /candidate/applications` and `GET /candidate/interviews` (`candidate` or `it_student`, else 403) → a portal
+payload `{title, subtitle, columns, rows, metrics, actions, panels}` of the caller's own records; no id is taken. Application rows:
+`code, role, company, location, status` (the candidate-visible stage), `applied_on` ("06 Nov 2026", IST), `next_action`. Interview rows as
+`GET /portal/it/student/interview-schedule`. **Changed (additive):** `GET /portal/it/student/job-applications` gains the `applied_on` and
+`next_action` columns; `GET /portal/it/student/{results|documents|privacy}` are new header-only sections; `.../notifications` gains a
+"Notification preferences" action; `GET /auth/me` gains `email_verified`. **Widened to `candidate`:** `GET|POST
+/account/candidate-documents`, `GET /account/candidate-documents/{id}/link` (a candidate needs no pool consent; `available: false` when
+archived or merged; someone else's document 404) and `GET /workflows/it/student/offers[/{id}/letter]` (someone else's 404). **Changed:**
+`action_url` of a candidate's new application, result and offer notices is `/it/careers/portal/applications`, and of interview notices
+`/it/careers/portal/interviews`; a student's are unchanged. The application and interview payloads carry `stack: true` (labelled rows on a
+phone). No migration.

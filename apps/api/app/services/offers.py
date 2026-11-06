@@ -75,7 +75,8 @@ async def _notify_received(db: AsyncSession, application: JobApplication) -> Non
     student = await db.get(User, application.student_id) if application.student_id else None
     if student is None:
         return
-    item = Notification(user_id=student.id, title="Job offer received", body="A job offer has been recorded in your placement portal.", read=False, action_url="/it/student/placement-status")
+    item = Notification(user_id=student.id, title="Job offer received", body="A job offer has been recorded in your placement portal.", read=False,
+                        action_url="/it/careers/portal/applications" if student.role == "candidate" else "/it/student/placement-status")  # fmt: skip
     db.add(item)
     await db.flush()
     await queue_deliveries(db, item, student)
