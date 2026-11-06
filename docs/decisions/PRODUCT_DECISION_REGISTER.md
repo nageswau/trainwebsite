@@ -12168,6 +12168,33 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0292_screening_sessions` (after `0291_recruitment_notices`); API §12LH; RBAC §2.307.
 - **Feature ID authorized:** `pob-020`. **Status:** built on `worktree-pob-020`.
 
+
+### DEC-SCOPE-415 — Operational recruitment dashboards: five boards, every figure ties to its records (`hrc-033`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-033` and Appendix B (§14; source classified `UNVERIFIED`). The owner assigned
+  hrc-033 for build on 2026-11-06 and said to proceed with the recommended answers, so D1–D10 are **the builder's calls (`NEEDS_CONFIRMATION`)**.
+  Dependencies hrc-021, 024, 026, 028, 030 are built. Design `docs/superpowers/specs/2026-11-06-hrc-033-operational-recruitment-dashboards-design.md`.
+- **Behaviour:** five boards at `/recruiter/recruitment-dashboards/<board>`: funnel, vacancy, recruiter, placement officer and interview. Filters are
+  date range, owner, employer and job. Each figure shows its definition and opens the records it counted, with paging and a link to the record
+  where the role can open it. A board downloads as CSV or Excel, audited.
+- **Builder's calls:** D1 a figure is declared once as a record kind and predicate; its count and its records are built from that predicate.
+  D3 the figures per board. D4 definitions: a funnel stage counts its status and every later one, current or in history, so a skipped stage
+  counts and stages are monotonic by construction; "opened on" is the requirement date, else the created IST date; vacancy buckets partition
+  all 13 statuses. D5 flow boards default to this IST month; the vacancy board is a snapshot unless dates are given. D6 filters are ANDed with
+  scope, so an out-of-scope value reads as zero. **Branch is shown disabled: nothing records one (Q-04 open).** D7 a new `reports.recruitment`
+  resource (`view`, `download`) for recruiters, placement managers, HR Manager, placement officers, IT admin and partner; a role granted the key
+  with no defined record scope is still refused. D9 records carry no contact details, money or result outcome; IT admin and partner see candidate
+  codes without names.
+- **Not built:** pob-028's nine-widget dashboard and hrc-034's three boards. Existing recruiter tiles, performance and management recruitment
+  keep their numbers.
+- **Numbering:** migration `0295_recruitment_report_grants` (a seed only); API §12LI; RBAC §2.308.
+- **Review and QA fixes:** a chosen employer or job is ANDed with the caller's requirement scope on candidate figures too (D6). A placement officer's
+  application and interview records are their own candidates only, even on a requirement they co-own (D7). An interview row shows a decided interview
+  as Held, never Selected or Rejected (D4, D9). A chosen owner or employer sorts first, so it survives the 500-option cap. QA-01: a stacked table label
+  no longer wraps mid-word on a phone. **Open:** application and interview rows follow the requirement's scope and are not restricted to the candidate
+  pool, as on the recruiter pipeline (`NEEDS_CONFIRMATION`).
+- **Feature ID authorized:** `hrc-033`. **Status:** built on `worktree-hrc-033`.
+
 ### DEC-SCOPE-416 — Skill demand, portal analytics and data-quality dashboards (`hrc-034`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-034`, Appendix B (PDF §14, §16, §17 QA; PDF classified `UNVERIFIED`). Scope approved by the

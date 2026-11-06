@@ -147,6 +147,11 @@ ROWS = [
     R("get", "/recruiter/performance.xlsx", **allow(200, *METRICS)),  # nehn-004
     R("get", "/recruiter/performance/by-recruiter?recruiter={rec_id}", **allow(200, "rec", "mgr", "super"), rec_out=403, mgr_out=404),
     R("get", "/recruiter/management", **allow(200, *METRICS)),
+    # hrc-033 (ง2.308): `reports.recruitment` opens them; a filter or figure outside the caller's scope reads as zero, never 403
+    R("get", "/recruiter/recruitment-dashboards/{board}", **allow(200, "rec", "rec_out", "mgr", "mgr_out", "super", "it_admin", "hr_mgr", "officer")),
+    R("get", "/recruiter/recruitment-dashboards/{board}.csv", **allow(200, "rec", "rec_out", "mgr", "mgr_out", "super", "it_admin", "hr_mgr", "officer")),
+    R("get", "/recruiter/recruitment-dashboards/{board}.xlsx", **allow(200, "rec", "rec_out", "mgr", "mgr_out", "super", "it_admin", "hr_mgr", "officer")),
+    R("get", "/recruiter/recruitment-dashboards/{board}/drill/{figure}", **allow(200, "rec", "rec_out", "mgr", "mgr_out", "super", "it_admin", "hr_mgr", "officer")),
     # pob-013 college placement profiles (ยง2.303, P3/P4): every recruiter and manager reads every college, the BDMs of the college module
     # read by bdm-002 scope; the placement team, super_admin and the assigned BDM write -- both managers and another BDM 403 after scope
     R("get", "/recruiter/colleges", **allow(200, *COLLEGE_READERS)),

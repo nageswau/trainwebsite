@@ -3960,6 +3960,16 @@ Out of a caller's scope = 404. Compensation answers and the checklist's `expecte
 visible; a caller without it who answers a Compensation question gets 403. Answers, notes and scorecards reach no student, employer, `hr_team` or public route; the audit
 carries ids and the recommendation only. No new grant. Pinned by `apps/api/tests/test_pob_020_screening.py`, `test_hrc_001_access.py` and the rec-038 rows.
 
+
+### 2.308 Operational recruitment dashboards *(added 2026-11-06 — `DEC-SCOPE-415`, hrc-033)*
+
+`reports.recruitment.view` and `.download` are held by default by `placement_team`, `placement_manager`, `hr_manager`, `placement_officer`, `it_admin` and
+`partner`; `super_admin` holds them implicitly. The grant opens the route; the record scope is per role. A recruiter reads their requirements and their
+own plus unassigned candidates; a placement manager the team's requirements and the whole pool; a placement officer only requirements and candidates
+they are officer of on that board, and their assigned ones elsewhere; the rest read everything. A role granted the key with no defined scope gets 403.
+A filter outside the scope reads as zero. Records carry no contact details, compensation or result; `it_admin` and `partner` see candidate codes without
+names. Pinned by `apps/api/tests/test_hrc_033_dashboards.py` and `apps/web/tests/e2e/hrc-033-recruitment-dashboards.spec.ts`.
+
 ### 2.309 Recruitment insights *(added 2026-11-06 — `DEC-SCOPE-416`, hrc-034)*
 
 `reports.recruitment_insights.view` opens the three report pages: `hr_manager`, `placement_manager`, `partner`; `super_admin` implicitly; seeded by migration

@@ -1125,6 +1125,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** low.
 
 #### hrc-033: Operational recruitment dashboards
+- **Status:** built as `DEC-SCOPE-415` (migration `0295_recruitment_report_grants`, a seed only; API §12LI; RBAC §2.308; D1–D10 are the builder's calls,
+  `NEEDS_CONFIRMATION`; branch is not a working filter, Q-04); design `docs/superpowers/specs/2026-11-06-hrc-033-operational-recruitment-dashboards-design.md`.
 - **Business requirement:** §14 recruitment funnel, vacancy dashboard, recruiter dashboard, placement officer dashboard, interview dashboard.
 - **Existing behavior:**
   - **Built:** recruiter tiles and performance (with export), the management recruitment pipeline, and interview views (upcoming, awaiting update, on hold, closed).
@@ -1474,3 +1476,5 @@ Field-level coverage:
 | Incomplete profile (hrc-034) | An active pool candidate under 60% profile completeness |
 | Job missing fields (hrc-034) | An open job without a required skill, description, on-site location, qualification, minimum experience, employment type or vacancies |
 | Results awaiting approval (hrc-033) | Result records in `pending_approval` |
+| Vacancy opened on (hrc-033, as built) | `requirement_date`, else the IST date of `created_at`; `Job` has no `opened_on` |
+| Funnel stage reached (hrc-033, as built) | An application now in, or ever moved into, that stage or a later one, so stages are monotonic |

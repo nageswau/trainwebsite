@@ -6135,6 +6135,21 @@ an approved knock-out unanswered, an override without a reason or a failed knock
 **Comparison:** `GET requirements/{id}/screening-comparison?version=` → `{version, versions, questions, rows, truncated}`; each candidate's latest session on
 that version (default current), best score first, at most 50 (most recently screened when capped). 404 unknown version; no form or no sessions is an empty 200.
 
+
+## 12LI. Operational recruitment dashboards (hrc-033) — addendum, 2026-11-06
+
+`DEC-SCOPE-415`. **New**, all under `/recruiter/recruitment-dashboards`, `{board}` one of `funnel|vacancy|recruiter|officer|interview` (else 422), and
+query `from`, `to` (IST dates: at most 366 days, never future, else 422), `owner`, `employer`, `job` (UUIDs, else 422), ANDed with the caller's scope:
+
+- `GET /{board}` (`reports.recruitment.view`) → `{board, label, note, owner_label, date_from, date_to, filters, sections: [{key, label, figures: [{key, label,
+  definition, value}]}], options: {owners, employers, jobs}, can_download}`. `date_from` and `date_to` are null on the vacancy board when no date is given.
+- `GET /{board}/drill/{figure}?limit=1..100&offset` (`view`) → `{figure, total, limit, offset, columns: [{key, label, type}], items: [{id, href, ...}]}`, and
+  `total` equals the figure. An unknown figure is 404. `href` is null when the caller's role cannot open the record.
+- `GET /{board}.csv` and `.xlsx` (`reports.recruitment.download`): `Section, Figure, Count, Definition`; one `recruitment_dashboard.export` audit row,
+  committed before the file is returned.
+
+All are `no-store` and read-only. Migration `0295_recruitment_report_grants` seeds the grants.
+
 ## 12LJ. Skill demand, portal analytics and data quality (hrc-034) — addendum, 2026-11-06
 
 `DEC-SCOPE-416`. All routes are `GET`, under `/api/v1/recruiter/recruitment-insights`, need `reports.recruitment_insights.view` (401 signed out, 403

@@ -74,6 +74,7 @@ def test_the_catalogue_names_the_pilot_resources_and_known_actions():
         "student_progress", "attendance", "student_documents",  # nehn-017
         "candidates.compensation",  # hrc-001
         "jobs", "candidates", "results",  # hrc-002
+        "reports.recruitment",  # hrc-033
         "commercials.client", "commercials.vendor", "candidates.contact",  # pob-001
         "notifications",  # hrc-032
         "reports.recruitment_insights",  # hrc-034
@@ -291,7 +292,8 @@ async def test_a_change_is_audited_with_before_and_after(client, db_session):
         assert len(rows) == 1
         row = rows[0]
         assert row.entity_type == "role" and row.entity_id == "partner"
-        assert row.metadata_json == {"before": ["reports.recruitment_insights.view"], "after": ["payments.view", "reports.telecaller.view"], "added": ["payments.view", "reports.telecaller.view"], "removed": ["reports.recruitment_insights.view"]}  # hrc-034: the partner's default
+        reports = ["reports.recruitment.download", "reports.recruitment.view", "reports.recruitment_insights.view"]  # hrc-033, hrc-034: the partner's defaults
+        assert row.metadata_json == {"before": reports, "after": ["payments.view", "reports.telecaller.view"], "added": ["payments.view", "reports.telecaller.view"], "removed": reports}
         grant = await db_session.scalar(select(RolePermission).where(RolePermission.role == "partner", RolePermission.resource == "payments"))
         assert grant.granted_by_id == root.id and grant.granted_at is not None
         # The same set again changes nothing and writes nothing.
