@@ -1,4 +1,4 @@
-"""hrc-034 (DEC-SCOPE-415 I3/I4): write and expire `portal_events`. Ids only. The caller owns the transaction."""
+"""hrc-034 (DEC-SCOPE-416 I3/I4): write and expire `portal_events`. Ids only. The caller owns the transaction."""
 
 import logging
 from collections.abc import Iterable

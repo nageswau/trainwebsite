@@ -319,7 +319,7 @@ def new_matches_task():
 
 @celery.task
 def portal_events_retention_task():
-    """hrc-034 (DEC-SCOPE-415 I4): daily via beat. Idempotent."""
+    """hrc-034 (DEC-SCOPE-416 I4): daily via beat. Idempotent."""
     from app.services.portal_events import run_retention
 
     return _run_with_fresh_pool(run_retention)

@@ -1798,3 +1798,8 @@ half.
 | `pob-005-AC2` | Do Not Contact refuses sends with 409 | `::test_do_not_contact_refuses_outreach_with_409`; vitest (QA-01 not offered as a recipient); e2e |
 | `pob-005-AC3` | A duplicate mobile across companies warns | `::test_duplicates_across_companies_warn_without_naming_out_of_scope_ones`; vitest; e2e |
 | `pob-005-+/−` | Fields save, invalid values 422, follow-up due derived, per-contact timeline/follow-ups, migration backfill | `::test_new_fields_save_and_read_back`, `::test_invalid_values_are_422`, `::test_follow_up_due_is_derived_from_an_open_follow_up`, `::test_per_contact_timeline_and_follow_ups`; `test_pob_005_migration.py`; rec-038 rows |
+| `pob-020-AC1` | A form with 5 questions is created from the template | `test_pob_020_screening.py::test_ac1_*`; vitest; e2e `pob-020-screening.spec.ts` |
+| `pob-020-AC2` | A knock-out "No" sets the recommendation to reject unless overridden | `::test_ac2_*`, `::test_a_pending_knockout_*`; vitest; e2e |
+| `pob-020-AC3` | Two sessions keep their history | `::test_ac3_*`, `::test_each_changed_checklist_save_*`; vitest; e2e |
+| `pob-020-AC4` | The comparison shows scores | `::test_ac4_*`, `::test_comparison_*`; vitest; e2e |
+| `pob-020-E` | A form change keeps earlier sessions on their own version; answers stay internal | `::test_edge_*`, `::test_compensation_answers_follow_the_grant`, `test_hrc_001_access.py`; `test_pob_020_migration.py` |

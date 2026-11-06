@@ -1,4 +1,4 @@
-"""hrc-034 (DEC-SCOPE-415): the three report pages' data. `reports.recruitment_insights.view` opens every route; the service only reads."""
+"""hrc-034 (DEC-SCOPE-416): the three report pages' data. `reports.recruitment_insights.view` opens every route; the service only reads."""
 
 from datetime import date
 from typing import Literal

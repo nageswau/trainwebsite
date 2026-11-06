@@ -1,6 +1,6 @@
 # hrc-034: Skill demand, portal analytics and data-quality dashboards -- design
 
-**Decision:** `DEC-SCOPE-415` (builder's recommended calls, `NEEDS_CONFIRMATION`). **Source:** `HR_RECRUITMENT_CRM_BACKLOG.md` hrc-034, Appendix B
+**Decision:** `DEC-SCOPE-416` (builder's recommended calls, `NEEDS_CONFIRMATION`). **Source:** `HR_RECRUITMENT_CRM_BACKLOG.md` hrc-034, Appendix B
 (`UNVERIFIED`, a requirements draft). **Depends on:** hrc-013, 014, 018, 027, 032, all merged.
 
 ## Intent
@@ -81,7 +81,7 @@ state. Existing `kpi-grid`, `report-tablist`, `table compact stack` and `accessU
 
 ## Plan
 
-1. Model, migration 0293, catalogue key, defaults and migration test.
+1. Model, migration 0294, catalogue key, defaults and migration test.
 2. Events on the Jobs page and apply routes, retention job, tests.
 3. Report service, routes, rec-038 rows, tests (tie-outs, zero supply, N, access, empty period).
 4. Web lib, pages, navigation, vitest.

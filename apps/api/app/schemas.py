@@ -131,6 +131,9 @@ from app.models import (
     RELATIONSHIP_STRENGTHS,
     SALARY_PERIODS,
     SCORE_TYPES,
+    SCREENING_CATEGORIES,
+    SCREENING_FORMATS,
+    SCREENING_RECOMMENDATIONS,
     SCREENING_RESULTS,
     STUDY_MODES,
     TASK_PRIORITIES,
@@ -11647,6 +11650,111 @@ class RecScreeningIn(BaseModel):
     def _rejected_needs_remarks(self):
         if self.result == "rejected" and not self.remarks:
             raise ValueError("Remarks are required when the result is Rejected")
+        return self
+
+
+# --- pob-020 (DEC-SCOPE-414): question bank, forms and screening sessions --------------------------------------------------------------
+SCREENING_FORM_QUESTION_LIMIT = 20
+_RecScreeningChoice = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+_RecScreeningText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+
+
+class RecScreeningQuestionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    category: Literal[SCREENING_CATEGORIES]
+    text: _RecScreeningText
+    format: Literal[SCREENING_FORMATS]
+    choices: list[_RecScreeningChoice] | None = Field(default=None, max_length=20)
+    evaluation_criteria: _rec_requirement_text_type(1000, multiline=True) = None
+    expected_answer: _rec_requirement_text_type(500) = None
+
+
+class RecScreeningQuestionPatch(BaseModel):
+    """Only what is sent changes."""
+
+    model_config = ConfigDict(extra="forbid")
+    category: Literal[SCREENING_CATEGORIES] | None = None
+    text: _RecScreeningText | None = None
+    format: Literal[SCREENING_FORMATS] | None = None
+    choices: list[_RecScreeningChoice] | None = Field(default=None, max_length=20)
+    evaluation_criteria: _rec_requirement_text_type(1000, multiline=True) = None
+    expected_answer: _rec_requirement_text_type(500) = None
+    active: bool | None = None
+
+
+class RecScreeningFormQuestionIn(BaseModel):
+    """Either a bank question (`question_id`, copied) or a question written here. S6: a knock-out is a yes/no question expecting yes or no."""
+
+    model_config = ConfigDict(extra="forbid")
+    question_id: UUID | None = None
+    category: Literal[SCREENING_CATEGORIES] | None = None
+    text: _RecScreeningText | None = None
+    format: Literal[SCREENING_FORMATS] | None = None
+    choices: list[_RecScreeningChoice] | None = Field(default=None, max_length=20)
+    evaluation_criteria: _rec_requirement_text_type(1000, multiline=True) = None
+    expected_answer: _rec_requirement_text_type(500) = None
+    is_knockout: bool = False
+
+    @model_validator(mode="after")
+    def _complete(self):
+        if self.question_id is None and not (self.category and self.text and self.format):
+            raise ValueError("A question needs a category, text and format")
+        return self
+
+
+RecScreeningFormQuestions = Annotated[list[RecScreeningFormQuestionIn], Field(min_length=1, max_length=SCREENING_FORM_QUESTION_LIMIT)]
+
+
+class RecScreeningTemplateIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+    questions: RecScreeningFormQuestions
+
+
+class RecScreeningTemplatePatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)] | None = None
+    questions: RecScreeningFormQuestions | None = None
+    archived: bool | None = None
+
+
+class RecScreeningFormCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    template_id: UUID | None = None
+
+
+class RecScreeningFormVersion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    questions: RecScreeningFormQuestions
+
+
+class RecScreeningKnockoutApproval(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    version: StrictInt
+
+
+class RecScreeningAnswerIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    question_id: UUID
+    answer: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+    score: Annotated[StrictInt, Field(ge=0, le=5)] | None = None
+
+
+class RecScreeningSessionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    form_version: StrictInt
+    answers: list[RecScreeningAnswerIn] = Field(max_length=SCREENING_FORM_QUESTION_LIMIT)
+    notes: _rec_requirement_text_type(2000, multiline=True) = None
+    recommendation: Literal[SCREENING_RECOMMENDATIONS]
+    knockout_override: bool = False
+    override_reason: _rec_requirement_text_type(500) = None
+
+    @model_validator(mode="after")
+    def _override_needs_reason(self):
+        if self.knockout_override and not self.override_reason:
+            raise ValueError("Give a reason for overriding the knock-out")
+        if len({a.question_id for a in self.answers}) != len(self.answers):
+            raise ValueError("Answer each question once")
         return self
 
 

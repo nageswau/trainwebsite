@@ -1147,7 +1147,7 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** low.
 
 #### hrc-034: Skill demand, portal analytics and data-quality dashboards
-- **Status:** built as `DEC-SCOPE-415` (migration `0293_portal_events`, API §12LI, RBAC §2.308; I1–I6 are the builder's calls, `NEEDS_CONFIRMATION`); design
+- **Status:** built as `DEC-SCOPE-416` (migration `0294_portal_events`, API §12LJ, RBAC §2.309; I1–I6 are the builder's calls, `NEEDS_CONFIRMATION`); design
   `docs/superpowers/specs/2026-11-06-hrc-034-recruitment-insights-design.md`.
 - **Business requirement:** §14 skill demand, candidate portal analytics, data-quality dashboard; §16 "integration logs"; §17 QA "Failed imports, synchronisation events and notifications are visible and retryable".
 - **Existing behavior:** none of the three exist. There is only the candidate `/duplicate-check`.

@@ -5,7 +5,7 @@ import { RECRUITER_SIGN_IN } from "@/lib/recruiterCompanies";
 import { parseSkill, type SkillDemand, skillDemandUrl, type Vacancies, vacanciesUrl } from "@/lib/recruitmentInsights";
 import type { User } from "@/lib/types";
 
-// hrc-034 (DEC-SCOPE-415 I2): the API decides who reads it; anyone else 403, shown as the access card.
+// hrc-034 (DEC-SCOPE-416 I2): the API decides who reads it; anyone else 403, shown as the access card.
 export default async function SkillDemandPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = parseSkill(await searchParams);
   try {

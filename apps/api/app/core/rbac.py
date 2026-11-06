@@ -99,7 +99,7 @@ CATALOGUE: dict[str, dict] = {
     "reports.training": {"label": "Training reports", "actions": ("view", "download")},
     # nehn-016 (DEC-SCOPE-312): the recruiter's placement reports -- students completing soon and the student placement report.
     "reports.placement": {"label": "Placement reports", "actions": ("view", "download")},
-    # hrc-034 (DEC-SCOPE-415 I1): skill demand, portal analytics and data quality -- whole-pool figures, so a grant separate from the scoped reports.
+    # hrc-034 (DEC-SCOPE-416 I1): skill demand, portal analytics and data quality -- whole-pool figures, so a grant separate from the scoped reports.
     "reports.recruitment_insights": {"label": "Recruitment insights", "actions": ("view",)},
     # nehn-018 (DEC-SCOPE-304): which student features unlock at which payment state.
     "student_access": {"label": "Student access rules", "actions": ("configure",)},
@@ -148,7 +148,7 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     # hrc-020 (DEC-SCOPE-401 X12, migration 0277 seeds it): the Find Candidates export.
     # hrc-032 (DEC-SCOPE-413 N10, migration 0291 seeds it): the placement manager and the HR Manager handle failed deliveries.
     "placement_manager": _PLACEMENT_REPORTS
-    # hrc-034 (DEC-SCOPE-415 I1, migration 0293 seeds it): the placement manager, the HR Manager and management read the recruitment insights.
+    # hrc-034 (DEC-SCOPE-416 I1, migration 0294 seeds it): the placement manager, the HR Manager and management read the recruitment insights.
     + ("candidates.compensation.view", "candidates.merge", "jobs.publish", "candidates.import", "candidates.export", "notifications.retry", "reports.recruitment_insights.view")
     + _CLIENT_COMMERCIALS,
     # hrc-007 (DEC-SCOPE-380 A12; migration 0257 seeds it): the HR Manager is the vacancy approver.

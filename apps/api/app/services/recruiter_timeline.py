@@ -45,6 +45,7 @@ from app.models import (
 )
 from app.services import applications, contact_status, interviews, offers, recruiter_contracts
 from app.services.application_screening import LABELS as SCREENING_LABELS
+from app.services.application_screening import RECOMMENDATION_LABELS
 from app.services.lead_timeline import _branch, _excerpt
 from app.services.recruiter_calls import OUTCOMES
 from app.services.recruiter_requirements import STATUS_LABELS as REQUIREMENT_LABELS
@@ -61,7 +62,7 @@ LABELS: dict[str, dict[str, str]] = {
     "offer": offers.STATUS_LABELS,
     "contract": recruiter_contracts.LABELS,
     "call": OUTCOMES,
-    "screening": SCREENING_LABELS,
+    "screening": {**SCREENING_LABELS, **RECOMMENDATION_LABELS},  # pob-020: a session's audit row carries its recommendation
     "contact_status": contact_status.LABELS,  # pob-005 D10
 }
 STATUS_KINDS = ("stage", "requirement", "application", "interview", "offer", "contract", "screening", "contact_status")  # `to_label` is a status, not a person

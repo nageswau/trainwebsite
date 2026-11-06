@@ -1,4 +1,4 @@
-"""hrc-034 -- migration 0293_portal_events (DEC-SCOPE-415 I1/I3): the table, the grant, the chain and the round trip, in a throwaway database (the
+"""hrc-034 -- migration 0294_portal_events (DEC-SCOPE-416 I1/I3): the table, the grant, the chain and the round trip, in a throwaway database (the
 hrc-020 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.core.rbac import DEFAULT_GRANTS
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-HEAD = "0293_portal_events"
+HEAD = "0294_portal_events"
 _spec = importlib.util.spec_from_file_location("_hrc_034_migration", VERSIONS / f"{HEAD}.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)

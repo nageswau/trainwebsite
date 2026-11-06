@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// hrc-034 (DEC-SCOPE-415): a student sees and applies to a job and the HR Manager's Portal analytics counts it; Skill demand flags a skill with no
+// hrc-034 (DEC-SCOPE-416): a student sees and applies to a job and the HR Manager's Portal analytics counts it; Skill demand flags a skill with no
 // supply; Data quality's figures open their records; a recruiter is refused. Each figure's arithmetic is covered by test_hrc_034_insights.py.
 
 async function signIn(page: Page, email: string, landing: string, login = "/it/login", password = "Demo@123") {

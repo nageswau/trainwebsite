@@ -6101,10 +6101,43 @@ phone). No migration.
 - Additive: notices gain event types (`GET /workflows/notifications`' `event_type`). Changed text: `it.application.updated` and
   `it.interview.result_published` are fixed text (see `DEC-SCOPE-413` N4/N5).
 - Beat: `hrc032-feedback-overdue` and `hrc032-new-matches`, hourly.
+## 12LH. Screening forms, question bank, sessions and comparison (pob-020) — addendum, 2026-11-06
 
-## 12LI. Skill demand, portal analytics and data quality (hrc-034) — addendum, 2026-11-06
+`DEC-SCOPE-414`. All under `/api/v1/recruiter`; every route 401 signed out. rec-018's `GET/PUT /applications/{id}/screening` keep their contract;
+each changed PUT also appends a `legacy` session.
 
-`DEC-SCOPE-415`. All routes are `GET`, under `/api/v1/recruiter/recruitment-insights`, need `reports.recruitment_insights.view` (401 signed out, 403
+**Bank:** `GET screening/questions?q=&category=&include_archived=&limit=&offset=` → `{items, total, categories, formats}`. `POST screening/questions`
+`{category, text, format, choices?, evaluation_criteria?, expected_answer?}` → 201 `{question}` (a choice question needs two different choices,
+others none; 422; the same text in a category 409). `PATCH screening/questions/{id}` (any of those, `active`) → `{question}`; 404 unknown. Forms
+copy a question, so an edit never changes a form.
+
+**Templates:** `GET screening/templates?include_archived=&limit=` → `{items: [{id, name, is_default, version, archived, questions}], categories, formats}`.
+`POST screening/templates` `{name, questions[1..20]}` → 201 `{template}`; `PATCH screening/templates/{id}` `{name?, questions?, archived?}` → `{template}`.
+A duplicate name 409 (case-insensitive); archiving the default template 409.
+
+**A question in a form or template:** `{question_id, is_knockout?}` (copied from the bank; must be active) or `{category, text, format, choices?,
+evaluation_criteria?, expected_answer?, is_knockout?}`. 422: a knock-out that is not yes/no, in Compensation, or expecting other than yes/no; the same
+text twice.
+
+**A requirement's form:** `GET requirements/{id}/screening-form` → `{form|null, templates, can_edit, can_approve, categories, formats}`. `POST` `{template_id?}`
+→ 201 `{form}` from that template or the default (422 archived/unknown; 409 already has one). `PUT` `{questions}` → `{form}`, a new version unless the
+questions are identical (409 no form yet). Both 409 on a closed or cancelled requirement. `POST .../approve-knockouts` `{version}` → `{form}` (403 unless
+Team Lead; 409 stale version or nothing pending). `form` = `{id, name, version, knockout_status: none|pending|approved, knockout_status_label,
+knockout_approved_by, knockout_approved_at, questions}`.
+
+**Sessions:** `GET applications/{id}/screening-sessions` → `{form|null, sessions (newest first), can_run, sees_compensation, recommendations}`. `POST` `{form_version,
+answers: [{question_id, answer, score?}], notes?, recommendation: pass|hold|reject, knockout_override?, override_reason?}` → 201 `{session}`. Session =
+`{id, kind: form|legacy, form_version, screened_by, created_at, notes, recommendation, recommendation_label, knockout_triggered, knockout_overridden, override_reason,
+answers: [{question_id, question, category, format, is_knockout, answer, answer_hidden?, score}], scorecard: {total, max, percent}|null, checklist|null}`.
+**Errors:** 409 application not open, no form, or `form_version` not current; 422 an answer outside its format or not on the form, a repeat, a score outside 0–5,
+an approved knock-out unanswered, an override without a reason or a failed knock-out; 403 a Compensation answer without the grant.
+
+**Comparison:** `GET requirements/{id}/screening-comparison?version=` → `{version, versions, questions, rows, truncated}`; each candidate's latest session on
+that version (default current), best score first, at most 50 (most recently screened when capped). 404 unknown version; no form or no sessions is an empty 200.
+
+## 12LJ. Skill demand, portal analytics and data quality (hrc-034) — addendum, 2026-11-06
+
+`DEC-SCOPE-416`. All routes are `GET`, under `/api/v1/recruiter/recruitment-insights`, need `reports.recruitment_insights.view` (401 signed out, 403
 otherwise) and only read. `limit` is 1-100, default 50; `offset` is at least 0.
 
 | Route | Query | Returns |

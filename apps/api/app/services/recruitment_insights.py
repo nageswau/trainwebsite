@@ -1,4 +1,4 @@
-"""hrc-034 (DEC-SCOPE-415 I2/I3/I5, spec docs/superpowers/specs/2026-11-06-hrc-034-recruitment-insights-design.md): skill demand, portal analytics and
+"""hrc-034 (DEC-SCOPE-416 I2/I3/I5, spec docs/superpowers/specs/2026-11-06-hrc-034-recruitment-insights-design.md): skill demand, portal analytics and
 data quality. Reads only. Each data-quality figure's value and its rows come from one source, so they cannot disagree. No row carries a candidate's
 name, contact details or pay."""
 

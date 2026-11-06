@@ -1,4 +1,4 @@
-// hrc-034 (DEC-SCOPE-415): skill demand, portal analytics and data quality. The API decides who reads them (`reports.recruitment_insights.view`) and
+// hrc-034 (DEC-SCOPE-416): skill demand, portal analytics and data quality. The API decides who reads them (`reports.recruitment_insights.view`) and
 // computes every figure; this file only names the pages and builds addresses. A page's state lives in its address, so refresh, back and links keep it.
 const API = "/api/v1/recruiter/recruitment-insights";
 export const INSIGHTS_BASE = "/recruiter/insights";

@@ -5,7 +5,7 @@ import { RECRUITER_SIGN_IN } from "@/lib/recruiterCompanies";
 import { type DataQuality, dataQualityUrl, type Drill, drillUrl, parseDrill } from "@/lib/recruitmentInsights";
 import type { User } from "@/lib/types";
 
-// hrc-034 (DEC-SCOPE-415 I5): `?figure=` opens what a figure counts; a figure the API does not know ignores the parameter.
+// hrc-034 (DEC-SCOPE-416 I5): `?figure=` opens what a figure counts; a figure the API does not know ignores the parameter.
 export default async function DataQualityPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { figure, offset } = parseDrill(await searchParams);
   try {

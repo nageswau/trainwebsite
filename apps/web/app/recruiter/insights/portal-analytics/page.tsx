@@ -5,7 +5,7 @@ import { RECRUITER_SIGN_IN } from "@/lib/recruiterCompanies";
 import { parsePeriod, type PortalAnalytics, portalAnalyticsUrl } from "@/lib/recruitmentInsights";
 import type { User } from "@/lib/types";
 
-// hrc-034 (DEC-SCOPE-415 I3): a period the API refuses (422) stays on the page with its reason; anything else is the access card.
+// hrc-034 (DEC-SCOPE-416 I3): a period the API refuses (422) stays on the page with its reason; anything else is the access card.
 export default async function PortalAnalyticsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const period = parsePeriod(await searchParams);
   try {

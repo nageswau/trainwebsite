@@ -12,7 +12,7 @@ import {
 } from "@/lib/recruitmentInsights";
 import type { User } from "@/lib/types";
 
-// hrc-034 (DEC-SCOPE-415 I6): the three report pages. Server-rendered from GET forms and links; the API computes every figure.
+// hrc-034 (DEC-SCOPE-416 I6): the three report pages. Server-rendered from GET forms and links; the API computes every figure.
 const INTRO: Record<InsightsPageKey, string> = {
   "skill-demand": "What open jobs ask for, what the candidate pool holds, and the vacancies short of candidates.",
   "portal-analytics": "How students and portal candidates move from seeing a job to applying.",

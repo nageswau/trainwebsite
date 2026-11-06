@@ -12141,8 +12141,34 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   anonymised candidate or do-not-contact contact is neither listed nor retried.
 - **Numbering:** migration `0291_recruitment_notices`; API §12LG; RBAC §2.306.
 - **Feature ID authorized:** `hrc-032`. **Status:** built on `worktree-hrc-032`.
+### DEC-SCOPE-414 — Role-specific screening forms, question bank, sessions and scorecard (`pob-020`)
 
-### DEC-SCOPE-415 — Skill demand, portal analytics and data-quality dashboards (`hrc-034`)
+- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-020` (§10 "5 categories + 6 rules"; §18 AC "Screening forms support five
+  role-specific questions and recorded answers/scores"; source classified `UNVERIFIED`). The owner assigned pob-020 for build on 2026-11-06
+  and said to proceed with the recommended answers, so S1–S14 (including Q-15) are **the builder's calls (`NEEDS_CONFIRMATION`)**.
+  Dependencies pob-002 (`DEC-SCOPE-407`) and hrc-001 (`DEC-SCOPE-371`) are built. Design
+  `docs/superpowers/specs/2026-11-06-pob-020-screening-forms-design.md`.
+- **Evidence gap (`NEEDS_CONFIRMATION`):** the source docx is not on file and the backlog does not list §10's category names or its six rules,
+  so the five seeded categories (Experience and qualification, Technical skills, Communication, Availability and location, Compensation)
+  are a proposal to check against §10.
+- **Behaviour:** a question bank (category, text, format text/yes-no/numeric/choice/rating, evaluation criteria, expected answer) and form
+  templates, with a seeded 5-category default. A requirement has one form, created from a template and tailored; each edit is a new version
+  and a session keeps the version it answered. A session records the screener, date, answers, a 0–5 score per answer, internal notes and a
+  recommendation (pass/hold/reject) and is never edited. A scorecard (total, maximum, percent) and a side-by-side comparison of each
+  candidate's latest session on one form version (at most 50).
+- **Knock-outs:** yes/no questions only, never Compensation, and only once a Team Lead (`placement_manager`, super_admin) approves them on the
+  requirement. A failed one forces the recommendation to Reject unless the screener overrides with a reason. An approval survives an edit
+  that leaves the knock-outs unchanged.
+- **Builder's calls:** S2 additive — the rec-018 checklist, its route, the board's `screening_result` and its status moves are unchanged, and each
+  changed checklist save also appends a `legacy` session. S3 (Q-15 yes) existing checklist rows are copied to `legacy` sessions. S9 a session
+  never moves the application's status or notifies the candidate. S12 Compensation answers and the checklist's salary need
+  `candidates.compensation.view` (hrc-001 H2). S14 a session counts as Screened for engagement and shows on the candidate timeline.
+- **Not built:** weighted scoring, candidate self-completion, screening tasks from a task template (pob-027), sharing a scorecard with a client
+  (pob-021).
+- **Numbering:** migration `0292_screening_sessions` (after `0291_recruitment_notices`); API §12LH; RBAC §2.307.
+- **Feature ID authorized:** `pob-020`. **Status:** built on `worktree-pob-020`.
+
+### DEC-SCOPE-416 — Skill demand, portal analytics and data-quality dashboards (`hrc-034`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-034`, Appendix B (PDF §14, §16, §17 QA; PDF classified `UNVERIFIED`). Scope approved by the
   owner 2026-11-01 (backlog Q-00); the owner said to proceed with the recommended answers, so I1–I6 are **the builder's calls (`NEEDS_CONFIRMATION`)**.
@@ -12161,5 +12187,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   skill, description, on-site location, qualification, minimum experience, employment type and vacancies (no source defines them). Failed-notification
   rows omit the recipient and error. A failed import is retried by correcting and re-uploading the row (hrc-013).
 - **I6 Frontend:** three server-rendered pages under `/recruiter/insights`, one nav entry per affected role.
-- **Numbering:** migration `0293_portal_events`; API §12LI; RBAC §2.308.
+- **Numbering:** migration `0294_portal_events`; API §12LJ; RBAC §2.309.
 - **Feature ID authorized:** `hrc-034`. **Status:** built on `worktree-hrc-034`.
