@@ -10,9 +10,9 @@ from fastapi import HTTPException
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Job, JobApplication, JobAssignment, User
+from app.models import Job, JobApplication, User
 from app.notifications.events import notify
-from app.services import applications, matching
+from app.services import applications, matching, requirement_owners
 
 logger = logging.getLogger("app.recruiter")
 EVENT = "it.requirement.review_needed"
@@ -34,12 +34,18 @@ async def flag(db: AsyncSession, actor: User, job: Job, before: tuple) -> int:
     )).all()  # fmt: skip
     if not flagged:
         return 0
-    owner_ids = {job.assigned_recruiter_user_id, *(await db.scalars(select(JobAssignment.user_id).where(JobAssignment.job_id == job.id))).all()}
-    owners = (await db.scalars(select(User).where(User.id.in_(owner_ids - {None, actor.id})))).all()
+    owners = await requirement_owners.people(db, job, without=(actor.id,))
     await notify(db, owners, EVENT, job.id, action_url=f"/recruiter/requirements/{job.id}", count=len(flagged))
     logger.info("application_review_flagged", extra={"extra_fields": {"actor_id": str(actor.id), "job_id": str(job.id), "flagged": len(flagged),
                                                                       "notified": len(owners)}})  # fmt: skip
     return len(flagged)
+
+
+async def notify_changed(db: AsyncSession, actor: User, job: Job, before: tuple | None = None) -> None:
+    """hrc-032 (N3): the caller changed the vacancy. With `before` (its eligibility), `flag` first: an owner told to review the applications
+    gets only that notice for this save. Otherwise every owner but the editor is told the vacancy changed."""
+    if before is None or not await flag(db, actor, job, before):
+        await notify(db, await requirement_owners.people(db, job, without=(actor.id,)), "it.requirement.changed", job.id, action_url=f"/recruiter/requirements/{job.id}")
 
 
 def confirm(db: AsyncSession, actor: User, application: JobApplication) -> None:

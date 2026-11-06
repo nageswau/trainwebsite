@@ -98,7 +98,7 @@ async def _publish(db: AsyncSession, user: User, row: InterviewResult, applicati
     if row.is_final and application.status == row.outcome:
         application.candidate_status = row.outcome
     if application.student_id is not None:  # a portal user (student or candidate): in-app plus their delivery channels
-        await applications._notify(db, application, NOTICE, row.candidate_message)
+        await applications.notify_candidate(db, application, "it.interview.result_published", row.id)  # hrc-032 (N4): the message is in My results, not the preview
     else:
         candidate = await db.get(Candidate, application.candidate_id)
         if mailer.smtp_configured() and candidate.email:

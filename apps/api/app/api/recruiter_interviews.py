@@ -8,7 +8,7 @@ state, validation, change, history, side effects, audit, one commit here; then t
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.bdm import LIMIT, OFFSET
@@ -32,6 +32,7 @@ from app.schemas import (
 from app.services import applications, candidates
 from app.services import interview_panel as panel
 from app.services import interview_results as results
+from app.services import notification_exceptions as exceptions
 from app.services import interviews as svc
 from app.services import profile_sharing as sharing
 from app.services.bdm_appointments import db_now
@@ -209,6 +210,26 @@ async def release_result(result_id: UUID, payload: InterviewResultRelease, user:
     _publish(results.take_emails(db))
     svc.log("interview_result_released", user, row.interview_id, result_id=str(result_id), outcome=row.outcome)
     return await results.one(db, user, result_id)
+
+
+# --- hrc-032 (DEC-SCOPE-412 N8-N10): the Delivery exceptions page ----------------------------------------------------------------------
+exceptions_router = APIRouter(prefix="/recruiter/notification-exceptions", tags=["recruiter-interviews"])
+RETRIER = require_permission("notifications", "retry", "You cannot handle failed notifications")
+
+
+@exceptions_router.get("")
+async def notification_exceptions(type: str | None = None, channel: Literal["email", "whatsapp", "sms"] | None = None, limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0),  # noqa: A002
+                                  user: User = Depends(RETRIER), db: AsyncSession = Depends(get_db)):  # fmt: skip
+    return await exceptions.page(db, type, channel, limit, offset)
+
+
+@exceptions_router.post("/{source}/{row_id}/retry")
+async def retry_notification(source: Literal["delivery", "email"], row_id: UUID, user: User = Depends(RETRIER), db: AsyncSession = Depends(get_db)):
+    """N9: one atomic failed -> queued (409 after, so a double click sends once), audited, published only after the commit."""
+    await exceptions.retry(db, user, source, row_id)
+    await db.commit()
+    exceptions.publish(source, row_id)
+    return {"id": str(row_id), "source": source, "status": "queued"}
 
 
 interviewer_router = APIRouter(prefix="/interviewer", tags=["interviewer"])

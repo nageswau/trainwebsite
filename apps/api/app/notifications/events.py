@@ -59,8 +59,33 @@ EVENTS: dict[str, Event] = {
     "it.candidate.task_assigned": Event("candidate_task", "Candidate task assigned to you", "A candidate task was assigned to you. Open EduSphere to see your tasks."),
     # hrc-009 (DEC-SCOPE-390 R6): a vacancy's owners, when its eligibility changed under open applications -- only the count, never a name
     "it.requirement.review_needed": Event("job", "Applications need review", "Applications to review: {count}. A vacancy's eligibility criteria changed. Open EduSphere to confirm or move them."),
+    # hrc-032 (DEC-SCOPE-412): the §13 triggers that had no notice, and the candidate's stage and result, whose text used to name the outcome
+    "it.application.new": Event("job_application", "New application", "A candidate applied to a vacancy you own. Open EduSphere to review it."),
+    "it.application.updated": Event("job_application", "Job application updated", "Your application was updated. Open EduSphere to see where it stands."),
+    "it.requirement.changed": Event("job", "Vacancy updated", "A vacancy you own was updated. Open EduSphere to see what changed."),
+    "it.requirement.assigned": Event("job", "Vacancy assigned to you", "A vacancy was assigned to you. Open EduSphere to view it."),
+    "it.requirement.approval_needed": Event("job", "Vacancy needs approval", "A vacancy is waiting for your approval. Open EduSphere to review it."),
+    "it.interview.feedback_overdue": Event("interview", "Interview feedback overdue", "Feedback for an interview is overdue. Open EduSphere to add it."),
+    "it.interview.result_published": Event("interview_result", "Interview result", "An interview result was published for you. Open EduSphere to read it."),
+    "it.job.new_match": Event("job", "New job for your profile", "A new job fits your profile. Open EduSphere to see it. A match does not guarantee selection."),
 }
 COUNT = "{count}"
+
+# hrc-032 (N1, N8): what the Delivery exceptions page covers, with each type's label. The first group is catalogued above; the second writes its
+# own text (an interview's date, an Application ID: never a result) and only tags its notice with the type.
+RECRUITMENT_EVENTS: dict[str, str] = {
+    **{key: EVENTS[key].title for key in (
+        "it.candidate.assigned", "it.candidate.unassigned", "it.candidate.task_assigned", "it.requirement.review_needed", "it.application.new", "it.application.updated",
+        "it.requirement.changed", "it.requirement.assigned", "it.requirement.approval_needed", "it.interview.feedback_overdue", "it.interview.result_published", "it.job.new_match",
+    )},
+    "it.application.received": "Application received",
+    "it.interview.scheduled": "Interview scheduled",
+    "it.interview.updated": "Interview updated",
+    "it.interview.rescheduled": "Interview rescheduled",
+    "it.interview.cancelled": "Interview cancelled",
+    "it.interview.assigned": "Interview assigned",
+    "it.offer.received": "Job offer received",
+}
 
 # itc-025 (DEC-SCOPE-348): "a summary of what changed" from a FIXED vocabulary of field names -- never the values (dates, trainer names,
 # reasons), so the preview-safe rule above still holds.

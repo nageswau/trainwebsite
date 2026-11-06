@@ -6074,3 +6074,16 @@ same_company, on: ["mobile"|"email"]}], others}` (≤10 matches, in the caller's
 the future → 422; set once, a repeat returns it unchanged; `can_edit` 403, out of scope 404, archived 409). **Errors:** a Do Not Contact
 contact → 409 "This contact has asked not to be contacted" on `POST /recruiter/messages`, an outgoing `POST /recruiter/calls`, a profile
 share to them, and a meeting create/edit that adds them.
+
+## 12LF. Recruitment notifications and delivery exceptions (hrc-032) — addendum, 2026-11-06
+
+`DEC-SCOPE-412`. Both routes need `notifications.retry` (403 otherwise; signed out 401).
+
+- `GET /api/v1/recruiter/notification-exceptions?type=&channel=email|whatsapp|sms&limit=1..100&offset=` → `{items, total, limit, offset, types: [{key, label}]}`.
+  Newest failure first. An item is `{source: "delivery"|"email", id, type, type_label, recipient, channel, error, attempts, failed_at}`; `error` has URLs
+  masked and is null for an email. Never a body, subject or address. An unknown `channel` is 422; an unknown `type` matches nothing.
+- `POST /api/v1/recruiter/notification-exceptions/{source}/{id}/retry` → `{id, source, status: "queued"}`. Out of scope or missing 404; no longer failed
+  409 (a double click sends once). Audited as `notification.retry`.
+- Additive: notices gain event types (`GET /workflows/notifications`' `event_type`). Changed text: `it.application.updated` and
+  `it.interview.result_published` are fixed text (see `DEC-SCOPE-412` N4/N5).
+- Beat: `hrc032-feedback-overdue` and `hrc032-new-matches`, hourly.

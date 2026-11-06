@@ -46,6 +46,7 @@ export function companyShell(role: string): { nav: NavItem[]; roleLabel: string 
   if (role === "placement_manager") return { nav: RECRUITER_MANAGER_NAV, roleLabel: PLACEMENT_MANAGER_LABEL };
   if (role === "bdm") return { nav: BDM_NAV, roleLabel: "BDM" }; // R10: an assigned BDM reads the companies linked to them (QA-04)
   if (role === "placement_officer") return { nav: PORTAL_NAV["it/placement-officer"], roleLabel: "Placement Officer" }; // hrc-006 (O12)
+  if (role === "hr_manager") return { nav: PORTAL_NAV["it/hr-manager"], roleLabel: "HR Manager" }; // hrc-032: the delivery exceptions
   return { nav: RECRUITER_NAV, roleLabel: RECRUITER_ROLE_LABEL };
 }
 

@@ -3929,3 +3929,13 @@ changes them. The duplicate check is a read of the company's scope, and names on
 are counted). Logging a reply needs `can_edit` on the message's company (out of scope 404). The per-contact timeline and follow-ups are
 the company's readers'. Do Not Contact refuses outreach for every role. No new grant. Pinned by
 `apps/api/tests/test_pob_005_contact_status.py` and the rec-038 rows.
+
+### 2.305 Delivery exceptions *(added 2026-11-06 — `DEC-SCOPE-412`, hrc-032)*
+
+| Action | super_admin | hr_manager | placement_manager | others |
+|---|---|---|---|---|
+| Read failed recruitment deliveries (`notifications.retry`) | ✓ | ✓ | ✓ | 403 |
+| Retry one (`notifications.retry`) | ✓ | ✓ | ✓ | 403 |
+
+Default holders, editable like every catalogue key. Deliveries of notices from outside recruitment are not listed for anyone and answer 404.
+`/recruiter/notifications` reads only the caller's own notices.

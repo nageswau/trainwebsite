@@ -1070,6 +1070,7 @@ class Job(Base, TimestampMixin):
     replacement_terms: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     # pob-002 R9: an active recruiter with the primary's owner rights (Q-02: always, not only while the primary is away)
     backup_owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    match_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # hrc-032 (DEC-SCOPE-412 N7): candidates told once
     company = relationship("Company")
 
 
@@ -1446,6 +1447,7 @@ class Interview(Base, TimestampMixin):
     documents_required: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     calendar_sequence: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    overdue_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # hrc-032 (DEC-SCOPE-412 N6): told once
 
 
 class InterviewFeedback(Base, TimestampMixin):
