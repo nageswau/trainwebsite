@@ -169,7 +169,7 @@ async def list_joinings(
 
 
 def _require_student(user: User) -> None:
-    if user.role != "it_student":
+    if user.role not in ("it_student", "candidate"):  # hrc-031 (DEC-SCOPE-412 P6): an external candidate's own offers too
         raise HTTPException(403, "Only a student can view their offers here")
 
 

@@ -247,8 +247,9 @@ async def _notify(db: AsyncSession, application: JobApplication, title: str, bod
     student = await db.get(User, application.student_id) if application.student_id else None
     if student is None:  # a candidate without a portal login
         return
-    # hrc-027 (J10): a hrc-022 portal candidate's notices open their Jobs page; a student's keep the student portal's applications
-    link = "/it/careers/portal/jobs" if student.role == "candidate" else "/it/student/job-applications"
+    # hrc-031 (DEC-SCOPE-412 P7): a hrc-022 portal candidate's notices open their applications (hrc-027 J10 opened Jobs before that page
+    # existed); a student's keep the student portal's applications
+    link = "/it/careers/portal/applications" if student.role == "candidate" else "/it/student/job-applications"
     item = Notification(user_id=student.id, title=title, body=body, read=False, action_url=link)
     db.add(item)
     await db.flush()

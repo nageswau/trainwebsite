@@ -29,6 +29,12 @@ export type DocumentRequest = {
 };
 export type DocumentsState = { documents: CandidateDocument[]; requests: DocumentRequest[] };
 export const REQUEST_STATUS_LABELS: Record<DocumentRequestStatus, string> = { pending: "Pending", received: "Received", cancelled: "Cancelled" };
+/** hrc-031 (DEC-SCOPE-412 P5): "1 of 2 requested documents received"; cancelled requests do not count, and nothing asked for says nothing. */
+export function documentCompletion(requests: DocumentRequest[]): string | null {
+  const asked = requests.filter((r) => r.status !== "cancelled");
+  if (asked.length === 0) return null;
+  return `${asked.filter((r) => r.status === "received").length} of ${asked.length} requested documents received`;
+}
 
 export const DOCUMENT_ACCEPT = ".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg";
 export const DOCUMENT_MAX_BYTES = 5 * 1024 * 1024;
