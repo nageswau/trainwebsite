@@ -128,7 +128,7 @@ async def core(client, db) -> dict:
     student_candidate.opted_in = True
     await db.commit()
     return {
-        "users": users, "today": now().date().isoformat(), "tomorrow": (now() + timedelta(days=1)).date().isoformat(),
+        "users": users, "board": "funnel", "figure": "registered", "today": now().date().isoformat(), "tomorrow": (now() + timedelta(days=1)).date().isoformat(),
         "company": str(company.id), "contact": str(contact.id), "requirement": str(requirement.id), "candidate": str(candidate.id),
         "application": str(application.id), "student_candidate": str(student_candidate.id), **{f"{k}_id": str(u.id) for k, u in users.items()},
     }  # fmt: skip

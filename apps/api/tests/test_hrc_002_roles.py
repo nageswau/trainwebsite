@@ -153,7 +153,9 @@ def test_catalogue_holds_every_recruitment_key_with_no_default_holder():
              "placement_team": {"candidates.import"}}  # fmt: skip
     for role, grants in rbac.DEFAULT_GRANTS.items():
         assert set(grants) & set(RECRUITMENT_KEYS) == owned.get(role, set()), role
-    extra = {"hr_manager": {"candidates.erase"}}  # hrc-035 (DEC-SCOPE-396 K7): not a hrc-002 recruitment key, but the HR Manager's default
+    # hrc-035 (DEC-SCOPE-396 K7) and hrc-033 (DEC-SCOPE-413 D7): not hrc-002 recruitment keys, but these roles' defaults
+    reports = {"reports.recruitment.view", "reports.recruitment.download"}
+    extra = {"hr_manager": {"candidates.erase", *reports}, "placement_officer": reports}
     for role in NEW_ROLES:
         assert role in rbac.ROLES and set(rbac.DEFAULT_GRANTS.get(role, ())) == owned.get(role, set()) | extra.get(role, set())
 

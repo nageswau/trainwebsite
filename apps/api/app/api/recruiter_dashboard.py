@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.agent_reports import NO_STORE, export_response
+from app.api import recruitment_dashboards
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import AuditLog, User
@@ -26,6 +27,7 @@ from app.services import recruiter_metrics as metrics
 from app.services.bdm_appointments import db_now
 
 router = APIRouter(prefix="/recruiter", tags=["recruiter-dashboard"])
+router.include_router(recruitment_dashboards.router)  # hrc-033
 
 
 @router.get("/dashboard")
