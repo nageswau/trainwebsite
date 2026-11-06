@@ -245,8 +245,8 @@ def require_writer(user: User, subject_id, route: str) -> None:
 
 # --- notifications, audit, output ---------------------------------------------------------------------------------------------------
 def _portal_link(student: User) -> str:
-    """hrc-027 (J10): a hrc-022 portal candidate's notices open their Jobs page; a student's keep the student portal's applications."""
-    return "/it/careers/portal/jobs" if student.role == "candidate" else "/it/student/job-applications"
+    """hrc-031 (DEC-SCOPE-412 P7): a hrc-022 portal candidate's notices open their applications; a student's keep the student portal's."""
+    return "/it/careers/portal/applications" if student.role == "candidate" else "/it/student/job-applications"
 
 
 async def notify_candidate(db: AsyncSession, application: JobApplication, event_type: str, entity_id: UUID | None = None) -> None:

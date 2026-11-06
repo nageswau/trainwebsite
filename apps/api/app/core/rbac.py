@@ -114,7 +114,7 @@ CATALOGUE: dict[str, dict] = {
     # hrc-035 (DEC-SCOPE-396 K7): `erase` -- decides candidates' "delete my data" requests and reads the retention rule (migration 0273).
     "candidates": {"label": "Candidates (export, import, merge, erase)", "actions": ("export", "import", "merge", "erase")},
     "results": {"label": "Interview results", "actions": ("release",)},
-    # hrc-032 (DEC-SCOPE-412 N10): read and retry the recruitment deliveries that failed (the Delivery exceptions page)
+    # hrc-032 (DEC-SCOPE-413 N10): read and retry the recruitment deliveries that failed (the Delivery exceptions page)
     "notifications": {"label": "Recruitment notifications", "actions": ("retry",)},
     # pob-001 (DEC-SCOPE-403 C2/C4): client commercial terms -- a contract's fee, payment terms, replacement policy and documents, a
     # requirement's fee, and the revenue priced from them. `edit` counts only together with `view`.
@@ -144,7 +144,7 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "placement_team": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.import") + _CLIENT_COMMERCIALS,
     # hrc-014 (migration 0256 seeds merge); hrc-008 (DEC-SCOPE-385 V4, migration 0262 seeds publish): who sees a vacancy
     # hrc-020 (DEC-SCOPE-401 X12, migration 0277 seeds it): the Find Candidates export.
-    # hrc-032 (DEC-SCOPE-412 N10, migration 0291 seeds it): the placement manager and the HR Manager handle failed deliveries.
+    # hrc-032 (DEC-SCOPE-413 N10, migration 0291 seeds it): the placement manager and the HR Manager handle failed deliveries.
     "placement_manager": _PLACEMENT_REPORTS
     + ("candidates.compensation.view", "candidates.merge", "jobs.publish", "candidates.import", "candidates.export", "notifications.retry")
     + _CLIENT_COMMERCIALS,

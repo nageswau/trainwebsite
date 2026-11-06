@@ -1061,6 +1061,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** high.
 
 #### hrc-031: Candidate portal completion (My Results, Documents, Notifications, Privacy)
+- **Status:** built as `DEC-SCOPE-412` (no migration, API §12LF, RBAC §2.305; P1–P10 are the builder's calls, `NEEDS_CONFIRMATION`); design
+  `docs/superpowers/specs/2026-11-06-hrc-031-candidate-portal-completion-design.md`.
 - **Business requirement:** §11 portal table; §15 own records only.
 - **Existing behavior:** the IT student portal has profile, jobs, applications, interviews, offers and notifications. Results, requested documents and privacy are missing. External candidates have no portal.
 - **Expected behavior:**
@@ -1090,7 +1092,7 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 ### Phase 5: Automation and reporting (PDF Phase 5)
 
 #### hrc-032: Recruitment notification rules and delivery exceptions
-- **Status:** built as `DEC-SCOPE-412` (migration `0291_recruitment_notices`, API §12LF, RBAC §2.305); design
+- **Status:** built as `DEC-SCOPE-413` (migration `0291_recruitment_notices`, API §12LG, RBAC §2.306); design
   `docs/superpowers/specs/2026-11-06-hrc-032-recruitment-notifications-design.md`. N1–N12 are the builder's calls (`NEEDS_CONFIRMATION`), notably a
   24-hour feedback grace period and fixed-text stage and result notices.
 - **Business requirement:** §12 notify owners; §13 trigger table; §10.2 "Record notification delivery status and provide a retry mechanism"; §16 "integration logs and retry queues"; §17 QA "Failed … notifications are visible and retryable".

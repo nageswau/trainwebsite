@@ -6,7 +6,7 @@ import { sendJson } from "@/lib/apiErrors";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import { CHANNELS, channelLabel, EXCEPTIONS_PATH, type ExceptionFilters, type ExceptionPage, type ExceptionRow, PAGE_SIZE, pageHref, retryUrl } from "@/lib/notificationExceptions";
 
-// hrc-032 (DEC-SCOPE-412 N8/N9): recruitment deliveries that failed, each with its error, attempts and a Retry. A row that left the failed state
+// hrc-032 (DEC-SCOPE-413 N8/N9): recruitment deliveries that failed, each with its error, attempts and a Retry. A row that left the failed state
 // leaves the list (the API's answer is the truth); it comes back if the retry fails again. The filters are a plain GET form, so a filtered
 // list has a URL.
 function Row({ row, onGone }: { row: ExceptionRow; onGone: (text: string) => void }) {

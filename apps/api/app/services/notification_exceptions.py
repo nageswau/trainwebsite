@@ -1,4 +1,4 @@
-"""hrc-032 (DEC-SCOPE-412 N8-N10): the Delivery exceptions page -- recruitment notices whose delivery failed (retries exhausted, a permanent
+"""hrc-032 (DEC-SCOPE-413 N8-N10): the Delivery exceptions page -- recruitment notices whose delivery failed (retries exhausted, a permanent
 error, or a worker that died mid-send) and failed recruiter emails (rec-026), with a manual retry.
 
 Reads never return a notice's body or an email's subject: the type, the recipient's name, the channel, the error and the attempts are enough

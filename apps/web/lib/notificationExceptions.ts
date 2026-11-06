@@ -1,4 +1,4 @@
-// hrc-032 (DEC-SCOPE-412 N8-N10): the Delivery exceptions page. The API decides who may read it (a `notifications.retry` holder) and what a row
+// hrc-032 (DEC-SCOPE-413 N8-N10): the Delivery exceptions page. The API decides who may read it (a `notifications.retry` holder) and what a row
 // says: never a notice's body or an email's subject.
 import type { Page } from "@/lib/apiErrors";
 

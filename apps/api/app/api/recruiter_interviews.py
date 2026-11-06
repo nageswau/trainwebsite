@@ -212,7 +212,7 @@ async def release_result(result_id: UUID, payload: InterviewResultRelease, user:
     return await results.one(db, user, result_id)
 
 
-# --- hrc-032 (DEC-SCOPE-412 N8-N10): the Delivery exceptions page ----------------------------------------------------------------------
+# --- hrc-032 (DEC-SCOPE-413 N8-N10): the Delivery exceptions page ----------------------------------------------------------------------
 exceptions_router = APIRouter(prefix="/recruiter/notification-exceptions", tags=["recruiter-interviews"])
 RETRIER = require_permission("notifications", "retry", "You cannot handle failed notifications")
 

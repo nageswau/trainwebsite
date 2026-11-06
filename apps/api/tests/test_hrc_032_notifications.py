@@ -1,4 +1,4 @@
-"""hrc-032 (DEC-SCOPE-412 N1-N7, N12) -- the §13 triggers: each produces its notice exactly once, through the itc-002 catalogue, with text that
+"""hrc-032 (DEC-SCOPE-413 N1-N7, N12) -- the §13 triggers: each produces its notice exactly once, through the itc-002 catalogue, with text that
 is safe to preview; an internal stage tells the candidate nothing. The shared test database is never truncated, so the sweeps' tests stamp
 every other row's marker first and read only their own recipients' notices."""
 

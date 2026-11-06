@@ -12095,7 +12095,32 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   410/12LD/2.303/0288 at merge, which pob-013 took (hrc-030 took 0289).
 - **Feature ID authorized:** `pob-005`. **Status:** built on `worktree-pob-005`.
 
-### DEC-SCOPE-412 — Recruitment notification rules and delivery exceptions (`hrc-032`)
+### DEC-SCOPE-412 — Candidate portal completion: every §11 section in both portals (`hrc-031`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-031` (§11 portal table, §15 own records only; source classified `UNVERIFIED`).
+  The owner assigned hrc-031 for build on 2026-11-06 and said to proceed with the recommended answers, so P1–P10 are **the builder's calls
+  (`NEEDS_CONFIRMATION`)**. Dependencies hrc-015, 022, 026, 027, 028, 030 are built. Design
+  `docs/superpowers/specs/2026-11-06-hrc-031-candidate-portal-completion-design.md`.
+- **Behaviour:** an external candidate's portal gains My applications (with My offers), Interviews, My results, Documents and Notifications,
+  and Privacy gains contact details. A student's portal gains Results, Documents and Privacy sections; Job Applications gains Applied on and
+  Next action columns and My offers. Notifications filter by type in both. Everything read is the caller's own; someone else's id answers 404.
+- **Builder's calls:** P1 both portals share the payload builders and `PortalSection`. P2 next action is derived from what the candidate may
+  already see (an upcoming interview, then an open offer, then waiting; none once rejected, withdrawn or joined), so an unreleased decision
+  only ever reads "Wait for the next update on your interview". P3 the applied date is `created_at` in IST. P4 documents reuse
+  `/account/candidate-documents`, widened to candidates, who need no pool consent (leaving the pool keeps applications); students still do.
+  P5 completion counts received out of requested, ignoring cancelled. P6 the student offer routes are widened to candidates. P7 a candidate's
+  application, result and offer notices open My applications and interview notices open Interviews (replaces hrc-027 J10's Jobs link, written
+  before the page existed). P8 an untyped notice's fixed title serves as its type in these two portals only. P9 the new student sections are
+  header-only and never fee-locked; existing cards stay where they were. P10 contact details are read-only; `UserOut` gains `email_verified`.
+- **Not built:** recruitment notification rules and a document-request notice (hrc-032); phone OTP (no SMS provider); accepting an offer in the
+  portal; one account holding both roles (Q-23 stays hrc-022's separate `candidate` role, so a person sees one portal per account).
+- **QA fixes:** QA-01 the contact change is a button-styled link; QA-02 the portal cards have a gap between them; QA-03 a candidate's interviews
+  page does not speak of mock interviews; QA-04 the applications and interviews tables read as labelled lines on a phone (a server-declared
+  `stack` on the payload), since Next action otherwise sat off the screen.
+- **Numbering:** no migration; API §12LF; RBAC §2.305.
+- **Feature ID authorized:** `hrc-031`. **Status:** built on `worktree-hrc-031`.
+
+### DEC-SCOPE-413 — Recruitment notification rules and delivery exceptions (`hrc-032`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-032` (PDF §10.2, §12, §13, §16, §17 QA; PDF classified `UNVERIFIED`). Scope
   approved by the owner 2026-11-01 (backlog Q-00); the owner said to proceed with the recommended answers, so N1–N12 are **the builder's calls
@@ -12114,5 +12139,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   (`hr_manager`, `placement_manager`; super_admin holds all) covers reading too.
 - **Security:** a stored webhook error can quote a URL with a token, so every URL is masked on read; a row never returns a body or a subject; an
   anonymised candidate or do-not-contact contact is neither listed nor retried.
-- **Numbering:** migration `0291_recruitment_notices`; API §12LF; RBAC §2.305.
+- **Numbering:** migration `0291_recruitment_notices`; API §12LG; RBAC §2.306.
 - **Feature ID authorized:** `hrc-032`. **Status:** built on `worktree-hrc-032`.

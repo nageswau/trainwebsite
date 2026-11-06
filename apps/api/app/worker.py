@@ -303,7 +303,7 @@ def convert_candidate_preview_task(kind: str, row_id: str):
 
 @celery.task
 def feedback_overdue_task():
-    """hrc-032 (DEC-SCOPE-412 N6): hourly via beat. Idempotent (`interviews.overdue_notified_at`)."""
+    """hrc-032 (DEC-SCOPE-413 N6): hourly via beat. Idempotent (`interviews.overdue_notified_at`)."""
     from app.services.recruitment_notices import run_feedback_overdue
 
     return _run_with_fresh_pool(run_feedback_overdue)
@@ -311,7 +311,7 @@ def feedback_overdue_task():
 
 @celery.task
 def new_matches_task():
-    """hrc-032 (DEC-SCOPE-412 N7): hourly via beat. Idempotent (`jobs.match_notified_at`)."""
+    """hrc-032 (DEC-SCOPE-413 N7): hourly via beat. Idempotent (`jobs.match_notified_at`)."""
     from app.services.recruitment_notices import run_new_matches
 
     return _run_with_fresh_pool(run_new_matches)

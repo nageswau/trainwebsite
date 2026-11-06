@@ -7,7 +7,7 @@ import type { User } from "@/lib/types";
 
 const WINDOW = 100; // GET /workflows/notifications returns the newest 100
 
-// hrc-032 (DEC-SCOPE-412 N11): recruitment staff's own notices, with the shared list's Type filter. Until now they could only be read by email.
+// hrc-032 (DEC-SCOPE-413 N11): recruitment staff's own notices, with the shared list's Type filter. Until now they could only be read by email.
 export default async function RecruiterNotificationsPage() {
   let user: User;
   let items: NotificationItem[];

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import DeliveryExceptionsPanel from "@/components/DeliveryExceptionsPanel";
 import { type ExceptionPage, type ExceptionRow, listUrl, pageHref, parseFilters, retryUrl } from "@/lib/notificationExceptions";
 
-// hrc-032 (DEC-SCOPE-412 N8/N9): the Delivery exceptions page -- what a row shows, its Retry, and the empty and error states.
+// hrc-032 (DEC-SCOPE-413 N8/N9): the Delivery exceptions page -- what a row shows, its Retry, and the empty and error states.
 const ROW: ExceptionRow = {
   source: "delivery", id: "d1", type: "it.requirement.changed", type_label: "Vacancy updated", recipient: "Asha Rao", channel: "whatsapp",
   error: "provider down", attempts: 4, failed_at: "2026-11-06T10:00:00Z",

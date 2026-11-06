@@ -176,6 +176,7 @@ class RoleAssignmentOut(BaseModel):
 class UserOut(BaseModel):
     id: UUID
     email: str
+    email_verified: bool = True  # hrc-031 (DEC-SCOPE-412 P10): the Privacy section's contact card
     full_name: str
     role: str
     division: str

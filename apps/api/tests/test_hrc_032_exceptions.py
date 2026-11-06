@@ -1,4 +1,4 @@
-"""hrc-032 (DEC-SCOPE-412 N8-N10; AC3) -- the Delivery exceptions page: failed recruitment deliveries and recruiter emails, who may read and
+"""hrc-032 (DEC-SCOPE-413 N8-N10; AC3) -- the Delivery exceptions page: failed recruitment deliveries and recruiter emails, who may read and
 retry them, and a retry that succeeds. The database is shared and never truncated, so each test pages to find its own rows."""
 
 import uuid

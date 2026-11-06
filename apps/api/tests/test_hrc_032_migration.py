@@ -1,4 +1,4 @@
-"""hrc-032 -- migration 0291_recruitment_notices (DEC-SCOPE-412 N6/N7/N10): the two markers, today's open records stamped so the first sweep tells
+"""hrc-032 -- migration 0291_recruitment_notices (DEC-SCOPE-413 N6/N7/N10): the two markers, today's open records stamped so the first sweep tells
 nobody about old ones, the grant, the chain and the round trip, in a throwaway database (the hrc-020 pattern). Plain tests: alembic/env.py calls
 asyncio.run()."""
 

@@ -59,7 +59,7 @@ EVENTS: dict[str, Event] = {
     "it.candidate.task_assigned": Event("candidate_task", "Candidate task assigned to you", "A candidate task was assigned to you. Open EduSphere to see your tasks."),
     # hrc-009 (DEC-SCOPE-390 R6): a vacancy's owners, when its eligibility changed under open applications -- only the count, never a name
     "it.requirement.review_needed": Event("job", "Applications need review", "Applications to review: {count}. A vacancy's eligibility criteria changed. Open EduSphere to confirm or move them."),
-    # hrc-032 (DEC-SCOPE-412): the §13 triggers that had no notice, and the candidate's stage and result, whose text used to name the outcome
+    # hrc-032 (DEC-SCOPE-413): the §13 triggers that had no notice, and the candidate's stage and result, whose text used to name the outcome
     "it.application.new": Event("job_application", "New application", "A candidate applied to a vacancy you own. Open EduSphere to review it."),
     "it.application.updated": Event("job_application", "Job application updated", "Your application was updated. Open EduSphere to see where it stands."),
     "it.requirement.changed": Event("job", "Vacancy updated", "A vacancy you own was updated. Open EduSphere to see what changed."),

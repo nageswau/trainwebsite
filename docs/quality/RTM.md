@@ -1779,6 +1779,11 @@ half.
 | `hrc-030-AC3` | Only the right candidate sees the result | `::test_only_the_right_candidate_sees_the_result`; e2e |
 | `hrc-030-AC4` | Only `results.release` holders read the queue and publish; own decision 403; second release 409; settings super_admin only | `::test_only_release_holders_read_the_queue_and_publish_and_never_their_own_decision`, `::test_the_setting_is_read_by_holders_and_changed_by_super_admin_only`; `test_hrc_030_migration.py`; rec-038 rows |
 | `hrc-030-QA` | QA-01 super admin menu link to Result approvals; QA-02 the queue pages past 50 | vitest `hrc030Results.test.tsx` ("Result approvals in the super admin menu", "ResultApprovalQueue paging") |
+| `hrc-031` | Requirement: `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-031` → `DEC-SCOPE-412`; no migration; `API_CONTRACT.md` §12LF; `RBAC_MATRIX.md` §2.305 | Builder's calls P1–P10 `NEEDS_CONFIRMATION`; design `docs/superpowers/specs/2026-11-06-hrc-031-candidate-portal-completion-design.md` |
+| `hrc-031-AC1` | Each §11 section works in both portals | `apps/api/tests/test_hrc_031_portal.py` (both roles); vitest `CandidatePortalCompletion.test.tsx`; e2e `hrc-031-portal-completion.spec.ts` |
+| `hrc-031-AC2` | A cross-candidate request returns 404; staff 403 | `::test_another_persons_records_answer_404_and_never_appear`, `::test_staff_cannot_read_the_portal_sections` |
+| `hrc-031-AC3` | Applications show stage, date and next action; an unreleased decision stays hidden | `::test_applications_show_the_visible_stage_the_date_and_the_next_action`, `::test_an_upcoming_interview_is_the_next_action_and_an_unreleased_decision_stays_hidden` |
+| `hrc-031-NFR` | Fixed query count; no side scroll on a phone | `::test_the_query_count_does_not_grow_with_the_applications`; e2e |
 | `hrc-032-AC1` | Each trigger produces its notice exactly once (applied, vacancy changed, assigned, feedback overdue, new match, result, stage) | `test_hrc_032_notifications.py`; e2e `hrc-032-notifications.spec.ts` |
 | `hrc-032-AC2` | Internal stage changes send nothing to the candidate | `::test_an_internal_stage_tells_the_candidate_nothing` |
 | `hrc-032-AC3` | A failed delivery appears on the exceptions page and its retry succeeds; retries exhausted become an exception | `test_hrc_032_exceptions.py::test_retries_exhausted_then_the_provider_returns`; vitest `hrc032Exceptions.test.tsx` |

@@ -6,7 +6,7 @@ import { type ExceptionPage, listUrl, parseFilters } from "@/lib/notificationExc
 import { companyShell, RECRUITER_SIGN_IN } from "@/lib/recruiterCompanies";
 import type { User } from "@/lib/types";
 
-// hrc-032 (DEC-SCOPE-412 N8-N10): the API decides who reads it (a `notifications.retry` holder; anyone else 403, shown as the access card).
+// hrc-032 (DEC-SCOPE-413 N8-N10): the API decides who reads it (a `notifications.retry` holder; anyone else 403, shown as the access card).
 export default async function DeliveryExceptionsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const filters = parseFilters(await searchParams);
   let user: User;

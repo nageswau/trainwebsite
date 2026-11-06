@@ -1,6 +1,6 @@
 # hrc-032 — Recruitment notification rules and delivery exceptions (design)
 
-**Decision:** `DEC-SCOPE-412` (builder's calls N1–N12, `NEEDS_CONFIRMATION`). **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md`
+**Decision:** `DEC-SCOPE-413` (builder's calls N1–N12, `NEEDS_CONFIRMATION`). **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md`
 hrc-032 (PDF §10.2 "Record notification delivery status and provide a retry mechanism"; §12 notify owners; §13 trigger table; §16
 "integration logs and retry queues"; §17 QA "Failed … notifications are visible and retryable"; PDF classified `UNVERIFIED`). Scope approved
 by the owner 2026-11-01 (backlog Q-00); the owner said to proceed with the recommended answers. Dependencies itc-002 (`DEC-SCOPE-336`),

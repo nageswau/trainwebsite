@@ -106,7 +106,8 @@ function pageNumbers(current: number, total: number) {
   return Array.from({length: Math.max(0, end - start + 1)}, (_, index) => start + index);
 }
 
-export default function DataTable({columns, rows, label}: {columns: Column[]; rows: Row[]; label: string}) {
+// `stack` (hrc-031 QA-04): below 640 px each row reads as labelled lines (.table.stack) instead of scrolling sideways.
+export default function DataTable({columns, rows, label, stack = false}: {columns: Column[]; rows: Row[]; label: string; stack?: boolean}) {
   const [query, setQuery] = useState("");
   const [filterKey, setFilterKey] = useState("");
   const [filterValue, setFilterValue] = useState("");
@@ -156,7 +157,7 @@ export default function DataTable({columns, rows, label}: {columns: Column[]; ro
       {(query || filterKey || filterValue) && <button className="btn ghost small" type="button" onClick={clearControls}>Clear</button>}
     </div>
     {sortedRows.length ? <>
-      <div className="table-wrap"><table className="table"><thead><tr>{columns.map(column => <th key={column.key} aria-sort={sortKey === column.key ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}><button className="sort-button" type="button" onClick={() => changeSort(column.key)}>{column.label}<span aria-hidden="true">{sortKey === column.key ? (sortDirection === "asc" ? " ↑" : " ↓") : " ↕"}</span></button></th>)}</tr></thead><tbody>{pageRows.map((row, rowIndex) => <tr key={String(row.id ?? row.reference ?? `${currentPage}-${rowIndex}`)}>{columns.map(column => <td key={column.key}>{renderCell(column, row)}</td>)}</tr>)}</tbody></table></div>
+      <div className="table-wrap"><table className={stack ? "table compact stack" : "table"}><thead><tr>{columns.map(column => <th key={column.key} aria-sort={sortKey === column.key ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}><button className="sort-button" type="button" onClick={() => changeSort(column.key)}>{column.label}<span aria-hidden="true">{sortKey === column.key ? (sortDirection === "asc" ? " ↑" : " ↓") : " ↕"}</span></button></th>)}</tr></thead><tbody>{pageRows.map((row, rowIndex) => <tr key={String(row.id ?? row.reference ?? `${currentPage}-${rowIndex}`)}>{columns.map(column => <td key={column.key} data-label={stack ? column.label : undefined}>{renderCell(column, row)}</td>)}</tr>)}</tbody></table></div>
       <div className="pagination-bar"><p aria-live="polite">Showing {firstResult}–{lastResult} of {sortedRows.length} records</p><nav className="pagination" aria-label={`${label} pagination`}><button type="button" onClick={() => setPage(1)} disabled={currentPage === 1} aria-label="First page">«</button><button type="button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={currentPage === 1}>Previous</button>{pageNumbers(currentPage, totalPages).map(number => <button type="button" key={number} className={number === currentPage ? "active" : ""} aria-current={number === currentPage ? "page" : undefined} onClick={() => setPage(number)}>{number}</button>)}<button type="button" onClick={() => setPage(current => Math.min(totalPages, current + 1))} disabled={currentPage === totalPages}>Next</button><button type="button" onClick={() => setPage(totalPages)} disabled={currentPage === totalPages} aria-label="Last page">»</button></nav></div>
     </> : <div className="empty"><h3>No matching records</h3><p>Change or clear the search and filter values to see more records.</p><button className="btn secondary small" type="button" onClick={clearControls}>Clear controls</button></div>}
   </>;

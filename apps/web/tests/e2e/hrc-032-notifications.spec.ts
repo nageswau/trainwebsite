@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// hrc-032 (DEC-SCOPE-412; AC1, AC3): a student applies, and the recruiter who owns the vacancy reads "New application" on their new Notifications
+// hrc-032 (DEC-SCOPE-413; AC1, AC3): a student applies, and the recruiter who owns the vacancy reads "New application" on their new Notifications
 // page; the HR Manager's Delivery exceptions page answers, filters and refuses a recruiter. A failed delivery cannot be produced from the UI here
 // (no worker runs in this stack), so the retry itself is covered by test_hrc_032_exceptions.py and vitest.
 

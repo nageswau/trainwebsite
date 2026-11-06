@@ -1,4 +1,4 @@
-"""hrc-032 (DEC-SCOPE-412 N6/N7/N10): the two once-only markers and the `notifications.retry` grant.
+"""hrc-032 (DEC-SCOPE-413 N6/N7/N10): the two once-only markers and the `notifications.retry` grant.
 
 Interviews already past the grace period and jobs already open are stamped, so the first sweep tells nobody about old records. Only the new
 columns are written; existing data is otherwise untouched.

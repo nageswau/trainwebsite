@@ -1,4 +1,4 @@
-"""hrc-032 (DEC-SCOPE-412 N6/N7): the two recruitment triggers no request raises -- overdue interview feedback and a new matching vacancy. Each
+"""hrc-032 (DEC-SCOPE-413 N6/N7): the two recruitment triggers no request raises -- overdue interview feedback and a new matching vacancy. Each
 hourly beat job takes a bounded batch, and writes its marker in the transaction of its notices: both or neither, so a rerun adds nothing.
 `FOR UPDATE SKIP LOCKED` lets a second beat process pass over what the first holds. Logs carry counts only."""
 

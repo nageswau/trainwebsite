@@ -13,7 +13,7 @@ from app.core.database import get_db
 from app.models import AuditLog, Certificate, ConsentRecord, DataSubjectRequest, Enrollment, NotificationPreference, Payment, User, UserRoleAssignment
 from app.notifications.phone import normalise_phone
 from app.schemas import NotificationPreferencesIn, NotificationPreferencesOut, PlacementPoolOptIn
-from app.services import candidate_documents, candidates, hr_reviews, placement_pool
+from app.services import candidate_documents, candidate_portal, candidates, hr_reviews, placement_pool
 from app.services.storage import storage
 
 router = APIRouter(prefix="/account", tags=["account"])
@@ -152,9 +152,15 @@ async def opt_in_placement_pool(payload: PlacementPoolOptIn, request: Request, u
 NOT_IN_POOL = "Join the placement pool to share documents with the placement team"
 
 
+def _require_document_owner(user: User) -> None:
+    """hrc-031 (DEC-SCOPE-412 P4): an external candidate's documents too; everyone else the student rule."""
+    if user.role != candidate_portal.ROLE:
+        placement_pool.require_student(user)
+
+
 @router.get("/candidate-documents")
 async def get_candidate_documents(response: Response, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    placement_pool.require_student(user)
+    _require_document_owner(user)
     response.headers["Cache-Control"] = "private, no-store"
     candidate = await candidate_documents.own_candidate(db, user)
     if candidate is None:
@@ -171,7 +177,7 @@ async def upload_candidate_document(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    placement_pool.require_student(user)
+    _require_document_owner(user)
     if await candidate_documents.own_candidate(db, user) is None:
         raise HTTPException(409, NOT_IN_POOL)
 
@@ -189,7 +195,7 @@ async def upload_candidate_document(
 async def candidate_document_link(
     document_id: UUID, response: Response, mode: Literal["download", "preview"] = Query("download"), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
-    placement_pool.require_student(user)
+    _require_document_owner(user)
     candidate = await candidate_documents.own_candidate(db, user)
     if candidate is None:
         raise HTTPException(404, candidate_documents.NOT_FOUND)
