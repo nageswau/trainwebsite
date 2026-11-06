@@ -591,3 +591,62 @@ async def test_a_job_record_is_never_written_by_a_read(client, db_session):
     before = (await db_session.execute(select(Job.updated_at).where(Job.id == job.id))).scalar_one()
     await _board(client, "vacancy", job=str(job.id))
     assert (await db_session.execute(select(Job.updated_at).where(Job.id == job.id).execution_options(populate_existing=True))).scalar_one() == before
+
+
+# --- review findings: scope on the candidate-side filters, and no decision in an interview row ------------------------------------------------
+@pytest.mark.asyncio
+async def test_an_employer_outside_scope_reads_zero_on_the_funnel(client, db_session):
+    pm, stranger_pm = await make_pm(db_session), await make_pm(db_session)
+    stranger = await make_recruiter(db_session, stranger_pm)
+    company = await _company(db_session, stranger)
+    job = await _job(db_session, company, recruiter=stranger)
+    person = await _candidate(db_session, stranger)
+    await _apply(db_session, person, job, "sourced", "screened")
+    await login(client, pm)
+    for filters in ({"employer": str(company.id)}, {"job": str(job.id)}):
+        assert set(_values(await _board(client, "funnel", **filters)).values()) == {0}
+        for figure in ("registered", "applied", "screened"):
+            assert (await _drill(client, "funnel", figure, **filters))["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_an_officer_reads_only_their_own_candidates_in_application_and_interview_records(client, db_session):
+    officer = await make_user(db_session, "placement_officer", "it")
+    creator = await make_user(db_session, "placement_team", "it")
+    job = await _job(db_session, await _company(db_session))
+    db_session.add(JobAssignment(job_id=job.id, user_id=officer.id, role="placement_officer", added_by_user_id=creator.id))
+    await db_session.commit()
+    mine = await _candidate(db_session, creator, placement_officer_user_id=officer.id)
+    stranger = await _candidate(db_session, creator)
+    await _interview(db_session, await _apply(db_session, mine, job, "sourced", "selected"), "scheduled", _ago(days=-1))
+    await _interview(db_session, await _apply(db_session, stranger, job, "sourced", "selected"), "scheduled", _ago(days=-1))
+    await login(client, officer)
+    values = _values(await _board(client, "officer", job=str(job.id)))
+    assert values["candidates_added"] == 1 and values["selected"] == 1 and values["upcoming"] == 1
+    for figure in ("candidates_added", "selected", "upcoming"):
+        body = await _drill(client, "officer", figure, job=str(job.id))
+        assert [row["candidate"] for row in body["items"]] == [mine.candidate_code]
+    assert (await _board(client, "interview", job=str(job.id)))["sections"]  # the same rule on the interview board
+    assert _values(await _board(client, "interview", job=str(job.id)))["upcoming"] == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("status", "shown"), [("selected", "Held"), ("rejected", "Held"), ("scheduled", "Scheduled")])
+async def test_an_interview_row_never_shows_the_decision(client, db_session, status, shown):
+    await as_role(client, db_session, "super_admin", "global")
+    company = await _company(db_session)
+    creator = await make_user(db_session, "placement_team", "it")
+    application = await _apply(db_session, await _candidate(db_session, creator), await _job(db_session, company), "sourced", "interview")
+    await _interview(db_session, application, status, _ago(hours=2), result_state="pending_approval")
+    body = await _drill(client, "interview", "results_awaiting", employer=str(company.id))
+    assert [row["status"] for row in body["items"]] == [shown]
+
+
+@pytest.mark.asyncio
+async def test_a_chosen_employer_survives_the_options_cap(client, db_session, monkeypatch):
+    await as_role(client, db_session, "super_admin", "global")
+    company = await _company(db_session)
+    await _job(db_session, company)
+    monkeypatch.setattr(svc, "OPTIONS_LIMIT", 1)
+    payload = await _board(client, "vacancy", employer=str(company.id))
+    assert [o["id"] for o in payload["options"]["employers"]] == [str(company.id)]

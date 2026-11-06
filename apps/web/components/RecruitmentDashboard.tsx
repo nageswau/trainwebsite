@@ -99,7 +99,7 @@ export default function RecruitmentDashboard({ board, data, drill, error, query 
   const figureHref = (figure: Figure) => pageHref(board, { ...clean, drill: figure.key });
   const nothing = data !== null && data.sections.every((section) => section.figures.every((figure) => figure.value === 0));
   return (
-    <div className="action-card">
+    <div className="action-card recruitment-dashboard">
       <nav aria-label="Recruitment dashboards" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
         {BOARD_TABS.map((tab) => (
           <Link key={tab.key} className={tab.key === board ? "btn small" : "btn secondary small"} aria-current={tab.key === board ? "page" : undefined} href={pageHref(tab.key, { ...clean, owner: "" })}>{tab.label}</Link>

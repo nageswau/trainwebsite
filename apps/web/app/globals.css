@@ -142,6 +142,7 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 @media (max-width: 640px) { .question-import .table.stack td::before { flex: none; } } /* nehn-025 QA25-02: same for long question text */
 @media (max-width: 640px) { .it-student-360 .table.stack td::before { flex: none; } } /* itc-029 QA29-02: the 360's course label never squeezes */
 @media (max-width: 640px) { .table.stack.hr-reviews td::before { flex: none; } } /* itc-027 QA27-01: same beside the reassign picker */
+@media (max-width: 640px) { .recruitment-dashboard .table.stack td::before { flex: none; } } /* hrc-033 QA-01: a long employer name must not squeeze the label */
 .action-grid > .lead-import { grid-column: 1 / -1; } /* tel-006 QA-03: the import result and past-imports tables need the full width */
 /* tel-004 QA-03: below 360px the sticky Name column left too little room, so the row's stage and link forms sat partly under it. */
 @media (max-width: 359px) { .lead-management .table-scroll table th:first-child, .lead-management .table-scroll table td:first-child { position: static; } }

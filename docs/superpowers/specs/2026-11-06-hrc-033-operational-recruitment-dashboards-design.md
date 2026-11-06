@@ -62,7 +62,7 @@ it exists. Owner means the candidate's owner on candidate figures and the requir
 on the others. On the Placement Officer board it means the officer.
 
 **Branch is not offered as a working filter.** No job, candidate or recruiter records a branch (mgmt-016 M10, hrc-002 Q-04, hrc-024 record the
-same); `company_branches` is unlinked from jobs. The form shows it disabled with that reason. `NEEDS_CONFIRMATION`: Q-04.
+same); `company_branches` is unlinked from jobs. The form shows it disabled with that reason. `NEEDS_CONFIRMATION`: Q-04. A chosen employer or job also binds candidate figures to the caller's requirement scope.
 
 ### Access (D7)
 New catalogue resource `reports.recruitment` (`view`, `download`), seeded by migration `0292_recruitment_report_grants` (a seed only, no schema):
@@ -75,7 +75,7 @@ The grant opens the route; scope is per role, and a role with a grant but no def
 |---|---|---|
 | `placement_team` | `caller_scope` | `mine` + unassigned (hrc-025 N2) |
 | `placement_manager` | `caller_scope` (team + unassigned) | the whole pool (hrc-025 N2) |
-| `placement_officer` | `caller_scope(officers=True)`; on the officer board, only where they are the officer | `mine` |
+| `placement_officer` | `caller_scope(officers=True)`; on the officer board, only where they are the officer | `mine`, including on application and interview records |
 | `hr_manager`, `it_admin`, `partner`, `super_admin` | everything | everything |
 
 ### API (D8) -- `/api/v1/recruiter/recruitment-dashboards`
@@ -88,7 +88,7 @@ The grant opens the route; scope is per role, and a role with a grant but no def
 Fixed query count: one statement for all figures, one per option list, plus the scope's. Reads only.
 
 ### Drill-down rows (D9)
-Identifiers, names, status and dates only: no phone, email, compensation or result. A row links to its record only when the caller's role can
+Identifiers, names, status and dates only: no phone, email, compensation or result. A decided interview reads Held, so its status cannot reveal the outcome. A row links to its record only when the caller's role can
 open that screen (`candidates.READERS`; requirement scope), mirroring hrc-025's `can_open`.
 
 ### Frontend (D10)

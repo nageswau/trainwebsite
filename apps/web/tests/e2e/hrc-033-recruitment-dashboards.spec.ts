@@ -51,7 +51,7 @@ test("a recruiter narrows a board, opens a figure's records and reaches the reco
   await expect(page.getByRole("heading", { name: "Open: 1 record" })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: "Open: 1 record" })).toBeVisible();
-  await page.getByRole("link", { name: requirement.requirement_code }).click();
+  await page.getByRole("link", { name: requirement.code }).click();
   await page.waitForURL(`**/recruiter/requirements/${requirement.id}`);
   await page.goBack();
   await expect(page.getByRole("heading", { name: "Open: 1 record" })).toBeVisible();
@@ -63,6 +63,9 @@ test("a recruiter narrows a board, opens a figure's records and reaches the reco
   await expect(page.getByRole("heading", { name: "Open: 1 record" })).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+  // QA-01: a long value beside it must not squeeze a label ("Employe / r").
+  const labelShrink = await page.locator("#records td").first().evaluate((td) => getComputedStyle(td, "::before").flexShrink);
+  expect(labelShrink).toBe("0");
 
   expect(failed).toEqual([]);
   expect(consoleErrors).toEqual([]);
@@ -95,7 +98,7 @@ test("the HR Manager reaches the boards from the menu and a student cannot", asy
   await expect(page.getByLabel("Branch")).toBeDisabled();
 
   await page.goto(`${PATH}/interview?to=2099-01-01`);
-  await expect(page.getByRole("alert")).toContainText("future");
+  await expect(page.locator(".form-error")).toContainText("future");
 
   await signIn(page, "student.it@edusphere.local", "/it/student/dashboard");
   await page.goto(`${PATH}/funnel`);

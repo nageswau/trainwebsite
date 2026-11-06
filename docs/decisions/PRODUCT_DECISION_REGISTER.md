@@ -12161,4 +12161,9 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Not built:** pob-028's nine-widget dashboard and hrc-034's three boards. Existing recruiter tiles, performance and management recruitment
   keep their numbers.
 - **Numbering:** migration `0292_recruitment_report_grants` (a seed only); API §12LH; RBAC §2.307.
+- **Review and QA fixes:** a chosen employer or job is ANDed with the caller's requirement scope on candidate figures too (D6). A placement officer's
+  application and interview records are their own candidates only, even on a requirement they co-own (D7). An interview row shows a decided interview
+  as Held, never Selected or Rejected (D4, D9). A chosen owner or employer sorts first, so it survives the 500-option cap. QA-01: a stacked table label
+  no longer wraps mid-word on a phone. **Open:** application and interview rows follow the requirement's scope and are not restricted to the candidate
+  pool, as on the recruiter pipeline (`NEEDS_CONFIRMATION`).
 - **Feature ID authorized:** `hrc-033`. **Status:** built on `worktree-hrc-033`.

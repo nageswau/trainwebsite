@@ -115,8 +115,10 @@ def _officer_of_candidate(ctx: Context) -> list:
 
 
 def _application_reached(ctx: Context, statuses: tuple[str, ...] | None = None):
-    """An application of this candidate on the chosen job; with `statuses`, one now in or ever moved into one of them (history tables)."""
-    stmt = select(JobApplication.id).join(Job, Job.id == JobApplication.job_id).where(JobApplication.candidate_id == Candidate.id, *_chosen_job(ctx))
+    """An application of this candidate on the chosen job; with `statuses`, one now in or ever moved into one of them (history tables).
+    D6: a chosen employer or job is ANDed with the caller's requirement scope, so one outside it reads as zero."""
+    chosen = _chosen_job(ctx)
+    stmt = select(JobApplication.id).join(Job, Job.id == JobApplication.job_id).where(JobApplication.candidate_id == Candidate.id, *chosen, *(ctx.job_scope if chosen else []))
     if statuses:
         moved = exists().where(JobApplicationStatusHistory.application_id == JobApplication.id, JobApplicationStatusHistory.to_status.in_(statuses))
         stmt = stmt.where(or_(JobApplication.status.in_(statuses), moved))
@@ -336,6 +338,8 @@ def _where(board: Board, figure: Figure, ctx: Context) -> list:
             common.append(_application_reached(ctx))
     else:
         common = [*ctx.job_scope, *_chosen_job(ctx)]
+        if ctx.user.role == OFFICER_ROLE and figure.kind != "job":  # D7: an officer's candidate records are their own, even on a job they co-own
+            common += ctx.candidate_scope
         if board.by_officer:
             common.append(_officer_of_job(ctx))
         elif ctx.owner:
@@ -383,19 +387,19 @@ async def _options(db: AsyncSession, board: Board, ctx: Context) -> dict:
         people = people.where(User.id.in_(select(RecruiterProfile.user_id).where(RecruiterProfile.reporting_manager_user_id == user.id)))
     elif user.role == ROLE or (user.role == OFFICER_ROLE and not board.by_officer):
         people = people.where(false())
-    employers = (select(Company.id, Company.name).join(Job, Job.company_id == Company.id).where(*ctx.job_scope).distinct()
-                 .order_by(Company.name, Company.id).limit(OPTIONS_LIMIT))  # fmt: skip
-    jobs = (select(Job.id, Job.requirement_code, Job.title).join(Company, Company.id == Job.company_id)
+    employers = (select(Company.id, Company.name).join(Job, Job.company_id == Company.id).where(*ctx.job_scope).group_by(Company.id, Company.name)
+                 .order_by(*([(Company.id == ctx.employer).desc()] if ctx.employer else []), Company.name, Company.id).limit(OPTIONS_LIMIT))  # fmt: skip
+    jobs = (select(Job.id, Job.requirement_code, Job.title)
             .where(*ctx.job_scope, *([Job.company_id == ctx.employer] if ctx.employer else []))
             .order_by((Job.id == ctx.job).desc() if ctx.job else Job.created_at.desc(), Job.created_at.desc(), Job.id).limit(OPTIONS_LIMIT))  # fmt: skip
     return {
-        "owners": [{"id": str(i), "label": name} for i, name in (await db.execute(people.order_by(User.full_name, User.id).limit(OPTIONS_LIMIT))).all()],
+        "owners": [{"id": str(i), "label": name} for i, name in (await db.execute(people.order_by(*([(User.id == ctx.owner).desc()] if ctx.owner else []), User.full_name, User.id).limit(OPTIONS_LIMIT))).all()],
         "employers": [{"id": str(i), "label": name} for i, name in (await db.execute(employers)).all()],
         "jobs": [{"id": str(i), "label": f"{code} — {title}"} for i, code, title in (await db.execute(jobs)).all()],
     }
 
 
-async def dashboard(db: AsyncSession, user: User, key: str, date_from: date | None, date_to: date | None, owner: UUID | None, employer: UUID | None, job: UUID | None, now: datetime) -> dict:
+async def dashboard(db: AsyncSession, user: User, key: str, date_from: date | None, date_to: date | None, owner: UUID | None, employer: UUID | None, job: UUID | None, now: datetime, *, with_options: bool = True) -> dict:
     board = BOARDS[key]
     ctx = await _context(db, user, board, date_from, date_to, owner, employer, job, now)
     figures = [figure for section in board.sections for figure in section.figures]
@@ -411,12 +415,13 @@ async def dashboard(db: AsyncSession, user: User, key: str, date_from: date | No
         "sections": [{"key": section.key, "label": section.label,
                       "figures": [{"key": f.key, "label": f.label, "definition": f.definition, "value": getattr(row, f.key)} for f in section.figures]}
                      for section in board.sections],
-        "options": await _options(db, board, ctx),
+        "options": await _options(db, board, ctx) if with_options else None,
     }  # fmt: skip
 
 
-def _label(status: str) -> str:
-    return status.replace("_", " ").capitalize()
+def _status_label(kind: str, status: str) -> str:
+    """D4/D9: an interview's status can hold the decision before its result is published, so a row only says it was held."""
+    return "Held" if kind == "interview" and status in ("selected", "rejected") else status.replace("_", " ").capitalize()
 
 
 _CANDIDATE_CODE = {"key": "candidate", "label": "Candidate", "type": "text"}
@@ -476,13 +481,13 @@ async def drill(db: AsyncSession, user: User, key: str, figure_key: str, date_fr
     columns = [c for c in _COLUMNS[figure.kind] if not (hide_names and c["key"] == "name")]
     items = []
     for row in rows:
-        values = {c["key"]: _label(getattr(row, c["key"])) if c["key"] == "status" else getattr(row, c["key"]) for c in columns}
+        values = {c["key"]: _status_label(figure.kind, getattr(row, c["key"])) if c["key"] == "status" else getattr(row, c["key"]) for c in columns}
         items.append({"id": row.id, "href": _href(figure.kind, user.role, row), **values})
     return {"figure": {"key": figure.key, "label": figure.label, "definition": figure.definition}, "total": total or 0, "limit": limit, "offset": offset, "columns": columns, "items": items}
 
 
 async def export_payload(db: AsyncSession, user: User, key: str, date_from: date | None, date_to: date | None, owner: UUID | None, employer: UUID | None, job: UUID | None, now: datetime) -> dict:
-    data = await dashboard(db, user, key, date_from, date_to, owner, employer, job, now)
+    data = await dashboard(db, user, key, date_from, date_to, owner, employer, job, now, with_options=False)
     return {
         "board": key,
         "date_from": data["date_from"],
