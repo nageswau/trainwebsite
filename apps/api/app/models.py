@@ -7201,6 +7201,24 @@ class CandidateImportRow(Base):
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class PortalEvent(Base):
+    """hrc-034 (DEC-SCOPE-415 I3): one step a student or portal candidate took on a job -- ids only, no PII. One row per person, job, kind and IST day,
+    so a refresh or a double click cannot inflate a figure. Deleted after portal_events.RETENTION_DAYS (I4)."""
+
+    __tablename__ = "portal_events"
+    __table_args__ = (
+        CheckConstraint("kind IN ('job_view', 'apply_start', 'apply_submit')", name="ck_portal_events_kind"),
+        UniqueConstraint("user_id", "job_id", "kind", "day", name="uq_portal_events_once"),
+        Index("ix_portal_events_day", "day", "kind"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    kind: Mapped[str] = mapped_column(String(12))
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    job_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True)
+    day: Mapped[date] = mapped_column(Date)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class RecFxRate(Base):
     """hrc-011 (DEC-SCOPE-375 C1, Q-10): the placement manager's manual exchange rate, rupees per one unit of the currency. INR is
     implicit (1) and never stored; no rate is seeded. Never deleted: a currency in use keeps its rate."""

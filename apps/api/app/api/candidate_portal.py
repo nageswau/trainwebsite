@@ -142,7 +142,9 @@ async def my_jobs(
     user: User = Depends(_job_seeker),
     db: AsyncSession = Depends(get_db),
 ):
-    return await candidate_jobs.listing(db, user, view=view, q=q, limit=limit, offset=offset)
+    page = await candidate_jobs.listing(db, user, view=view, q=q, limit=limit, offset=offset)
+    await db.commit()  # hrc-034 (I3): the job_view events
+    return page
 
 
 @router.post("/jobs/{job_id}/apply", status_code=201)

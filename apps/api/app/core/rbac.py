@@ -99,6 +99,8 @@ CATALOGUE: dict[str, dict] = {
     "reports.training": {"label": "Training reports", "actions": ("view", "download")},
     # nehn-016 (DEC-SCOPE-312): the recruiter's placement reports -- students completing soon and the student placement report.
     "reports.placement": {"label": "Placement reports", "actions": ("view", "download")},
+    # hrc-034 (DEC-SCOPE-415 I1): skill demand, portal analytics and data quality -- whole-pool figures, so a grant separate from the scoped reports.
+    "reports.recruitment_insights": {"label": "Recruitment insights", "actions": ("view",)},
     # nehn-018 (DEC-SCOPE-304): which student features unlock at which payment state.
     "student_access": {"label": "Student access rules", "actions": ("configure",)},
     # nehn-017 (DEC-SCOPE-310 H3): HR's read-only student views and HR reports -- one resource per kind of data, so each switches off alone.
@@ -146,12 +148,14 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     # hrc-020 (DEC-SCOPE-401 X12, migration 0277 seeds it): the Find Candidates export.
     # hrc-032 (DEC-SCOPE-413 N10, migration 0291 seeds it): the placement manager and the HR Manager handle failed deliveries.
     "placement_manager": _PLACEMENT_REPORTS
-    + ("candidates.compensation.view", "candidates.merge", "jobs.publish", "candidates.import", "candidates.export", "notifications.retry")
+    # hrc-034 (DEC-SCOPE-415 I1, migration 0293 seeds it): the placement manager, the HR Manager and management read the recruitment insights.
+    + ("candidates.compensation.view", "candidates.merge", "jobs.publish", "candidates.import", "candidates.export", "notifications.retry", "reports.recruitment_insights.view")
     + _CLIENT_COMMERCIALS,
     # hrc-007 (DEC-SCOPE-380 A12; migration 0257 seeds it): the HR Manager is the vacancy approver.
     # hrc-035 (DEC-SCOPE-396 K7; migration 0273 seeds it): the HR Manager decides candidate deletion requests.
     # hrc-030 (DEC-SCOPE-409 R5; migration 0289 seeds it): the HR Manager publishes interview results.
-    "hr_manager": ("candidates.erase", "jobs.approve", "notifications.retry", "results.release"),
+    "hr_manager": ("candidates.erase", "jobs.approve", "notifications.retry", "results.release", "reports.recruitment_insights.view"),
+    "partner": ("reports.recruitment_insights.view",),
     # pob-001 (DEC-SCOPE-403 C3; migration 0278 seeds it): the assigned BDM keeps reading the company's contract terms (rec-030 R10).
     "bdm": ("commercials.client.view",),
     "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
