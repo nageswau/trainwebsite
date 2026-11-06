@@ -2326,7 +2326,7 @@ async def update_job(job_id: UUID, payload: dict, user: User = Depends(get_curre
     if "closes_on" in payload:
         job.closes_on = date.fromisoformat(payload["closes_on"]) if payload["closes_on"] else None
     job.updated_by_user_id = user.id  # hrc-005 V6: Last Updated By
-    await review.flag(db, user, job, eligible_before)
+    await review.notify_changed(db, user, job, eligible_before)  # hrc-009 (R7) + hrc-032 (N3)
     await _audit(db, user, "job.update", "job", job.id, payload)
     await db.commit()
     return {"id": job.id, "status": job.status}

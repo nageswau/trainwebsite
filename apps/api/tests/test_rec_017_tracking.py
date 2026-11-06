@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 
 from app.models import AuditLog, Candidate, Company, CompanyStageHistory, Job, JobApplication, JobApplicationStatusHistory, Notification, RecCandidateSource
+from app.notifications.events import EVENTS
 from app.services import applications as svc
 from tests.rec001_helpers import as_role, login, make_pm, make_recruiter, make_user
 
@@ -295,7 +296,7 @@ async def test_a_student_status_change_notifies_the_student(client, db_session):
     assert application.student_id == student.id
     assert (await _move(client, app_id, "shortlisted")).status_code == 200
     note = await db_session.scalar(select(Notification).where(Notification.user_id == student.id).order_by(Notification.created_at.desc()))
-    assert note.body == "Your application status is now Shortlisted."
+    assert note.body == EVENTS["it.application.updated"].body  # hrc-032 (N5): the stage word stays in the portal
 
 
 @pytest.mark.asyncio

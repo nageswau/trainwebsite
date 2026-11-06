@@ -1,4 +1,4 @@
-"""hrc-033 -- migration 0291_recruitment_report_grants (DEC-SCOPE-413 D7): a seed only. The frozen copy equals `rbac.DEFAULT_GRANTS`, the chain and
+"""hrc-033 -- migration 0292_recruitment_report_grants (DEC-SCOPE-414 D7): a seed only. The frozen copy equals `rbac.DEFAULT_GRANTS`, the chain and
 the round trip hold, in a throwaway database (the hrc-020 pattern). Plain sync tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -12,11 +12,11 @@ from app.core import rbac
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_hrc_033_migration_0291", VERSIONS / "0291_recruitment_report_grants.py")
+_spec = importlib.util.spec_from_file_location("_hrc_033_migration_0292", VERSIONS / "0292_recruitment_report_grants.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0291_recruitment_report_grants", "0290_contact_status"
+HEAD, BASE = "0292_recruitment_report_grants", "0291_recruitment_notices"
 HOLDERS = ("placement_team", "placement_manager", "hr_manager", "placement_officer", "it_admin", "partner")
 SEEDED = {(role, "reports.recruitment", action) for role in HOLDERS for action in ("view", "download")}
 GRANTS = "SELECT role, resource, action FROM role_permissions WHERE resource = 'reports.recruitment'"

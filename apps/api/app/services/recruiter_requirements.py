@@ -38,6 +38,7 @@ from app.models import (
     TalentPool,
     User,
 )
+from app.notifications.events import notify
 from app.schemas import REC_REQUIREMENT_TERMS
 from app.services import company_pipeline
 from app.services import recruiter_contracts as contracts
@@ -180,6 +181,8 @@ async def submit(db: AsyncSession, user: User, job: Job, note: str | None = None
     job.submitted_by_user_id, job.submitted_at = user.id, func.now()
     previous = await _move(db, user, job, "pending_approval", _with_note("Submitted for approval", note))
     audit(db, user, "submit", job.id, {"from": previous, "to": job.status, "note": note, "changes": {"status": [previous, job.status]}})  # every path
+    approvers = (await db.scalars(select(User).where(User.role == "hr_manager", User.id != user.id))).all()  # hrc-032 (N3): `jobs.approve`'s default holder
+    await notify(db, approvers, "it.requirement.approval_needed", job.id, action_url="/it/hr-manager/approvals")
     return previous
 
 

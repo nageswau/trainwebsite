@@ -1092,6 +1092,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 ### Phase 5: Automation and reporting (PDF Phase 5)
 
 #### hrc-032: Recruitment notification rules and delivery exceptions
+- **Status:** built as `DEC-SCOPE-413` (migration `0291_recruitment_notices`, API §12LG, RBAC §2.306); design
+  `docs/superpowers/specs/2026-11-06-hrc-032-recruitment-notifications-design.md`. N1–N12 are the builder's calls (`NEEDS_CONFIRMATION`), notably a
+  24-hour feedback grace period and fixed-text stage and result notices.
 - **Business requirement:** §12 notify owners; §13 trigger table; §10.2 "Record notification delivery status and provide a retry mechanism"; §16 "integration logs and retry queues"; §17 QA "Failed … notifications are visible and retryable".
 - **Existing behavior:**
   - **Built:** interview booked/rescheduled notices, offer notices, delivery rows with automatic retry (4 attempts, 5-minute sweeps).
@@ -1122,7 +1125,7 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** low.
 
 #### hrc-033: Operational recruitment dashboards
-- **Status:** built as `DEC-SCOPE-413` (migration `0291_recruitment_report_grants`, a seed only; API §12LG; RBAC §2.306; D1–D10 are the builder's calls,
+- **Status:** built as `DEC-SCOPE-414` (migration `0292_recruitment_report_grants`, a seed only; API §12LH; RBAC §2.307; D1–D10 are the builder's calls,
   `NEEDS_CONFIRMATION`; branch is not a working filter, Q-04); design `docs/superpowers/specs/2026-11-06-hrc-033-operational-recruitment-dashboards-design.md`.
 - **Business requirement:** §14 recruitment funnel, vacancy dashboard, recruiter dashboard, placement officer dashboard, interview dashboard.
 - **Existing behavior:**

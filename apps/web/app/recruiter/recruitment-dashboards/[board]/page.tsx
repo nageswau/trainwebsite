@@ -20,7 +20,7 @@ async function shell(user: User): Promise<{ nav: NavItem[]; roleLabel: string }>
   return companyShell(user.role);
 }
 
-// hrc-033 (DEC-SCOPE-413 D10): the five operational recruitment dashboards. The API decides who reads them (`reports.recruitment`; anyone else
+// hrc-033 (DEC-SCOPE-414 D10): the five operational recruitment dashboards. The API decides who reads them (`reports.recruitment`; anyone else
 // 403, shown as the access card) and whose records are in scope. A bad range shows the API's words beside the form.
 export default async function RecruitmentDashboardPage({ params, searchParams }: { params: Promise<{ board: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { board } = await params;

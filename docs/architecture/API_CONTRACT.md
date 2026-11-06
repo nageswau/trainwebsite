@@ -6089,9 +6089,22 @@ archived or merged; someone else's document 404) and `GET /workflows/it/student/
 `/it/careers/portal/interviews`; a student's are unchanged. The application and interview payloads carry `stack: true` (labelled rows on a
 phone). No migration.
 
-## 12LG. Operational recruitment dashboards (hrc-033) — addendum, 2026-11-06
+## 12LG. Recruitment notifications and delivery exceptions (hrc-032) — addendum, 2026-11-06
 
-`DEC-SCOPE-413`. **New**, all under `/recruiter/recruitment-dashboards`, `{board}` one of `funnel|vacancy|recruiter|officer|interview` (else 422), and
+`DEC-SCOPE-413`. Both routes need `notifications.retry` (403 otherwise; signed out 401).
+
+- `GET /api/v1/recruiter/notification-exceptions?type=&channel=email|whatsapp|sms&limit=1..100&offset=` → `{items, total, limit, offset, types: [{key, label}]}`.
+  Newest failure first. An item is `{source: "delivery"|"email", id, type, type_label, recipient, channel, error, attempts, failed_at}`; `error` has URLs
+  masked and is null for an email. Never a body, subject or address. An unknown `channel` is 422; an unknown `type` matches nothing.
+- `POST /api/v1/recruiter/notification-exceptions/{source}/{id}/retry` → `{id, source, status: "queued"}`. Out of scope or missing 404; no longer failed
+  409 (a double click sends once). Audited as `notification.retry`.
+- Additive: notices gain event types (`GET /workflows/notifications`' `event_type`). Changed text: `it.application.updated` and
+  `it.interview.result_published` are fixed text (see `DEC-SCOPE-413` N4/N5).
+- Beat: `hrc032-feedback-overdue` and `hrc032-new-matches`, hourly.
+
+## 12LH. Operational recruitment dashboards (hrc-033) — addendum, 2026-11-06
+
+`DEC-SCOPE-414`. **New**, all under `/recruiter/recruitment-dashboards`, `{board}` one of `funnel|vacancy|recruiter|officer|interview` (else 422), and
 query `from`, `to` (IST dates: at most 366 days, never future, else 422), `owner`, `employer`, `job` (UUIDs, else 422), ANDed with the caller's scope:
 
 - `GET /{board}` (`reports.recruitment.view`) → `{board, label, note, owner_label, date_from, date_to, filters, sections: [{key, label, figures: [{key, label,
@@ -6101,4 +6114,4 @@ query `from`, `to` (IST dates: at most 366 days, never future, else 422), `owner
 - `GET /{board}.csv` and `.xlsx` (`reports.recruitment.download`): `Section, Figure, Count, Definition`; one `recruitment_dashboard.export` audit row,
   committed before the file is returned.
 
-All are `no-store` and read-only. Migration `0291_recruitment_report_grants` seeds the grants.
+All are `no-store` and read-only. Migration `0292_recruitment_report_grants` seeds the grants.

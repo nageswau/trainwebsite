@@ -71,7 +71,7 @@ export function managementNavFor(tiers: ManagementTiers, pillars: ManagementPill
   // itc-032 (DEC-SCOPE-369 R4/R6): the IT reports are an operational pillar entry; a finance-only caller (the accountant) reads their Revenue
   // tab, so the link is added for them here (the page opens the first report the API lists for the caller).
   if (!tiers.operational && tiers.finance) payments.push(MANAGEMENT_IT_REPORTS_NAV);
-  // hrc-033 (DEC-SCOPE-413): grant-driven like Payments, and not a Command Center pillar: it lives with the recruitment screens.
+  // hrc-033 (DEC-SCOPE-414): grant-driven like Payments, and not a Command Center pillar: it lives with the recruitment screens.
   const dashboards = tiers.operational ? [MANAGEMENT_RECRUITMENT_DASHBOARDS_NAV] : [];
   return [{ label: "Command Center", href: MANAGEMENT_HOME }, { label: "Management activity", href: MANAGEMENT_ACTIVITY }, ...live, ...dashboards, ...payments, ...myTasks];
 }

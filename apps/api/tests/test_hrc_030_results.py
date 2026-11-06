@@ -129,7 +129,7 @@ async def test_publishing_shows_the_result_to_the_candidate_once_and_is_final(cl
     assert [(r["outcome_label"], r["message"]) for r in mine] == [("Selected", message)]
     assert any(r["status"] == "Selected" for r in (await client.get(SCHEDULE)).json()["rows"])
     notices = await _notices(db_session, student)
-    assert len(notices) == 1 and message in notices[0].body
+    assert len(notices) == 1 and message not in notices[0].body  # hrc-032 (N4): the message is in My results, not the preview
     await login(client, recruiter)
     assert (await client.get(f"{INTERVIEWS}/{item['id']}")).json()["result_release"]["state"] == "released"
     offer = await client.post(f"/api/v1/recruiter/applications/{application.id}/offer", json={"position": "Engineer"})

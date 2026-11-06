@@ -453,7 +453,8 @@ async def notify(db: AsyncSession, user: User, interview: Interview, application
     if candidate.user_id is not None:
         student = await db.get(User, candidate.user_id)
         item = Notification(user_id=student.id, title=title, body="\n".join(details), read=False,
-                            action_url="/it/careers/portal/interviews" if student.role == "candidate" else "/it/student/job-applications")  # fmt: skip
+                            action_url="/it/careers/portal/interviews" if student.role == "candidate" else "/it/student/job-applications",
+                            event_type=f"it.interview.{kind}", entity_type="interview", entity_id=str(interview.id))  # fmt: skip
         db.add(item)
         await db.flush()
         await queue_deliveries(db, item, student, context={"kind": INVITE_KIND, "ics": ics, "method": method})

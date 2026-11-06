@@ -1,6 +1,6 @@
 # hrc-033: Operational recruitment dashboards -- design
 
-**Decision:** `DEC-SCOPE-413` (builder's recommended calls, `NEEDS_CONFIRMATION`). **Source:** `HR_RECRUITMENT_CRM_BACKLOG.md` hrc-033, Appendix B
+**Decision:** `DEC-SCOPE-414` (builder's recommended calls, `NEEDS_CONFIRMATION`). **Source:** `HR_RECRUITMENT_CRM_BACKLOG.md` hrc-033, Appendix B
 (`UNVERIFIED`, a requirements draft). **Depends on:** hrc-021, 024, 026, 028, 030, all merged.
 
 ## Intent
@@ -65,7 +65,7 @@ on the others. On the Placement Officer board it means the officer.
 same); `company_branches` is unlinked from jobs. The form shows it disabled with that reason. `NEEDS_CONFIRMATION`: Q-04.
 
 ### Access (D7)
-New catalogue resource `reports.recruitment` (`view`, `download`), seeded by migration `0291_recruitment_report_grants` (a seed only, no schema):
+New catalogue resource `reports.recruitment` (`view`, `download`), seeded by migration `0292_recruitment_report_grants` (a seed only, no schema):
 `placement_team`, `placement_manager`, `hr_manager`, `placement_officer`, `it_admin`, `partner`; `super_admin` implicitly. `reports.placement` is
 not reused, because it also opens student rows in the report library.
 
@@ -103,7 +103,7 @@ Performance: subqueries use existing indexes; drill pages are limited to 100.
 
 ## Plan
 
-1. Catalogue key, grant defaults, migration 0291 and its test.
+1. Catalogue key, grant defaults, migration 0292 and its test.
 2. Service plus board and drill tests (tie-out for every figure, monotonic funnel, partitions, scope, empty period, query count).
 3. Router, export, rec-038 rows.
 4. Web lib and component tests, pages, navigation.

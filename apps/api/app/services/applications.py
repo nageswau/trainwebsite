@@ -29,7 +29,8 @@ from app.models import (
     User,
 )
 from app.notifications.dispatch import queue_deliveries
-from app.services import candidates, company_pipeline, it_lifecycle
+from app.notifications.events import notify
+from app.services import candidates, company_pipeline, it_lifecycle, requirement_owners
 from app.services import recruiter_requirements as requirements
 from app.services.recruiter import ROLE
 
@@ -243,31 +244,39 @@ def require_writer(user: User, subject_id, route: str) -> None:
 
 
 # --- notifications, audit, output ---------------------------------------------------------------------------------------------------
-async def _notify(db: AsyncSession, application: JobApplication, title: str, body: str) -> None:
+def _portal_link(student: User) -> str:
+    """hrc-031 (DEC-SCOPE-412 P7): a hrc-022 portal candidate's notices open their applications; a student's keep the student portal's."""
+    return "/it/careers/portal/applications" if student.role == "candidate" else "/it/student/job-applications"
+
+
+async def notify_candidate(db: AsyncSession, application: JobApplication, event_type: str, entity_id: UUID | None = None) -> None:
+    """hrc-032 (N4/N5): a catalogued notice to the application's portal user; a candidate without a login gets none."""
     student = await db.get(User, application.student_id) if application.student_id else None
-    if student is None:  # a candidate without a portal login
-        return
-    # hrc-031 (DEC-SCOPE-412 P7): a hrc-022 portal candidate's notices open their applications (hrc-027 J10 opened Jobs before that page
-    # existed); a student's keep the student portal's applications
-    link = "/it/careers/portal/applications" if student.role == "candidate" else "/it/student/job-applications"
-    item = Notification(user_id=student.id, title=title, body=body, read=False, action_url=link)
-    db.add(item)
-    await db.flush()
-    await queue_deliveries(db, item, student)
+    if student is not None:
+        await notify(db, [student], event_type, entity_id or application.id, action_url=_portal_link(student))
 
 
 async def notify_student(db: AsyncSession, application: JobApplication, before: str) -> None:
     """ENH-014's in-app row plus queued deliveries, as the legacy PATCH always sent -- hrc-026 (A4, AC2): only when the stage the candidate
     sees changed (`before` = its `candidate_status` before the move), so an internal stage never notifies."""
     if application.candidate_status != before:
-        await _notify(db, application, "Job application updated", f"Your application status is now {candidate_label(application.candidate_status)}.")
+        await notify_candidate(db, application, "it.application.updated")  # hrc-032 (N5): the fixed text; the stage word stays in the portal
 
 
 async def send_receipt(db: AsyncSession, application: JobApplication, job: Job) -> None:
-    """hrc-026 (A8, AC4): the candidate applied themselves -- confirm it with the Application ID. Recruiter-added applications get none."""
+    """hrc-026 (A8, AC4): the candidate applied themselves -- confirm it with the Application ID. Recruiter-added applications get none.
+    hrc-032 (N2): only a candidate's own application comes here, so this also tells the application's owner and the vacancy's owners."""
     company = await db.scalar(select(Company.name).where(Company.id == job.company_id))
     await db.refresh(application, ["application_code"])
-    await _notify(db, application, "Application received", f"We received your application {application.application_code} for {job.title} at {company}.")
+    student = await db.get(User, application.student_id) if application.student_id else None
+    if student is not None:  # a candidate without a portal login
+        item = Notification(user_id=student.id, title="Application received", body=f"We received your application {application.application_code} for {job.title} at {company}.", read=False,
+                            action_url=_portal_link(student), event_type="it.application.received", entity_type="job_application", entity_id=str(application.id))  # fmt: skip
+        db.add(item)
+        await db.flush()
+        await queue_deliveries(db, item, student)
+    owners = await requirement_owners.people(db, job, also=(application.owner_user_id,))
+    await notify(db, owners, "it.application.new", application.id, action_url=f"/recruiter/requirements/{job.id}")
 
 
 def source_label(source: str) -> str:

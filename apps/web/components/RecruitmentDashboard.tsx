@@ -87,7 +87,7 @@ function Records({ board, drill, query }: { board: BoardKey; drill: Drill; query
   );
 }
 
-// hrc-033 (DEC-SCOPE-413): one board -- its filters, its figures (each a link to the records it counted) and, once one is chosen, those
+// hrc-033 (DEC-SCOPE-414): one board -- its filters, its figures (each a link to the records it counted) and, once one is chosen, those
 // records. Server-rendered from a GET form, so refresh, back and shared links keep the state.
 export default function RecruitmentDashboard({ board, data, drill, error, query }: { board: BoardKey; data: Board | null; drill: Drill | null; error: string; query: DashboardQuery }) {
   const clean = { ...query, drill: "", offset: 0 };

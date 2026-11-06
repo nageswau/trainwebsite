@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// hrc-033 (DEC-SCOPE-413; AC: each figure equals its drill-down, the funnel is monotonic): the seeded recruiter adds a company and a requirement,
+// hrc-033 (DEC-SCOPE-414; AC: each figure equals its drill-down, the funnel is monotonic): the seeded recruiter adds a company and a requirement,
 // narrows the Vacancy board to that employer, opens the Open figure and lands on the requirement. Every figure of every board is compared with
 // its records through the same API the page reads. The HR Manager reaches the boards from the menu; a student gets the access card.
 
