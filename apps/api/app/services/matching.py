@@ -389,6 +389,23 @@ async def matches(db: AsyncSession, job: Job, *, limit: int, offset: int, amount
     return {**base, "reason": None, "items": items, "total": len(scored)}
 
 
+async def portal_matches(db: AsyncSession, job: Job, *, min_score: int, limit: int) -> list[Candidate]:
+    """hrc-032 (N7): the opted-in portal candidates who fit this job and have not applied -- best first, failed hard filters out. Narrowed in SQL
+    as `matches` is, and scored for the candidate audience."""
+    s = await spec(db, job)
+    if not s.skills:
+        return []
+    required = [_has(x["accepted"], False, x["min_level"]) for x in s.skills if x["kind"] == "required"]
+    applied = select(JobApplication.candidate_id).where(JobApplication.job_id == job.id)
+    narrowed = select(Candidate.id).where(*pool_filter(), Candidate.archived_at.is_(None), Candidate.user_id.is_not(None), Candidate.merged_into_id.is_(None), Candidate.id.not_in(applied),
+                                          *(required or [or_(*(_has(x["accepted"], False, x["min_level"]) for x in s.skills))]))  # fmt: skip
+    found = await facts(db, narrowed, s)
+    today = _today()
+    scored = [(r["score"], f["candidate"]) for f in found.values() if (r := evaluate(s, f, today=today, audience="candidate")) and r["score"] >= min_score]
+    scored.sort(key=lambda sc: (sc[0], sc[1].id), reverse=True)
+    return [candidate for _, candidate in scored[:limit]]
+
+
 async def jobs_for_candidate(db: AsyncSession, candidate: Candidate, jobs: list[Job], *, audience: str = "candidate") -> list[dict]:
     """Candidate -> jobs (E12, for hrc-027): the same `evaluate` over the jobs the caller chose; failed hard filters drop out. The
     candidate audience never sees a salary line (E9)."""

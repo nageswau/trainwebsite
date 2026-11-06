@@ -21,6 +21,7 @@ export type ApplicationFilterState = {
 export const APPLICATION_FILTER_KEYS = ["agency", "counselor", "country", "university", "intake", "stage", "sub_status", "from", "to"] as const;
 export type ApplicationFilterKey = (typeof APPLICATION_FILTER_KEYS)[number];
 export type PortalPayload = {
+  stack?: boolean; // hrc-031 QA-04: DataTable's labelled rows on a phone
   title:string; subtitle:string; metrics:{label:string;value:string|number}[];
   actions:{label:string;href:string}[]; columns:{key:string;label:string;type?:string}[];
   rows:Record<string, unknown>[]; panels:{title:string;items:string[];empty?:string}[]; // itc-024: `empty` -- shown when `items` is empty
@@ -32,7 +33,7 @@ export type PortalPayload = {
 export type BatchFilter = { value: string | null; options: { value: string; label: string }[] };
 // AGN-003 (DEC-SCOPE-044): an agency member's effective optional permissions (GET /auth/me; a Master gets both true).
 export type AgentPermissions = { can_verify_documents: boolean; can_view_reports: boolean };
-export type User = {id:string; email:string; full_name:string; role:string; division:string; phone?:string; student_code?:string|null; profile:Record<string,unknown>; agent_member_role?:"master"|"staff"|null; agent_permissions?:AgentPermissions|null};
+export type User = {id:string; email:string; email_verified?:boolean; full_name:string; role:string; division:string; phone?:string; student_code?:string|null; profile:Record<string,unknown>; agent_member_role?:"master"|"staff"|null; agent_permissions?:AgentPermissions|null};
 
 // AGN-020 (DEC-SCOPE-067; spec §5.3): GET /api/v1/workflows/overseas/agent/crm/reports/{kind} -- one column-driven shape for every report.
 export type AgentReportCell = string | number | null;

@@ -1,4 +1,4 @@
-// pob-020 (DEC-SCOPE-412): the question bank, a requirement's versioned screening form, sessions and comparison. The API decides every
+// pob-020 (DEC-SCOPE-414): the question bank, a requirement's versioned screening form, sessions and comparison. The API decides every
 // rule (S6-S13); these types and helpers only shape what is shown and sent.
 export type Option = { key: string; label: string };
 export type Catalogue = { categories: Option[]; formats: Option[] };

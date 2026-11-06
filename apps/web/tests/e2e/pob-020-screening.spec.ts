@@ -1,6 +1,6 @@
 import { type Browser, expect, type Page, test } from "@playwright/test";
 
-// pob-020 (DEC-SCOPE-412): AC1 a five-question form from the template, AC2 a knock-out after the Team Lead's approval, AC3 kept sessions, AC4 the
+// pob-020 (DEC-SCOPE-414): AC1 a five-question form from the template, AC2 a knock-out after the Team Lead's approval, AC3 kept sessions, AC4 the
 // comparison. The seeded recruiter builds and runs the form; the seeded placement manager approves and reads, and cannot run a session.
 const RECRUITER = "placement@edusphere.local";
 const MANAGER = "placement.manager@edusphere.local";

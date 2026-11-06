@@ -114,6 +114,8 @@ CATALOGUE: dict[str, dict] = {
     # hrc-035 (DEC-SCOPE-396 K7): `erase` -- decides candidates' "delete my data" requests and reads the retention rule (migration 0273).
     "candidates": {"label": "Candidates (export, import, merge, erase)", "actions": ("export", "import", "merge", "erase")},
     "results": {"label": "Interview results", "actions": ("release",)},
+    # hrc-032 (DEC-SCOPE-413 N10): read and retry the recruitment deliveries that failed (the Delivery exceptions page)
+    "notifications": {"label": "Recruitment notifications", "actions": ("retry",)},
     # pob-001 (DEC-SCOPE-403 C2/C4): client commercial terms -- a contract's fee, payment terms, replacement policy and documents, a
     # requirement's fee, and the revenue priced from them. `edit` counts only together with `view`.
     "commercials.client": {"label": "Client commercials (fees, terms, revenue)", "actions": ("view", "edit")},
@@ -142,13 +144,14 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "placement_team": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.import") + _CLIENT_COMMERCIALS,
     # hrc-014 (migration 0256 seeds merge); hrc-008 (DEC-SCOPE-385 V4, migration 0262 seeds publish): who sees a vacancy
     # hrc-020 (DEC-SCOPE-401 X12, migration 0277 seeds it): the Find Candidates export.
+    # hrc-032 (DEC-SCOPE-413 N10, migration 0291 seeds it): the placement manager and the HR Manager handle failed deliveries.
     "placement_manager": _PLACEMENT_REPORTS
-    + ("candidates.compensation.view", "candidates.merge", "jobs.publish", "candidates.import", "candidates.export")
+    + ("candidates.compensation.view", "candidates.merge", "jobs.publish", "candidates.import", "candidates.export", "notifications.retry")
     + _CLIENT_COMMERCIALS,
     # hrc-007 (DEC-SCOPE-380 A12; migration 0257 seeds it): the HR Manager is the vacancy approver.
     # hrc-035 (DEC-SCOPE-396 K7; migration 0273 seeds it): the HR Manager decides candidate deletion requests.
     # hrc-030 (DEC-SCOPE-409 R5; migration 0289 seeds it): the HR Manager publishes interview results.
-    "hr_manager": ("candidates.erase", "jobs.approve", "results.release"),
+    "hr_manager": ("candidates.erase", "jobs.approve", "notifications.retry", "results.release"),
     # pob-001 (DEC-SCOPE-403 C3; migration 0278 seeds it): the assigned BDM keeps reading the company's contract terms (rec-030 R10).
     "bdm": ("commercials.client.view",),
     "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,

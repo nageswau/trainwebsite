@@ -30,19 +30,25 @@ export default function SchoolNotificationList({
   emptyText,
   localTime = false,
   readBeforeOpen = false,
+  typeByTitle = false,
 }: {
   notifications: NotificationItem[];
   emptyText: string;
   localTime?: boolean;
   readBeforeOpen?: boolean;
+  typeByTitle?: boolean; // hrc-031 (DEC-SCOPE-412 P8): an untyped notice's fixed title is its type, so the portals' recruitment notices filter too
 }) {
   const filterId = useId();
   const [type, setType] = useState("");
   if (notifications.length === 0) return <p className="muted">{emptyText}</p>;
   // itc-002: the Type filter appears only once a typed notice is present; a type's title is fixed by the catalogue, so it names the option.
   const types = new Map<string, string>();
-  for (const n of notifications) if (n.event_type && !types.has(n.event_type)) types.set(n.event_type, n.title);
-  const shown = type ? notifications.filter((n) => n.event_type === type) : notifications;
+  const typeOf = (n: NotificationItem) => n.event_type ?? (typeByTitle ? n.title : null);
+  for (const n of notifications) {
+    const key = typeOf(n);
+    if (key && !types.has(key)) types.set(key, n.title);
+  }
+  const shown = type ? notifications.filter((n) => typeOf(n) === type) : notifications;
   return (
     <>
     {types.size > 0 && (

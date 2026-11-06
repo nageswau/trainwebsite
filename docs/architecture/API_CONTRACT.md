@@ -6075,9 +6075,35 @@ the future → 422; set once, a repeat returns it unchanged; `can_edit` 403, out
 contact → 409 "This contact has asked not to be contacted" on `POST /recruiter/messages`, an outgoing `POST /recruiter/calls`, a profile
 share to them, and a meeting create/edit that adds them.
 
-## 12LF. Screening forms, question bank, sessions and comparison (pob-020) — addendum, 2026-11-06
+## 12LF. Candidate portal completion (hrc-031) — addendum, 2026-11-06
 
-`DEC-SCOPE-412`. All under `/api/v1/recruiter`; every route 401 signed out. rec-018's `GET/PUT /applications/{id}/screening` keep their contract;
+`DEC-SCOPE-412`. **New:** `GET /candidate/applications` and `GET /candidate/interviews` (`candidate` or `it_student`, else 403) → a portal
+payload `{title, subtitle, columns, rows, metrics, actions, panels}` of the caller's own records; no id is taken. Application rows:
+`code, role, company, location, status` (the candidate-visible stage), `applied_on` ("06 Nov 2026", IST), `next_action`. Interview rows as
+`GET /portal/it/student/interview-schedule`. **Changed (additive):** `GET /portal/it/student/job-applications` gains the `applied_on` and
+`next_action` columns; `GET /portal/it/student/{results|documents|privacy}` are new header-only sections; `.../notifications` gains a
+"Notification preferences" action; `GET /auth/me` gains `email_verified`. **Widened to `candidate`:** `GET|POST
+/account/candidate-documents`, `GET /account/candidate-documents/{id}/link` (a candidate needs no pool consent; `available: false` when
+archived or merged; someone else's document 404) and `GET /workflows/it/student/offers[/{id}/letter]` (someone else's 404). **Changed:**
+`action_url` of a candidate's new application, result and offer notices is `/it/careers/portal/applications`, and of interview notices
+`/it/careers/portal/interviews`; a student's are unchanged. The application and interview payloads carry `stack: true` (labelled rows on a
+phone). No migration.
+
+## 12LG. Recruitment notifications and delivery exceptions (hrc-032) — addendum, 2026-11-06
+
+`DEC-SCOPE-413`. Both routes need `notifications.retry` (403 otherwise; signed out 401).
+
+- `GET /api/v1/recruiter/notification-exceptions?type=&channel=email|whatsapp|sms&limit=1..100&offset=` → `{items, total, limit, offset, types: [{key, label}]}`.
+  Newest failure first. An item is `{source: "delivery"|"email", id, type, type_label, recipient, channel, error, attempts, failed_at}`; `error` has URLs
+  masked and is null for an email. Never a body, subject or address. An unknown `channel` is 422; an unknown `type` matches nothing.
+- `POST /api/v1/recruiter/notification-exceptions/{source}/{id}/retry` → `{id, source, status: "queued"}`. Out of scope or missing 404; no longer failed
+  409 (a double click sends once). Audited as `notification.retry`.
+- Additive: notices gain event types (`GET /workflows/notifications`' `event_type`). Changed text: `it.application.updated` and
+  `it.interview.result_published` are fixed text (see `DEC-SCOPE-413` N4/N5).
+- Beat: `hrc032-feedback-overdue` and `hrc032-new-matches`, hourly.
+## 12LH. Screening forms, question bank, sessions and comparison (pob-020) — addendum, 2026-11-06
+
+`DEC-SCOPE-414`. All under `/api/v1/recruiter`; every route 401 signed out. rec-018's `GET/PUT /applications/{id}/screening` keep their contract;
 each changed PUT also appends a `legacy` session.
 
 **Bank:** `GET screening/questions?q=&category=&include_archived=&limit=&offset=` → `{items, total, categories, formats}`. `POST screening/questions`

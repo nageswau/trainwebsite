@@ -7,7 +7,7 @@ import RecruiterScreeningSessions from "@/components/RecruiterScreeningSessions"
 import type { FormQuestion, FormRead, ScreeningForm, Session, SessionsRead } from "@/lib/recruiterScreening";
 import { draftBody, draftOf, failedKnockouts } from "@/lib/recruiterScreening";
 
-// pob-020 (DEC-SCOPE-412): what is shown and sent. The server decides every rule; these check the runner, the builder, the approval and
+// pob-020 (DEC-SCOPE-414): what is shown and sent. The server decides every rule; these check the runner, the builder, the approval and
 // the comparison, and how each loading, empty and failed state reads.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const CATALOGUE = {

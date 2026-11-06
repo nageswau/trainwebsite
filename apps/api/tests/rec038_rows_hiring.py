@@ -49,7 +49,7 @@ ROWS = [
     # rec-018 -- screening (§2.75): the readers read, the writers save (the manager and BDM 403 after the scope check)
     R("get", "/recruiter/applications/{application}/screening", **allow(200, *READ), **allow(404, *OUT)),
     R("put", "/recruiter/applications/{application}/screening", {"result": "hold"}, **allow(200, *WRITE), **allow(404, *OUT)),
-    # pob-020 (§2.305): the bank and templates are global to recruiters and Team Leads; the form follows the requirement scope. The world's
+    # pob-020 (§2.307): the bank and templates are global to recruiters and Team Leads; the form follows the requirement scope. The world's
     # requirement has no form, so a form write that passes the checks stops at a stable 4xx (the rows stay independent of each other).
     R("get", "/recruiter/screening/questions", **allow(200, *SCREENING_MANAGERS)),
     R("post", "/recruiter/screening/questions", lambda w: {"category": "technical", "text": tag("R38 question "), "format": "text"}, **allow(201, *SCREENING_MANAGERS)),
@@ -111,12 +111,16 @@ ROWS = [
     R("get", "/recruiter/interview-results/settings", **allow(200, "hr_mgr", "super")),
     R("put", "/recruiter/interview-results/settings", {"auto_release": False}, super=200),
     R("post", "/recruiter/interview-results/{hiring_result}/release", {"candidate_message": "Thank you for your time."}, **allow(200, "hr_mgr", "super")),
+    # hrc-032 (§2.306): the Delivery exceptions are `notifications.retry`'s (hr_manager, placement_manager, super_admin); an id that is not a failed delivery is 404
+    R("get", "/recruiter/notification-exceptions", **allow(200, "hr_mgr", "mgr", "mgr_out", "super")),
+    R("post", "/recruiter/notification-exceptions/{exception_source}/{hiring_result}/retry", {}, **allow(404, "hr_mgr", "mgr", "mgr_out", "super")),
 ]
 # fmt: on
 PATH_VALUES = {}
 
 
 async def build(client, db, w) -> None:
+    w["exception_source"] = "delivery"  # hrc-032
     """On the group's own requirement (rec's, on the world's company): an application in Interview with a scheduled and a completed
     interview, a Selected one without an offer, one with an Offer Received offer and its letter, one with an Accepted offer (joining
     pending) and its proof, the student's own Selected application with an offer and its letter, and a candidate with a resume shared

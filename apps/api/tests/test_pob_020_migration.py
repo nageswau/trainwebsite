@@ -1,4 +1,4 @@
-"""pob-020 -- migration 0291: frozen copies match the models, the default template is seeded, and checklist rows become legacy sessions."""
+"""pob-020 -- migration 0292: frozen copies match the models, the default template is seeded, and checklist rows become legacy sessions."""
 
 import importlib.util
 from pathlib import Path
@@ -24,7 +24,7 @@ from tests.test_rec_017_tracking import _add, _candidate, _requirement, _team
 
 
 def _load():
-    path = Path(__file__).resolve().parents[1] / "alembic" / "versions" / "0291_screening_sessions.py"
+    path = Path(__file__).resolve().parents[1] / "alembic" / "versions" / "0292_screening_sessions.py"
     spec = importlib.util.spec_from_file_location("pob020_migration", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

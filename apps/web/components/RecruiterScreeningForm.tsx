@@ -112,7 +112,7 @@ function ComparisonTable({ requirementId, current }: { requirementId: string; cu
   );
 }
 
-/** pob-020 (DEC-SCOPE-412): the requirement's form -- create from a template, tailor into a new version, a Team Lead's knock-out approval,
+/** pob-020 (DEC-SCOPE-414): the requirement's form -- create from a template, tailor into a new version, a Team Lead's knock-out approval,
  *  and the comparison. Opened on demand so a requirement page that doesn't need it pays nothing. */
 export default function RecruiterScreeningForm({ requirementId }: { requirementId: string }) {
   const [open, setOpen] = useState(false);

@@ -177,7 +177,7 @@ function SessionItem({ session }: { session: Session }) {
   );
 }
 
-/** pob-020 (DEC-SCOPE-412): the application's kept screening sessions and, for a writer on an open application, the runner. The rec-018
+/** pob-020 (DEC-SCOPE-414): the application's kept screening sessions and, for a writer on an open application, the runner. The rec-018
  *  checklist stays below it in the same panel. */
 export default function RecruiterScreeningSessions({ applicationId, candidateName }: { applicationId: string; candidateName: string }) {
   const [data, setData] = useState<SessionsRead | null>(null);

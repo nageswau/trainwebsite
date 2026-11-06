@@ -100,7 +100,7 @@ function TemplateEditor({ catalogue, template, onSaved, onCancel }: { catalogue:
   );
 }
 
-/** pob-020 (DEC-SCOPE-412): the question bank and form templates. Editing here never changes a form that already copied a question. */
+/** pob-020 (DEC-SCOPE-414): the question bank and form templates. Editing here never changes a form that already copied a question. */
 export default function RecruiterScreeningBank() {
   const [bank, setBank] = useState<BankRead | null>(null);
   const [templates, setTemplates] = useState<TemplatesRead | null>(null);

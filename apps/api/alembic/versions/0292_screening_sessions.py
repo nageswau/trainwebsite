@@ -1,7 +1,7 @@
-"""pob-020 -- question bank, versioned forms, screening sessions and answers (DEC-SCOPE-412 S1-S4).
+"""pob-020 -- question bank, versioned forms, screening sessions and answers (DEC-SCOPE-414 S1-S4).
 
-Revision ID: 0291_screening_sessions
-Revises: 0290_contact_status
+Revision ID: 0292_screening_sessions
+Revises: 0291_recruitment_notices
 
 docs/superpowers/specs/2026-11-06-pob-020-screening-forms-design.md. Additive: five new tables. `application_screenings` is not changed; each of
 its rows is copied to one `legacy` session (Q-15, S3). Every step is guarded (0001's `create_all` already builds today's models on a fresh
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0291_screening_sessions"
-down_revision = "0290_contact_status"
+revision = "0292_screening_sessions"
+down_revision = "0291_recruitment_notices"
 branch_labels = None
 depends_on = None
 

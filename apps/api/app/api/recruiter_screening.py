@@ -1,4 +1,4 @@
-"""pob-020 (DEC-SCOPE-412): the question bank, templates, a requirement's screening form, sessions and comparison.
+"""pob-020 (DEC-SCOPE-414): the question bank, templates, a requirement's screening form, sessions and comparison.
 
 A requirement or application id resolves through rec-007's scope (out of scope = 404); every write is one transaction -- role, row lock,
 change, audit, one commit here. Included by app/api/recruiter_applications.py."""

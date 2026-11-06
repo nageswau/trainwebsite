@@ -2385,7 +2385,7 @@ backfilled from existing activity (a non-cancelled meeting → meeting_scheduled
 or share → contacted). **`recruiter_messages`** gains `replied_at` (timestamptz). Status changes are `recruiter_company.contact_status`
 audit rows. The downgrade clears LinkedIn channels and drops the columns.
 
-## Screening forms and sessions (`pob-020`, `DEC-SCOPE-412`; migration `0291_screening_sessions`, after `0290_contact_status`)
+## Screening forms and sessions (`pob-020`, `DEC-SCOPE-414`; migration `0292_screening_sessions`, after `0291_recruitment_notices`)
 
 **`screening_questions`** the bank (category, question, format, choices, evaluation_criteria, expected_answer, active; unique category + lower(question)).
 **`screening_forms`** `job_id` NULL = a template (name unique, case-insensitive), else the requirement's one form; version, knockout_status + approver, is_default, archived_at.

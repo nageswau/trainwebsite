@@ -679,7 +679,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 ### Phase 4: Screening, submission and interviews
 
 #### pob-020: Role-specific screening forms (five questions), question bank and scorecard
-- **Status:** built (`DEC-SCOPE-412`, 2026-11-06); Q-15 answered "yes" and S1–S14 are the builder's calls (`NEEDS_CONFIRMATION`); §10's category names need checking against the source.
+- **Status:** built (`DEC-SCOPE-414`, 2026-11-06); Q-15 answered "yes" and S1–S14 are the builder's calls (`NEEDS_CONFIRMATION`); §10's category names need checking against the source.
 - **Business requirement:** §10 (5 categories + 6 rules); §18 AC "Screening forms support five role-specific questions and recorded answers/scores".
 - **Existing behavior:** one fixed `ApplicationScreening` per application: flags, two ratings, result shortlisted/hold/rejected/need_more_info. It is overwritten on each save. There is no bank, formats, knock-outs or comparison.
 - **Expected behavior:**

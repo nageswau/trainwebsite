@@ -211,6 +211,7 @@ for r in (auth.router, permissions.me_router, public.router, portal.router, admi
     app.include_router(r, prefix="/api/v1")
 app.include_router(recruiter_interviews.interviewer_router, prefix="/api/v1")  # hrc-029 (DEC-SCOPE-405): the panel member's own interviews
 app.include_router(recruiter_interviews.results_router, prefix="/api/v1")  # hrc-030 (DEC-SCOPE-409): result approval and release
+app.include_router(recruiter_interviews.exceptions_router, prefix="/api/v1")  # hrc-032 (DEC-SCOPE-413): delivery exceptions
 # nehn-003 (DEC-SCOPE-279 PS3): no public static mount -- `/local-files/...` is a session-checked compatibility route.
 app.include_router(files.local_router)
 

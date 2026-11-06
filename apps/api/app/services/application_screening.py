@@ -14,7 +14,7 @@ from app.services import applications, candidates
 AUDIT = "recruiter_application.screening"
 LABELS = {"shortlisted": "Shortlisted", "hold": "Hold", "rejected": "Rejected", "need_more_info": "Need More Information"}
 RECOMMENDATION_LABELS = {"pass": "Pass", "hold": "Hold", "reject": "Reject"}  # pob-020: a screening session's recommendation
-LEGACY_RECOMMENDATION = {"shortlisted": "pass", "hold": "hold", "rejected": "reject", "need_more_info": "hold"}  # S3; migration 0291 repeats it
+LEGACY_RECOMMENDATION = {"shortlisted": "pass", "hold": "hold", "rejected": "reject", "need_more_info": "hold"}  # S3; migration 0292 repeats it
 FIELDS = (
     "qualification_verified",
     "experience_verified",

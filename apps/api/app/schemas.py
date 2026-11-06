@@ -179,6 +179,7 @@ class RoleAssignmentOut(BaseModel):
 class UserOut(BaseModel):
     id: UUID
     email: str
+    email_verified: bool = True  # hrc-031 (DEC-SCOPE-412 P10): the Privacy section's contact card
     full_name: str
     role: str
     division: str
@@ -11652,7 +11653,7 @@ class RecScreeningIn(BaseModel):
         return self
 
 
-# --- pob-020 (DEC-SCOPE-412): question bank, forms and screening sessions --------------------------------------------------------------
+# --- pob-020 (DEC-SCOPE-414): question bank, forms and screening sessions --------------------------------------------------------------
 SCREENING_FORM_QUESTION_LIMIT = 20
 _RecScreeningChoice = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 _RecScreeningText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]

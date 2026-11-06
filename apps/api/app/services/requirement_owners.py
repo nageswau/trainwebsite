@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.models import AuditLog, Job, JobAssignment, JobAssignmentHistory, RecruiterProfile, User
+from app.notifications.events import notify
 from app.services.recruiter import ROLE
 from app.services.recruiter_companies import person
 
@@ -30,6 +31,19 @@ NOT_OWNER = "This person is not an owner of this requirement"
 def jobs_of(*user_condition):
     """The ids of the jobs the matching users are assignees of -- the scope join (index `(user_id, job_id)`)."""
     return select(JobAssignment.job_id).where(*user_condition)
+
+
+async def people(db: AsyncSession, job: Job, *, also: tuple = (), without: tuple = ()) -> list[User]:
+    """hrc-009/hrc-032: who a notice about this vacancy goes to -- its primary and assignees, `also` these, never `without` these."""
+    assignees = (await db.scalars(select(JobAssignment.user_id).where(JobAssignment.job_id == job.id))).all()
+    ids = {job.assigned_recruiter_user_id, *assignees, *also} - {None, *without}
+    return list((await db.scalars(select(User).where(User.id.in_(ids)))).all())
+
+
+async def notify_assigned(db: AsyncSession, actor: User | None, job: Job, target_id: UUID) -> None:
+    """hrc-032 (N3): the person now on the vacancy, unless they did it themselves."""
+    if actor is None or target_id != actor.id:
+        await notify(db, [await db.get(User, target_id)], "it.requirement.assigned", job.id, action_url=f"/recruiter/requirements/{job.id}")
 
 
 def _record(db: AsyncSession, job_id: UUID, user_id: UUID, role: str, action: str, actor: User | None, reason: str | None = None) -> None:
@@ -56,6 +70,7 @@ async def set_primary(db: AsyncSession, actor: User, job: Job, target_id: UUID) 
         job.backup_owner_user_id = None
     job.assigned_recruiter_user_id = target_id
     _record(db, job.id, target_id, "primary", "added", actor, "reassign")
+    await notify_assigned(db, actor, job, target_id)
 
 
 def _eligible_users(role: str) -> list:

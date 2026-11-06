@@ -1,4 +1,4 @@
-"""pob-020 -- question bank, requirement forms, screening sessions, scorecard and comparison (DEC-SCOPE-412 S1-S14,
+"""pob-020 -- question bank, requirement forms, screening sessions, scorecard and comparison (DEC-SCOPE-414 S1-S14,
 docs/superpowers/specs/2026-11-06-pob-020-screening-forms-design.md). Names are unique per test (the database is shared)."""
 
 import uuid

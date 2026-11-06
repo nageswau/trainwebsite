@@ -3930,7 +3930,23 @@ are counted). Logging a reply needs `can_edit` on the message's company (out of 
 the company's readers'. Do Not Contact refuses outreach for every role. No new grant. Pinned by
 `apps/api/tests/test_pob_005_contact_status.py` and the rec-038 rows.
 
-### 2.305 Screening forms, bank, sessions and comparison *(added 2026-11-06 — `DEC-SCOPE-412`, pob-020)*
+### 2.305 Candidate portal sections *(added 2026-11-06 — `DEC-SCOPE-412`, hrc-031)*
+
+`candidate` and `it_student` read their own applications, interviews, results, offers, documents and notifications; other roles get 403. No
+route lists anyone else's record, and an id that is not the caller's answers 404. A candidate portal page refuses every other role, and the
+student portal refuses a candidate. No new grant. Pinned by `apps/api/tests/test_hrc_031_portal.py` and
+`apps/web/tests/e2e/hrc-031-portal-completion.spec.ts`.
+
+### 2.306 Delivery exceptions *(added 2026-11-06 — `DEC-SCOPE-413`, hrc-032)*
+
+| Action | super_admin | hr_manager | placement_manager | others |
+|---|---|---|---|---|
+| Read failed recruitment deliveries (`notifications.retry`) | ✓ | ✓ | ✓ | 403 |
+| Retry one (`notifications.retry`) | ✓ | ✓ | ✓ | 403 |
+
+Default holders, editable like every catalogue key. Deliveries of notices from outside recruitment are not listed for anyone and answer 404.
+`/recruiter/notifications` reads only the caller's own notices.
+### 2.307 Screening forms, bank, sessions and comparison *(added 2026-11-06 — `DEC-SCOPE-414`, pob-020)*
 
 | Action | placement_team | placement_manager (Team Lead) | super_admin | assigned BDM | everyone else |
 |---|---|---|---|---|---|
