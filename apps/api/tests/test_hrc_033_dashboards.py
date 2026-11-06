@@ -575,7 +575,8 @@ async def test_export_needs_the_download_grant(client, db_session):
     assert (await client.put("/api/v1/admin/roles/hr_manager/permissions", json={"permissions": kept})).status_code == 200
     try:
         await as_role(client, db_session, "hr_manager", "it")
-        assert (await client.get(f"{URL}/vacancy")).status_code == 200
+        read = await client.get(f"{URL}/vacancy")
+        assert read.status_code == 200 and read.json()["can_download"] is False
         assert (await client.get(f"{URL}/vacancy.csv")).status_code == 403
     finally:
         await as_role(client, db_session, "super_admin", "global")

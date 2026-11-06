@@ -12,6 +12,7 @@ export type ManagementSnapshot = { as_of: string; kpis: ManagementKpi[] };
 
 export const MANAGEMENT_HOME = "/management";
 export const MANAGEMENT_PAYMENTS_NAV: NavItem = { label: "Payments", href: "/management/payments", resource: "payments" };
+export const MANAGEMENT_RECRUITMENT_DASHBOARDS_NAV: NavItem = { label: "Recruitment dashboards", href: "/recruiter/recruitment-dashboards", resource: "reports.recruitment" };
 // itc-017 (DEC-SCOPE-368 F2): the IT fee accounts workspace, grant-driven like Payments.
 export const MANAGEMENT_IT_ACCOUNTS_NAV: NavItem = { label: "IT fee accounts", href: "/management/it-accounts", resource: "payments" };
 export const MANAGEMENT_IT_REPORTS_NAV: NavItem = { label: "IT reports", href: "/management/it-reports" };
@@ -70,7 +71,9 @@ export function managementNavFor(tiers: ManagementTiers, pillars: ManagementPill
   // itc-032 (DEC-SCOPE-369 R4/R6): the IT reports are an operational pillar entry; a finance-only caller (the accountant) reads their Revenue
   // tab, so the link is added for them here (the page opens the first report the API lists for the caller).
   if (!tiers.operational && tiers.finance) payments.push(MANAGEMENT_IT_REPORTS_NAV);
-  return [{ label: "Command Center", href: MANAGEMENT_HOME }, { label: "Management activity", href: MANAGEMENT_ACTIVITY }, ...live, ...payments, ...myTasks];
+  // hrc-033 (DEC-SCOPE-413): grant-driven like Payments, and not a Command Center pillar: it lives with the recruitment screens.
+  const dashboards = tiers.operational ? [MANAGEMENT_RECRUITMENT_DASHBOARDS_NAV] : [];
+  return [{ label: "Command Center", href: MANAGEMENT_HOME }, { label: "Management activity", href: MANAGEMENT_ACTIVITY }, ...live, ...dashboards, ...payments, ...myTasks];
 }
 
 // mgmt-002 (DEC-SCOPE-187 MA5-MA7): GET /management/activity. The API lists only the kinds the caller's tier may see and returns the

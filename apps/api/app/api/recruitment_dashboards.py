@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.agent_reports import NO_STORE, export_response
-from app.api.deps import require_permission
+from app.api.deps import require_permission, user_has_grant
 from app.core.database import get_db
 from app.models import AuditLog, User
 from app.services import recruitment_dashboards as svc
@@ -59,7 +59,8 @@ async def board_xlsx(board: BoardKey, filters: Filters, user: User = Depends(_DO
 @router.get("/{board}")
 async def board_figures(response: Response, board: BoardKey, filters: Filters, user: User = Depends(_READ), db: AsyncSession = Depends(get_db)):
     response.headers.update(NO_STORE)
-    return await svc.dashboard(db, user, board, *filters, await db_now(db))
+    data = await svc.dashboard(db, user, board, *filters, await db_now(db))
+    return {**data, "can_download": await user_has_grant(db, user, "reports.recruitment", "download")}
 
 
 @router.get("/{board}/drill/{figure}")

@@ -3936,3 +3936,12 @@ the company's readers'. Do Not Contact refuses outreach for every role. No new g
 route lists anyone else's record, and an id that is not the caller's answers 404. A candidate portal page refuses every other role, and the
 student portal refuses a candidate. No new grant. Pinned by `apps/api/tests/test_hrc_031_portal.py` and
 `apps/web/tests/e2e/hrc-031-portal-completion.spec.ts`.
+
+### 2.306 Operational recruitment dashboards *(added 2026-11-06 — `DEC-SCOPE-413`, hrc-033)*
+
+`reports.recruitment.view` and `.download` are held by default by `placement_team`, `placement_manager`, `hr_manager`, `placement_officer`, `it_admin` and
+`partner`; `super_admin` holds them implicitly. The grant opens the route; the record scope is per role. A recruiter reads their requirements and their
+own plus unassigned candidates; a placement manager the team's requirements and the whole pool; a placement officer only requirements and candidates
+they are officer of on that board, and their assigned ones elsewhere; the rest read everything. A role granted the key with no defined scope gets 403.
+A filter outside the scope reads as zero. Records carry no contact details, compensation or result; `it_admin` and `partner` see candidate codes without
+names. Pinned by `apps/api/tests/test_hrc_033_dashboards.py` and `apps/web/tests/e2e/hrc-033-recruitment-dashboards.spec.ts`.
