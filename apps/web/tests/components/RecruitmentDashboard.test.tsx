@@ -137,6 +137,15 @@ describe("the records behind a figure", () => {
     rendered(undefined, { ...DRILL, total: 0, items: [] });
     expect(screen.getByText("No records for this figure.")).toBeTruthy();
   });
+
+  it("a page past the last record says so and leads back to the first page (QA-A01)", () => {
+    rendered({ ...QUERY, drill: "open", offset: 100000 }, { ...DRILL, total: 5, offset: 100000, items: [] });
+    expect(screen.queryByText("No records for this figure.")).toBeNull();
+    expect(screen.queryByText(/Showing/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "Previous page" })).toBeNull();
+    expect(screen.getByText("This page is past the last record.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Go to the first page" }).getAttribute("href")).not.toContain("offset");
+  });
 });
 
 describe("the page", () => {

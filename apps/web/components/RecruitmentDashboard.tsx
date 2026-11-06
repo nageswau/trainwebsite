@@ -56,8 +56,10 @@ function Records({ board, drill, query }: { board: BoardKey; drill: Drill; query
         <Link className="btn secondary small" href={pageHref(board, { ...query, drill: "", offset: 0 })}>Close records</Link>
       </div>
       <p className="muted">{drill.figure.definition}</p>
-      {drill.items.length === 0 ? (
+      {drill.total === 0 ? (
         <p className="empty">No records for this figure.</p>
+      ) : drill.items.length === 0 ? (
+        <p className="empty">This page is past the last record. <Link href={pageTo(0)}>Go to the first page</Link></p>
       ) : (
         <div className="table-wrap">
           <table className="table compact stack">
@@ -76,7 +78,7 @@ function Records({ board, drill, query }: { board: BoardKey; drill: Drill; query
           </table>
         </div>
       )}
-      {drill.total > drill.items.length && (
+      {drill.items.length > 0 && drill.total > drill.items.length && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: 12 }}>
           <span className="muted">Showing {drill.offset + 1}–{drill.offset + drill.items.length} of {formatCount(drill.total)}</span>
           {hasPrevious && <Link className="btn secondary small" href={pageTo(Math.max(0, drill.offset - PAGE_SIZE))}>Previous page</Link>}
