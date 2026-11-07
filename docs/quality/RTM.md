@@ -1823,4 +1823,6 @@ half.
 | `pob-023-AC4` | A LinkedIn copy is logged (ids only), and is not a message | `::test_a_linkedin_copy_is_logged_without_its_text_and_is_not_a_message`; vitest `CopyComposer`; e2e |
 | `pob-023-AC5` | A calling script shows its steps | `::test_a_calling_script_keeps_and_renders_its_steps`, `::test_invalid_governed_templates_are_422`; vitest `CopyComposer` |
 | `pob-023-E2` | A copy for a Do Not Contact person is refused and not logged (pob-005 D6) | `::test_a_do_not_contact_person_cannot_be_copied_for` |
+| `pob-023-E3` | A blank language on an edit is the default, and a null message is a sentence, never a 500 (QA-06) | `::test_a_blank_language_on_an_edit_is_the_default_as_on_create`, `::test_a_null_message_on_an_edit_is_a_sentence` |
+| `pob-023-E4` | A requirement's Messages follow the company: hidden outside its scope, written on its `can_edit` (QA-07) | vitest `RecruiterTemplateGovernance` "the requirement page's messages" |
 | `pob-023-E1` | An archived template referenced in old logs still renders its name | `::test_an_archived_template_keeps_its_name_in_the_log_and_sending_bumps_last_used`; `test_pob_023_migration.py` |

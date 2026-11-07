@@ -131,6 +131,8 @@ async def update_template(template_id: UUID, payload: dict = Body(...), user: Us
     if changes.pop("visibility", None) not in (None, "personal" if template.owner_user_id else "shared"):
         raise HTTPException(422, "Visibility cannot be changed")
     active = changes.pop("active", None)
+    if "language" in changes:
+        changes["language"] = changes["language"] or "English"  # G3: blank is the default, as on create
     if changes:
         svc.require_right(user, template, "can_edit")
     if active is not None and active != template.active:

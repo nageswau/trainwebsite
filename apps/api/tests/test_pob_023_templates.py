@@ -178,6 +178,25 @@ async def test_invalid_governed_templates_are_422(client, db_session, body, deta
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("blank", [None, "   "])
+async def test_a_blank_language_on_an_edit_is_the_default_as_on_create(client, db_session, blank):
+    """QA-06: `language` is required in the table, so a cleared value is English rather than a 500."""
+    await login(client, await make_pm(db_session))
+    created = await _create(client, wa_body(language="Hindi"))
+    response = await client.patch(f"{TEMPLATES}/{created['id']}", json={"language": blank})
+    assert response.status_code == 200, response.text
+    assert (response.json()["language"], response.json()["version"]) == ("English", 2)
+
+
+@pytest.mark.asyncio
+async def test_a_null_message_on_an_edit_is_a_sentence(client, db_session):
+    await login(client, await make_pm(db_session))
+    created = await _create(client, wa_body())
+    response = await client.patch(f"{TEMPLATES}/{created['id']}", json={"body": None})
+    assert response.status_code == 422 and response.json()["detail"] == "Message is required", response.text
+
+
+@pytest.mark.asyncio
 async def test_the_library_filters_by_category_status_language_and_mine(client, db_session):
     manager, recruiter, _ = await _team(client, db_session)
     await login(client, recruiter)

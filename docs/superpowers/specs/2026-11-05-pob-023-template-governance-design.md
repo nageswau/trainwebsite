@@ -61,7 +61,7 @@ a logged copy-to-clipboard mode.
 - **G12 Composer everywhere:**
   - Company page: the contact picker, which covers the contact screen.
   - Candidate page.
-  - Requirement page: contacts at its company, with `job_id` context. This also covers the submissions listed there.
+  - Requirement page: contacts at its company, with `job_id` context. This also covers the submissions listed there. The section follows the company: hidden for a caller outside the company's scope (an assignee or backup owner), and writing needs the company's `can_edit`.
   - Interview item: the candidate, with `interview_id` context.
   - LinkedIn and calling buttons appear only in the recruiter sections; the shared `MessagesSection` gets an opt-in prop.
 

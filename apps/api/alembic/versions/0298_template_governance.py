@@ -73,7 +73,7 @@ UPDATE {T} t SET category = CASE
     WHEN kind IN ({', '.join(repr(k) for k in CANDIDATE_EMAIL_KINDS)}) THEN 'candidate'
     ELSE 'company' END
 WHERE NOT EXISTS (SELECT 1 FROM recruiter_template_versions v WHERE v.template_id = t.id)
-"""  # rows from before 0286 (no version yet), including 0120's seed on a fresh database
+"""  # rows from before this migration (no version yet), including 0120's seed on a fresh database
 # G7: v1 of every row that has no version yet -- the content keys of services/recruiter_messages.VERSIONED
 BACKFILL_VERSIONS = f"""
 INSERT INTO recruiter_template_versions (id, template_id, version, content, edited_by_user_id, created_at)

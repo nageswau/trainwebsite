@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import RecruiterMessages from "@/components/RecruiterMessages";
+import RecruiterRequirementMessages from "@/components/RecruiterRequirementMessages";
 import RecruiterTemplateLibrary from "@/components/RecruiterTemplateLibrary";
 import type { GovernedTemplate } from "@/lib/recruiterMessages";
 
@@ -35,6 +36,48 @@ beforeEach(() => push.mockReset());
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+});
+
+describe("pob-023 the requirement page's messages (QA-07)", () => {
+  const company = (can_edit: boolean) => ({ company: { id: "co1", permissions: { can_edit } } });
+
+  it("shows nothing when the company is outside the caller's scope", async () => {
+    const calls = serve((url) => (url.endsWith("/companies/co1") ? res({ detail: "Company not found" }, 404) : res(page([]))));
+    const { container } = render(<RecruiterRequirementMessages companyId="co1" jobId="j1" />);
+    await waitFor(() => expect(calls.some((c) => c.url.endsWith("/companies/co1"))).toBe(true));
+    await waitFor(() => expect(container.textContent).toBe(""));
+    expect(calls.filter((c) => c.url.includes("/messages") || c.url.includes("/contacts"))).toEqual([]);
+  });
+
+  it("offers the composer on the company's write right, not the requirement's", async () => {
+    serve((url) => {
+      if (url.endsWith("/companies/co1")) return res(company(true));
+      if (url.includes("/contacts")) return res(contacts);
+      return res(page([]));
+    });
+    render(<RecruiterRequirementMessages companyId="co1" jobId="j1" />);
+    expect(await screen.findByRole("button", { name: "LinkedIn message" })).toBeTruthy();
+  });
+
+  it("is read-only for a caller who reads the company but cannot write to it", async () => {
+    serve((url) => (url.endsWith("/companies/co1") ? res(company(false)) : res(page([]))));
+    render(<RecruiterRequirementMessages companyId="co1" jobId="j1" />);
+    expect(await screen.findByRole("heading", { name: "Messages" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "LinkedIn message" })).toBeNull();
+  });
+
+  it("says so and retries when the company cannot be loaded", async () => {
+    let up = false;
+    serve((url) => {
+      if (url.endsWith("/companies/co1")) return up ? res(company(false)) : res({}, 500);
+      return res(page([]));
+    });
+    render(<RecruiterRequirementMessages companyId="co1" jobId="j1" />);
+    expect(await screen.findByText("Unable to load the messages.")).toBeTruthy();
+    up = true;
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByRole("heading", { name: "Messages" })).toBeTruthy();
+  });
 });
 
 describe("pob-023 copy mode (G10/G11)", () => {

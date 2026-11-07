@@ -12262,16 +12262,16 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Builder's calls:**
   - G1: no SMS (no integration).
   - G2: category backfill by kind.
-  - G3: metadata limits.
+  - G3: metadata limits; a blank language is "English", on an edit as on create.
   - G4: `status` replaces `active` (kept as a view; PATCH `active` approves or archives); restore → draft.
   - G5: visibility is fixed at create; a manager's shared template is approved at once.
-  - G6: who edits, approves and archives.
+  - G6: who edits, approves and archives. `placement_officer` (pob-001 C1) has no template access: the role has no company or candidate scope to message (hrc-006 O5). `NEEDS_CONFIRMATION` when the officer's candidate access arrives.
   - G7: versions on content only.
   - G8: `{snake_case}` placeholders (`{{PackageRange}}` = `{package_range}`).
   - G9: context scope.
   - G10: a copy is an audit row, not a message. pob-005 D6 applies: a copy for a Do Not Contact person is refused (409).
   - G11: the preview comes before send or copy (UI).
-  - G12: the screens.
+  - G12: the screens. A requirement page's Messages section follows the company, not the requirement: it is hidden for a caller outside the company's scope (an assignee or backup owner), and writing needs the company's `can_edit`.
 - **Not built:**
   - SMS.
   - Merging the UPC/overseas libraries.
