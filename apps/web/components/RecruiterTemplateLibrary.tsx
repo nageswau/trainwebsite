@@ -39,7 +39,7 @@ function TemplateFields({ prefix, channel, onChannel, initial, disabled, approve
   const unknown = unknownPlaceholders(`${body}\n${channel === "call" ? steps : ""}`, GOVERNED_PLACEHOLDER_KEYS);
   const kinds = channel === "whatsapp" || channel === "email" ? KINDS[channel] : null;
   return (
-    <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))" }}>
+    <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(min(14rem, 100%), 1fr))" }}>
       {onChannel ? (
         <div className="field">
           <label htmlFor={id("channel")}>Channel (required)</label>
@@ -139,7 +139,7 @@ function TemplateRow({ row, approver, onChanged }: { row: GovernedTemplate; appr
   if (editing) {
     return (
       <tr>
-        <td colSpan={6}>
+        <td colSpan={6} className="template-full">
           <form className="form" aria-describedby={`${id}-error`} onKeyDown={(e) => { if (e.key === "Escape") setEditing(false); }}
             onSubmit={(e) => { e.preventDefault(); void act(templateUrl(row.id), "PATCH", formBody(new FormData(e.currentTarget), row.channel, false), `Saved ${row.name}.`); }}>
             <TemplateFields prefix={`${id}-f`} channel={row.channel} initial={row} disabled={busy} approver={approver} />
@@ -159,20 +159,24 @@ function TemplateRow({ row, approver, onChanged }: { row: GovernedTemplate; appr
     <>
       <tr>
         <td data-label="Name">
-          <strong style={{ overflowWrap: "anywhere" }}>{row.name}</strong>
-          {row.purpose && <div className="muted" style={{ fontSize: 13, ...TEXT }}>{row.purpose}</div>}
-          <div className="muted" style={{ fontSize: 12 }}>{row.language}{row.industry ? ` · ${row.industry}` : ""}{row.role_type ? ` · ${row.role_type}` : ""}</div>
+          <div>
+            <strong style={{ overflowWrap: "anywhere" }}>{row.name}</strong>
+            {row.purpose && <div className="muted" style={{ fontSize: 13, ...TEXT }}>{row.purpose}</div>}
+            <div className="muted" style={{ fontSize: 12 }}>{row.language}{row.industry ? ` · ${row.industry}` : ""}{row.role_type ? ` · ${row.role_type}` : ""}</div>
+          </div>
         </td>
         <td data-label="Channel">{templateChannelLabel(row.channel)}{kind}</td>
         <td data-label="Category">{categoryLabel(row.category)}</td>
         <td data-label="Status">
-          <span className="badge">{STATUS_LABEL[row.status]}</span>{row.visibility === "personal" && <> <span className="badge">Personal</span></>}
+          <div><span className="badge">{STATUS_LABEL[row.status]}</span>{row.visibility === "personal" && <> <span className="badge">Personal</span></>}</div>
         </td>
         <td data-label="Version">
-          v{row.version}
-          <div className="muted" style={{ fontSize: 12 }}>
-            {row.updated_by ? `by ${row.updated_by.full_name}` : "seeded"}
-            {row.last_used_at ? <> · used <LocalTime value={row.last_used_at} /></> : " · never used"}
+          <div>
+            v{row.version}
+            <div className="muted" style={{ fontSize: 12 }}>
+              {row.updated_by ? `by ${row.updated_by.full_name}` : "seeded"}
+              {row.last_used_at ? <> · used <LocalTime value={row.last_used_at} /></> : " · never used"}
+            </div>
           </div>
         </td>
         <td data-label="Actions">
@@ -193,7 +197,7 @@ function TemplateRow({ row, approver, onChanged }: { row: GovernedTemplate; appr
       </tr>
       {panel && (
         <tr>
-          <td colSpan={6}>
+          <td colSpan={6} className="template-full">
             {panel.data === "loading" ? <p className="muted" role="status">Loading…</p>
               : panel.data === "failed" ? <p className="form-error" role="alert">Unable to load the {panel.kind === "preview" ? "preview" : "versions"}.</p>
               : panel.kind === "preview" && !Array.isArray(panel.data) ? (
@@ -280,12 +284,12 @@ export default function RecruiterTemplateLibrary({ approver }: { approver: boole
     <>
       <form className="action-card form" onSubmit={create} aria-labelledby="tpl-create-heading">
         <h3 id="tpl-create-heading">Add a template</h3>
-        <TemplateFields key={`${formKey}-${channel}`} prefix="tpl-new" channel={channel} onChannel={setChannel} disabled={busy} approver={approver} />
+        <TemplateFields key={formKey} prefix="tpl-new" channel={channel} onChannel={setChannel} disabled={busy} approver={approver} />
         <div><button className="btn" disabled={busy}>{busy ? "Adding…" : "Add template"}</button></div>
         <div role="status" aria-live="polite" className={feedback ? (feedback.error ? "form-error" : "form-message") : undefined} style={{ overflowWrap: "anywhere" }}>{feedback?.text}</div>
       </form>
 
-      <section className="action-card wide" aria-labelledby="tpl-list-heading" style={{ display: "grid", gap: 8 }}>
+      <section className="action-card wide template-library" aria-labelledby="tpl-list-heading" style={{ display: "grid", gap: 8 }}>
         <h3 id="tpl-list-heading" style={{ margin: 0 }}>Templates</h3>
         <form role="search" aria-label="Filter templates" style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "end" }}
           onSubmit={(e) => { e.preventDefault(); go({ q: String(new FormData(e.currentTarget).get("q") ?? "").trim() }); }}>
@@ -318,11 +322,13 @@ export default function RecruiterTemplateLibrary({ approver }: { approver: boole
           <div><p className="form-error" role="alert">Unable to load the templates.</p><button type="button" className="btn secondary small" onClick={() => setVersion((v) => v + 1)}>Retry</button></div>
         ) : data === null ? (
           <p className="muted" role="status">Loading templates…</p>
+        ) : data.items.length === 0 && offset > 0 ? (
+          <div><p className="muted">There are no templates on this page.</p><button type="button" className="btn secondary small" onClick={() => go({})}>Back to the first page</button></div>
         ) : data.items.length === 0 ? (
           <p className="muted">{Object.values(filters).some(Boolean) ? "No templates match these filters." : "No templates yet. Add the first one above."}</p>
         ) : (
           <div className="table-wrap" role="region" aria-label="Templates" tabIndex={0}>
-            <table>
+            <table className="table stack compact">
               <thead><tr><th>Name</th><th>Channel</th><th>Category</th><th>Status</th><th>Version</th><th>Actions</th></tr></thead>
               <tbody>{data.items.map((t) => <TemplateRow key={`${t.id}-${t.version}-${t.status}`} row={t} approver={approver} onChanged={changed} />)}</tbody>
             </table>

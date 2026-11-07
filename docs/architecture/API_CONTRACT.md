@@ -6211,7 +6211,8 @@ write `apply_start` and `apply_submit`. Their requests and responses are unchang
   purpose, language, department, industry, role_type}], total}`, newest first.
 - `POST /recruiter/messages/copies`:
   - Body `{channel: linkedin|call, template_id, contact_id | candidate_id}` → 201 `{template_id, channel, copied_at}`.
-  - The send's party rules apply (scope 404, right 403, state 409). A template that is not usable or of another channel is 422.
+  - The send's party rules apply (scope 404, right 403, state 409, and pob-005's Do Not Contact 409). A template that is not usable or of
+    another channel is 422.
   - It writes an audit row `recruiter_template.copy` (ids only) and is not a message: no last-contacted change, no cap.
 
 Audit actions `recruiter_template.approve|archive|restore|copy`.

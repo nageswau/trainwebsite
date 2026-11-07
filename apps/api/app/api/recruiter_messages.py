@@ -42,7 +42,7 @@ def _taken(channel: str, name: str) -> str:
     return f"{svc.CHANNEL_NOUN[channel]} template named “{name}” already exists"  # QA-01
 
 
-# --- templates (MS1-MS3) --------------------------------------------------------------------------------------------------------
+# --- templates (MS1-MS3; pob-023 G1-G7) -----------------------------------------------------------------------------------------
 async def _flush_name(db: AsyncSession, template) -> None:
     """The unique indexes decide a duplicate name (shared per channel, personal per author and channel), even under a race."""
     try:
@@ -60,7 +60,6 @@ async def _one_out(db: AsyncSession, user: User, template) -> dict:
     return (await svc.templates_out(db, user, [template]))[0]
 
 
-# --- templates (MS1-MS3; pob-023 G1-G7) -----------------------------------------------------------------------------------------
 @router.get("/templates")
 async def list_templates(
     channel: RecTemplateChannel | None = None,

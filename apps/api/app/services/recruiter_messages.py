@@ -100,10 +100,6 @@ def require_template_writer(user: User) -> None:
         raise HTTPException(403, "Your role cannot change the recruiter message templates")
 
 
-def sees_inactive(user: User) -> bool:
-    return user.role in APPROVERS
-
-
 # --- governance (pob-023 G4-G6) -------------------------------------------------------------------------------------------------
 T = RecruiterMessageTemplate
 
@@ -229,9 +225,8 @@ def _person(users: dict, user_id) -> dict | None:
     return {"id": person.id, "full_name": person.full_name} if person else None
 
 
-def template_out(template: RecruiterMessageTemplate, user: User | None = None, users: dict | None = None) -> dict:
+def template_out(template: RecruiterMessageTemplate, user: User, users: dict) -> dict:
     """rec-026's fields plus pob-023's; `users` maps the authors' ids to rows (one query per page, see `templates_out`)."""
-    users = users or {}
     out = {k: getattr(template, k) for k in ("id", "channel", "kind", "name", "subject", "body", "active", "category", "purpose", "language")}
     out |= {k: getattr(template, k) for k in ("department", "industry", "role_type", "status", "steps", "version", "created_at", "updated_at", "last_used_at")}
     out |= {
@@ -239,7 +234,7 @@ def template_out(template: RecruiterMessageTemplate, user: User | None = None, u
         "created_by": _person(users, template.created_by_user_id),
         "updated_by": _person(users, template.updated_by_user_id),
     }
-    return out | (rights(user, template) if user else {})
+    return out | rights(user, template)
 
 
 async def templates_out(db: AsyncSession, user: User, templates: list[RecruiterMessageTemplate]) -> list[dict]:

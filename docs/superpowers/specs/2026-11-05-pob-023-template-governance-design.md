@@ -54,7 +54,7 @@ a logged copy-to-clipboard mode.
 - **G9 Context scope:** `job_id` goes through the requirement scope (404). For a contact, the job must be at the contact's company (404).
   `interview_id` goes through the application scope (404). It must be the candidate's own interview, or one at the contact's company.
 - **G10 Copy mode:** LinkedIn and call templates are not sent. `POST /recruiter/messages/copies` records a copy and needs write on the
-  party: the same lock, scope and inactive rules as a send. It writes an audit row `recruiter_template.copy` (ids only, never the text)
+  party: the same lock, scope, inactive and (pob-005 D6) Do Not Contact rules as a send. It writes an audit row `recruiter_template.copy` (ids only, never the text)
   and bumps `last_used_at`. Copies are not messages, so they never change last-contacted or the caps.
 - **G11 Human review:** the composer renders the text into an editable preview first. Send, Open WhatsApp and Copy exist only once a
   preview is shown; the existing composers already work this way, and the new copy composer follows. The server cannot check this.

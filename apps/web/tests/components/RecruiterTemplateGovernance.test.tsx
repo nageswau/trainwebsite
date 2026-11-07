@@ -6,7 +6,8 @@ import RecruiterTemplateLibrary from "@/components/RecruiterTemplateLibrary";
 import type { GovernedTemplate } from "@/lib/recruiterMessages";
 
 const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }), usePathname: () => "/recruiter/templates", useSearchParams: () => new URLSearchParams() }));
+const search = vi.hoisted(() => ({ value: "" }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }), usePathname: () => "/recruiter/templates", useSearchParams: () => new URLSearchParams(search.value) }));
 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const page = (items: unknown[]) => ({ items, total: items.length, limit: 25, offset: 0 });
@@ -118,6 +119,36 @@ describe("pob-023 RecruiterTemplateLibrary", () => {
     const body = JSON.parse(String(posts(calls)[0].init?.body));
     expect(body).toMatchObject({ channel: "linkedin", category: "linkedin", name: "Connect note", body: "Hi {name}", visibility: "shared", language: "English" });
     expect(body.kind).toBeUndefined();
+  });
+
+  it("keeps what was typed when the channel changes (QA-02)", async () => {
+    serve(() => res(page([])));
+    render(<RecruiterTemplateLibrary approver={false} />);
+    await screen.findByText("No templates yet. Add the first one above.");
+    fireEvent.change(screen.getByLabelText("Template name (required)"), { target: { value: "Connect note" } });
+    fireEvent.change(screen.getByLabelText("Purpose"), { target: { value: "First touch" } });
+    fireEvent.change(screen.getByLabelText("Message (required)"), { target: { value: "Hi {name}" } });
+    fireEvent.change(screen.getByLabelText("Channel (required)"), { target: { value: "linkedin" } });
+    expect((screen.getByLabelText("Template name (required)") as HTMLInputElement).value).toBe("Connect note");
+    expect((screen.getByLabelText("Purpose") as HTMLInputElement).value).toBe("First touch");
+    expect((screen.getByLabelText("Message (required)") as HTMLTextAreaElement).value).toBe("Hi {name}");
+    expect((screen.getByLabelText("Category (required)") as HTMLSelectElement).value).toBe("linkedin"); // still follows the channel
+  });
+
+  it("uses the shared stacking table, so a row's actions stay on a phone screen (QA-01)", async () => {
+    serve(() => res(page([tpl()])));
+    render(<RecruiterTemplateLibrary approver={false} />);
+    expect((await screen.findByRole("table")).className).toBe("table stack compact");
+  });
+
+  it("offers the way back from a page past the end, and doesn't claim the library is empty (QA-03)", async () => {
+    search.value = "offset=99999";
+    serve(() => res({ items: [], total: 16, limit: 25, offset: 99999 }));
+    render(<RecruiterTemplateLibrary approver={false} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Back to the first page" }));
+    expect(push).toHaveBeenCalledWith("/recruiter/templates", { scroll: false });
+    expect(screen.queryByText("No templates yet. Add the first one above.")).toBeNull();
+    search.value = "";
   });
 
   it("lets the Team Lead approve a draft and read its versions (AC1, AC2)", async () => {
