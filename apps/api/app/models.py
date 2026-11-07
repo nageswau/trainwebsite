@@ -1650,6 +1650,11 @@ class Interview(Base, TimestampMixin):
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     calendar_sequence: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     overdue_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # hrc-032 (DEC-SCOPE-413 N6): told once
+    # pob-022 (DEC-SCOPE-421 A3-A6): each reminder sent once (re-armed by a reschedule); the feedback chase's follow-up and its escalation
+    first_reminder_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    second_reminder_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    chase_follow_up_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_follow_ups.id", ondelete="RESTRICT"), nullable=True)
+    chase_escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class InterviewFeedback(Base, TimestampMixin):
@@ -1789,6 +1794,32 @@ class ResultReleaseSetting(Base, TimestampMixin):
     __tablename__ = "result_release_settings"
     id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
     auto_release: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+# pob-022 (DEC-SCOPE-421 A2): migration 0301 repeats these (test_pob_022_migration keeps them identical)
+INTERVIEW_AUTOMATION_CHECKS = {
+    "ck_interview_automation_first": "first_reminder_hours IS NULL OR first_reminder_hours BETWEEN 1 AND 168",
+    "ck_interview_automation_second": "second_reminder_hours IS NULL OR second_reminder_hours BETWEEN 1 AND 168",
+    "ck_interview_automation_order": "first_reminder_hours IS NULL OR second_reminder_hours IS NULL OR second_reminder_hours < first_reminder_hours",
+    "ck_interview_automation_chase": "chase_after_hours IS NULL OR chase_after_hours BETWEEN 1 AND 720",
+    "ck_interview_automation_escalate": "escalate_after_hours IS NULL OR escalate_after_hours BETWEEN 1 AND 720",
+}
+
+
+class InterviewAutomationSetting(Base, TimestampMixin):
+    """pob-022 (A2): the one global row (id 1, seeded by migration 0301) -- the reminder slots, the feedback chase and its escalation (hours;
+    null switches a step off) and the approved templates they use (null = the fixed text)."""
+
+    __tablename__ = "interview_automation_settings"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in INTERVIEW_AUTOMATION_CHECKS.items())
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    first_reminder_hours: Mapped[int | None] = mapped_column(SmallInteger, nullable=True, default=24, server_default=text("24"))
+    second_reminder_hours: Mapped[int | None] = mapped_column(SmallInteger, nullable=True, default=2, server_default=text("2"))
+    reminder_template_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_message_templates.id", ondelete="RESTRICT"), nullable=True)
+    chase_after_hours: Mapped[int | None] = mapped_column(SmallInteger, nullable=True, default=24, server_default=text("24"))
+    escalate_after_hours: Mapped[int | None] = mapped_column(SmallInteger, nullable=True, default=24, server_default=text("24"))
+    chase_template_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_message_templates.id", ondelete="RESTRICT"), nullable=True)
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
