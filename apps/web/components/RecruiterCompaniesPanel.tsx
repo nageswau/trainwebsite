@@ -70,7 +70,7 @@ function Picker({ id, label, value, all, options, onChange }: { id: string; labe
   );
 }
 
-export default function RecruiterCompaniesPanel({ canCreate, isManager = false }: { canCreate: boolean; isManager?: boolean }) {
+export default function RecruiterCompaniesPanel({ canCreate, isManager = false, canImport = false }: { canCreate: boolean; isManager?: boolean; canImport?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -147,6 +147,7 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false }
       <Link className="btn secondary small" href={`${COMPANIES_PATH}/new`}>
         Add company
       </Link>
+      {canImport && <Link className="btn secondary small" href={`${COMPANIES_PATH}/import`}>Import companies</Link>/* pob-006 */}
     </div>
   );
 

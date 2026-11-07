@@ -127,6 +127,8 @@ CATALOGUE: dict[str, dict] = {
     # email (pob-030's share gate).
     "commercials.vendor": {"label": "Vendor commercials", "actions": ("view", "edit")},
     "candidates.contact": {"label": "Candidate contact details (phone, email)", "actions": ("view",)},
+    # pob-006 (DEC-SCOPE-418 G1): the company and contact import, and merging duplicate companies and contacts.
+    "crm": {"label": "Company CRM (import, merge)", "actions": ("import", "merge")},
 }
 # The day-one grants, equal to the inline checks they replace (P3): admin.ensure_admin and telecaller_reports' REPORT_ROLES.
 # super_admin holds every key implicitly and never has rows (P5). Migration 0196 seeds a frozen copy.
@@ -153,6 +155,7 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "placement_manager": _PLACEMENT_REPORTS
     # hrc-034 (DEC-SCOPE-416 I1, migration 0294 seeds it): the placement manager, the HR Manager and management read the recruitment insights.
     + ("candidates.compensation.view", "candidates.merge", "jobs.publish", "candidates.import", "candidates.export", "notifications.retry", "reports.recruitment_insights.view")
+    + ("crm.import", "crm.merge")  # pob-006 (DEC-SCOPE-418 G1, migration 0297 seeds it): the Team Lead; an authorised recruiter gets a per-user allow
     + _CLIENT_COMMERCIALS
     + _RECRUITMENT_REPORTS,
     # hrc-007 (DEC-SCOPE-380 A12; migration 0257 seeds it): the HR Manager is the vacancy approver.

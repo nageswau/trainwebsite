@@ -26,6 +26,7 @@ import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import type { PickOption } from "@/lib/lookups";
 import { type Company, COMPANIES_PATH, COMPANIES_URL, isCompanyBody, personName, PRIORITY_LABEL, recruiterSearch, safeLink } from "@/lib/recruiterCompanies";
+import { companyMergePath } from "@/lib/recruiterCompanyImport";
 import type { StageEvent } from "@/lib/recruiterPipeline";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
@@ -103,8 +104,8 @@ function Reassign({ company, onChanged }: { company: Company; onChanged: (c: Com
   );
 }
 
-export default function RecruiterCompanyDetail({ initial, created = false, history = null, showRevenue = false }: {
-  initial: Company; created?: boolean; history?: Page<StageEvent> | null; showRevenue?: boolean;
+export default function RecruiterCompanyDetail({ initial, created = false, history = null, showRevenue = false, canMerge = false, merged }: {
+  initial: Company; created?: boolean; history?: Page<StageEvent> | null; showRevenue?: boolean; canMerge?: boolean; merged?: string;
 }) {
   const [company, setCompany] = useState(initial);
   const [version, setVersion] = useState(0);
@@ -235,8 +236,18 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
               {busy ? "Restoring…" : "Restore"}
             </button>
           )}
+          {canMerge && !company.archived && !showEditor && (
+            <Link className="btn secondary small" href={companyMergePath(company.id)}>Merge a duplicate</Link>
+          )}
         </div>
       </div>
+      {company.merged_into && (
+        <p className="form-warning">
+          Merged into <Link href={`${COMPANIES_PATH}/${encodeURIComponent(company.merged_into.id)}`}>{company.merged_into.code} {company.merged_into.name}</Link>. This record is kept for history and cannot be restored.
+        </p>
+      )}
+      {/^CMP-\d+$/.test(merged ?? "") && <p className="form-message" role="status">Merged {merged} into this record.</p>}
+      {merged === "contact" && <p className="form-message" role="status">The duplicate contact was merged.</p>}
       <div id={statusId} tabIndex={-1} role="status" aria-live="polite" className={notice ? "form-message" : undefined}>
         {notice}
       </div>
@@ -273,7 +284,7 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
       {/* Re-keyed on archive/restore (the list's `can_edit` follows the company's state) and on a follow-up, call, meeting or message change
           (each contact's next follow-up and Last contacted). */}
       <RecruiterCompanyBusiness company={company} onSaved={(c, saved) => changed(c, saved ? "Business context saved." : "No changes to save.")} />
-      <RecruiterCompanyContacts key={`${company.id}-${company.archived}-${followUpChanges}-${meetingChanges}-${messageChanges}`} companyId={company.id} />
+      <RecruiterCompanyContacts key={`${company.id}-${company.archived}-${followUpChanges}-${meetingChanges}-${messageChanges}`} companyId={company.id} canMerge={canMerge && !company.archived} />
       <RecruiterCalls key={`calls-${company.id}-${company.archived}`} party={{ kind: "contact", companyId: company.id }} canWrite={p.can_edit}
         onChanged={(result) => {
           if (result?.follow_up_id) setCallFollowUps((n) => n + 1);

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 
 import BdmConfirm from "@/components/BdmConfirm";
@@ -12,6 +13,7 @@ import { formatCalendarDate, formatSchoolDateTime } from "@/lib/formatDate";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
 import { telHref } from "@/lib/recruiterCalls";
 import { safeLink } from "@/lib/recruiterCompanies";
+import { contactMergePath } from "@/lib/recruiterCompanyImport";
 import {
   businessContacts,
   CHANNEL_LABEL,
@@ -129,7 +131,7 @@ function ContactEditor({ companyId, initial, roles, busy, onSave, onCancel }: { 
   );
 }
 
-export default function RecruiterCompanyContacts({ companyId }: { companyId: string }) {
+export default function RecruiterCompanyContacts({ companyId, canMerge = false }: { companyId: string; canMerge?: boolean }) {
   const [list, setList] = useState<ContactList | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [roles, setRoles] = useState<CatalogueValue[]>([]);
@@ -255,6 +257,9 @@ export default function RecruiterCompanyContacts({ companyId }: { companyId: str
                         <button type="button" className="btn secondary small" aria-expanded={open === c.id} aria-controls={`contact-${c.id}-activity`} onClick={() => setOpen(open === c.id ? null : c.id)}>
                           {open === c.id ? "Hide activity" : "Activity"}<span className="visually-hidden"> {c.name}</span>
                         </button>
+                        {canMerge && list.items.length > 1 && (
+                          <Link className="btn secondary small" href={contactMergePath(companyId, c.id)}>Merge a duplicate<span className="visually-hidden"> into {c.name}</span></Link>
+                        )}
                       </div>
                       {open === c.id && (
                         <div id={`contact-${c.id}-activity`}>

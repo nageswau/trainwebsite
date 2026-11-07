@@ -6165,3 +6165,22 @@ otherwise) and only read. `limit` is 1-100, default 50; `offset` is at least 0.
 
 `GET /candidate/jobs` now writes `job_view` events for the cards it returns, and `POST /candidate/jobs/{id}/apply` and `POST /workflows/it/jobs/{id}/apply`
 write `apply_start` and `apply_submit`. Their requests and responses are unchanged.
+
+## 12LK. Company and contact import, and authorised merge (pob-006) — addendum, 2026-11-07
+
+Additive. `GET /recruiter/companies/{id}` gains optional `merged_into` `{id, code, name}`; contact lists omit merged-away contacts. Nothing else changes.
+
+| Route | Body | Result |
+|---|---|---|
+| `GET /recruiter/company-imports/template` | | CSV header row |
+| `POST /recruiter/company-imports/preview` | multipart `file` | 200 counts and `rows`; writes nothing |
+| `POST /recruiter/company-imports` | multipart `file`, `Idempotency-Key` | 201 the report; `replayed: true` for a repeated key or a same file that imported cleanly. 422 bad file, bad key, key reused for another file. 409 another import still running |
+| `GET /recruiter/company-imports` | `limit`, `offset` | own batches; a manager's team's too; super_admin all |
+| `GET /recruiter/company-imports/{id}` | | the report, or 404 |
+| `GET /recruiter/company-imports/{id}/report.csv` | | formula-escaped CSV, or 404 |
+| `GET /recruiter/companies/{id}/merge?victim=CMP-x` | | both sides, `fields`, `moved`, `blocked` |
+| `POST /recruiter/companies/{id}/merge` | `{victim_code, use_victim[], reason?}` | 200 `{id, code, victim_id, victim_code, moved}`. 404 out of scope; 422 self; 409 archived, merged, employer's account, both with a contract in effect |
+| `GET /recruiter/contacts/{id}/merge?victim=<id>` | | both sides, `fields`, `moved` |
+| `POST /recruiter/contacts/{id}/merge` | `{victim_id, use_victim[], reason?}` | 200 `{id, victim_id, company_id, moved}`. 404 out of scope or another company's; 422 self; 409 merged, company archived |
+
+Import routes need `crm.import`, merge routes `crm.merge` (403). A row outcome is `created`, `matched` or `error` (`new` in a preview) with a `reason`.
