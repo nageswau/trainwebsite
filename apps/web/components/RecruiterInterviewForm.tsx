@@ -1,6 +1,7 @@
 "use client";
 import { type ChangeEvent, type FormEvent, useId, useRef, useState } from "react";
 
+import InterviewTemplateSelect from "@/components/InterviewTemplateSelect";
 import ReturnToLoginLink from "@/components/ReturnToLoginLink";
 import StaleRecordNotice from "@/components/StaleRecordNotice";
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
@@ -14,6 +15,7 @@ import {
   durationOf,
   endsAt,
   INSTRUCTIONS_MAX,
+  CONFIRMATION_KIND,
   interviewOf,
   INTERVIEWS_URL,
   interviewUrl,
@@ -65,6 +67,7 @@ export default function RecruiterInterviewForm({ applicationId, interview, draft
   }), (i) => i?.updated_at ?? null, onLatest);
   const { values: v, setValues: setV, opened: start } = guard;
   const [notify, setNotify] = useState(true);
+  const [templateId, setTemplateId] = useState(""); // pob-022 (A1): the confirmation's approved template; "" = the standard text
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false); // QA-01: a fast double click runs submit twice before `busy` re-renders the button disabled
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -83,7 +86,7 @@ export default function RecruiterInterviewForm({ applicationId, interview, draft
   function send(): Promise<SendOutcome> | null {
     if (!interview) {
       const at = istInputToIso(v.start);
-      return sendJson(INTERVIEWS_URL, "POST", { application_id: applicationId, scheduled_at: at, notify, ...details(v, at) });
+      return sendJson(INTERVIEWS_URL, "POST", { application_id: applicationId, scheduled_at: at, notify, ...details(v, at), ...(notify && templateId ? { template_id: templateId } : {}) });
     }
     const opened: Record<string, unknown> = details(start, interview.scheduled_at);
     const changes = Object.fromEntries(Object.entries(details(v, interview.scheduled_at)).filter(([key, value]) => value !== opened[key]));
@@ -222,6 +225,10 @@ export default function RecruiterInterviewForm({ applicationId, interview, draft
         <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
         Notify the candidate{v.contact_id ? " and the contact" : ""}{interview ? " of the changes they can see" : ""}
       </label>
+      {!interview && notify && (
+        <InterviewTemplateSelect id={fid("template_id")} label="Confirmation message" kind={CONFIRMATION_KIND} value={templateId} onChange={setTemplateId}
+          error={errors.template_id} />
+      )}
       <StaleRecordNotice
         guard={guard}
         labelOf={(key) => LABELS[key] ?? key.replace(/_/g, " ")}

@@ -114,6 +114,10 @@ ROWS = [
     # hrc-032 (§2.306): the Delivery exceptions are `notifications.retry`'s (hr_manager, placement_manager, super_admin); an id that is not a failed delivery is 404
     R("get", "/recruiter/notification-exceptions", **allow(200, "hr_mgr", "mgr", "mgr_out", "super")),
     R("post", "/recruiter/notification-exceptions/{exception_source}/{hiring_result}/retry", {}, **allow(404, "hr_mgr", "mgr", "mgr_out", "super")),
+    # pob-022 (§2.313): the interview automation settings are the Team Lead's (placement_manager) and super_admin's; the PUT writes the defaults
+    R("get", "/recruiter/interview-automation/settings", **allow(200, "mgr", "mgr_out", "super")),
+    R("put", "/recruiter/interview-automation/settings", {"first_reminder_hours": 24, "second_reminder_hours": 2, "reminder_template_id": None,
+      "chase_after_hours": 24, "escalate_after_hours": 24, "chase_template_id": None}, **allow(200, "mgr", "mgr_out", "super")),
     # hrc-034 (DEC-SCOPE-416 I1): `reports.recruitment_insights.view` opens the whole-pool reports
     R("get", "/recruiter/recruitment-insights/skill-demand", **allow(200, "hr_mgr", "mgr", "mgr_out", "super")),
     R("get", "/recruiter/recruitment-insights/skill-demand/vacancies", **allow(200, "hr_mgr", "mgr", "mgr_out", "super")),

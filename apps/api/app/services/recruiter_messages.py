@@ -314,6 +314,15 @@ def package_range(job: Job) -> str:
     return f"{job.salary_currency or 'INR'} {amount} a {job.salary_period or 'year'}"
 
 
+def interview_values(interview: Interview) -> dict[str, str]:
+    """G8: an interview's placeholders, in the candidate's time zone (pob-022 reuses them for its confirmation, reminders and chase)."""
+    local = interview.scheduled_at.astimezone(ZoneInfo(interview.time_zone or "Asia/Kolkata"))
+    return {
+        "interview_date": local.strftime("%d %b %Y"), "interview_time": local.strftime("%I:%M %p").lstrip("0"),
+        "interview_mode": interview.mode or "", "interview_link": interview.meeting_url or interview.location or "",
+    }  # fmt: skip
+
+
 async def context_values(db: AsyncSession, user: User, company: Company | None, candidate: Candidate | None, job_id: UUID | None, interview_id: UUID | None) -> dict[str, str]:
     """G8/G9: the values of an optional requirement or interview -- each through its own scope (404), and only for the party it is about:
     a contact's requirement must be at the contact's company; an interview must be the candidate's, or at the contact's company."""
@@ -328,12 +337,7 @@ async def context_values(db: AsyncSession, user: User, company: Company | None, 
             application = None
         if application is None or (candidate and application.candidate_id != candidate.id) or (company and job.company_id != company.id):
             raise HTTPException(404, "Interview not found")
-        interview = await db.get(Interview, interview_id)
-        local = interview.scheduled_at.astimezone(ZoneInfo(interview.time_zone or "Asia/Kolkata"))
-        values |= {
-            "interview_date": local.strftime("%d %b %Y"), "interview_time": local.strftime("%I:%M %p").lstrip("0"),
-            "interview_mode": interview.mode or "", "interview_link": interview.meeting_url or interview.location or "",
-        }  # fmt: skip
+        values |= interview_values(await db.get(Interview, interview_id))
         if candidate is None and application.candidate_id:
             values["candidate"] = await db.scalar(select(Candidate.name).where(Candidate.id == application.candidate_id)) or ""
     elif job_id:

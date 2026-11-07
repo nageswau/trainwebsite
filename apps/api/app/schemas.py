@@ -11934,6 +11934,7 @@ class RecInterviewCreate(BaseModel):
     instructions: _rec_interview_text(2000) = None
     documents_required: _rec_interview_text(1000) = None
     notify: StrictBool = True
+    template_id: UUID | None = None  # pob-022 (DEC-SCOPE-421 A1): an approved interview confirmation template for the notices
 
 
 class RecInterviewUpdate(BaseModel):
@@ -11970,6 +11971,7 @@ class RecInterviewReschedule(BaseModel):
     scheduled_at: BdmApptStart
     reason: _bdm_appt_optional(500) = None
     notify: StrictBool = True
+    template_id: UUID | None = None  # pob-022 A1
 
 
 class RecInterviewCancel(BaseModel):
@@ -12063,6 +12065,21 @@ class InterviewResultRelease(BaseModel):
 class InterviewResultSettingsIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     auto_release: StrictBool
+
+
+# pob-022 (DEC-SCOPE-421 A2): every field is sent (a full replace); null switches a step off or means the fixed text
+ReminderHours = Annotated[StrictInt, Field(ge=1, le=168)] | None
+ChaseHours = Annotated[StrictInt, Field(ge=1, le=720)] | None
+
+
+class InterviewAutomationSettingsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    first_reminder_hours: ReminderHours
+    second_reminder_hours: ReminderHours
+    reminder_template_id: UUID | None
+    chase_after_hours: ChaseHours
+    escalate_after_hours: ChaseHours
+    chase_template_id: UUID | None
 
 
 # --- rec-022 (DEC-SCOPE-155, spec §1/§3): offers ------------------------------------------------------------------------------------

@@ -747,6 +747,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** large. **Risk:** high.
 
 #### pob-022: Interview coordination automation (confirmation, reminders, feedback chase)
+- **Status:** built (`DEC-SCOPE-421`, 2026-11-07; migration `0301_interview_automation`, API §12LN, RBAC §2.313). A1–A10 are the builder's calls (`NEEDS_CONFIRMATION`). The design is in `docs/superpowers/specs/2026-11-07-pob-022-interview-automation-design.md`. The metrics are left to pob-028/029 (A10).
 - **Business requirement:** §12 bullets 3–8; §16 "Interview scheduled → Send approved confirmation/reminder"; "Feedback overdue → Notify the responsible contact owner and manager based on escalation rules".
 - **Existing behavior:** schedule and reschedule notices use hard-coded text. Template kinds exist but are sent by hand. `no_show` is a status. There are no scheduled reminders, no feedback-chase and only the raw `stage_changed_at`.
 - **Expected behavior:**
