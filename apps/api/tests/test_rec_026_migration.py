@@ -51,7 +51,7 @@ def test_models_match_the_migration():
     assert {k: v for k, v in _migration.TEMPLATE_CHECKS.items() if k == "ck_recruiter_message_templates_subject"} == {
         "ck_recruiter_message_templates_subject": RECRUITER_TEMPLATE_CHECKS["ck_recruiter_message_templates_subject"]
     }
-    # pob-007's 0301 revised the channel check and added the LinkedIn one; test_pob_007_migration pins those
+    # pob-007's 0302 revised the channel check and added the LinkedIn one; test_pob_007_migration pins those
     later_checks = {"ck_recruiter_messages_channel", "ck_recruiter_messages_linkedin"}
     assert {k: v for k, v in _migration.MESSAGE_CHECKS.items() if k not in later_checks} == {k: v for k, v in RECRUITER_MESSAGE_CHECKS.items() if k not in later_checks}
     later = {"calendar_ics", "replied_at", "linkedin_action", "outcome", "follow_up_id"}  # hrc-028, pob-005 and pob-007 columns

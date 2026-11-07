@@ -149,3 +149,25 @@ export function noticeText(notices: Notices | undefined): string {
 export function istDay(iso: string): string {
   return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(new Date(iso));
 }
+
+// pob-022 (DEC-SCOPE-421 A1/A2): the approved email templates a confirmation, a reminder or a feedback chase may use, and the Team Lead's
+// automation settings (hours; null switches a step off, a null template means the standard text).
+export const AUTOMATION_URL = "/api/v1/recruiter/interview-automation/settings";
+export const CONFIRMATION_KIND = "interview_confirmation";
+export type TemplateOption = { id: string; name: string; kind: string | null };
+export type AutomationSettings = {
+  first_reminder_hours: number | null; second_reminder_hours: number | null; reminder_template_id: string | null;
+  chase_after_hours: number | null; escalate_after_hours: number | null; chase_template_id: string | null;
+};
+
+/** Every approved shared email template, page after page (a personal template is never approved). */
+export async function approvedEmailTemplates(signal?: AbortSignal): Promise<TemplateOption[]> {
+  const items: TemplateOption[] = [];
+  for (;;) {
+    const response = await fetch(`/api/v1/recruiter/templates?channel=email&status=approved&limit=100&offset=${items.length}`, { signal });
+    const body = await response.json().catch(() => null);
+    if (!response.ok || !isPage<TemplateOption>(body)) throw new Error(`Request failed (${response.status})`);
+    items.push(...body.items.map(({ id, name, kind }) => ({ id, name, kind })));
+    if (!body.items.length || items.length >= body.total) return items;
+  }
+}

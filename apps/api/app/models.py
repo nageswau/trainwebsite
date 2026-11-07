@@ -879,7 +879,7 @@ RECRUITER_FOLLOW_UP_CHECKS = {
         "(status = 'done') = (completed_at IS NOT NULL) AND (completed_at IS NULL) = (completed_by_user_id IS NULL) "
         "AND (status = 'cancelled') = (cancelled_at IS NOT NULL) AND (cancelled_at IS NULL) = (cancel_reason IS NULL)"
     ),
-    # pob-007 (DEC-SCOPE-421 A8): a priority and an optional reminder, never after the due time; migration 0301 repeats these
+    # pob-007 (DEC-SCOPE-422 A8): a priority and an optional reminder, never after the due time; migration 0302 repeats these
     "ck_recruiter_follow_ups_priority": "priority IN ('high', 'medium', 'low')",
     "ck_recruiter_follow_ups_remind": "remind_at IS NULL OR remind_at <= due_at",
 }
@@ -929,7 +929,7 @@ RECRUITER_CALL_CHECKS = {
     "ck_recruiter_calls_party": "(contact_id IS NULL) = (company_id IS NULL) AND (contact_id IS NULL) <> (candidate_id IS NULL)",
     "ck_recruiter_calls_job": "job_id IS NULL OR contact_id IS NOT NULL",  # pob-007 A4: a requirement is discussed with a company contact
 }
-# pob-007 (DEC-SCOPE-421 A4): the objections a company raises (UNVERIFIED: the source names none), in the order the form offers them
+# pob-007 (DEC-SCOPE-422 A4): the objections a company raises (UNVERIFIED: the source names none), in the order the form offers them
 RECRUITER_CALL_OBJECTIONS = ("no_current_requirement", "existing_vendors", "fee_too_high", "no_budget", "timing", "not_decision_maker", "in_house", "other")
 
 
@@ -1664,6 +1664,11 @@ class Interview(Base, TimestampMixin):
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     calendar_sequence: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     overdue_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # hrc-032 (DEC-SCOPE-413 N6): told once
+    # pob-022 (DEC-SCOPE-421 A3-A6): each reminder sent once (re-armed by a reschedule); the feedback chase's follow-up and its escalation
+    first_reminder_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    second_reminder_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    chase_follow_up_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_follow_ups.id", ondelete="RESTRICT"), nullable=True)
+    chase_escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class InterviewFeedback(Base, TimestampMixin):
@@ -1803,6 +1808,32 @@ class ResultReleaseSetting(Base, TimestampMixin):
     __tablename__ = "result_release_settings"
     id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
     auto_release: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+# pob-022 (DEC-SCOPE-421 A2): migration 0301 repeats these (test_pob_022_migration keeps them identical)
+INTERVIEW_AUTOMATION_CHECKS = {
+    "ck_interview_automation_first": "first_reminder_hours IS NULL OR first_reminder_hours BETWEEN 1 AND 168",
+    "ck_interview_automation_second": "second_reminder_hours IS NULL OR second_reminder_hours BETWEEN 1 AND 168",
+    "ck_interview_automation_order": "first_reminder_hours IS NULL OR second_reminder_hours IS NULL OR second_reminder_hours < first_reminder_hours",
+    "ck_interview_automation_chase": "chase_after_hours IS NULL OR chase_after_hours BETWEEN 1 AND 720",
+    "ck_interview_automation_escalate": "escalate_after_hours IS NULL OR escalate_after_hours BETWEEN 1 AND 720",
+}
+
+
+class InterviewAutomationSetting(Base, TimestampMixin):
+    """pob-022 (A2): the one global row (id 1, seeded by migration 0301) -- the reminder slots, the feedback chase and its escalation (hours;
+    null switches a step off) and the approved templates they use (null = the fixed text)."""
+
+    __tablename__ = "interview_automation_settings"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in INTERVIEW_AUTOMATION_CHECKS.items())
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    first_reminder_hours: Mapped[int | None] = mapped_column(SmallInteger, nullable=True, default=24, server_default=text("24"))
+    second_reminder_hours: Mapped[int | None] = mapped_column(SmallInteger, nullable=True, default=2, server_default=text("2"))
+    reminder_template_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_message_templates.id", ondelete="RESTRICT"), nullable=True)
+    chase_after_hours: Mapped[int | None] = mapped_column(SmallInteger, nullable=True, default=24, server_default=text("24"))
+    escalate_after_hours: Mapped[int | None] = mapped_column(SmallInteger, nullable=True, default=24, server_default=text("24"))
+    chase_template_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_message_templates.id", ondelete="RESTRICT"), nullable=True)
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
@@ -7689,7 +7720,7 @@ class ProgramSkill(Base):
 RECRUITER_MEETING_TYPES = (
     "company_meeting", "hr_meeting", "requirement_discussion", "recruitment_presentation", "contract_discussion",
     "campus_recruitment_discussion", "placement_drive_discussion",
-    "company_visit",  # pob-007 (DEC-SCOPE-421 A9): a BD visit to the company; migration 0301 revises ck_recruiter_meetings_type
+    "company_visit",  # pob-007 (DEC-SCOPE-422 A9): a BD visit to the company; migration 0302 revises ck_recruiter_meetings_type
 )
 # pob-007 A5: a hiring forecast row's timeframe (UNVERIFIED: the source names roles x count x timeframe only)
 RECRUITER_FORECAST_TIMEFRAMES = ("this_month", "next_3_months", "next_6_months", "next_12_months")
@@ -7751,7 +7782,7 @@ class RecruiterMeeting(Base, TimestampMixin):
 
 
 class RecruiterMeetingActionItem(Base):
-    """pob-007 (DEC-SCOPE-421 A6): an outcome's action item -- one rec-024 follow-up each, kept in the order entered."""
+    """pob-007 (DEC-SCOPE-422 A6): an outcome's action item -- one rec-024 follow-up each, kept in the order entered."""
 
     __tablename__ = "recruiter_meeting_action_items"
     __table_args__ = (
@@ -7826,7 +7857,7 @@ RECRUITER_TEMPLATE_CHECKS = {
 }
 RECRUITER_MESSAGE_CHECKS = {
     "ck_recruiter_messages_party": "(contact_id IS NULL) = (company_id IS NULL) AND (contact_id IS NULL) <> (candidate_id IS NULL)",
-    "ck_recruiter_messages_channel": "channel IN ('whatsapp', 'email', 'linkedin')",  # pob-007 A1: LinkedIn, logged by hand (0301)
+    "ck_recruiter_messages_channel": "channel IN ('whatsapp', 'email', 'linkedin')",  # pob-007 A1: LinkedIn, logged by hand (0302)
     "ck_recruiter_messages_email": "(channel = 'email') = (delivery_status IS NOT NULL) AND (channel = 'email') = (subject IS NOT NULL)",
     "ck_recruiter_messages_status": "delivery_status IS NULL OR delivery_status IN ('queued', 'sending', 'retrying', 'sent', 'failed')",
     "ck_recruiter_messages_linkedin": "(channel = 'linkedin') = (linkedin_action IS NOT NULL) AND (linkedin_action IS NULL OR linkedin_action IN ('connection_request', 'message'))",
@@ -7922,7 +7953,7 @@ class RecruiterMessage(Base, TimestampMixin):
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     calendar_ics: Mapped[str | None] = mapped_column(Text, nullable=True)  # hrc-028 (I6): an interview invite, built when queued
     replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # pob-005 D7: a reply logged by hand
-    # pob-007 (DEC-SCOPE-421 A1/A3): what a LinkedIn row records, and an outcome with its next follow-up (set once)
+    # pob-007 (DEC-SCOPE-422 A1/A3): what a LinkedIn row records, and an outcome with its next follow-up (set once)
     linkedin_action: Mapped[str | None] = mapped_column(String(24), nullable=True)
     outcome: Mapped[str | None] = mapped_column(String(500), nullable=True)
     follow_up_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_follow_ups.id", ondelete="RESTRICT"), nullable=True)

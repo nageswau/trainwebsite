@@ -1,4 +1,4 @@
-"""pob-007 -- BD activity completeness (DEC-SCOPE-421 A1-A12): LinkedIn outreach logging and its timeline rows, message outcomes with a
+"""pob-007 -- BD activity completeness (DEC-SCOPE-422 A1-A12): LinkedIn outreach logging and its timeline rows, message outcomes with a
 next follow-up, call details, meeting details with action items that become follow-ups, follow-up priority and reminder, and BD visits as
 `company_visit` meetings. The shared test database is never truncated, so every value is unique per test."""
 

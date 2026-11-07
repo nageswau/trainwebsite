@@ -42,7 +42,7 @@ function LogReply({ message, done }: { message: MessageLine; done: (text: string
   );
 }
 
-/** pob-007 (DEC-SCOPE-421 A3): what came of a message to a contact, once, with an optional next follow-up (the company's). */
+/** pob-007 (DEC-SCOPE-422 A3): what came of a message to a contact, once, with an optional next follow-up (the company's). */
 function RecordOutcome({ message, done }: { message: MessageLine; done: (text: string) => void }) {
   const [open, setOpen] = useState(false);
   const [v, setV] = useState({ outcome: "", due: "", reason: "" });

@@ -111,7 +111,7 @@ export type TemplateVersion = Omit<GovernedTemplate, "id" | "channel" | "active"
 export const templateUrl = (id: string, action = "") => `${TEMPLATES_URL}/${encodeURIComponent(id)}${action ? `/${action}` : ""}`;
 export const COPIES_URL = `${MESSAGES_URL}/copies`;
 
-// --- pob-007 (DEC-SCOPE-421 A1/A3): LinkedIn outreach logged by hand, and a message's outcome ------------------------------------------
+// --- pob-007 (DEC-SCOPE-422 A1/A3): LinkedIn outreach logged by hand, and a message's outcome ------------------------------------------
 export const LINKEDIN_URL = `${MESSAGES_URL}/linkedin`;
 export const messageOutcomeUrl = (id: string) => `${MESSAGES_URL}/${encodeURIComponent(id)}/outcome`;
 export const LINKEDIN_ACTIONS = [{ key: "connection_request", label: "Connection request" }, { key: "message", label: "Message" }] as const;

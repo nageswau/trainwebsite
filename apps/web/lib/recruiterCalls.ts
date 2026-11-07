@@ -14,7 +14,7 @@ export const OUTCOMES = [
 export const DIRECTIONS = [{ key: "outgoing", label: "Outgoing" }, { key: "incoming", label: "Incoming" }] as const;
 export const NOTES_MAX = 2000;
 export const LIST_LIMIT = 50;
-/** pob-007 (DEC-SCOPE-421 A4): the objections a company raises (UNVERIFIED, mirrors RECRUITER_CALL_OBJECTIONS), in form order. */
+/** pob-007 (DEC-SCOPE-422 A4): the objections a company raises (UNVERIFIED, mirrors RECRUITER_CALL_OBJECTIONS), in form order. */
 export const OBJECTIONS = [
   { key: "no_current_requirement", label: "No current requirement" }, { key: "existing_vendors", label: "Already works with vendors" },
   { key: "fee_too_high", label: "Fees too high" }, { key: "no_budget", label: "No hiring budget" }, { key: "timing", label: "Not the right time" },

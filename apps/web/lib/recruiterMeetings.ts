@@ -16,7 +16,7 @@ export const MEETING_TYPES = [
   { key: "placement_drive_discussion", label: "Placement drive discussion" },
   { key: "company_visit", label: "Company visit (BD visit)" }, // pob-007 A9
 ] as const;
-/** pob-007 (DEC-SCOPE-421 A5): a hiring forecast row's timeframe. */
+/** pob-007 (DEC-SCOPE-422 A5): a hiring forecast row's timeframe. */
 export const TIMEFRAMES = [
   { key: "this_month", label: "This month" }, { key: "next_3_months", label: "Next 3 months" }, { key: "next_6_months", label: "Next 6 months" },
   { key: "next_12_months", label: "Next 12 months" },

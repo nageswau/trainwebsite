@@ -1,10 +1,10 @@
 """pob-007 -- BD activity completeness: LinkedIn messages, message outcomes, call details, meeting details and action items, follow-up
 priority and reminder, and the `company_visit` meeting type.
 
-Revision ID: 0301_bd_activity
-Revises: 0300_vendor_master
+Revision ID: 0302_bd_activity
+Revises: 0301_interview_automation
 
-docs/superpowers/specs/2026-11-07-pob-007-bd-activity-design.md (DEC-SCOPE-421). 0001 builds a fresh database from the current models, which already
+docs/superpowers/specs/2026-11-07-pob-007-bd-activity-design.md (DEC-SCOPE-422). 0001 builds a fresh database from the current models, which already
 carry all of this, so each column and table is added only when missing (0299's idiom); the checks are dropped and re-created, frozen copies of the
 models at this revision. The upgrade changes no existing row (`priority` fills with its default). The downgrade deletes LinkedIn messages (the old
 channel check cannot hold them) and turns `company_visit` meetings into `company_meeting`, so no meeting is lost.
@@ -15,8 +15,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0301_bd_activity"
-down_revision = "0300_vendor_master"
+revision = "0302_bd_activity"
+down_revision = "0301_interview_automation"
 branch_labels = None
 depends_on = None
 

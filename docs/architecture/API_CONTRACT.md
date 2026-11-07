@@ -6267,3 +6267,12 @@ Audit actions `recruiter_template.approve|archive|restore|copy`.
 - `GET|POST|PATCH /recruiter/companies/{id}/contracts` and `PUT .../contracts/document`: new `?party=client|vendor`; unsent = the client side, or the vendor side of a vendor-only company; a side the company lacks is 422. Bodies add `direction`, `confidentiality_terms` (vendor side only, else 422; `direction` required from Signed). Output adds `party`. Vendor terms and documents need `commercials.vendor.*`.
 - `POST /recruiter/requirements`, `POST /recruiter/drives`, `POST /workflows/it/jobs`: a vendor-only company is 422. `GET /recruiter/pipeline` and `GET /public/home` partners leave it out. Merging a vendor is 409.
 - Company documents: new kind `nda`.
+
+## 12LN. Interview coordination automation (pob-022) — addendum, 2026-11-07
+
+`DEC-SCOPE-421`.
+
+- `POST /recruiter/interviews` and `POST /recruiter/interviews/{id}/reschedule`: new optional `template_id`, which must be an approved shared email template of kind `interview_confirmation` (otherwise 422 on `template_id`). It is ignored with `notify: false`. Queued emails keep `template_id`.
+- `GET /recruiter/interview-automation/settings`: returns `first_reminder_hours`, `second_reminder_hours`, `reminder_template_id`, `chase_after_hours`, `escalate_after_hours` and `chase_template_id`. Only `placement_manager` and super_admin may read it; anyone else gets 403.
+- `PUT /recruiter/interview-automation/settings`: a full replace with the same body. Reminder hours are 1–168 and the other hours 1–720, or null; the second reminder must be sooner than the first; templates must be approved shared email templates. A rule break returns 422 on its field. The response is the saved settings.
+- Notices: `it.interview.reminder` (tagged, candidate) and `it.interview.feedback_escalated` (catalogued, Team Lead).

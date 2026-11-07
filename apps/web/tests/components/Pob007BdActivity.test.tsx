@@ -1,4 +1,4 @@
-// pob-007 (DEC-SCOPE-421): LinkedIn logging and message outcomes in the Messages section, and LinkedIn rows in the timeline.
+// pob-007 (DEC-SCOPE-422): LinkedIn logging and message outcomes in the Messages section, and LinkedIn rows in the timeline.
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 

@@ -22,7 +22,7 @@ const REASON_LABEL: Record<string, string> = Object.fromEntries(REASONS.map((r) 
 export const reasonLabel = (key: string) => REASON_LABEL[key] ?? key;
 export const NOTES_MAX = 2000;
 export const OUTCOME_MAX = 500;
-/** pob-007 (DEC-SCOPE-421 A8): the priority; the reminder time is stored (pob-008 delivers it). */
+/** pob-007 (DEC-SCOPE-422 A8): the priority; the reminder time is stored (pob-008 delivers it). */
 export const PRIORITIES = [{ key: "high", label: "High" }, { key: "medium", label: "Medium" }, { key: "low", label: "Low" }] as const;
 export type Priority = (typeof PRIORITIES)[number]["key"];
 

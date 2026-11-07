@@ -35,7 +35,7 @@ def test_migration_chains_after_0118_and_there_is_a_single_head():
 def test_models_match_the_migration():
     from app.models import RECRUITER_MEETING_CHECKS, RecruiterMeeting, RecruiterMeetingEvent, RecruiterMeetingParticipant
 
-    # pob-007 (0301) revised the type check (company_visit) and added two columns; test_pob_007_migration pins those
+    # pob-007 (0302) revised the type check (company_visit) and added two columns; test_pob_007_migration pins those
     revised = "ck_recruiter_meetings_type"
     assert {k: v for k, v in _migration.CHECKS.items() if k != revised} == {k: v for k, v in RECRUITER_MEETING_CHECKS.items() if k != revised}
     tables = {"recruiter_meetings": RecruiterMeeting.__table__, "recruiter_meeting_participants": RecruiterMeetingParticipant.__table__,

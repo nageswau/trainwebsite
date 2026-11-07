@@ -2,7 +2,7 @@
 
 **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-007` (§4 activity table; §18 AC "The CRM records outreach, calls,
 emails, LinkedIn messages, meetings and next follow-up tasks"). Classification `UNVERIFIED` (a requirements draft). Decision:
-`DEC-SCOPE-421`. Every call below (A1–A12) is the builder's, `NEEDS_CONFIRMATION`. Dependencies pob-005 (`DEC-SCOPE-411`) and pob-023
+`DEC-SCOPE-422`. Every call below (A1–A12) is the builder's, `NEEDS_CONFIRMATION`. Dependencies pob-005 (`DEC-SCOPE-411`) and pob-023
 (`DEC-SCOPE-408`) are built.
 
 ## Goal
@@ -45,7 +45,7 @@ call details, meeting details with action items that become follow-ups, follow-u
 - **A11 Privacy.** Audit and logs carry ids, keys and counts — never message text, objections notes, forecasts or commercial notes.
 - **A12 Data.** Additive, nullable columns (priority has a default); existing rows are unchanged and read as before.
 
-## Data (migration 0301, guarded like 0299)
+## Data (migration 0302, guarded like 0299)
 - `recruiter_messages`: `linkedin_action` String(24), `outcome` String(500), `follow_up_id` FK → follow-ups; the channel check gains
   `linkedin`; new check `(channel = 'linkedin') = (linkedin_action IS NOT NULL)` and the action list.
 - `recruiter_calls`: `job_id` FK → jobs, `objections` JSON, `objection_notes` String(1000), `next_action` String(500); check

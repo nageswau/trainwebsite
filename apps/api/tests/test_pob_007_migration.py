@@ -1,4 +1,4 @@
-"""pob-007 -- migration 0301_bd_activity (DEC-SCOPE-421): the chain, frozen check copies, and a lossless round trip for existing rows (the
+"""pob-007 -- migration 0302_bd_activity (DEC-SCOPE-422): the chain, frozen check copies, and a lossless round trip for existing rows (the
 downgrade removes only LinkedIn messages and turns company visits into company meetings). Runs in a throwaway database (the pob-023 pattern)."""
 
 import importlib.util
@@ -13,11 +13,11 @@ from app.core.config import settings
 from app.models import RECRUITER_CALL_CHECKS, RECRUITER_FOLLOW_UP_CHECKS, RECRUITER_MEETING_CHECKS, RECRUITER_MESSAGE_CHECKS
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_pob_007_migration_0301", VERSIONS / "0301_bd_activity.py")
+_spec = importlib.util.spec_from_file_location("_pob_007_migration_0302", VERSIONS / "0302_bd_activity.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0301_bd_activity", "0300_vendor_master"
+HEAD, BASE = "0302_bd_activity", "0301_interview_automation"
 MODELS = {"recruiter_messages": RECRUITER_MESSAGE_CHECKS, "recruiter_calls": RECRUITER_CALL_CHECKS, "recruiter_meetings": RECRUITER_MEETING_CHECKS,
           "recruiter_follow_ups": RECRUITER_FOLLOW_UP_CHECKS}
 

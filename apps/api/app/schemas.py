@@ -11452,7 +11452,7 @@ class RecFollowUpComplete(BaseModel):
 # --- rec-025 (DEC-SCOPE-133, spec §3): recruiter calls -----------------------------------------------------------------------------
 RecCallNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, {"notes": "Notes"}))]
 RecCallDuration = Annotated[int, Field(ge=0, le=RECRUITER_CALL_MAX_SECONDS)]
-# pob-007 (DEC-SCOPE-421 A4): the call's details -- objections from the catalogue, each once
+# pob-007 (DEC-SCOPE-422 A4): the call's details -- objections from the catalogue, each once
 RecCallObjectionNotes = Annotated[Annotated[str, _trimmed(1000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, {"objection_notes": "Objection notes"}))]
 RecCallNextAction = Annotated[Annotated[str, _trimmed(500)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, {"next_action": "Next action"}))]
 
@@ -11595,7 +11595,7 @@ class RecMeetingOutcome(BaseModel):
     next_action: RecMeetingNextAction = None
     next_action_due_at: AwareDatetime | None = None
     next_action_reason: RecFollowUpReason | None = None
-    # pob-007 (DEC-SCOPE-421 A5-A7)
+    # pob-007 (DEC-SCOPE-422 A5-A7)
     hiring_forecast: Annotated[list[RecForecastRow], Field(max_length=10)] = []
     commercial_notes: RecCommercialNotes = None
     action_items: Annotated[list[RecActionItem], Field(max_length=10)] = []
@@ -11687,7 +11687,7 @@ RecMessageCreate = Annotated[RecWhatsAppCreate | RecEmailCreate, Field(discrimin
 
 
 class RecLinkedInCreate(BaseModel):
-    """pob-007 (DEC-SCOPE-421 A1): LinkedIn outreach the recruiter did by hand -- logged, never sent. The text is optional for a connection
+    """pob-007 (DEC-SCOPE-422 A1): LinkedIn outreach the recruiter did by hand -- logged, never sent. The text is optional for a connection
     request (checked in the service so the 422 names the field); `next_follow_up` is a contact's only."""
 
     model_config = ConfigDict(extra="forbid")
@@ -12010,6 +12010,7 @@ class RecInterviewCreate(BaseModel):
     instructions: _rec_interview_text(2000) = None
     documents_required: _rec_interview_text(1000) = None
     notify: StrictBool = True
+    template_id: UUID | None = None  # pob-022 (DEC-SCOPE-421 A1): an approved interview confirmation template for the notices
 
 
 class RecInterviewUpdate(BaseModel):
@@ -12046,6 +12047,7 @@ class RecInterviewReschedule(BaseModel):
     scheduled_at: BdmApptStart
     reason: _bdm_appt_optional(500) = None
     notify: StrictBool = True
+    template_id: UUID | None = None  # pob-022 A1
 
 
 class RecInterviewCancel(BaseModel):
@@ -12139,6 +12141,21 @@ class InterviewResultRelease(BaseModel):
 class InterviewResultSettingsIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     auto_release: StrictBool
+
+
+# pob-022 (DEC-SCOPE-421 A2): every field is sent (a full replace); null switches a step off or means the fixed text
+ReminderHours = Annotated[StrictInt, Field(ge=1, le=168)] | None
+ChaseHours = Annotated[StrictInt, Field(ge=1, le=720)] | None
+
+
+class InterviewAutomationSettingsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    first_reminder_hours: ReminderHours
+    second_reminder_hours: ReminderHours
+    reminder_template_id: UUID | None
+    chase_after_hours: ChaseHours
+    escalate_after_hours: ChaseHours
+    chase_template_id: UUID | None
 
 
 # --- rec-022 (DEC-SCOPE-155, spec §1/§3): offers ------------------------------------------------------------------------------------

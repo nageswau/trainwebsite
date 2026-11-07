@@ -27,7 +27,7 @@ export default function CopyComposer({ channel, party, context, onCopied, onCanc
   const copying = useRef(false);
   const id = useId();
   const target = recruiterTarget(party, context);
-  // pob-007 (DEC-SCOPE-421 A1): LinkedIn outreach is logged as sent -- with or without a template; the text is optional for a connection request
+  // pob-007 (DEC-SCOPE-422 A1): LinkedIn outreach is logged as sent -- with or without a template; the text is optional for a connection request
   const linkedin = channel === "linkedin";
   const [action, setAction] = useState<LinkedInAction>("connection_request");
 
