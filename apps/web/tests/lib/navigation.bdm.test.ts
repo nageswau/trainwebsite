@@ -10,7 +10,7 @@ describe("bdm-001 navigation", () => {
 
   it("has a BDM nav, a manager nav and the sign-in chooser path", () => {
     expect(BDM_NAV.map((x) => x.href)).toEqual([
-      "/bdm/my-day", "/bdm/calendar", "/bdm/organizations", "/bdm/pipeline", "/bdm/mous", "/bdm/appointments", "/bdm/follow-ups", "/bdm/meeting-requests", "/bdm/activities",
+      "/bdm/my-day", "/bdm/calendar", "/bdm/organizations", "/bdm/pipeline", "/bdm/campus-calendar" /* pob-015 */, "/bdm/mous", "/bdm/appointments", "/bdm/follow-ups", "/bdm/meeting-requests", "/bdm/activities",
       "/bdm/daily-report", // bdm-015
       "/bdm/travel", "/bdm/notifications", "/bdm/profile",
       "/account/management-tasks", // mgmt-028 (MT14)
@@ -18,7 +18,7 @@ describe("bdm-001 navigation", () => {
     expect(BDM_MANAGER_NAV.map((x) => x.href)).toEqual([
       "/bdm/manager/dashboard", "/bdm/manager/performance", "/bdm/manager/hierarchy", // bdm-024
       "/bdm/manager/team","/bdm/manager/organizations", "/bdm/manager/pipeline", "/bdm/manager/mous", "/bdm/manager/appointments",
-      "/bdm/manager/meeting-requests", "/bdm/manager/follow-ups", "/bdm/manager/calendar", "/bdm/manager/activities", "/bdm/manager/daily-reports",
+      "/bdm/manager/meeting-requests", "/bdm/manager/follow-ups", "/bdm/manager/calendar", "/bdm/campus-calendar" /* pob-015 */, "/bdm/manager/activities", "/bdm/manager/daily-reports",
       "/bdm/manager/targets", // bdm-016
       "/bdm/manager/approvals", "/bdm/manager/notifications",
       "/account/management-tasks", // mgmt-028 (MT14)

@@ -2460,3 +2460,7 @@ The downgrade refuses while a vendor or an NDA exists.
 **`institution_data_permission_users`:** (`permission_id`, `user_id`) primary key, `added_by_user_id`, `created_at`; index on `user_id`. The people a permission names.
 
 **`candidates`** gains `institution_org_id` (indexed), `institution_permission_id` (partial index where not null) and `institution_notice_status` (`notice_sent` | `consented`); CHECK: the org and the permission are both set or both empty. **`candidate_import_batches`** gains `institution_permission_id`.
+
+### pob-015 — vacancies shared with institutions (`DEC-SCOPE-426`, migration `0307_institution_vacancy_shares`)
+
+**`institution_vacancy_shares`:** (`organization_id` → bdm_organizations, `job_id` → jobs, `shared_on` date, `channel` (CHECK: meeting, call, email, whatsapp, visit, other), `template_id` → recruiter_message_templates nullable, `notes` ≤ 500, `response` (CHECK: awaiting, interested, declined, no_response; default awaiting), `response_note` ≤ 500, `responded_at`, `responded_by_user_id`, `shared_by_user_id`, timestamps); unique (`organization_id`, `job_id`, `shared_on`, `channel`); indexes (`organization_id`, `shared_on`) and (`job_id`). All FKs `ON DELETE RESTRICT`.

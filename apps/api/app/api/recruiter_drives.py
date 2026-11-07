@@ -11,7 +11,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api import recruiter_colleges, recruiter_institution_pool
+from app.api import recruiter_campus, recruiter_colleges, recruiter_institution_pool
 from app.api.bdm import LIMIT, OFFSET, SEARCH
 from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
@@ -89,3 +89,4 @@ async def drive_candidates(drive_id: UUID, limit: int = LIMIT, offset: int = OFF
 
 router.include_router(recruiter_colleges.router)  # pob-013 (DEC-SCOPE-410): /recruiter/colleges
 router.include_router(recruiter_institution_pool.router)  # pob-014 (DEC-SCOPE-425): /recruiter/colleges/{org_id}/student-pool, data-permissions
+router.include_router(recruiter_campus.router)  # pob-015 (DEC-SCOPE-426): vacancy shares, outcomes, /recruiter/campus-calendar[.ics], campus-summary

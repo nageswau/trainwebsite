@@ -544,6 +544,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** large. **Risk:** high.
 
 #### pob-015: Vacancy sharing with institutions, campus calendar and outcomes
+- **Status:** built (`DEC-SCOPE-426`, 2026-11-07); Q-12 answered by the builder's calls V1–V14 (`NEEDS_CONFIRMATION`); extra drive statuses and multi-college drives remain open.
 - **Business requirement:** §6.2 "Share relevant vacancies with the institution and coordinate student applications, screening and interview schedules"; "Track MoUs, campus recruitment calendars, student participation and placement outcomes"; §15 TPO widget.
 - **Existing behavior:**
   - Drives (planned/completed/cancelled) link to orgs and requirements, and applications are tagged with `drive_id`.

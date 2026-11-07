@@ -46,8 +46,9 @@ def event(*, uid: str, sequence: int, start: datetime, end: datetime, summary: s
     return lines
 
 
-def all_day_event(*, uid: str, day: date, summary: str, location: str | None = None, description: str | None = None) -> list[str]:
-    dates = [f"DTSTART;VALUE=DATE:{day:%Y%m%d}", f"DTEND;VALUE=DATE:{day + timedelta(days=1):%Y%m%d}"]
+def all_day_event(*, uid: str, day: date, summary: str, location: str | None = None, description: str | None = None, last_day: date | None = None) -> list[str]:
+    """`last_day` (inclusive) spans several days; DTEND is exclusive in RFC 5545."""
+    dates = [f"DTSTART;VALUE=DATE:{day:%Y%m%d}", f"DTEND;VALUE=DATE:{(last_day or day) + timedelta(days=1):%Y%m%d}"]
     return _lines(uid, 0, dates, summary, location, description, None)
 
 

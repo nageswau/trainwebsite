@@ -5452,6 +5452,25 @@ class TpoInteractionIn(BaseModel):
     next_step: _placement_str(500) = None
 
 
+class VacancyShareIn(BaseModel):
+    """pob-015 V1: `shared_on` defaults to today (IST) in the route; the requirement, template and date rules are checked there."""
+
+    model_config = ConfigDict(extra="forbid")
+    requirement_id: UUID
+    channel: TpoChannel
+    shared_on: date | None = None
+    template_id: UUID | None = None
+    notes: _placement_str(500) = None
+
+
+class VacancyResponseIn(BaseModel):
+    """pob-015 V6: the college's answer; the note is replaced (null clears it)."""
+
+    model_config = ConfigDict(extra="forbid")
+    response: Literal["awaiting", "interested", "declined", "no_response"]
+    response_note: _placement_str(500) = None
+
+
 class TpoContactUpdate(BaseModel):
     """P10: omitted = unchanged; null clears."""
 

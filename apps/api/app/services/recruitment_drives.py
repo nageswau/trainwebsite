@@ -55,7 +55,7 @@ H = JobApplicationStatusHistory
 
 
 # --- reads ---------------------------------------------------------------------------------------------------------------------------
-def _reached(statuses: tuple[str, ...]):
+def reached(statuses: tuple[str, ...]):
     """The application is at one of `statuses` now, or was at one (its history), so a later rejection keeps it counted."""
     return or_(A.status.in_(statuses), exists().where(H.application_id == A.id, H.to_status.in_(statuses)))
 
@@ -65,8 +65,8 @@ async def funnel(db: AsyncSession, drive_id: UUID) -> dict:
     interviewed = exists().where(Interview.application_id == A.id, Interview.status.in_(INTERVIEW_DONE))
     row = (await db.execute(
         select(
-            D.students_registered, D.students_attended, func.count(A.id), func.count(A.id).filter(_reached(REACHED_SHORTLISTED)),
-            func.count(A.id).filter(interviewed), func.count(A.id).filter(_reached(REACHED_SELECTED)), func.count(A.id).filter(A.status == "joined"),
+            D.students_registered, D.students_attended, func.count(A.id), func.count(A.id).filter(reached(REACHED_SHORTLISTED)),
+            func.count(A.id).filter(interviewed), func.count(A.id).filter(reached(REACHED_SELECTED)), func.count(A.id).filter(A.status == "joined"),
         ).select_from(D).outerjoin(A, A.drive_id == D.id).where(D.id == drive_id).group_by(D.id)
     )).one()
     return dict(zip(("registered", "attended", "tagged", "shortlisted", "interviewed", "selected", "joined"), row, strict=True))

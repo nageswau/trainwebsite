@@ -18,6 +18,7 @@ import BdmOrganizationSchoolActivity from "@/components/BdmOrganizationSchoolAct
 import BdmOrganizationTasks from "@/components/BdmOrganizationTasks";
 import BdmStageHistory from "@/components/BdmStageHistory";
 import CollegePlacement from "@/components/CollegePlacement";
+import CollegeVacancies from "@/components/CollegeVacancies";
 import { type Page, sendRequest } from "@/lib/apiErrors";
 import type { Activity } from "@/lib/bdmActivities";
 import type { AgentPerformance } from "@/lib/bdmAgentPerformance";
@@ -247,6 +248,7 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
       <BdmOrganizationContacts organization={org} onChanged={changed} />
       {/* pob-013 (DEC-SCOPE-410): the placement team's profile of a college; loads itself, edits for the assigned BDM */}
       {hasPlacementProfile(org) && <CollegePlacement key={`${org.id}-${org.archived}`} orgId={org.id} onNotice={notify} />}
+      {hasPlacementProfile(org) && <CollegeVacancies key={`vacancies-${org.id}-${org.archived}`} orgId={org.id} onNotice={notify} />}
       {/* QA4-05: the stage history sits with the activity timeline, after Details and Contacts */}
       {stageHistory !== undefined && <BdmStageHistory orgId={org.id} initial={stageHistory} version={historyVersion} />}
       {activities !== undefined && ( // bdm-009: the BDM view logs (assigned and not archived = can_edit); the manager view reads

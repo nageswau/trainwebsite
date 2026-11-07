@@ -12391,3 +12391,15 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - S9: a profile share needs every institution student visible to the sharer and their permission to include `placement` (422 otherwise).
   - S10/S11: the college's student pool (filters: permission, pass-out year, course, name/code; placement status = latest application status); the candidate list filters `institution_id` (the skill search needs a skill, so the institution filter lives on the list).
 - **Not built:** a second consent for a matched EduSphere student (S12); editing a student's notice status; student logins (hrc-022); MoU picker in the UI (the API accepts `mou_id`; BDM MoUs are not readable by the placement team).
+
+### DEC-SCOPE-426 — Vacancy sharing with institutions, campus calendar and outcomes (pob-015)
+- **Date:** 2026-11-07. **Status:** built; V1-V14 are the builder's calls (`NEEDS_CONFIRMATION`, answering Q-12). **Evidence:** backlog pob-015 (§6.2, §15).
+- **Spec:** `docs/superpowers/specs/2026-11-07-pob-015-vacancy-sharing-campus-design.md`. Migration `0307_institution_vacancy_shares`; API §12LS; RBAC §2.317.
+- **Calls:**
+  - V1/V5/V6: a vacancy share = college × requirement × day (IST, not future) × channel (pob-013 TPO channels) × optional template, notes, and the college's reply (`awaiting`, `interested`, `declined`, `no_response`); one per college, requirement, day and channel (409); never deleted.
+  - V2/V3: the college's pob-013 writers share a requirement of their own requirement scope (404 otherwise) that is live and not `internal` (hrc-008; 422).
+  - V4: an optional template the caller may use (pob-023) of category `college_tpo` (422 otherwise); marked used. The share form's options carry those templates (QA-02).
+  - V7: outcomes per college count applications of its imported students (pob-014) or added through its drives (rec-029), each once: applications, shortlisted, interviewed, offered, joined, and how many are by external candidates. Institution students the viewer may not see are not counted.
+  - V8-V10: the campus calendar (drives, placement calendar entries, batch pass-out dates; ≤ 92 days; ≤ 500 entries) for every pob-013 college reader, its ICS download, and the TPO partnerships widget (feeds pob-028).
+  - V11 (Q-12): drives stay one company at one college; a vacancy for several colleges is one share per college. Extra drive statuses stay open.
+- **Not built:** sending the message from the share form (the pob-023 composer sends); new drive statuses; multi-college drives; changes to the bdm-021 college business metric. The "org timeline" is the college's "Vacancies shared" list (newest first), not the BDM activity timeline, so BDM metrics are unchanged (`NEEDS_CONFIRMATION`).

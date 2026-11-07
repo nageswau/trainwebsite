@@ -7316,6 +7316,40 @@ class InstitutionDataPermissionUser(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# pob-015 (DEC-SCOPE-426 V1-V6): a vacancy shared with a college's TPO -- the requirement, the day, the channel, the template, and the
+# college's answer. Migration 0307 repeats the CHECK strings; test_pob_015_migration asserts they stay identical.
+VACANCY_SHARE_RESPONSES = ("awaiting", "interested", "declined", "no_response")
+VACANCY_SHARE_CHECKS = {
+    "ck_institution_vacancy_shares_channel": _in_list("channel", TPO_INTERACTION_CHANNELS),
+    "ck_institution_vacancy_shares_response": _in_list("response", VACANCY_SHARE_RESPONSES),
+}
+
+
+class InstitutionVacancyShare(Base, TimestampMixin):
+    """pob-015 V1: one share of one requirement with one college on one day by one channel (V5: the unique constraint refuses a double
+    submit). Never deleted; only the response changes (V6). Separate from bdm_activities, so BDM metrics stay unchanged."""
+
+    __tablename__ = "institution_vacancy_shares"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in VACANCY_SHARE_CHECKS.items()),
+        UniqueConstraint("organization_id", "job_id", "shared_on", "channel", name="uq_institution_vacancy_shares_once"),
+        Index("ix_institution_vacancy_shares_org_day", "organization_id", "shared_on"),
+        Index("ix_institution_vacancy_shares_job", "job_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"))
+    shared_on: Mapped[date] = mapped_column(Date)
+    channel: Mapped[str] = mapped_column(String(20))
+    template_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_message_templates.id", ondelete="RESTRICT"), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    response: Mapped[str] = mapped_column(String(12), default="awaiting", server_default=text("'awaiting'"))
+    response_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    responded_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    shared_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
 # hrc-035 (DEC-SCOPE-396 K8): one row (`id = 1`); `months` NULL = the retention rule is off (the default until legal sign-off).
 CANDIDATE_RETENTION_CHECKS = {
     "ck_candidate_retention_settings_one_row": "id = 1",
