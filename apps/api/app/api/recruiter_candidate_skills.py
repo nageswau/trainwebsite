@@ -28,7 +28,7 @@ def _body(model, payload):
 @router.get("")
 async def list_skills(candidate_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     candidates.require_reader(user)
-    candidate = await candidates.load(db, candidate_id)
+    candidate = await candidates.load(db, candidate_id, viewer_id=user.id)
     return {"items": await svc.items_out(db, candidate.id), "can_edit": user.role in candidates.WRITERS and candidate.archived_at is None}
 
 
@@ -37,7 +37,7 @@ async def add_skill(candidate_id: UUID, payload: dict = Body(...), user: User = 
     """AC1: one row per skill, always `claimed`. AC2: the same skill again (by name, case or alias) → 409. AC4: not in the master → 422."""
     candidates.require_writer(user)
     data = _body(CandidateSkillCreate, payload).model_dump()
-    candidate = await svc.writable(db, candidate_id)
+    candidate = await svc.writable(db, candidate_id, user.id)
     skill = await svc.skill_for_add(db, data.pop("skill"))
     await svc.check_free(db, candidate, skill)
     row = CandidateSkill(candidate_id=candidate.id, skill_id=skill.id, added_by_user_id=user.id, **data)
@@ -54,7 +54,7 @@ async def update_skill(candidate_id: UUID, item_id: UUID, payload: dict = Body(.
     """Level, experience, last used and source. A PATCH that changes nothing writes no audit row."""
     candidates.require_writer(user)
     changes = _body(CandidateSkillUpdate, payload).model_dump(exclude_unset=True)
-    candidate = await svc.writable(db, candidate_id)
+    candidate = await svc.writable(db, candidate_id, user.id)
     row = await svc.load_item(db, candidate, item_id)
     fields = svc.apply_fields(row, changes)
     if fields:
@@ -69,7 +69,7 @@ async def update_skill(candidate_id: UUID, item_id: UUID, payload: dict = Body(.
 @router.delete("/{item_id}", status_code=204)
 async def remove_skill(candidate_id: UUID, item_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     candidates.require_writer(user)
-    candidate = await svc.writable(db, candidate_id)
+    candidate = await svc.writable(db, candidate_id, user.id)
     row = await svc.load_item(db, candidate, item_id)
     svc.audit(db, user, "remove", candidate, row, status=row.status)
     await db.delete(row)
@@ -83,7 +83,7 @@ async def change_status(candidate_id: UUID, item_id: UUID, payload: dict = Body(
     """AC3 / SK4: any writer may verify or assess; who and when are recorded, and `claimed` clears them. The same status → 409."""
     candidates.require_writer(user)
     status = _body(CandidateSkillStatusChange, payload).status
-    candidate = await svc.writable(db, candidate_id)
+    candidate = await svc.writable(db, candidate_id, user.id)
     row = await svc.load_item(db, candidate, item_id)
     old = svc.set_status(row, user, status)
     svc.audit(db, user, "status", candidate, row, **{"from": old, "to": status})

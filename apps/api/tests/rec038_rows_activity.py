@@ -19,6 +19,7 @@ from app.models import (
     CompanyContact,
     CompanyDocument,
     DriveRequirement,
+    InstitutionDataPermission,
     RecruiterCadence,
     RecruiterCall,
     RecruiterContactCadence,
@@ -49,6 +50,7 @@ REVENUE_OUT = ("rec_out", "mgr_out")  # a revenue reader without the requirement
 METRICS = ("mgr", "mgr_out", "super", "it_admin")  # rec-033 PF1 / rec-035 MG1 (it_admin reads: recruiters are IT staff)
 COLLEGE_READERS = ("rec", "rec_out", "mgr", "mgr_out", "super", "bdm", "bdm_out")  # pob-013 P3 (both BDMs are of the college module)
 COLLEGE_WRITERS = ("rec", "rec_out", "super", "bdm")  # pob-013 P4: `bdm` is the college's assigned BDM
+PERMISSION_WRITERS = ("mgr", "mgr_out", "super")  # pob-014 S4
 POS = ("rec", "rec_out")  # pob-009 T1: a PO's own targets, plan and reports
 TEAM_LEADS = ("mgr", "super")  # pob-009 T1: `rec` reports to `mgr`; `mgr_out` names a PO outside their team (404)
 
@@ -196,6 +198,13 @@ ROWS = [
     R("delete", "/recruiter/colleges/{college}/calendar/{college_event}", **allow(200, *COLLEGE_WRITERS)),
     R("post", "/recruiter/colleges/{college}/interactions", lambda w: {"channel": "meeting", "occurred_at": now().isoformat(), "summary": "Met the TPO"}, **allow(201, *COLLEGE_WRITERS)),
     R("patch", "/recruiter/colleges/{college}/contacts/{college_contact}", lambda w: {"office_details": f"Block {tag()}"}, **allow(200, *COLLEGE_WRITERS)),
+    # pob-014 institution student pool (§2.316, S3/S4/S10): every college reader opens the pool (it lists only what they may see); only a
+    # placement manager or super_admin writes a data permission -- the placement team and the college's BDM 403 after scope
+    R("get", "/recruiter/colleges/{college}/student-pool", **allow(200, *COLLEGE_READERS)),
+    R("post", "/recruiter/colleges/{college}/data-permissions", lambda w: {"agreement_reference": f"MoU {tag()}", "purposes": ["placement"], "valid_from": w["tomorrow"],
+                                                                         "expires_on": w["tomorrow"], "user_ids": [w["rec_id"]]}, **allow(201, *PERMISSION_WRITERS)),  # fmt: skip
+    R("patch", "/recruiter/colleges/{college}/data-permissions/{college_permission}", {"notes": "Renewed"}, **allow(200, *PERMISSION_WRITERS)),
+    R("post", "/recruiter/colleges/{college}/data-permissions/{college_permission}/revoke", {}, **allow(200, *PERMISSION_WRITERS)),
     # pob-009 (§2.315, T1): targets, territory, target companies, the daily plan and activity reports -- a PO's own; the Team Lead's direct reports
     R("get", "/recruiter/targets", **allow(200, *POS)),
     R("get", "/recruiter/manager/targets", **allow(200, "mgr", "mgr_out", "super")),
@@ -227,8 +236,10 @@ async def _college(db, bdm) -> dict:
     course = await add(db, BdmOrgCourse(organization_id=org.id, course="MBA", course_key=f"|mba{tag()}"))
     batch = await add(db, BdmOrgPlacementBatch(organization_id=org.id, pass_out_year=2027, created_by_user_id=bdm.id))
     event = await add(db, BdmOrgPlacementEvent(organization_id=org.id, title="Drive", kind="campus_drive", starts_on=now().date(), created_by_user_id=bdm.id))
+    permission = await add(db, InstitutionDataPermission(organization_id=org.id, agreement_reference="MoU R38", purposes=["placement"], valid_from=now().date(),
+                                                         expires_on=now().date() + timedelta(days=90), created_by_user_id=bdm.id))  # fmt: skip
     return {"college": str(org.id), "college_contact": str(contact.id), "college_course": str(course.id), "college_batch": str(batch.id),
-            "college_event": str(event.id)}  # fmt: skip
+            "college_event": str(event.id), "college_permission": str(permission.id)}  # fmt: skip
 
 
 async def build(client, db, w) -> None:

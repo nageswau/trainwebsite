@@ -17,6 +17,7 @@ from sqlalchemy.orm import aliased
 
 from app.models import AuditLog, Candidate, CandidateDuplicate, User
 from app.services import candidates as svc
+from app.services import institution_pool
 from app.services.permissions import user_has_grant
 
 logger = logging.getLogger("app.candidates")
@@ -107,6 +108,7 @@ async def queue(db: AsyncSession, status: str, limit: int, offset: int) -> dict:
     """Oldest first. Both sides must still be in the pool; an open pair also needs both sides active (an archived side has nothing to do)."""
     a, b = aliased(Candidate), aliased(Candidate)
     pool = [or_(c.user_id.is_(None), c.opted_in.is_(True)) for c in (a, b)]
+    pool += [institution_pool.visible(None, c) for c in (a, b)]  # pob-014 S6: a queue is a system read -- institution students never show
     if status == "open":
         pool += [a.archived_at.is_(None), b.archived_at.is_(None)]
     stmt = (

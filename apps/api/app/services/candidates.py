@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import CANDIDATE_CODE_SEQ, AuditLog, Candidate, CandidateResume, CareerApplication, Job, RecCandidateSource, User
 from app.notifications.phone import normalise_phone, wa_number
 from app.schemas import NO_CONTACT
-from app.services import candidate_engagement, candidate_ownership, candidate_privacy, candidate_profile
+from app.services import candidate_engagement, candidate_ownership, candidate_privacy, candidate_profile, institution_pool
 from app.services.permissions import user_has_grant
 from app.services.recruiter import MANAGER_ROLE, ROLE
 from app.services.storage import storage
@@ -82,14 +82,16 @@ def without_compensation(rows: list[dict]) -> None:
             row.pop(key, None)
 
 
-def pool_filter() -> list:
-    """External candidates (no login) and students who opted in (rec-010). Backfilled students who have not opted in never surface."""
+def pool_filter(viewer_id: UUID | None = None) -> list:
+    """External candidates (no login) and students who opted in (rec-010). Backfilled students who have not opted in never surface.
+    pob-014 (DEC-SCOPE-425 S6): an institution's student only for `viewer_id` when that user is on its active permission; without a
+    viewer (system reads) institution students are hidden."""
     # hrc-035 (DEC-SCOPE-396 K4): an anonymised candidate leaves every recruiter screen for good (reports count applications, not this)
-    return [or_(Candidate.user_id.is_(None), Candidate.opted_in.is_(True)), Candidate.anonymised_at.is_(None)]
+    return [or_(Candidate.user_id.is_(None), Candidate.opted_in.is_(True)), Candidate.anonymised_at.is_(None), institution_pool.visible(viewer_id)]
 
 
-async def load(db: AsyncSession, candidate_id: UUID, *, lock: bool = False) -> Candidate:
-    stmt = select(Candidate).where(Candidate.id == candidate_id, *pool_filter())
+async def load(db: AsyncSession, candidate_id: UUID, *, lock: bool = False, viewer_id: UUID | None = None) -> Candidate:
+    stmt = select(Candidate).where(Candidate.id == candidate_id, *pool_filter(viewer_id))
     candidate = await db.scalar(stmt.with_for_update() if lock else stmt)
     if candidate is None:
         raise HTTPException(404, NOT_FOUND)
@@ -113,8 +115,14 @@ def keys(mobile: str | None, email: str | None) -> tuple[str | None, str | None]
     return normalise_phone(mobile), (email.strip().lower() or None) if email else None
 
 
-async def find_matches(db: AsyncSession, mobile_key: str | None, email_key: str | None, exclude_id: UUID | None = None) -> list[dict]:
-    """Every candidate with the mobile or the email, archived ones too (both indexed), oldest first. No contact data is returned."""
+def _restricted(match: dict) -> dict:
+    """pob-014 S8: an institution's student is never named in a duplicate panel -- the block still holds (one person, one candidate)."""
+    return {**match, "id": None, "candidate_code": None, "name": institution_pool.RESTRICTED_NAME, "source_name": None, "status": None}
+
+
+async def find_matches(db: AsyncSession, mobile_key: str | None, email_key: str | None, exclude_id: UUID | None = None, *, redact: bool = True) -> list[dict]:
+    """Every candidate with the mobile or the email, archived ones too (both indexed), oldest first. No contact data is returned.
+    pob-014 S8: institution students are redacted unless `redact=False` (the import, which checks visibility itself)."""
     conditions = []
     if mobile_key:
         conditions.append(Candidate.mobile_normalized == mobile_key)
@@ -126,7 +134,7 @@ async def find_matches(db: AsyncSession, mobile_key: str | None, email_key: str 
     if exclude_id is not None:
         stmt = stmt.where(Candidate.id != exclude_id)
     rows = (await db.execute(stmt.order_by(Candidate.created_at, Candidate.id).limit(MATCH_LIMIT))).all()
-    return [
+    matches = [
         {
             # str(): an HTTPException detail is not run through FastAPI's JSON encoder, so a UUID would fail to serialise.
             "id": str(c.id),
@@ -139,6 +147,7 @@ async def find_matches(db: AsyncSession, mobile_key: str | None, email_key: str 
         }
         for c, source_name in rows
     ]
+    return [_restricted(m) if redact and c.institution_permission_id is not None else m for m, (c, _) in zip(matches, rows, strict=True)]
 
 
 def duplicate_conflict(matches: list[dict]) -> HTTPException:

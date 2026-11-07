@@ -115,7 +115,7 @@ async def _locked_candidate(db: AsyncSession, user: User, candidate_id: UUID, mi
     """A writer (403), the candidate locked in the pool (404 as `missing`), not archived (409)."""
     candidates.require_writer(user)
     try:
-        candidate = await candidates.load(db, candidate_id, lock=True)
+        candidate = await candidates.load(db, candidate_id, lock=True, viewer_id=user.id)
     except HTTPException as exc:
         if exc.status_code == 404:
             raise HTTPException(404, missing) from None

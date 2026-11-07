@@ -38,5 +38,5 @@ async def company_timeline(
 async def candidate_timeline(candidate_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Every candidate reader, every pool candidate (R11) -- the rule of the candidate's calls and applications."""
     candidates.require_reader(user)
-    candidate = await candidates.load(db, candidate_id)
+    candidate = await candidates.load(db, candidate_id, viewer_id=user.id)
     return await svc.candidate_page(db, candidate.id, limit, offset)

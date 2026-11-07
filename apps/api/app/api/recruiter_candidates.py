@@ -100,6 +100,7 @@ async def list_candidates(
     engagement: CandidateEngagementKey | None = None,
     archived: bool = False,
     owner: Literal["me", "unassigned"] | None = None,
+    institution_id: UUID | None = None,  # pob-014 (DEC-SCOPE-425 S11): the college an institution list came from
     limit: int = LIMIT,
     offset: int = OFFSET,
     user: User = Depends(get_current_user),
@@ -109,7 +110,7 @@ async def list_candidates(
     digits, so a name or code that holds digits never matches phone numbers (S2-§13: the source is on every row). hrc-012 (O1): `owner`
     narrows to My candidates (primary recruiter, officer or collaborator) or the unassigned ones; each row names its primary recruiter."""
     svc.require_reader(user)
-    filters = [*svc.pool_filter(), Candidate.archived_at.is_not(None) if archived else Candidate.archived_at.is_(None)]
+    filters = [*svc.pool_filter(user.id), Candidate.archived_at.is_not(None) if archived else Candidate.archived_at.is_(None)]
     if owner == "me":
         filters.append(ownership.mine(user.id))
     elif owner == "unassigned":
@@ -123,6 +124,8 @@ async def list_candidates(
         filters.append(or_(*columns))
     if source_id:
         filters.append(Candidate.source_id == source_id)
+    if institution_id:
+        filters.append(Candidate.institution_org_id == institution_id)
     if status:
         filters.append(Candidate.status == status)
     if engagement:  # hrc-021 (DEC-SCOPE-397 E7): the derived status, one WHERE term
@@ -309,14 +312,14 @@ async def create_candidate(payload: dict = Body(...), user: User = Depends(get_c
 @router.get("/{candidate_id}", response_model=CandidateDetail, response_model_exclude_unset=True)
 async def get_candidate(candidate_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     svc.require_reader(user)
-    return await svc.detail_out(db, user, await svc.load(db, candidate_id))
+    return await svc.detail_out(db, user, await svc.load(db, candidate_id, viewer_id=user.id))
 
 
 @router.get("/{candidate_id}/journey")
 async def get_journey(candidate_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """rec-036 (CI7): lead → IT student → trained → recruiter candidate → placed, read only. Outside the pool is a 404 (R4)."""
     svc.require_reader(user)
-    return await course_skills.journey(db, await svc.load(db, candidate_id))
+    return await course_skills.journey(db, await svc.load(db, candidate_id, viewer_id=user.id))
 
 
 @router.get("/{candidate_id}/training")
@@ -326,7 +329,7 @@ async def get_training(candidate_id: UUID, response: Response, user: User = Depe
     if user.role not in svc.WRITERS:
         raise HTTPException(403, "Your role cannot view training progress")
     response.headers.update(NO_STORE)
-    return await placement_reports.candidate_training(db, await svc.load(db, candidate_id))
+    return await placement_reports.candidate_training(db, await svc.load(db, candidate_id, viewer_id=user.id))
 
 
 @router.get("/{candidate_id}/history")
@@ -334,7 +337,7 @@ async def candidate_history(candidate_id: UUID, response: Response, limit: int =
                             user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """hrc-004 (DEC-SCOPE-376 B1/B6): the candidate's changes with before/after values (contact and salary redacted), for its readers."""
     svc.require_reader(user)
-    candidate = await svc.load(db, candidate_id)
+    candidate = await svc.load(db, candidate_id, viewer_id=user.id)
     response.headers.update(NO_STORE)
     return await recruitment_history.history(db, "candidates", candidate.id, ("candidate.",), limit=limit, offset=offset)
 
@@ -347,7 +350,7 @@ async def update_candidate(candidate_id: UUID, payload: dict = Body(...), user: 
     expected = changes.pop("expected_updated_at", None)
     sent_rows = {kind: changes.pop(kind) for kind in profile.ROWS if kind in changes}  # hrc-010 P1: each sent list replaces its set
     await svc.require_compensation(db, user, changes)
-    candidate = await svc.load(db, candidate_id, lock=True)
+    candidate = await svc.load(db, candidate_id, lock=True, viewer_id=user.id)
 
     async def current() -> dict:  # the 200 response's shape and fields (response_model), never more -- salary absent without the grant
         return CandidateDetail.model_validate(await svc.detail_out(db, user, candidate)).model_dump(exclude_unset=True)
@@ -396,7 +399,7 @@ async def change_ownership(candidate_id: UUID, payload: dict = Body(...), user: 
     """hrc-012 (DEC-SCOPE-382 O2-O6): the primary recruiter, placement officer and collaborators. Partial; a no-op writes nothing. The
     primary recruiter changes their own candidate; a placement manager or super_admin any (403 before the body is read otherwise)."""
     svc.require_writer(user)
-    candidate = await svc.load(db, candidate_id, lock=True)
+    candidate = await svc.load(db, candidate_id, lock=True, viewer_id=user.id)
     if not ownership.may_assign(user, candidate):
         raise HTTPException(403, ownership.CANNOT_ASSIGN)
     sent = _parse(CandidateOwnershipIn, payload, NOT_AN_OBJECT, CANDIDATE_OWNERSHIP_LABELS).model_dump(exclude_unset=True)
@@ -409,7 +412,7 @@ async def change_ownership(candidate_id: UUID, payload: dict = Body(...), user: 
 
 async def _set_archived(db: AsyncSession, user: User, candidate_id: UUID, archive: bool) -> dict:
     svc.require_writer(user)
-    candidate = await svc.load(db, candidate_id, lock=True)
+    candidate = await svc.load(db, candidate_id, lock=True, viewer_id=user.id)
     if (candidate.archived_at is not None) == archive:
         raise HTTPException(409, "This candidate is already archived" if archive else "This candidate is not archived")
     if candidate.merged_into_id is not None:  # hrc-014 D8: a merge is final
@@ -440,11 +443,11 @@ async def upload_resume(candidate_id: UUID, file: UploadFile = File(...), user: 
     """A new version, current from now on. Not idempotent: each upload is a version (the form sends one per click). The file is stored
     before the row lock and discarded when the transaction fails."""
     svc.require_writer(user)
-    await svc.load(db, candidate_id)  # 404 before reading a byte of an unknown candidate's upload
+    await svc.load(db, candidate_id, viewer_id=user.id)  # 404 before reading a byte of an unknown candidate's upload
     data, content_type, file_name = await svc.read_resume(file)
     key = svc.store(data, content_type)
     try:
-        candidate = await svc.load(db, candidate_id, lock=True)
+        candidate = await svc.load(db, candidate_id, lock=True, viewer_id=user.id)
         if candidate.archived_at is not None:
             raise HTTPException(409, svc.ARCHIVED)
         last = await db.scalar(select(func.max(CandidateResume.version)).where(CandidateResume.candidate_id == candidate.id))
@@ -476,7 +479,7 @@ async def upload_resume(candidate_id: UUID, file: UploadFile = File(...), user: 
 async def download_resume(candidate_id: UUID, version: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Readers only. The audit row is committed before any byte leaves; the file name is built from the candidate code."""
     svc.require_reader(user)
-    candidate = await svc.load(db, candidate_id)
+    candidate = await svc.load(db, candidate_id, viewer_id=user.id)
     resume = await db.scalar(select(CandidateResume).where(CandidateResume.candidate_id == candidate.id, CandidateResume.version == version))
     if resume is None:
         raise HTTPException(404, "Resume version not found")
@@ -496,7 +499,7 @@ LinkMode = Annotated[Literal["download", "preview"], Query()]
 async def resume_link(candidate_id: UUID, version: int, response: Response, mode: LinkMode = "download", user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """D4: a 300 s signed link to download the version or preview it (a DOC/DOCX through its PDF rendition). Audited before it leaves."""
     svc.require_reader(user)
-    candidate = await svc.load(db, candidate_id)
+    candidate = await svc.load(db, candidate_id, viewer_id=user.id)
     resume = await db.scalar(select(CandidateResume).where(CandidateResume.candidate_id == candidate.id, CandidateResume.version == version))
     if resume is None:
         raise HTTPException(404, "Resume version not found")
@@ -511,7 +514,7 @@ async def resume_link(candidate_id: UUID, version: int, response: Response, mode
 @router.get("/{candidate_id}/documents")
 async def list_documents(candidate_id: UUID, response: Response, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     svc.require_reader(user)
-    candidate = await svc.load(db, candidate_id)
+    candidate = await svc.load(db, candidate_id, viewer_id=user.id)
     response.headers.update(NO_STORE)
     return await documents.listing(db, candidate)
 
@@ -528,10 +531,10 @@ async def upload_document(
 ):
     """D6/D7: a certificate or other document, optionally fulfilling one of this candidate's pending requests. Not idempotent."""
     svc.require_writer(user)
-    await svc.load(db, candidate_id)  # 404 before reading a byte of an unknown candidate's upload
+    await svc.load(db, candidate_id, viewer_id=user.id)  # 404 before reading a byte of an unknown candidate's upload
 
     async def lock() -> Candidate:
-        candidate = await svc.load(db, candidate_id, lock=True)
+        candidate = await svc.load(db, candidate_id, lock=True, viewer_id=user.id)
         if candidate.archived_at is not None:
             raise HTTPException(409, svc.ARCHIVED)
         return candidate
@@ -545,7 +548,7 @@ async def document_link(
     candidate_id: UUID, document_id: UUID, response: Response, mode: LinkMode = "download", user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     svc.require_reader(user)
-    candidate = await svc.load(db, candidate_id)
+    candidate = await svc.load(db, candidate_id, viewer_id=user.id)
     row = await documents.load_document(db, candidate, document_id)
     out = await documents.link(db, "document", row, mode, f"{row.document_type}-{candidate.candidate_code}-{str(row.id)[:8]}")
     svc.audit(db, user, "document_link", candidate, {"document_id": str(row.id), "mode": mode, "role": user.role})
@@ -560,7 +563,7 @@ async def request_document(candidate_id: UUID, payload: dict = Body(...), user: 
     """D7: ask the candidate for one document type. One pending request per type (409)."""
     svc.require_writer(user)
     body = documents.parse_request(payload)
-    candidate = await svc.load(db, candidate_id, lock=True)
+    candidate = await svc.load(db, candidate_id, lock=True, viewer_id=user.id)
     if candidate.archived_at is not None:
         raise HTTPException(409, svc.ARCHIVED)
     row = await documents.add_request(db, user, candidate, body)
@@ -572,7 +575,7 @@ async def request_document(candidate_id: UUID, payload: dict = Body(...), user: 
 @router.post("/{candidate_id}/document-requests/{request_id}/cancel")
 async def cancel_document_request(candidate_id: UUID, request_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     svc.require_writer(user)
-    candidate = await svc.load(db, candidate_id, lock=True)
+    candidate = await svc.load(db, candidate_id, lock=True, viewer_id=user.id)
     row = await documents.cancel_request(db, user, candidate, request_id)
     await db.commit()
     svc.log("candidate_document_request_cancelled", user, candidate, request_id=str(row.id))
@@ -586,7 +589,7 @@ async def extract_resume(candidate_id: UUID, version: int, user: User = Depends(
     """EX1/EX2: suggestions from this version's text, stored on the resume row only -- the candidate and their skills are unchanged
     until Apply (AC2). A scanned PDF answers `no_text` (AC3); an unreadable or password-protected file is a 422 sentence."""
     svc.require_writer(user)
-    candidate = await extraction.extractable(db, candidate_id)
+    candidate = await extraction.extractable(db, candidate_id, user.id)
     resume = await extraction.load_resume(db, candidate, version)
     await extraction.extract(db, resume)
     stored = resume.extraction_json
@@ -601,7 +604,7 @@ async def apply_resume(candidate_id: UUID, version: int, payload: dict = Body(..
     """EX6/EX7: the ticked skills and profile fields, all or nothing."""
     svc.require_writer(user)
     body = _parse(ResumeApply, payload, NOT_AN_OBJECT, RESUME_APPLY_LABELS)
-    candidate = await candidate_skills.writable(db, candidate_id)
+    candidate = await candidate_skills.writable(db, candidate_id, user.id)
     resume = await extraction.load_resume(db, candidate, version)
     result = await extraction.apply(db, user, candidate, resume, body)
     await db.commit()

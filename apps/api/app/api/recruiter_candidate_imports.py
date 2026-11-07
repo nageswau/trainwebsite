@@ -21,7 +21,7 @@ from app.api.deps import get_current_user
 from app.api.school_bulk import IN_PROGRESS, KEY_PATTERN, KEY_REUSED, LOCK_TIMEOUT, _lock_timed_out
 from app.core.database import get_db
 from app.core.logging import get_logger
-from app.models import AuditLog, CandidateImportBatch, RecCandidateSource, User
+from app.models import AuditLog, BdmOrganization, CandidateImportBatch, InstitutionDataPermission, RecCandidateSource, User
 from app.services import candidate_import as imports
 from app.services import candidate_privacy as privacy
 from app.services import candidates as svc
@@ -36,6 +36,12 @@ SEE_ALL = frozenset({MANAGER_ROLE, "super_admin"})
 
 def _scope(user: User) -> list:
     return [] if user.role in SEE_ALL else [CandidateImportBatch.uploaded_by_user_id == user.id]
+
+
+def _institution(permission, org, notice_status: str) -> dict:
+    """pob-014 S7: what each created row is stamped with."""
+    columns = {"institution_org_id": org.id, "institution_permission_id": permission.id, "institution_notice_status": notice_status}
+    return {"columns": columns, "college": org.name[:200]}
 
 
 async def _rows(file: UploadFile) -> tuple[bytes, list]:
@@ -53,26 +59,35 @@ async def template(user: User = Depends(get_current_user), db: AsyncSession = De
 
 
 @router.post("/preview")
-async def preview(file: UploadFile = File(...), source_id: UUID = Form(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def preview(
+    file: UploadFile = File(...),
+    source_id: UUID = Form(...),
+    institution_permission_id: UUID | None = Form(None),  # pob-014 (DEC-SCOPE-425 S7)
+    notice_status: str | None = Form(None),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """I5: every row's outcome if the file were imported now. Read only: no batch, row, candidate or audit is written."""
     await imports.require_importer(db, user)
+    if institution_permission_id:
+        await imports.usable_permission(db, user, institution_permission_id, notice_status)
     _, rows = await _rows(file)
     await svc.active_source(db, source_id)
     results = await imports.run(db, user, source_id, rows)
-    return {**imports.counts(results), "rows": results}
+    return {**imports.counts(results), "rows": imports.shown(results)}
 
 
-async def _replay(db: AsyncSession, user: User, key: str, digest: str, source_id: UUID) -> CandidateImportBatch | None:
-    """I8: the batch this key made (422 when it was another file or source), else the same file and source imported under another key."""
+async def _replay(db: AsyncSession, user: User, key: str, digest: str, source_id: UUID, permission_id: UUID | None) -> CandidateImportBatch | None:
+    """I8: the batch this key made (422 when it was another file, source or -- pob-014 -- permission), else the same file, source and
+    permission imported under another key."""
     mine = CandidateImportBatch.uploaded_by_user_id == user.id
     batch = await db.scalar(select(CandidateImportBatch).where(mine, CandidateImportBatch.idempotency_key == key))
     if batch is not None:
-        if (batch.file_sha256, batch.source_id) != (digest, source_id):
+        if (batch.file_sha256, batch.source_id, batch.institution_permission_id) != (digest, source_id, permission_id):
             raise HTTPException(422, KEY_REUSED)
         return batch
-    return await db.scalar(
-        select(CandidateImportBatch).where(mine, CandidateImportBatch.file_sha256 == digest, CandidateImportBatch.source_id == source_id).order_by(CandidateImportBatch.created_at).limit(1)
-    )
+    same = (CandidateImportBatch.file_sha256 == digest, CandidateImportBatch.source_id == source_id, CandidateImportBatch.institution_permission_id.is_not_distinct_from(permission_id))
+    return await db.scalar(select(CandidateImportBatch).where(mine, *same).order_by(CandidateImportBatch.created_at).limit(1))
 
 
 @router.post("", status_code=201)
@@ -80,6 +95,8 @@ async def commit(
     file: UploadFile = File(...),
     source_id: UUID = Form(...),
     lawful_basis: str | None = Form(None),  # hrc-035 (DEC-SCOPE-396 K1): optional for older clients; the import form requires it
+    institution_permission_id: UUID | None = Form(None),  # pob-014 (DEC-SCOPE-425 S7)
+    notice_status: str | None = Form(None),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -102,16 +119,19 @@ async def commit(
         if _lock_timed_out(exc):
             raise HTTPException(409, IN_PROGRESS) from exc
         raise
-    if (batch := await _replay(db, user, idempotency_key, digest, source_id)) is not None:
+    institution = None
+    if institution_permission_id:  # after the import lock, held FOR SHARE to the commit: a concurrent revoke waits
+        institution = _institution(*await imports.usable_permission(db, user, institution_permission_id, notice_status, lock=True), notice_status)
+    if (batch := await _replay(db, user, idempotency_key, digest, source_id, institution_permission_id)) is not None:
         logger.info("candidate_import_replayed", extra={"extra_fields": {"actor_id": str(user.id), "batch_id": str(batch.id)}})
-        return await imports.report(db, batch, replayed=True)
+        return await imports.report(db, batch, user, replayed=True)
     await svc.active_source(db, source_id)
     batch = CandidateImportBatch(uploaded_by_user_id=user.id, source_id=source_id, idempotency_key=idempotency_key, file_sha256=digest,
-                                 file_name=(file.filename or "upload")[:200])  # fmt: skip
+                                 file_name=(file.filename or "upload")[:200], institution_permission_id=institution_permission_id)  # fmt: skip
     db.add(batch)
     await db.flush()
     try:
-        results = await imports.run(db, user, source_id, rows, batch.id)
+        results = await imports.run(db, user, source_id, rows, batch.id, institution)
     except DBAPIError as exc:
         if _lock_timed_out(exc):  # a person's row lock held past lock_timeout by a concurrent edit
             raise HTTPException(409, IN_PROGRESS) from exc
@@ -121,11 +141,12 @@ async def commit(
     await imports.store(db, batch, results)
     tally = {"created": batch.created_count, "matched": batch.matched_count, "error": batch.error_count}
     db.add(AuditLog(user_id=user.id, action="candidate.import", entity_type="candidate_import_batches", entity_id=str(batch.id),
-                    metadata_json={"source_id": str(source_id), "total": batch.total_rows, **tally, "file_sha256": digest}))  # fmt: skip
+                    metadata_json={"source_id": str(source_id), "total": batch.total_rows, **tally, "file_sha256": digest,
+                                   "institution_permission_id": str(institution_permission_id) if institution_permission_id else None}))  # fmt: skip
     await db.commit()
     logger.info("candidate_import_completed", extra={"extra_fields": {
         "batch_id": str(batch.id), "actor_id": str(user.id), "total": batch.total_rows, **tally, "duration_ms": round((time.monotonic() - started) * 1000)}})  # fmt: skip
-    return await imports.report(db, batch)
+    return await imports.report(db, batch, user)
 
 
 @router.get("")
@@ -134,10 +155,12 @@ async def history(limit: int = LIMIT, offset: int = OFFSET, user: User = Depends
     await imports.require_importer(db, user)
     filters = _scope(user)
     total = await db.scalar(select(func.count()).select_from(CandidateImportBatch).where(*filters))
-    stmt = (select(CandidateImportBatch, User, RecCandidateSource)
+    stmt = (select(CandidateImportBatch, User, RecCandidateSource, InstitutionDataPermission, BdmOrganization)
             .join(User, User.id == CandidateImportBatch.uploaded_by_user_id).join(RecCandidateSource, RecCandidateSource.id == CandidateImportBatch.source_id)
+            .outerjoin(InstitutionDataPermission, InstitutionDataPermission.id == CandidateImportBatch.institution_permission_id)
+            .outerjoin(BdmOrganization, BdmOrganization.id == InstitutionDataPermission.organization_id)
             .where(*filters).order_by(CandidateImportBatch.created_at.desc(), CandidateImportBatch.id.desc()).limit(limit).offset(offset))  # fmt: skip
-    items = [imports.summary(batch, uploader, source) for batch, uploader, source in (await db.execute(stmt)).all()]
+    items = [imports.summary(batch, uploader, source, imports.permission_ref(permission, org)) for batch, uploader, source, permission, org in (await db.execute(stmt)).all()]
     return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
 
 
@@ -152,11 +175,11 @@ async def _batch(db: AsyncSession, user: User, batch_id: UUID) -> CandidateImpor
 @router.get("/{batch_id}")
 async def import_report(batch_id: UUID, response: Response, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     response.headers.update(NO_STORE)
-    return await imports.report(db, await _batch(db, user, batch_id))
+    return await imports.report(db, await _batch(db, user, batch_id), user)
 
 
 @router.get("/{batch_id}/report.csv")
 async def import_report_csv(batch_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    body = await imports.report(db, await _batch(db, user, batch_id))
+    body = await imports.report(db, await _batch(db, user, batch_id), user)
     return Response(content=imports.report_csv(body), media_type="text/csv",
                     headers={"Content-Disposition": f"attachment; filename=candidate-import-{batch_id}.csv", **NO_STORE})  # fmt: skip

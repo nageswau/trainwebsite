@@ -73,7 +73,7 @@ async def add_requirement_candidate(requirement_id: UUID, payload: RecApplicatio
     svc.require_writer(user, job.id, "add_requirement_candidate")
     if job.status in requirements.ENDED:
         raise HTTPException(409, "Candidates cannot be added to a closed or cancelled requirement")
-    candidate = await db.scalar(select(Candidate).where(Candidate.id == payload.candidate_id, *candidates.pool_filter()).with_for_update(read=True))
+    candidate = await db.scalar(select(Candidate).where(Candidate.id == payload.candidate_id, *candidates.pool_filter(user.id)).with_for_update(read=True))
     if candidate is None or candidate.archived_at is not None:
         raise HTTPException(422, "Choose an active candidate from the pool")
     if payload.drive_id is not None:
@@ -147,7 +147,7 @@ async def candidate_applications(candidate_id: UUID, user: User = Depends(get_cu
     """A candidate's status per requirement (§12: different statuses for different companies). Every candidate reader sees every row;
     `in_scope` says whether the requirement page opens for the caller."""
     candidates.require_reader(user)
-    candidate = await candidates.load(db, candidate_id)
+    candidate = await candidates.load(db, candidate_id, viewer_id=user.id)
     rows = (
         await db.execute(
             select(JobApplication, Job, Company)

@@ -10,8 +10,9 @@ import { newIdempotencyKey } from "@/lib/idempotencyKey";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
 import {
   IMPORT_COLUMNS, IMPORT_MAX_BYTES, IMPORT_MAX_ROWS, IMPORTS_URL, PREVIEW_URL, TEMPLATE_URL, previewCounts, reportCounts, reportCsvUrl,
-  type CandidateRef, type ImportReport, type Preview,
+  type CandidateRef, type ImportReport, type InstitutionImport, type Preview,
 } from "@/lib/recruiterCandidateImport";
+import { isPool, NOTICE_LABEL, NOTICE_STATUSES, poolUrl } from "@/lib/institutionPool";
 import { CANDIDATES_PATH, LAWFUL_BASES } from "@/lib/recruiterCandidates";
 
 const FILE_ID = "candidate-import-file";
@@ -21,10 +22,15 @@ const PREVIEW_LABEL = { new: "New candidate", matched: "Already a candidate", er
 const RESULT_LABEL = { created: "Added", matched: "Already a candidate", error: "Error" } as const;
 
 const BASIS_ID = "candidate-import-basis";
+const NOTICE_ID = "candidate-import-notice";
+const NOTICE_MISSING = "Choose whether the students were sent the privacy notice or gave consent.";
+const PERMISSION_UNAVAILABLE = "This data permission is not in force or does not name you, so its students cannot be imported. Go back to the college's student pool.";
+type PermissionInfo = { college: string; reference: string } | "unavailable" | null;
 
-function precheck(file: File | undefined, source: string, basis: string): string | null {
+function precheck(file: File | undefined, source: string, basis: string, notice: string | null): string | null {
   if (!file || !source) return "Choose the candidate source and a filled-in .csv or .xlsx file first.";
   if (!basis) return "Choose why EduSphere may hold these candidates' details."; // hrc-035 (DEC-SCOPE-396 K1)
+  if (notice === "") return NOTICE_MISSING; // pob-014 S7: only for an institution's list
   if (!/\.(csv|xlsx)$/i.test(file.name)) return "Choose a .csv or .xlsx file.";
   if (file.size > IMPORT_MAX_BYTES) return "The file is larger than 1 MB.";
   return null;
@@ -69,6 +75,9 @@ function ImportResult({ report }: { report: ImportReport }) {
   return (
     <div style={{ marginTop: 16 }}>
       <h4 ref={heading} tabIndex={-1}>Import result</h4>
+      {report.institution_permission && (
+        <p>Imported for {report.institution_permission.organization_name} under {report.institution_permission.agreement_reference}.</p>
+      )}
       <p className={tone}>
         {reportCounts(report)}.{report.replayed ? " This file was already imported, so nothing new was added." : ""}
         {report.error_count ? " Fix the rows with errors and import just those." : ""}
@@ -97,11 +106,13 @@ function ImportResult({ report }: { report: ImportReport }) {
 
 // hrc-013 (DEC-SCOPE-391 I12): 1 template, 2 source + file -> Check file (read only), 3 the preview -> Import, 4 the report. The
 // Idempotency-Key belongs to the chosen file and source: a retry after a dropped connection replays the first result.
-export default function RecruiterCandidateImport() {
+export default function RecruiterCandidateImport({ institution = null }: { institution?: InstitutionImport | null }) {
   const [sources, setSources] = useState<CatalogueValue[] | null>(null);
   const [sourcesFailed, setSourcesFailed] = useState(false);
   const [source, setSource] = useState("");
   const [basis, setBasis] = useState(""); // hrc-035 K1: recorded on each candidate the import adds
+  const [notice, setNotice] = useState(""); // pob-014 S7: the students' notice status, for an institution's list
+  const [permission, setPermission] = useState<PermissionInfo>(null);
   const [file, setFile] = useState<File | null>(null);
   const [key, setKey] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -118,10 +129,26 @@ export default function RecruiterCandidateImport() {
     return () => controller.abort();
   }, []);
 
-  function changed(next: { file?: File | null; source?: string; basis?: string }) {
+  const college = institution?.college;
+  const permissionId = institution?.permission;
+  useEffect(() => {
+    if (!college || !permissionId) return;
+    const controller = new AbortController();
+    fetch(`${poolUrl(college)}?permission_id=${encodeURIComponent(permissionId)}&limit=1`, { signal: controller.signal })
+      .then(async (r) => {
+        const body = await r.json().catch(() => null);
+        const found = r.ok && isPool(body) ? body.permissions.find((p) => p.id === permissionId) : undefined;
+        setPermission(found && found.status === "active" && isPool(body) ? { college: body.college.name, reference: found.agreement_reference } : "unavailable");
+      })
+      .catch(() => controller.signal.aborted || setPermission("unavailable"));
+    return () => controller.abort();
+  }, [college, permissionId]);
+
+  function changed(next: { file?: File | null; source?: string; basis?: string; notice?: string }) {
     if (next.file !== undefined) setFile(next.file);
     if (next.source !== undefined) setSource(next.source);
     if (next.basis !== undefined) setBasis(next.basis);
+    if (next.notice !== undefined) setNotice(next.notice);
     setKey(newIdempotencyKey());
     setPreview(null);
     setError("");
@@ -142,6 +169,10 @@ export default function RecruiterCandidateImport() {
     body.append("file", file);
     body.append("source_id", source);
     body.append("lawful_basis", basis);
+    if (institution) {
+      body.append("institution_permission_id", institution.permission);
+      body.append("notice_status", notice);
+    }
     const outcome = await sendRequest(url, { method: "POST", headers, body });
     inFlight.current = false;
     setBusy("");
@@ -154,7 +185,7 @@ export default function RecruiterCandidateImport() {
 
   async function check(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const problem = precheck(file ?? undefined, source, basis);
+    const problem = precheck(file ?? undefined, source, basis, institution ? notice : null);
     if (problem) return setError(problem);
     setReport(null);
     const data = await send(PREVIEW_URL, "check");
@@ -186,6 +217,27 @@ export default function RecruiterCandidateImport() {
           <a className="btn secondary" href={TEMPLATE_URL} download>Download the template (.csv)</a>
           <BulkColumnReference columns={IMPORT_COLUMNS} />
           <h4 style={{ marginTop: 16 }}>2. Choose the source and the filled-in file</h4>
+          {institution && (
+            <div className="form-warning" style={{ marginBottom: 8 }}>
+              {permission === null && <p style={{ margin: 0 }}>Loading the data permission…</p>}
+              {permission === "unavailable" && <p style={{ margin: 0 }} role="alert">{PERMISSION_UNAVAILABLE}</p>}
+              {permission && permission !== "unavailable" && (
+                <p style={{ margin: 0 }}>
+                  Importing <strong>{permission.college}</strong>&apos;s students under <strong>{permission.reference}</strong>. Each new student is
+                  visible only to the people this permission names, and only while it is in force.
+                </p>
+              )}
+            </div>
+          )}
+          {institution && (
+            <div className="field">
+              <label htmlFor={NOTICE_ID}>Students&apos; notice or consent</label>
+              <select id={NOTICE_ID} value={notice} onChange={(e) => changed({ notice: e.target.value })} disabled={busy !== ""}>
+                <option value="">Choose one</option>
+                {NOTICE_STATUSES.map((n) => <option key={n} value={n}>{NOTICE_LABEL[n]}</option>)}
+              </select>
+            </div>
+          )}
           <div className="field">
             <label htmlFor={SOURCE_ID}>Candidate source</label>
             <select id={SOURCE_ID} value={source} onChange={(e) => changed({ source: e.target.value })} disabled={busy !== "" || !sources}>
