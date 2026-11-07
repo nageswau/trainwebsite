@@ -22,9 +22,20 @@ from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
-    REC_EMAIL_KINDS, REC_TEMPLATE_CATEGORIES, REC_WHATSAPP_KINDS, AuditLog, Candidate, Company, CompanyContact, Interview, Job, RecruiterMessage,
-    RecruiterMessageTemplate, RecruiterTemplateVersion, User,
-)  # fmt: skip
+    REC_EMAIL_KINDS,
+    REC_TEMPLATE_CATEGORIES,
+    REC_WHATSAPP_KINDS,
+    AuditLog,
+    Candidate,
+    Company,
+    CompanyContact,
+    Interview,
+    Job,
+    RecruiterMessage,
+    RecruiterMessageTemplate,
+    RecruiterTemplateVersion,
+    User,
+)
 from app.notifications.phone import wa_number
 from app.schemas import RecEmailCreate, RecTemplateCopy, RecWhatsAppCreate
 from app.services import applications, candidates, contact_status, mailer, recruiter_contracts
