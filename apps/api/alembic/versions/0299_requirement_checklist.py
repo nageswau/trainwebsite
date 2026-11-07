@@ -1,8 +1,8 @@
 """pob-016 -- the requirement validation checklist: `job_checklist_items`, `job_checklist_overrides`, `requirement_checklist_settings`,
 `companies.checklist_blocks_sourcing` and the follow-up reason `clarification`.
 
-Revision ID: 0298_requirement_checklist
-Revises: 0297_crm_import_merge
+Revision ID: 0299_requirement_checklist
+Revises: 0298_template_governance
 
 docs/superpowers/specs/2026-11-07-pob-016-requirement-checklist-design.md (DEC-SCOPE-419). 0001 builds a fresh database from the current models, which already
 carry all of this, so each step runs only when missing (0256's idiom). The checks are frozen copies of the models at this revision. The upgrade changes no existing
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0298_requirement_checklist"
-down_revision = "0297_crm_import_merge"
+revision = "0299_requirement_checklist"
+down_revision = "0298_template_governance"
 branch_labels = None
 depends_on = None
 

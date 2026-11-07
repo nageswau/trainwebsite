@@ -36,7 +36,7 @@ def test_models_match_the_migration():
 
     table = RecruiterFollowUp.__table__
     assert {c.name for c in table.columns} == COLUMNS
-    # pob-016 (0298) added a reason, so the model's reason check has moved on from this frozen copy
+    # pob-016 (0299) added a reason, so the model's reason check has moved on from this frozen copy
     assert set(_migration.CHECKS) == set(RECRUITER_FOLLOW_UP_CHECKS)
     names = {i.name for i in table.indexes} | {c.name for c in table.constraints}
     assert set(_migration.CHECKS) | set(_migration.INDEXES) <= names

@@ -172,6 +172,7 @@ export const RECRUITER_NAV: NavItem[] = withResources([ // pob-001: Receivables 
   { label: "Follow-ups", href: "/recruiter/follow-ups" }, // rec-024
   { label: "My Tasks", href: "/recruiter/tasks" }, // hrc-016: candidate tasks assigned to me
   { label: "Meetings", href: "/recruiter/meetings" }, // rec-028
+  { label: "Message templates", href: "/recruiter/templates" }, // pob-023: add, edit and reuse; shared drafts wait for approval
   { label: "Interviews", href: "/recruiter/interviews" }, // rec-020
   { label: "Joinings", href: "/recruiter/joinings" }, // rec-023
   { label: "Receivables", href: "/recruiter/receivables" }, // rec-031

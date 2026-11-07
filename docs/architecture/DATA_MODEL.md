@@ -2400,8 +2400,28 @@ drops the five tables.
 survivor. `crm_import_batches` (uploader, idempotency key unique per uploader, `file_sha256`, file name, counts) and `crm_import_rows` (batch, row number, status, reason, company and contact
 ids, created flags) hold no cell value. The migration seeds the `placement_manager` `crm.import` and `crm.merge` grants and changes no existing row; the downgrade drops the tables, the columns
 and the grant rows.
+## Template governance (`pob-023`, `DEC-SCOPE-408`; migration `0298_template_governance`, after `0297_crm_import_merge`)
 
-### Requirement validation checklist (`pob-016`, `DEC-SCOPE-419`, migration `0298_requirement_checklist`)
+**`recruiter_message_templates`:**
+- `channel` CHECK adds `linkedin` and `call`. `kind` is nullable: null exactly for LinkedIn and call.
+- New columns:
+  - `category` (CHECK in company, linkedin, whatsapp, calling, college_tpo, candidate; backfilled from channel and kind)
+  - `purpose`, `language` (default English), `department`, `industry`, `role_type`
+  - `status` (draft, approved or archived): **replaces `active`**, true → approved, false → archived; the ORM keeps `active` as a hybrid
+  - `owner_user_id` (null = shared; CHECK that a personal template is never approved)
+  - `steps` (JSON, not null exactly for `call`)
+  - `version`, `created_by_user_id`, `updated_by_user_id`, `last_used_at`
+- The shared-name unique index becomes partial (`owner_user_id IS NULL`), and `uq_recruiter_message_templates_owner_name` covers
+  personal names.
+
+**`recruiter_template_versions`:** (`id`, `template_id` → templates CASCADE, `version`, unique per template, `content` JSON,
+`edited_by_user_id`, `created_at`). v1 is written for every existing row.
+
+The downgrade restores `active` and refuses while LinkedIn, call or personal templates exist. 0120's seed is column-aware, because a fresh
+database built by `create_all` has no `active` column.
+
+
+### Requirement validation checklist (`pob-016`, `DEC-SCOPE-419`, migration `0299_requirement_checklist`)
 
 - `job_checklist_items`: PK `(job_id, item_key)`; `job_id` FK `jobs` CASCADE; `status` CHECK `confirmed`/`not_applicable`/`missing`; `follow_up_id` FK `recruiter_follow_ups` SET NULL; `updated_by_user_id`; timestamps. An unanswered item has no row. `item_key` has no check: the items are `services/requirement_checklist.ITEMS`.
 - `job_checklist_overrides`: PK `job_id` FK `jobs` CASCADE; `reason`; `overridden_by_user_id`; timestamps. One per requirement, kept for good.

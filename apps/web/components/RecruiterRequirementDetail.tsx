@@ -9,6 +9,7 @@ import RecruiterRequirementForm from "@/components/RecruiterRequirementForm";
 import RecruiterRequirementCandidates from "@/components/RecruiterRequirementCandidates";
 import RecruiterRequirementJd from "@/components/RecruiterRequirementJd";
 import RecruiterRequirementMatches from "@/components/RecruiterRequirementMatches";
+import RecruiterRequirementMessages from "@/components/RecruiterRequirementMessages";
 import RecruiterRecordHistory from "@/components/RecruiterRecordHistory";
 import RecruiterRequirementRevenue from "@/components/RecruiterRequirementRevenue";
 import RecruiterShares from "@/components/RecruiterShares";
@@ -376,6 +377,8 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
               onRequirementChanged={setRequirement} onShortlisted={() => setShortlists((n) => n + 1)} onShared={() => setShares((n) => n + 1)} />
           )}
           <RecruiterShares source={{ kind: "requirement", requirementId: r.id }} refreshKey={shares} />
+          {/* pob-023 (G12): messages to the company's contacts about this requirement -- its title, location and range fill the template */}
+          <RecruiterRequirementMessages key={`messages-${r.id}`} companyId={r.company.id} jobId={r.id} />
           {/* rec-031: the §23 revenue, for the roles that see it (RV10) */}
           {showRevenue && <RecruiterRequirementRevenue requirementId={r.id} />}
         </>

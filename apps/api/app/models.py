@@ -27,6 +27,7 @@ from sqlalchemy import (
     true,
 )
 from sqlalchemy.dialects.postgresql import TSVECTOR
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column, relationship, validates
 from sqlalchemy.sql import func
 
@@ -1086,7 +1087,7 @@ class Job(Base, TimestampMixin):
     company = relationship("Company")
 
 
-# pob-016 (DEC-SCOPE-419): the requirement validation checklist; migration 0298 repeats the check.
+# pob-016 (DEC-SCOPE-419): the requirement validation checklist; migration 0299 repeats the check.
 JOB_CHECKLIST_ITEM_STATUSES = ("confirmed", "not_applicable", "missing")
 JOB_CHECKLIST_ITEM_CHECKS = {"ck_job_checklist_items_status": f"status IN ({', '.join(repr(s) for s in JOB_CHECKLIST_ITEM_STATUSES)})"}
 
@@ -7744,13 +7745,23 @@ REC_EMAIL_KINDS = (
     "company_introduction", "recruitment_proposal", "candidate_profiles", "jd_acknowledgement", "interview_confirmation", "offer_follow_up",
     "joining_confirmation",
 )
+# pob-023 (DEC-SCOPE-408 G1-G5): LinkedIn and calling-script channels (no kind), the §14 categories, Draft -> Approved -> Archived and
+# personal (owner set) vs shared; migration 0298 repeats these (test_pob_023_migration keeps them identical).
+REC_TEMPLATE_CHANNELS = ("whatsapp", "email", "linkedin", "call")
+REC_TEMPLATE_CATEGORIES = ("company", "linkedin", "whatsapp", "calling", "college_tpo", "candidate")
+REC_TEMPLATE_STATUSES = ("draft", "approved", "archived")
 RECRUITER_TEMPLATE_CHECKS = {
-    "ck_recruiter_message_templates_channel": "channel IN ('whatsapp', 'email')",
+    "ck_recruiter_message_templates_channel": f"channel IN ({', '.join(repr(c) for c in REC_TEMPLATE_CHANNELS)})",
     "ck_recruiter_message_templates_kind": (
         f"(channel = 'whatsapp' AND kind IN ({', '.join(repr(k) for k in REC_WHATSAPP_KINDS)})) OR "
-        f"(channel = 'email' AND kind IN ({', '.join(repr(k) for k in REC_EMAIL_KINDS)}))"
+        f"(channel = 'email' AND kind IN ({', '.join(repr(k) for k in REC_EMAIL_KINDS)})) OR "
+        "(channel IN ('linkedin', 'call') AND kind IS NULL)"
     ),
     "ck_recruiter_message_templates_subject": "(channel = 'email') = (subject IS NOT NULL)",
+    "ck_recruiter_message_templates_category": f"category IN ({', '.join(repr(c) for c in REC_TEMPLATE_CATEGORIES)})",
+    "ck_recruiter_message_templates_status": f"status IN ({', '.join(repr(c) for c in REC_TEMPLATE_STATUSES)})",
+    "ck_recruiter_message_templates_steps": "(channel = 'call') = (steps IS NOT NULL)",
+    "ck_recruiter_message_templates_personal": "owner_user_id IS NULL OR status <> 'approved'",
 }
 RECRUITER_MESSAGE_CHECKS = {
     "ck_recruiter_messages_party": "(contact_id IS NULL) = (company_id IS NULL) AND (contact_id IS NULL) <> (candidate_id IS NULL)",
@@ -7767,15 +7778,57 @@ class RecruiterMessageTemplate(Base, TimestampMixin):
     __tablename__ = "recruiter_message_templates"
     __table_args__ = (
         *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_TEMPLATE_CHECKS.items()),
-        Index("uq_recruiter_message_templates_channel_name", "channel", text("lower(name)"), unique=True),
+        # pob-023 G5: a shared name is unique per channel; a personal one per author and channel
+        Index("uq_recruiter_message_templates_channel_name", "channel", text("lower(name)"), unique=True, postgresql_where=text("owner_user_id IS NULL")),
+        Index("uq_recruiter_message_templates_owner_name", "owner_user_id", "channel", text("lower(name)"), unique=True, postgresql_where=text("owner_user_id IS NOT NULL")),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     channel: Mapped[str] = mapped_column(String(20))
-    kind: Mapped[str] = mapped_column(String(40))
+    kind: Mapped[str | None] = mapped_column(String(40), nullable=True)  # pob-023 G1: null for LinkedIn and calling scripts
     name: Mapped[str] = mapped_column(String(160))
     subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
     body: Mapped[str] = mapped_column(Text)
-    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    # pob-023 (DEC-SCOPE-408): category and metadata (G2, G3), status and visibility (G4, G5), calling steps (G1), versions and authors (G7)
+    category: Mapped[str] = mapped_column(String(20), default="company", server_default=text("'company'"))
+    purpose: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    language: Mapped[str] = mapped_column(String(40), default="English", server_default=text("'English'"))
+    department: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    industry: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    role_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    status: Mapped[str] = mapped_column(String(10), default="approved", server_default=text("'approved'"))
+    owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True, index=True)
+    steps: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    @hybrid_property
+    def active(self) -> bool:
+        """rec-026's flag, kept as a view of the status (G4): approved = active. Setting it approves or archives."""
+        return self.status == "approved"
+
+    @active.inplace.setter
+    def _active_setter(self, value: bool) -> None:
+        self.status = "approved" if value else "archived"
+
+    @active.inplace.expression
+    @classmethod
+    def _active_expression(cls):
+        return cls.status == "approved"
+
+
+class RecruiterTemplateVersion(Base):
+    """pob-023 G7: one row per saved content of a template (v1 at create, then each content change) -- append-only."""
+
+    __tablename__ = "recruiter_template_versions"
+    __table_args__ = (UniqueConstraint("template_id", "version", name="uq_recruiter_template_versions_version"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    template_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_message_templates.id", ondelete="CASCADE"))
+    version: Mapped[int] = mapped_column(Integer)
+    content: Mapped[dict] = mapped_column(JSON)
+    edited_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class RecruiterMessage(Base, TimestampMixin):

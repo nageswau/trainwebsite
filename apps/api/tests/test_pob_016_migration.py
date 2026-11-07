@@ -1,4 +1,4 @@
-"""pob-016 -- migration 0298_requirement_checklist (DEC-SCOPE-419): the chain, the frozen checks and the round trip, in a throwaway database
+"""pob-016 -- migration 0299_requirement_checklist (DEC-SCOPE-419): the chain, the frozen checks and the round trip, in a throwaway database
 (the pob-006 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.models import JOB_CHECKLIST_ITEM_CHECKS, RECRUITER_FOLLOW_UP_CHECKS
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_pob_016_migration", VERSIONS / "0298_requirement_checklist.py")
+_spec = importlib.util.spec_from_file_location("_pob_016_migration", VERSIONS / "0299_requirement_checklist.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
@@ -65,7 +65,7 @@ def _follow_up(url, reason: str) -> None:
 
 def test_the_round_trip_keeps_existing_rows(isolated_db):
     cfg, url = isolated_db["cfg"], isolated_db["url"]
-    # 0001 builds today's models, so remove what 0298 adds first: the guarded upgrade must add it back
+    # 0001 builds today's models, so remove what 0299 adds first: the guarded upgrade must add it back
     for table in TABLES:
         _sql(url, f"DROP TABLE IF EXISTS {table}", autocommit=True)
     _sql(url, "ALTER TABLE companies DROP COLUMN IF EXISTS checklist_blocks_sourcing", autocommit=True)

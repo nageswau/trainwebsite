@@ -46,7 +46,7 @@ follow-up with the client contact. Where the rule is switched on, a requirement 
 - **C14 Audit,** all in the write's transaction, shown in the requirement's History: `recruiter_requirement.checklist_item` (item, before/after labels), `recruiter_requirement.checklist_override` (reason, the incomplete items).
   The rules: `requirement_checklist.global_rule` and `requirement_checklist.company_rule`, each with before/after.
 
-## Data model (migration `0298_requirement_checklist`, guarded per the 0001 `create_all` rule)
+## Data model (migration `0299_requirement_checklist`, guarded per the 0001 `create_all` rule)
 
 - `job_checklist_items`: PK `(job_id, item_key)`, `job_id` FK CASCADE, `status` CHECK, `follow_up_id` FK `recruiter_follow_ups` SET NULL, `updated_by_user_id`, timestamps. `item_key` has no CHECK: correcting C1 needs no migration.
 - `job_checklist_overrides`: PK `job_id` FK CASCADE, `reason` text, `overridden_by_user_id`, timestamps.
