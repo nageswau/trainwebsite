@@ -4,6 +4,7 @@ import { type FormEvent, type ReactNode, useId, useRef, useState } from "react";
 
 import InterviewPanelSection from "@/components/InterviewPanelSection";
 import RecruiterInterviewForm, { type ContactOption } from "@/components/RecruiterInterviewForm";
+import RecruiterInterviewMessages from "@/components/RecruiterInterviewMessages";
 import ReturnToLoginLink from "@/components/ReturnToLoginLink";
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
 import { istInputToIso, nowIstInput } from "@/lib/bdmAppointments";
@@ -330,6 +331,7 @@ export default function RecruiterInterviewItem({ interview: given, card = false,
 }) {
   const [mode, setMode] = useState<"view" | "status" | "reschedule" | "edit" | "feedback" | "cancel" | "panel">("view");
   const [latest, setLatest] = useState<RecInterview | null>(null); // hrc-003 QA-03: a stale edit's reload shows here until the list reloads
+  const [messaging, setMessaging] = useState(false);
   const i = latest && latest.updated_at > given.updated_at ? latest : given;
   const id = useId();
   const cancelled = i.status === "cancelled";
@@ -429,6 +431,15 @@ export default function RecruiterInterviewItem({ interview: given, card = false,
           )}
         </div>
       )}
+      {/* pob-023 (G12): a confirmation or feedback follow-up from a template, filled with this interview */}
+      {mode === "view" && i.can_edit && (
+        <div>
+          <button type="button" className="btn secondary small" aria-expanded={messaging} onClick={() => setMessaging((m) => !m)}>
+            {messaging ? "Hide messages" : "Message candidate"}<span className="visually-hidden"> about {i.code}</span>
+          </button>
+        </div>
+      )}
+      {messaging && <RecruiterInterviewMessages candidateId={i.candidate.id} interviewId={i.id} />}
     </li>
   );
 }

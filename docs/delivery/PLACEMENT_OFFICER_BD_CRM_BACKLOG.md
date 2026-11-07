@@ -357,6 +357,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** low.
 
 #### pob-023: Template library governance and composer everywhere
+- **Status:** built (`DEC-SCOPE-408`, 2026-11-05); G1–G12 are the builder's calls (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §14 (6 categories, 10 features, 7-step workflow); §12 "interview confirmation … template"; §18 AC "Template library supports adding, editing, approving, searching and reusing email, LinkedIn, WhatsApp and calling templates" and "Interview confirmation and feedback follow-up templates can be selected, personalised and logged".
 - **Existing behavior:**
   - `RecruiterMessageTemplate` supports WhatsApp and email, 12 fixed kinds, 3 placeholders and an `active` flag.

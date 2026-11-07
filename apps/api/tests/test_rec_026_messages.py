@@ -141,13 +141,15 @@ async def test_a_duplicate_name_is_409_and_the_channel_is_fixed(client, db_sessi
 
 
 @pytest.mark.asyncio
-async def test_recruiters_read_active_templates_only_and_cannot_write(client, db_session):
+async def test_recruiters_read_active_templates_only_and_their_own_template_is_a_draft(client, db_session):
+    """pob-023 (DEC-SCOPE-408 G6) reversed rec-026's "managers only write": a recruiter adds a shared draft for the Team Lead to approve."""
     inactive = await _template(db_session, active=False)
     await _team(client, db_session)
     assert (await client.get(TEMPLATES, params={"q": inactive.name})).json()["total"] == 0
     assert (await client.get(TEMPLATES, params={"q": inactive.name, "active": False})).json()["total"] == 0
-    assert (await client.post(TEMPLATES, json={"channel": "whatsapp", "kind": "follow_up", "name": unique("X"), "body": "Hi"})).status_code == 403
-    assert (await client.patch(f"{TEMPLATES}/{inactive.id}", json={"active": True})).status_code == 403
+    created = await client.post(TEMPLATES, json={"channel": "whatsapp", "kind": "follow_up", "name": unique("X"), "body": "Hi"})
+    assert created.status_code == 201 and created.json()["status"] == "draft" and created.json()["active"] is False
+    assert (await client.patch(f"{TEMPLATES}/{inactive.id}", json={"active": True})).status_code == 404  # not theirs to see
     assert (await client.get(f"{TEMPLATES}/{inactive.id}/preview")).status_code == 404
 
 

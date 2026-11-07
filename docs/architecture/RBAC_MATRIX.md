@@ -3989,3 +3989,15 @@ A grant does not widen company scope: every company resolves through `caller_sco
 its code and name only, no link, and adds nothing. A deny override removes a manager's grant. History is the caller's own, a manager's also their direct reports', super_admin's everyone's;
 another's batch is 404. Audit: `crm.import`, `recruiter_company.merge`, `recruiter_company.merged_into`, `recruiter_company.contact_merge`, with ids, counts and field names only. Pinned by
 `apps/api/tests/test_pob_006_import.py`, `apps/api/tests/test_pob_006_merge.py` and `apps/web/tests/e2e/pob-006-import-merge.spec.ts`.
+### 2.301 Recruiter template library governance *(added 2026-11-05 — `DEC-SCOPE-408`, pob-023)*
+
+- **Readers and writers:** `placement_team`, `placement_manager` and `super_admin`. rec-026's "manager only writes" is reversed by G6.
+- **Approver:** `placement_manager` (the Team Lead) and super_admin approve shared drafts; a manager also edits, archives and restores any
+  shared template.
+- **Authors:** a recruiter edits, archives and restores their own shared template while it is not approved.
+- **Personal templates:** visible, editable and usable only by their author, never by a manager; never approved.
+- **Hidden templates:** anything the caller cannot see is 404.
+- **Copies and context:** a copy needs the party's write right, as a send does. The render context goes through the requirement and
+  application scopes. `{package_range}` needs `commercials.client.view` (§2.296).
+
+Pinned by `apps/api/tests/test_pob_023_templates.py` and the rec-038 matrix rows.

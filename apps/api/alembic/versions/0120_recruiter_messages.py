@@ -138,11 +138,13 @@ SEED = (
 )
 
 
-def seed_statements() -> list[tuple[str, dict]]:
-    """Each seed is inserted only when no template of its channel has its name (case-insensitive)."""
+def seed_statements(has_active: bool = True) -> list[tuple[str, dict]]:
+    """Each seed is inserted only when no template of its channel has its name (case-insensitive). pob-023 (0298) replaced `active` with
+    `status` (default approved), so a fresh database built by 0001's `create_all` has no `active` column."""
+    active_column, active_value = (", active", ", true") if has_active else ("", "")
     sql = (
-        f"INSERT INTO {TEMPLATES} (id, channel, kind, name, subject, body, active, created_at, updated_at) "
-        "SELECT :id, CAST(:channel AS VARCHAR), :kind, CAST(:name AS VARCHAR), :subject, :body, true, now(), now() "
+        f"INSERT INTO {TEMPLATES} (id, channel, kind, name, subject, body{active_column}, created_at, updated_at) "
+        f"SELECT :id, CAST(:channel AS VARCHAR), :kind, CAST(:name AS VARCHAR), :subject, :body{active_value}, now(), now() "
         f"WHERE NOT EXISTS (SELECT 1 FROM {TEMPLATES} WHERE channel = CAST(:channel AS VARCHAR) AND lower(name) = lower(CAST(:name AS VARCHAR)))"
     )
     return [(sql, {"id": uuid.uuid4(), **seed}) for seed in SEED]
@@ -191,7 +193,8 @@ def upgrade() -> None:
         )
         for name, columns in MESSAGE_INDEXES.items():
             op.create_index(name, MESSAGES, columns)
-    for statement, params in seed_statements():
+    has_active = op.get_context().as_sql or "active" in {c["name"] for c in sa.inspect(op.get_bind()).get_columns(TEMPLATES)}
+    for statement, params in seed_statements(has_active):
         op.execute(sa.text(statement).bindparams(**params))
 
 
