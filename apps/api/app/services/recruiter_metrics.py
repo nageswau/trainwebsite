@@ -15,10 +15,13 @@ from sqlalchemy import ColumnElement, Date, String, and_, cast, distinct, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
+    JOB_OPEN_STATUSES,
+    PO_TARGET_KPIS,
     RECRUITER_CONTRACT_EXPIRING,
     Company,
     CompanyContact,
     CompanyStageHistory,
+    CompanyVendorStatusHistory,
     Interview,
     InterviewEvent,
     Job,
@@ -547,3 +550,91 @@ async def management(
         "top_companies": [{"id": row.id, "name": row.name, "joined": row.joined} for row in top_companies],
         "top_categories": [{"id": row.id, "name": row.name, "open_requirements": row.open_requirements} for row in top_categories],
     }
+
+
+# --- pob-009 (T2/T8): the PO figures for targets and activity reports, credited to the person who did the work (backlog Appendix B) ---------
+PO_KPIS = PO_TARGET_KPIS
+ACTIVE_CLIENT_STATUSES = ("active_client", "repeat_business")
+
+
+def po_instants(first: date, last: date) -> tuple[datetime, datetime]:
+    """The half-open IST instants [start, end) covering the dates `first`..`last`."""
+    return datetime.combine(first, time.min, tzinfo=IST), datetime.combine(last + timedelta(days=1), time.min, tzinfo=IST)
+
+
+def _reach(ids: list[UUID], start: datetime, end: datetime):
+    """T2 outreach: one row (contact, actor) per contact message (email, WhatsApp, LinkedIn) and per outgoing contact call in the period."""
+    return union_all(
+        select(RecruiterMessage.contact_id.label("contact"), RecruiterMessage.sender_user_id.label("actor")).where(
+            RecruiterMessage.contact_id.is_not(None), RecruiterMessage.sender_user_id.in_(ids), *_during(RecruiterMessage.sent_at, start, end)),
+        select(RecruiterCall.contact_id, RecruiterCall.caller_user_id).where(
+            RecruiterCall.contact_id.is_not(None), RecruiterCall.direction == "outgoing", RecruiterCall.caller_user_id.in_(ids), *_during(RecruiterCall.occurred_at, start, end)),
+    ).cte("reach")
+
+
+def _replied(reach, start: datetime, end: datetime):
+    """T2 responses: (contact, actor) reached in the period with a reply logged in the period on a message that actor sent."""
+    return select(RecruiterMessage.contact_id.label("contact"), RecruiterMessage.sender_user_id.label("actor")).where(
+        *_during(RecruiterMessage.replied_at, start, end),
+        exists().where(reach.c.contact == RecruiterMessage.contact_id, reach.c.actor == RecruiterMessage.sender_user_id),
+    ).subquery()
+
+
+def _rate(responses: int, reached: int) -> int | None:
+    return round(responses * 100 / reached) if reached else None
+
+
+async def po_counts(db: AsyncSession, user_ids: list[UUID], first: date, last: date) -> dict[UUID, dict]:
+    """Every PO KPI plus `contacts_reached` and `response_rate` for each PO over the IST dates `first`..`last`. One statement whatever the
+    number of POs. `active_accounts` is a snapshot of now (T2)."""
+    start, end = po_instants(first, last)
+    ids = list(user_ids)
+    reach = _reach(ids, start, end)
+    replied = _replied(reach, start, end)
+    joined_by = _latest_actor(JobOfferEvent, JobOfferEvent.offer_id == JobOffer.id, JobOfferEvent.event == "joined")
+    open_job = exists().where(Job.company_id == Company.id, Job.status.in_(JOB_OPEN_STATUSES))
+    statement = union_all(
+        _grouped("outreach", reach.c.actor, func.count(), reach, where=[]),
+        _grouped("contacts_reached", reach.c.actor, func.count(distinct(reach.c.contact)), reach, where=[]),
+        _grouped("responses", replied.c.actor, func.count(distinct(replied.c.contact)), replied, where=[]),
+        _grouped("meetings", RecruiterMeeting.completed_by_user_id, func.count(), RecruiterMeeting,
+                 where=[RecruiterMeeting.status == "completed", RecruiterMeeting.completed_by_user_id.in_(ids), *_during(RecruiterMeeting.completed_at, start, end)]),
+        _grouped("requirements", Job.created_by_user_id, func.count(), Job, where=[Job.created_by_user_id.in_(ids), *_during(Job.created_at, start, end)]),
+        _grouped("vendor_registrations", CompanyVendorStatusHistory.actor_user_id, func.count(), CompanyVendorStatusHistory,
+                 where=[CompanyVendorStatusHistory.to_status == "approved", CompanyVendorStatusHistory.actor_user_id.in_(ids),
+                        *_during(CompanyVendorStatusHistory.created_at, start, end)]),
+        _grouped("active_accounts", Company.assigned_recruiter_user_id, func.count(), Company,
+                 where=[Company.assigned_recruiter_user_id.in_(ids), Company.archived_at.is_(None), Company.client_status.in_(ACTIVE_CLIENT_STATUSES), open_job]),
+        _grouped("placements", joined_by, func.count(), JobOffer,
+                 where=[JobOffer.joining_status == "joined", JobOffer.actual_joining_date >= first, JobOffer.actual_joining_date <= last, joined_by.in_(ids)]),
+    )
+    values = {(row.figure, row.owner): int(row.value or 0) for row in await db.execute(statement)} if ids else {}
+    out = {}
+    for user_id in ids:
+        counts = {key: values.get((key, user_id), 0) for key in (*PO_KPIS, "contacts_reached")}
+        out[user_id] = counts | {"response_rate": _rate(counts["responses"], counts["contacts_reached"])}
+    return out
+
+
+async def po_contacts(db: AsyncSession, user_id: UUID, first: date, last: date, *, limit: int, offset: int) -> dict:
+    """T8 (AC1): the contacts one PO reached over the dates, with their outreach count and whether a reply was logged -- the rows behind
+    `contacts_reached`, `responses` and `response_rate`. Ordered by company, then contact."""
+    start, end = po_instants(first, last)
+    reach = _reach([user_id], start, end)
+    replied = _replied(reach, start, end)
+    per_contact = select(reach.c.contact, func.count().label("outreach")).group_by(reach.c.contact).subquery()
+    is_replied = exists().where(replied.c.contact == per_contact.c.contact)
+    totals = (await db.execute(select(func.count(), func.count().filter(is_replied)).select_from(per_contact))).one()
+    rows = await db.execute(
+        select(CompanyContact.id, CompanyContact.name, Company.id, Company.name, per_contact.c.outreach, is_replied.label("replied"))
+        .select_from(per_contact)
+        .join(CompanyContact, CompanyContact.id == per_contact.c.contact)
+        .join(Company, Company.id == CompanyContact.company_id)
+        .order_by(Company.name, CompanyContact.name, CompanyContact.id)
+        .limit(limit)
+        .offset(offset)
+    )
+    items = [{"contact": {"id": cid, "name": cname}, "company": {"id": coid, "name": coname}, "outreach": n, "replied": bool(r)}
+             for cid, cname, coid, coname, n, r in rows]
+    return {"date_from": first, "date_to": last, "total": totals[0], "responses": totals[1], "response_rate": _rate(totals[1], totals[0]),
+            "items": items, "limit": limit, "offset": offset}

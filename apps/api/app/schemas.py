@@ -52,6 +52,8 @@ from app.models import (
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
     BDM_TARGET_MAX,
+    PO_TARGET_KPIS,
+    PO_TARGET_MAX,
     CANDIDATE_CONTACT_METHODS,
     CANDIDATE_DOCUMENT_TYPES,
     CANDIDATE_ENGAGEMENTS,
@@ -9828,7 +9830,7 @@ class SkillPage(BaseModel):
 # --- rec-003 (DEC-SCOPE-121): the company master ----------------------------------------------------------------------------------
 REC_COMPANY_LABELS = {
     "name": "Company name", "website": "Website", "linkedin_url": "LinkedIn", "city": "City", "state": "State", "country": "Country",
-    "head_office": "Head office", "branches": "Branches", "description": "Company description",
+    "head_office": "Head office", "branches": "Branches", "description": "Company description", "territory": "Territory",  # pob-009 T4
     "products_services": "Products and services",  # pob-003 D2
 }
 REC_COMPANY_MULTILINE = frozenset({"branches", "description", "products_services"})
@@ -9838,6 +9840,7 @@ REC_COMPANY_FIELDS = (  # the columns a create or edit may write; everything els
     "branches", "description", "lead_source_id", "campaign_id", "priority", "assigned_bdm_user_id",
     "products_services", "departments_hiring", "hiring_locations", "target_roles",  # pob-003 D2
     "partner_type", "vendor_specialisations", "vendor_service_categories", "vendor_locations",  # pob-010 V2/V3
+    "territory",  # pob-009 T4
 )
 REC_COMPANY_RELATIONS = ("branch_locations", "skill_demand_ids")  # pob-003 D1/D3: rows in their own tables, replaced as a set
 
@@ -10074,6 +10077,7 @@ class RecCompanyUpdate(BaseModel):
     vendor_specialisations: RecContextList = None
     vendor_service_categories: RecContextList = None
     vendor_locations: RecContextList = None
+    territory: RecCompanyShort = None  # pob-009 T4: free text; null clears
 
 
 class RecVendorStatusMove(BaseModel):
@@ -10137,6 +10141,7 @@ class RecCompanyRow(BaseModel):
     partner_type: str = "recruiter"  # pob-010 V2
     vendor_status: str | None = None  # pob-010 V5
     vendor_status_label: str | None = None
+    territory: str | None = None  # pob-009 T4
 
 
 class RecCompanyPage(BaseModel):
@@ -16816,3 +16821,73 @@ class CandidatePortalEmailChange(BaseModel):
 class CandidatePortalConsent(BaseModel):
     opted_in: StrictBool
     consent_version: str = Field(max_length=20)
+
+
+
+# --- pob-009 (spec 2026-11-07-pob-009-po-targets-reports-design.md): PO targets, territory, target companies, the daily plan, reports ----
+PoKpi = Literal[PO_TARGET_KPIS]
+PoTerritory = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+PO_TARGET_BATCH_MAX = 200
+PO_TARGET_COMPANIES_MAX = 200
+
+
+class PoTargetItem(BaseModel):
+    """T3: a whole number 0-100000, or null to clear the target."""
+
+    model_config = ConfigDict(extra="forbid")
+    recruiter_user_id: UUID
+    kpi_key: PoKpi
+    target: Annotated[StrictInt, Field(ge=0, le=PO_TARGET_MAX)] | None
+
+
+class PoTargetsPut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    month: BdmTargetMonth
+    items: list[PoTargetItem] = Field(min_length=1, max_length=PO_TARGET_BATCH_MAX)
+
+
+class PoTerritoryPut(BaseModel):
+    """T4: null clears the PO's territory."""
+
+    model_config = ConfigDict(extra="forbid")
+    territory: PoTerritory | None
+
+
+class PoTargetCompaniesAdd(BaseModel):
+    """T5: a batch by ids or every in-scope company of one territory -- exactly one of the two."""
+
+    model_config = ConfigDict(extra="forbid")
+    recruiter_user_id: UUID
+    month: BdmTargetMonth
+    company_ids: Annotated[list[UUID], Field(min_length=1, max_length=PO_TARGET_COMPANIES_MAX)] | None = None
+    territory: PoTerritory | None = None
+
+    @model_validator(mode="after")
+    def _one_source(self):
+        if (self.company_ids is None) == (self.territory is None):
+            raise ValueError("Choose companies or a territory")
+        return self
+
+
+class PoPlanItemAdd(BaseModel):
+    """T6: a due follow-up or a target company -- exactly one."""
+
+    model_config = ConfigDict(extra="forbid")
+    follow_up_id: UUID | None = None
+    company_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def _one_subject(self):
+        if (self.follow_up_id is None) == (self.company_id is None):
+            raise ValueError("Choose a follow-up or a company")
+        return self
+
+
+class PoPlanItemPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    done: StrictBool
+
+
+class PoReportSubmit(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    note: Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)] | None = None

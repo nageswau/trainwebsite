@@ -409,6 +409,7 @@ def row_out(user: User, company: Company, industry, source, recruiter: User | No
         "code": company.company_code,
         "name": company.name,
         "city": company.city,
+        "territory": company.territory,  # pob-009 T4
         "priority": company.priority,
         "industry": ref(industry),
         "lead_source": ref(source),
