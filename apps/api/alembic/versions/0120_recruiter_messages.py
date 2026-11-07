@@ -139,7 +139,7 @@ SEED = (
 
 
 def seed_statements(has_active: bool = True) -> list[tuple[str, dict]]:
-    """Each seed is inserted only when no template of its channel has its name (case-insensitive). pob-023 (0297) replaced `active` with
+    """Each seed is inserted only when no template of its channel has its name (case-insensitive). pob-023 (0298) replaced `active` with
     `status` (default approved), so a fresh database built by 0001's `create_all` has no `active` column."""
     active_column, active_value = (", active", ", true") if has_active else ("", "")
     sql = (

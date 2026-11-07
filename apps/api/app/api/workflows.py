@@ -2242,6 +2242,8 @@ async def create_job(payload: dict, user: User = Depends(get_current_user), db: 
     company_id = payload.get("company_id")
     if not company_id and payload.get("company_name"):
         company = await db.scalar(select(Company).where(Company.name == payload["company_name"]))
+        if company and company.merged_into_id:  # pob-006 M8: a merged company's name leads to its survivor
+            company = await db.get(Company, company.merged_into_id)
         if not company:
             company = Company(name=payload["company_name"], website=payload.get("company_website"), partner_type="recruiter", assigned_recruiter_user_id=owner)
             db.add(company)

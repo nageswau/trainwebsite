@@ -1,4 +1,4 @@
-"""pob-023 -- migration 0297_template_governance (DEC-SCOPE-408 G1-G7). It checks the chain, that the checks are frozen copies, and that
+"""pob-023 -- migration 0298_template_governance (DEC-SCOPE-408 G1-G7). It checks the chain, that the checks are frozen copies, and that
 `active` -> `status` is lossless both ways, with categories and v1 backfilled. It also checks that the downgrade refuses what 0120 cannot
 hold. Everything runs in a throwaway database (the pob-001 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
@@ -14,11 +14,11 @@ from app.core.config import settings
 from app.models import REC_EMAIL_KINDS, REC_WHATSAPP_KINDS, RECRUITER_TEMPLATE_CHECKS
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_pob_023_migration_0297", VERSIONS / "0297_template_governance.py")
+_spec = importlib.util.spec_from_file_location("_pob_023_migration_0298", VERSIONS / "0298_template_governance.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0297_template_governance", "0295_recruitment_report_grants"
+HEAD, BASE = "0298_template_governance", "0297_crm_import_merge"
 T = "recruiter_message_templates"
 
 

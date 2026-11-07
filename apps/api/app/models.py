@@ -695,6 +695,7 @@ class Company(Base, TimestampMixin):
         Index("ix_companies_assigned_bdm", "assigned_bdm_user_id"),
         Index("ix_companies_name_key", text(COMPANY_NAME_KEY_SQL)),  # the duplicate check (services/recruiter_companies.NAME_KEY)
         Index("ix_companies_last_contacted", "last_contacted_at"),  # pob-003 D5: the list's "last contacted" sort
+        CheckConstraint("merged_into_id IS NULL OR merged_into_id <> id", name="ck_companies_merged_not_self"),  # pob-006
     )
     __mapper_args__ = {"eager_defaults": True}  # INSERT ... RETURNING company_code: no lazy load of the server default under asyncio
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -738,6 +739,10 @@ class Company(Base, TimestampMixin):
     target_roles: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
     # pob-003 D4: the latest call / message / completed meeting -- recomputed by services/recruiter_companies.refresh_last_contact only.
     last_contacted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # pob-006 (DEC-SCOPE-418 M6): the company this duplicate became -- always the final survivor (a later merge re-points it); the row stays archived.
+    merged_into_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"), nullable=True)
+    merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    merged_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
 
 
 class CompanyStageHistory(Base):
@@ -797,6 +802,7 @@ class CompanyContact(Base, TimestampMixin):
         Index("uq_company_contacts_primary", "company_id", unique=True, postgresql_where=text("is_primary")),
         Index("ix_company_contacts_mobile", "mobile_normalized"),
         Index("ix_company_contacts_email", "email"),  # pob-005 D8: the duplicate check (emails are stored lower-cased)
+        CheckConstraint("merged_into_id IS NULL OR merged_into_id <> id", name="ck_company_contacts_merged_not_self"),  # pob-006
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
@@ -820,6 +826,10 @@ class CompanyContact(Base, TimestampMixin):
     verified_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(String(24), default="not_contacted", server_default=text("'not_contacted'"))
     status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # pob-006 (DEC-SCOPE-418 C5): the contact this duplicate became -- always the final survivor; the row stays inactive and leaves the lists.
+    merged_into_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    merged_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
 
     @validates("mobile")
     def _derive_mobile_normalized(self, _key: str, mobile: str | None) -> str | None:
@@ -7328,6 +7338,59 @@ class CandidateImportRow(Base):
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+# pob-006 (DEC-SCOPE-418 I9): migration 0297 keeps a frozen copy (test_pob_006_migration asserts they stay identical).
+CRM_IMPORT_BATCH_CHECKS = {"ck_crm_import_batches_counts": "created_count + matched_count + error_count = total_rows"}
+CRM_IMPORT_ROW_CHECKS = {
+    "ck_crm_import_rows_status": "status IN ('created', 'matched', 'error')",
+    "ck_crm_import_rows_outcome": "(status <> 'created' OR company_id IS NOT NULL) AND (status = 'created' OR reason IS NOT NULL)",
+}
+
+
+class CrmImportBatch(Base):
+    """pob-006 (I8/I9): one committed company file. Its hash, name and counts -- never the file. The Idempotency-Key is scoped to the uploader."""
+
+    __tablename__ = "crm_import_batches"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CRM_IMPORT_BATCH_CHECKS.items()),
+        UniqueConstraint("uploaded_by_user_id", "idempotency_key", name="uq_crm_import_batches_key"),
+        Index("ix_crm_import_batches_uploader", "uploaded_by_user_id", "created_at"),
+        Index("ix_crm_import_batches_file", "uploaded_by_user_id", "file_sha256"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    file_name: Mapped[str] = mapped_column(String(200))
+    total_rows: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    matched_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    error_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    companies_created: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    contacts_created: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CrmImportRow(Base):
+    """pob-006 (I9): one row's outcome: ids and a reason, no cell value. A merge re-points the ids, so an old report leads to the survivor."""
+
+    __tablename__ = "crm_import_rows"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CRM_IMPORT_ROW_CHECKS.items()),
+        UniqueConstraint("batch_id", "row_number", name="uq_crm_import_rows_row"),
+        Index("ix_crm_import_rows_company", "company_id"),
+        Index("ix_crm_import_rows_contact", "contact_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("crm_import_batches.id", ondelete="CASCADE"))
+    row_number: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(10))
+    company_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"), nullable=True)
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    company_created: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    contact_created: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class PortalEvent(Base):
     """hrc-034 (DEC-SCOPE-416 I3): one step a student or portal candidate took on a job -- ids only, no PII. One row per person, job, kind and IST day,
     so a refresh or a double click cannot inflate a figure. Deleted after portal_events.RETENTION_DAYS (I4)."""
@@ -7645,7 +7708,7 @@ REC_EMAIL_KINDS = (
     "joining_confirmation",
 )
 # pob-023 (DEC-SCOPE-408 G1-G5): LinkedIn and calling-script channels (no kind), the §14 categories, Draft -> Approved -> Archived and
-# personal (owner set) vs shared; migration 0297 repeats these (test_pob_023_migration keeps them identical).
+# personal (owner set) vs shared; migration 0298 repeats these (test_pob_023_migration keeps them identical).
 REC_TEMPLATE_CHANNELS = ("whatsapp", "email", "linkedin", "call")
 REC_TEMPLATE_CATEGORIES = ("company", "linkedin", "whatsapp", "calling", "college_tpo", "candidate")
 REC_TEMPLATE_STATUSES = ("draft", "approved", "archived")

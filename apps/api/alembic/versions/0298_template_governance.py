@@ -1,7 +1,7 @@
 """pob-023 -- template library governance (DEC-SCOPE-408 G1-G7).
 
-Revision ID: 0297_template_governance
-Revises: 0295_recruitment_report_grants
+Revision ID: 0298_template_governance
+Revises: 0297_crm_import_merge
 
 docs/superpowers/specs/2026-11-05-pob-023-template-governance-design.md. On `recruiter_message_templates`:
 - LinkedIn and calling-script channels (no kind), the §14 category, metadata, and `status`. `status` replaces `active`: true becomes
@@ -19,8 +19,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0297_template_governance"
-down_revision = "0295_recruitment_report_grants"
+revision = "0298_template_governance"
+down_revision = "0297_crm_import_merge"
 branch_labels = None
 depends_on = None
 
