@@ -270,6 +270,18 @@ async def test_a_linkedin_copy_is_logged_without_its_text_and_is_not_a_message(c
 
 
 @pytest.mark.asyncio
+async def test_a_do_not_contact_person_cannot_be_copied_for(client, db_session):
+    """pob-005 D6 refuses all outreach to a Do Not Contact person server-side; a copied LinkedIn note or calling script is outreach too."""
+    manager, recruiter, _ = await _team(client, db_session)
+    _, contact = await _contact(db_session, recruiter, status="do_not_contact")
+    template = await _job_template(client, manager)
+    await login(client, recruiter)
+    refused = await client.post(f"{MESSAGES}/copies", json={"template_id": template["id"], "channel": "linkedin", "contact_id": str(contact.id)})
+    assert refused.status_code == 409 and refused.json()["detail"] == "This contact has asked not to be contacted"
+    assert await db_session.scalar(select(AuditLog.id).where(AuditLog.action == "recruiter_template.copy", AuditLog.entity_id == template["id"])) is None
+
+
+@pytest.mark.asyncio
 async def test_a_linkedin_or_call_template_cannot_be_sent_as_whatsapp(client, db_session):
     manager, recruiter, _ = await _team(client, db_session)
     _, contact = await _contact(db_session, recruiter)

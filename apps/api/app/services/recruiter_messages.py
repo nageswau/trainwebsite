@@ -358,9 +358,11 @@ async def mark_used(db: AsyncSession, template_id: UUID, now: datetime) -> None:
 
 
 async def copy(db: AsyncSession, user: User, payload: RecTemplateCopy, now: datetime) -> dict:
-    """G10: a LinkedIn message or calling script copied for a party -- the send's party rules (scope 404, right 403, state 409), a usable
-    template of that channel (422), then an audit row with ids only. Not a message: no last-contacted, no cap."""
+    """G10: a LinkedIn message or calling script copied for a party -- the send's party rules (scope 404, right 403, state 409, Do Not
+    Contact 409), a usable template of that channel (422), then an audit row with ids only. Not a message: no last-contacted, no cap."""
     company, contact, candidate = await load_party(db, user, payload.contact_id, payload.candidate_id, write=True)
+    if contact:
+        contact_status.refuse_do_not_contact(contact)  # pob-005 D6
     template = await db.get(RecruiterMessageTemplate, payload.template_id)
     if template is None or not is_usable(user, template) or template.channel != payload.channel:
         raise HTTPException(422, TEMPLATE_UNUSABLE[payload.channel])
