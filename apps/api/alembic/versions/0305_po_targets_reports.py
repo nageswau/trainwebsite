@@ -1,7 +1,7 @@
 """pob-009 -- PO targets, target companies, the daily plan, activity reports and territories.
 
-Revision ID: 0304_po_targets_reports
-Revises: 0303_company_bd_stages
+Revision ID: 0305_po_targets_reports
+Revises: 0304_outreach_cadences
 
 docs/superpowers/specs/2026-11-07-pob-009-po-targets-reports-design.md. 0001 builds a fresh database from today's models, so every object
 is created only when missing. Additive only: no existing row changes. downgrade() drops the four tables and the two territory columns.
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0304_po_targets_reports"
-down_revision = "0303_company_bd_stages"
+revision = "0305_po_targets_reports"
+down_revision = "0304_outreach_cadences"
 branch_labels = None
 depends_on = None
 

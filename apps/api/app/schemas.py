@@ -11749,6 +11749,55 @@ class RecMessageOutcome(BaseModel):
     outcome: Annotated[str, _trimmed(500), AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True, {"outcome": "Outcome"}))]
     next_follow_up: RecCallFollowUp | None = None
 
+
+# --- pob-008 (DEC-SCOPE-423 B5/B6): outreach cadences ---------------------------------------------------------------------------------
+REC_CADENCE_LABELS = {"name": "Name", "description": "Description"}
+RecCadenceName = Annotated[str, _trimmed(120), AfterValidator(_trip_text(_BDM_CONTROL, True, REC_CADENCE_LABELS))]
+RecCadenceDescription = Annotated[Annotated[str, _trimmed(500)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, REC_CADENCE_LABELS))]
+
+
+class RecCadenceStep(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    day: Annotated[int, Field(strict=True, ge=0, le=90)]
+    channel: Literal["email", "whatsapp", "linkedin", "call"]
+    template_id: UUID | None = None
+
+
+def _check_steps(steps: list[RecCadenceStep] | None) -> list[RecCadenceStep] | None:
+    """B5: day 0 first, then strictly later days (the field's own 422)."""
+    if steps is None:
+        return None
+    if steps[0].day != 0:
+        raise ValueError("The first step is on day 0 (the outreach that starts the cadence)")
+    if any(b.day <= a.day for a, b in zip(steps, steps[1:], strict=False)):
+        raise ValueError("Each step must come on a later day than the one before")
+    return steps
+
+
+RecCadenceSteps = Annotated[list[RecCadenceStep], Field(min_length=2, max_length=10), AfterValidator(_check_steps)]
+
+
+class RecCadenceCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: RecCadenceName
+    description: RecCadenceDescription = None
+    steps: RecCadenceSteps
+
+
+class RecCadenceUpdate(BaseModel):
+    """PATCH: only the keys sent; null never clears the name, the steps or `active`."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: RecCadenceName | None = None
+    description: RecCadenceDescription = None
+    steps: RecCadenceSteps | None = None
+    active: bool | None = None
+
+
+class RecCadenceStart(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    cadence_id: UUID
+
 # --- rec-017 (DEC-SCOPE-136): a candidate on a requirement and its status (services/applications) -----------------------------------
 class RecApplicationCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")

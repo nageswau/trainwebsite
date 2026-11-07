@@ -16,9 +16,12 @@ from app.models import (
     BdmOrgPlacementBatch,
     BdmOrgPlacementEvent,
     Company,
+    CompanyContact,
     CompanyDocument,
     DriveRequirement,
+    RecruiterCadence,
     RecruiterCall,
+    RecruiterContactCadence,
     RecruiterContract,
     RecruiterFollowUp,
     RecruiterInvoice,
@@ -118,6 +121,14 @@ ROWS = [
     # pob-007 A1/A3: LinkedIn logging and a message outcome -- the company's can_edit, like a send and a reply
     R("post", "/recruiter/messages/linkedin", lambda w: {"contact_id": w["contact"], "action": "connection_request"}, **allow(201, *EDITORS), **allow(404, *OUT)),
     R("post", "/recruiter/messages/{activity_message}/outcome", {"outcome": "Asked for a call"}, **allow(200, *EDITORS), **allow(404, *OUT)),
+    # pob-008 (§2.314): the cadence library -- read by the recruiter-CRM roles, written by the Team Lead and super_admin; a run starts and
+    # stops on a contact message with the company's can_edit
+    R("get", "/recruiter/cadences", **allow(200, *LISTERS)),
+    R("post", "/recruiter/cadences", lambda w: {"name": tag("R38 Cad "), "steps": [{"day": 0, "channel": "email"}, {"day": 3, "channel": "call"}]},
+      **allow(201, *TEMPLATE_WRITERS)),
+    R("patch", "/recruiter/cadences/{activity_cadence}", lambda w: {"description": tag("R38 ")}, **allow(200, *TEMPLATE_WRITERS)),
+    R("post", "/recruiter/messages/{activity_message}/cadence", lambda w: {"cadence_id": w["activity_cadence"]}, **allow(201, *EDITORS), **allow(404, *OUT)),
+    R("post", "/recruiter/messages/{activity_run_message}/cadence/stop", **allow(200, *EDITORS), **allow(404, *OUT)),
     R("get", "/recruiter/candidates/{candidate}/messages", **allow(200, *POOL_READERS)),
     # rec-027 timeline (§2.107): the company's by scope (hr 403), the candidate's by the pool (bdm 403)
     R("get", "/recruiter/companies/{company}/timeline", **allow(200, *IN_SCOPE), **allow(404, *OUT)),
@@ -185,7 +196,7 @@ ROWS = [
     R("delete", "/recruiter/colleges/{college}/calendar/{college_event}", **allow(200, *COLLEGE_WRITERS)),
     R("post", "/recruiter/colleges/{college}/interactions", lambda w: {"channel": "meeting", "occurred_at": now().isoformat(), "summary": "Met the TPO"}, **allow(201, *COLLEGE_WRITERS)),
     R("patch", "/recruiter/colleges/{college}/contacts/{college_contact}", lambda w: {"office_details": f"Block {tag()}"}, **allow(200, *COLLEGE_WRITERS)),
-    # pob-009 (§2.314, T1): targets, territory, target companies, the daily plan and activity reports -- a PO's own; the Team Lead's direct reports
+    # pob-009 (§2.315, T1): targets, territory, target companies, the daily plan and activity reports -- a PO's own; the Team Lead's direct reports
     R("get", "/recruiter/targets", **allow(200, *POS)),
     R("get", "/recruiter/manager/targets", **allow(200, "mgr", "mgr_out", "super")),
     R("get", "/recruiter/manager/targets/{rec_id}", **allow(200, *TEAM_LEADS), mgr_out=404),
@@ -253,6 +264,14 @@ async def build(client, db, w) -> None:
     po_today = today_ist(now())  # pob-009: a target company and a plan item of rec's for today (IST)
     target = await add(db, RecruiterTargetCompany(recruiter_user_id=rec.id, company_id=company_id, month=po_today.replace(day=1), added_by_user_id=users["mgr"].id))
     plan_item = await add(db, RecruiterPlanItem(recruiter_user_id=rec.id, plan_date=po_today, company_id=company_id))
+    # pob-008: a cadence, and a second contact whose message runs it (the first contact's message stays free to start one)
+    steps = [{"day": 0, "channel": "email", "template_id": None}, {"day": 3, "channel": "call", "template_id": None}]
+    cadence = await add(db, RecruiterCadence(name=tag("R38 Cadence "), steps=steps))
+    other = await add(db, CompanyContact(company_id=company_id, name="R38 Second"))
+    run_message = await add(db, RecruiterMessage(company_id=company_id, contact_id=other.id, sender_user_id=rec.id, channel="whatsapp", body="Hi", sent_at=now()))
+    await add(db, RecruiterContactCadence(cadence_id=cadence.id, contact_id=other.id, company_id=company_id, message_id=run_message.id, name=cadence.name,
+                                          steps=steps, started_at=now(), started_by_user_id=rec.id, next_step_at=now() + timedelta(days=3)))  # fmt: skip
+    w.update({"activity_cadence": str(cadence.id), "activity_run_message": str(run_message.id)})
     await db.commit()
     w.update({
         **college,

@@ -304,6 +304,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** low.
 
 #### pob-008: Recruiter follow-up reminders and outreach cadence
+- **Status:** built (`DEC-SCOPE-423`, 2026-11-07); B1–B12 are the builder's calls (`NEEDS_CONFIRMATION`): N = 30 minutes (or the follow-up's own `remind_at`); a cadence starts on an outreach message; imports get no first-outreach task.
 - **Business requirement:** §3.3 "Allow follow-up reminders"; §4 "Set reminders for overdue follow-ups and unanswered outreach"; §16 "No reply after configured period → Create reminder using the chosen communication cadence"; "New company/contact created → Check duplicates and create a follow-up task".
 - **Existing behavior:** follow-ups have today and overdue views, but **no reminder fires** (`bdm_reminders` covers BDMs only). No cadence; creating a company makes no task.
 - **Expected behavior:**
@@ -330,7 +331,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** low.
 
 #### pob-009: Targets, territories, daily plans and daily/weekly reports for POs
-- **Status:** built (`DEC-SCOPE-423`, 2026-11-07; migration `0304_po_targets_reports`, API §12LP, RBAC §2.314); T1-T8 are the builder's calls (`NEEDS_CONFIRMATION`).
+- **Status:** built (`DEC-SCOPE-423`, 2026-11-07; migration `0305_po_targets_reports`, API §12LP, RBAC §2.314); T1-T8 are the builder's calls (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §4 "Create daily activity plans and daily/weekly reports"; "Track outreach volume, response rate, meetings, requirements generated, vendor registrations and active accounts"; "Allow the manager to assign target companies, territories and monthly activity targets".
 - **Existing behavior:** BDM has targets (`BdmTarget`), territory and daily reports. Recruiters have only reassignment and `by_recruiter` BD counts. There is no response rate, no vendor registrations metric and no weekly report.
 - **Expected behavior:**

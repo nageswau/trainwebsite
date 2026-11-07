@@ -63,6 +63,7 @@ def _out(user: User, now: datetime, fu: FU, company: Company, recruiter, contact
     return {
         "id": fu.id, "reason": fu.reason, "due_at": fu.due_at, "notes": fu.notes, "status": fu.status, "outcome": fu.outcome,
         "priority": fu.priority, "remind_at": fu.remind_at,  # pob-007 A8
+        "reminded_at": fu.reminded_at,  # pob-008 B1
         "overdue": fu.status == "open" and fu.due_at < now,
         "company": {"id": company.id, "code": company.company_code, "name": company.name, "assigned_recruiter": _person(recruiter)},
         "contact": None if contact is None else {"id": contact.id, "name": contact.name},

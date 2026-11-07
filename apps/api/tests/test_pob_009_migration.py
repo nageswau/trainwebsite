@@ -1,4 +1,4 @@
-"""pob-009 -- migration 0304_po_targets_reports: the chain, the frozen checks and the round trip, in a throwaway database (the pob-010
+"""pob-009 -- migration 0305_po_targets_reports: the chain, the frozen checks and the round trip, in a throwaway database (the pob-010
 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -19,7 +19,7 @@ from app.models import (
 )
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_pob_009_migration", VERSIONS / "0304_po_targets_reports.py")
+_spec = importlib.util.spec_from_file_location("_pob_009_migration", VERSIONS / "0305_po_targets_reports.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 

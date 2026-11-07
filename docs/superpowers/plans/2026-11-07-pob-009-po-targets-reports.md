@@ -4,7 +4,7 @@
 
 **Goal:** monthly PO targets vs live actuals, territories, target-company lists, a daily plan and daily/weekly reports for Team Leads.
 **Architecture:** one metric function in `recruiter_metrics` (`po_counts`), one service `recruiter_po_work.py` (targets, territory, target
-companies, plan, reports), one router `api/recruiter_po_work.py`; migration `0304_po_targets_reports`; Next.js pages under `/recruiter`.
+companies, plan, reports), one router `api/recruiter_po_work.py`; migration `0305_po_targets_reports`; Next.js pages under `/recruiter`.
 **Tech Stack:** FastAPI, SQLAlchemy async, Alembic, Pydantic v2, Next.js App Router, Vitest, Playwright.
 **Spec:** `docs/superpowers/specs/2026-11-07-pob-009-po-targets-reports-design.md`
 
@@ -25,7 +25,7 @@ companies, plan, reports), one router `api/recruiter_po_work.py`; migration `030
 ---
 
 ### Task 1: Migration + models
-**Files:** `apps/api/alembic/versions/0304_po_targets_reports.py`, `apps/api/app/models.py`, test `apps/api/tests/test_pob_009_migration.py`
+**Files:** `apps/api/alembic/versions/0305_po_targets_reports.py`, `apps/api/app/models.py`, test `apps/api/tests/test_pob_009_migration.py`
 - Tables `recruiter_targets`, `recruiter_target_companies`, `recruiter_plan_items`, `recruiter_activity_reports`; columns
   `companies.territory`, `recruiter_profiles.territory` (String 120, nullable). Checks: target 0..100000, kpi in `PO_TARGET_KPIS`,
   plan item exactly one of follow_up/company, period in (daily, weekly), weekly start is Monday (`extract(isodow) = 1`).

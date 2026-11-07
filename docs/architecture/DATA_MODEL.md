@@ -2441,7 +2441,7 @@ database built by `create_all` has no `active` column.
 
 The downgrade refuses while a vendor or an NDA exists.
 
-### pob-009 — PO targets and reports (`DEC-SCOPE-423`, migration `0304_po_targets_reports`)
+### pob-009 — PO targets and reports (`DEC-SCOPE-424`, migration `0305_po_targets_reports`)
 
 **`companies.territory`, `recruiter_profiles.territory`:** free text (≤ 120), nullable.
 

@@ -219,6 +219,7 @@ export const RECRUITER_MANAGER_NAV: NavItem[] = withResources([
   { label: "Campus Drives", href: "/recruiter/drives" }, // rec-029: the team's drives, read only
   { label: "Colleges", href: "/recruiter/colleges" }, // pob-013: college placement profiles, read only
   { label: "Message templates", href: "/recruiter/manager/templates" }, // rec-026
+  { label: "Outreach cadences", href: "/recruiter/manager/cadences" }, // pob-008: the Team Lead's cadences
   { label: "Screening Bank", href: "/recruiter/manager/screening-bank" }, // pob-020: questions and form templates
   { label: "Report library", href: "/recruiter/manager/report-library" }, // nehn-016: students completing soon, the placement report
   MANAGEMENT_TASKS_NAV, // mgmt-028 (MT14)

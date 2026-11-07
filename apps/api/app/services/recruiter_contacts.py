@@ -156,6 +156,10 @@ async def update(db: AsyncSession, user: User, company: Company, contact: Compan
     if status is not None and status != contact.status:  # pob-005 D5
         contact_status.record(db, user, contact, status, "manual")
         changed.append("status")
+        if status in contact_status.CADENCE_ENDS:  # pob-008 B9
+            await contact_status.end_cadences(db, [contact.id], *contact_status.CADENCE_ENDS[status])
+    if "active" in changed and not contact.active:
+        await contact_status.end_cadences(db, [contact.id], "stopped", "inactive")
     if changed:
         await db.flush()
         companies.audit(db, user, "contact_update", company.id, {"contact_id": str(contact.id), "fields": sorted(changed)})

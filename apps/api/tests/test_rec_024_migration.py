@@ -36,7 +36,8 @@ def test_models_match_the_migration():
 
     table = RecruiterFollowUp.__table__
     # pob-007 (0302) added the priority and reminder columns and their checks; test_pob_007_migration pins those
-    assert {c.name for c in table.columns} - {"priority", "remind_at"} == COLUMNS
+    # pob-008 (0303) added `reminded_at`; test_pob_008_migration pins it
+    assert {c.name for c in table.columns} - {"priority", "remind_at", "reminded_at"} == COLUMNS
     # pob-016 (0299) added a reason, so the model's reason check has moved on from this frozen copy
     assert set(_migration.CHECKS) == set(RECRUITER_FOLLOW_UP_CHECKS) - {"ck_recruiter_follow_ups_priority", "ck_recruiter_follow_ups_remind"}
     names = {i.name for i in table.indexes} | {c.name for c in table.constraints}

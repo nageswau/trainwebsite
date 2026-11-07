@@ -251,7 +251,8 @@ async def test_per_contact_timeline_and_follow_ups(client, db_session):
     await db_session.commit()
     rows = (await client.get(f"{COMPANIES}/{company['id']}/timeline", params={"contact_id": a["id"]})).json()["items"]
     kinds = sorted(r["kind"] for r in rows)
-    assert kinds == ["contact_status", "contact_status", "follow_up", "message", "message_reply"], kinds
+    # pob-008 B10: the contact's automatic first-outreach follow-up is the second follow_up row
+    assert kinds == ["contact_status", "contact_status", "follow_up", "follow_up", "message", "message_reply"], kinds
     moves = [(r["from_value"], r["to_value"]) for r in rows if r["kind"] == "contact_status"]
     assert set(moves) == {("not_contacted", "contacted"), ("contacted", "replied")}
     assert all(r["to_label"] for r in rows if r["kind"] == "contact_status")
@@ -259,7 +260,7 @@ async def test_per_contact_timeline_and_follow_ups(client, db_session):
     assert "contact_status" not in {r["kind"] for r in whole} and "message_reply" in {r["kind"] for r in whole}
     assert (await client.get(f"{COMPANIES}/{company['id']}/timeline", params={"contact_id": stranger["id"]})).status_code == 404
     follow_ups = (await client.get(f"{COMPANIES}/{company['id']}/follow-ups", params={"contact_id": b["id"]})).json()
-    assert follow_ups["total"] == 1 and follow_ups["items"][0]["contact"]["id"] == b["id"]
+    assert follow_ups["total"] == 2 and {f["contact"]["id"] for f in follow_ups["items"]} == {b["id"]}  # + pob-008's first outreach
     assert (await client.get(f"{COMPANIES}/{company['id']}/follow-ups", params={"contact_id": stranger["id"]})).status_code == 404
 
 

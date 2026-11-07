@@ -9,6 +9,7 @@ describe("recruiterFollowUps (rec-024)", () => {
       "Follow-up for new requirement", "Follow-up for JD", "Follow-up for profile feedback", "Interview feedback", "Offer status",
       "Joining confirmation", "New openings", "Contract/MoU", "Payment/commercial discussion",
       "Clarification from the client", // pob-016: added after the source's nine
+      "First outreach", "Outreach cadence step", // pob-008 B11
     ]);
     expect(reasonLabel("contract_mou")).toBe("Contract/MoU");
     expect(reasonLabel("unknown")).toBe("unknown");
