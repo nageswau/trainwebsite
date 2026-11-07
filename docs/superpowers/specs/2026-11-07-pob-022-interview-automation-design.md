@@ -18,7 +18,7 @@ the interview from the worker, and turns missing client feedback into a follow-u
   delivery reads) then carry the template's rendered subject and body, each with that recipient's values (`{name}` is the recipient,
   `{candidate}`, `{company}`, `{designation}`, `{recruiter}`, the interview's `{interview_*}`, `{job_*}`; `{package_range}` keeps pob-001's
   grant), followed by the interview details block, so the time, link and instructions are always exact. The `.ics` is unchanged. The
-  queued `recruiter_messages` rows keep the `template_id`, the template's `last_used_at` moves (G7) and the audit row names the template id.
+  queued `recruiter_messages` rows keep the `template_id`, the template's `last_used_at` moves (G7) and the route's log line names the template id.
   Without `template_id`, or with `notify: false`, nothing changes. Edit and cancel notices keep the fixed text.
 - **A2 Settings.** One global row `interview_automation_settings` (id 1, seeded):
   - `first_reminder_hours` 24, `second_reminder_hours` 2: 1–168 each, null switches that reminder off, and the second must be sooner than the first.

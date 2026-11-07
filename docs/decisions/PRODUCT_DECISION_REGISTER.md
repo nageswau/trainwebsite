@@ -12308,3 +12308,17 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - V10: a vendor-only company is left out of client-only views and refused as a requirement or drive's company.
   - V11: merging a vendor is refused. V12: migration 0300 normalises unknown `partner_type` values, with a logged count.
 - **Not built:** requirements via a vendor and the NDA gate on sharing (pob-011); payables and performance (pob-012); the `vendor_registration` stage (pob-004); vendor merge; `jobs.vendor_id` (pob-002's link, which pob-011 owns as `via_vendor_id`).
+
+### DEC-SCOPE-421 — Interview coordination automation: confirmation template, reminders, feedback chase (pob-022)
+
+- **Date:** 2026-11-07. **Classification:** builder's calls A1-A10 (`NEEDS_CONFIRMATION`); the source is the `UNVERIFIED` requirements draft.
+- **Spec:** `docs/superpowers/specs/2026-11-07-pob-022-interview-automation-design.md`.
+- **Decided (A1-A10):**
+  - A1: schedule and reschedule take an optional `template_id`, which must be an approved shared email `interview_confirmation` template (422 otherwise). It leads the candidate's and the contact's text, rendered per recipient, followed by the details; the `.ics` is unchanged and no template keeps the standard text.
+  - A2: one `interview_automation_settings` row: reminders 24 h and 2 h (1-168, null = off, second < first), chase 24 h, escalate 24 h (1-720) and the approved reminder and chase templates. Only `placement_manager` and super_admin edit it, and changes are audited.
+  - A3: the `pob022-interview-reminders` beat runs every 15 minutes; each reminder is sent once (markers on `interviews`, `SKIP LOCKED`, 200 per run), with no invite and through the confirmation's channels.
+  - A4: schedule and reschedule re-arm the reminders, and a slot already inside its window counts as sent.
+  - A5: hourly `pob022-feedback-chase`: feedback missing N hours after the end creates one `interview_feedback` follow-up for the owner, with the chase text in its notes. It sends no extra notice (hrc-032 already notifies).
+  - A6: a chase still open after M hours with feedback still missing escalates once to the owner's reporting placement manager (else every active one) as `it.interview.feedback_escalated`.
+  - A7: migration 0301 stamps existing interviews, so no backlog is sent. A8: the new types join `RECRUITMENT_EVENTS`. A9: a template select in the schedule and reschedule forms, and the Team Lead's panel on `/recruiter/interviews`.
+- **Not built (A10):** time-in-stage and no-show metrics; the data exists, and pob-028/029 own those widgets and reports. No automated WhatsApp from a recruiter's number and no unreviewed chase email to the client.

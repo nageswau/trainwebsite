@@ -4022,3 +4022,9 @@ A placement officer has no company scope, but answering Missing still creates th
 - **Scope and writers:** a vendor is a company, so `recruiter_companies` scope and `can_edit` apply (BDM: read, if assigned). This supersedes pob-001's "no default holder" note for `commercials.vendor` only.
 - **`commercials.vendor.view` / `.edit`:** a vendor agreement's fee, terms, direction, confidentiality and documents. Default holders: `placement_team`, `placement_manager` (migration 0300); super_admin implicitly. `NEEDS_CONFIRMATION`.
 - **Onboarding:** the assigned recruiter, a manager in scope or super_admin submit a registration and activate an approved vendor. Only a manager or super_admin approve, return, suspend or reinstate.
+
+### 2.313 Interview automation *(added 2026-11-07 — `DEC-SCOPE-421`, pob-022)*
+
+- **Settings:** `placement_manager` (the Team Lead) and super_admin read and write them; everyone else gets 403. No new grant.
+- **Confirmation template:** whoever may schedule or reschedule the interview, which keeps rec-020's scope and writer rules unchanged.
+- **Sweeps:** these run in the worker. Emails go out as the interview's owner. The chase follow-up belongs to the requirement's company, so its normal follow-up scope applies.
