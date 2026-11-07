@@ -5,7 +5,7 @@ follow-ups and unanswered outreach"; §16 "No reply after configured period → 
 "New company/contact created → … create a follow-up task"). Classification `UNVERIFIED` (a requirements draft). Decision `DEC-SCOPE-423`.
 Every call below (B1–B12) is the builder's, `NEEDS_CONFIRMATION`; the owner said to proceed with the recommended answers. Dependencies
 pob-005 (`DEC-SCOPE-411`), pob-007 (`DEC-SCOPE-422`) and itc-002 (`DEC-SCOPE-336`, `notify()`) are merged. Migration
-`0303_outreach_cadences`, API §12LP, RBAC §2.314.
+`0304_outreach_cadences`, API §12LP, RBAC §2.314.
 
 ## Intent
 Follow-ups have Today / Overdue lists and (since pob-007) a stored `remind_at`, but nothing ever tells the recruiter. Outreach that gets no
@@ -67,7 +67,7 @@ a per-user reminder setting; new grants; changing the shared `MessagesSection` (
   backlog; upcoming ones are reminded normally. The reason check is re-created (frozen copy). Downgrade drops the cadence tables and the
   column, deletes no follow-up: `first_outreach` / `cadence_step` rows become `new_openings` (the closest old reason) so the old check holds.
 
-## Data (migration 0303)
+## Data (migration 0304)
 - `recruiter_follow_ups.reminded_at` timestamptz; index `(due_at) WHERE status = 'open' AND reminded_at IS NULL`; reason check gains 2 keys.
 - `recruiter_cadences` (id, name, description, active, steps JSON, created_by, updated_by, timestamps; unique `lower(name)`).
 - `recruiter_contact_cadences` (B7; FKs RESTRICT; unique `(contact_id) WHERE status = 'active'`; checks on status / end_reason / the

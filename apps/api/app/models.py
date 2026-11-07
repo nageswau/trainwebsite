@@ -931,7 +931,7 @@ class RecruiterFollowUp(Base, TimestampMixin):
     reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # pob-008 B1: the one reminder; B4 re-arms
 
 
-# pob-008 (DEC-SCOPE-423 B5-B7): outreach cadences and each contact's run of one. Migration 0303 repeats the run checks
+# pob-008 (DEC-SCOPE-423 B5-B7): outreach cadences and each contact's run of one. Migration 0304 repeats the run checks
 # (test_pob_008_migration keeps them identical).
 RECRUITER_CADENCE_CHANNELS = ("email", "whatsapp", "linkedin", "call")
 RECRUITER_CADENCE_STATUSES = ("active", "replied", "stopped", "completed")

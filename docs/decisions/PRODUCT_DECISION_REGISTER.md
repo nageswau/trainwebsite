@@ -12361,5 +12361,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - B6-B7: a cadence starts on an outreach message to a contact (the message is step 1); the run keeps a snapshot; one active run per contact; refused for Do Not Contact / Not interested / inactive / already replied.
   - B8: the `pob008-cadences` beat (every 15 minutes) turns a due step into a `cadence_step` follow-up for the current owner (template text rendered into the notes); the last step completes the run.
   - B9: a logged reply, a move to Replied / Meeting scheduled, Do Not Contact, Not interested or deactivation end the run in the same transaction; the sweep re-checks; a manual stop exists.
-  - B10-B11: a new company / contact (the manual routes, not imports) gets one `first_outreach` follow-up due in 24 hours. B12: migration 0303 stamps overdue follow-ups so no backlog is sent.
+  - B10-B11: a new company / contact (the manual routes, not imports) gets one `first_outreach` follow-up due in 24 hours. B12: migration 0304 stamps overdue follow-ups so no backlog is sent.
 - **Not built:** automatic sending of any outreach; per-user reminder settings; first-outreach tasks for bulk imports.

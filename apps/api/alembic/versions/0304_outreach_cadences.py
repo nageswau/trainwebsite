@@ -1,8 +1,8 @@
 """pob-008 -- recruiter follow-up reminders and outreach cadences: `recruiter_follow_ups.reminded_at` (+ its partial index), the
 `first_outreach` / `cadence_step` reasons, `recruiter_cadences` and `recruiter_contact_cadences`.
 
-Revision ID: 0303_outreach_cadences
-Revises: 0302_bd_activity
+Revision ID: 0304_outreach_cadences
+Revises: 0303_company_bd_stages
 
 docs/superpowers/specs/2026-11-07-pob-008-follow-up-reminders-cadences-design.md (DEC-SCOPE-423). 0001 builds a fresh database from the current
 models, which already carry all of this, so each column, index and table is added only when missing (0302's idiom); the checks are dropped and
@@ -15,8 +15,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0303_outreach_cadences"
-down_revision = "0302_bd_activity"
+revision = "0304_outreach_cadences"
+down_revision = "0303_company_bd_stages"
 branch_labels = None
 depends_on = None
 

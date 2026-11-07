@@ -4,7 +4,7 @@ Spec: `docs/superpowers/specs/2026-11-07-pob-008-follow-up-reminders-cadences-de
 
 | # | Task | Test first (RED) | Files |
 |---|------|------------------|-------|
-| 1 | Models + migration 0303 (reminded_at, 2 reasons, cadences, runs, indexes, upgrade stamp, downgrade) | `test_pob_008_migration.py` chain / frozen checks / round trip; update `test_pob_016_migration` pin to 0303's old copy | `models.py`, `alembic/versions/0303_outreach_cadences.py` |
+| 1 | Models + migration 0304 (reminded_at, 2 reasons, cadences, runs, indexes, upgrade stamp, downgrade) | `test_pob_008_migration.py` chain / frozen checks / round trip; update `test_pob_016_migration` pin to 0304's old copy | `models.py`, `alembic/versions/0304_outreach_cadences.py` |
 | 2 | Reminder sweep B1–B4 + event + beat | once per follow-up, rerun adds nothing, owner = current assignee, archived skipped, PATCH re-arms, overdue at migration not resent | `services/recruiter_cadences.py`, `notifications/events.py`, `worker.py`, `api/recruiter_follow_ups.py`, follow-up `_out` |
 | 3 | Cadence CRUD B5 | manager create/edit, recruiter 403 write / 200 read, step rules 422, template rules 422, duplicate name 409 | schemas, `api/recruiter_cadences.py`, `main.py` router |
 | 4 | Start / stop B6, B9 + message output | start rules (404/403/409/422), snapshot, one active per contact, reply stops, DNC stops, manual stop | `recruiter_messages.py`, `contact_status.py`, `recruiter_contacts.py` |

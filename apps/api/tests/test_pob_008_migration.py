@@ -1,4 +1,4 @@
-"""pob-008 -- migration 0303_outreach_cadences (DEC-SCOPE-423 B12): the chain, the frozen checks, the backlog stamp and the round trip, in a
+"""pob-008 -- migration 0304_outreach_cadences (DEC-SCOPE-423 B12): the chain, the frozen checks, the backlog stamp and the round trip, in a
 throwaway database (the pob-016 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.models import RECRUITER_CONTACT_CADENCE_CHECKS, RECRUITER_FOLLOW_UP_CHECKS, RecruiterFollowUp
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_pob_008_migration", VERSIONS / "0303_outreach_cadences.py")
+_spec = importlib.util.spec_from_file_location("_pob_008_migration", VERSIONS / "0304_outreach_cadences.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
@@ -25,7 +25,7 @@ REASON = "ck_recruiter_follow_ups_reason"
 
 
 def test_migration_is_in_the_single_chain():
-    assert (HEAD, BASE) == ("0303_outreach_cadences", "0302_bd_activity")
+    assert (HEAD, BASE) == ("0304_outreach_cadences", "0303_company_bd_stages")
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
 
@@ -67,7 +67,7 @@ def _follow_up(url, reason: str, due: str) -> None:
 
 def test_the_round_trip_stamps_the_backlog_and_keeps_rows(isolated_db):
     cfg, url = isolated_db["cfg"], isolated_db["url"]
-    # 0001 builds today's models, so remove what 0303 adds first: the guarded upgrade must add it back
+    # 0001 builds today's models, so remove what 0304 adds first: the guarded upgrade must add it back
     for table in ("recruiter_contact_cadences", "recruiter_cadences"):
         _sql(url, f"DROP TABLE IF EXISTS {table}", autocommit=True)
     _sql(url, f"DROP INDEX IF EXISTS {_migration.UNREMINDED}", autocommit=True)

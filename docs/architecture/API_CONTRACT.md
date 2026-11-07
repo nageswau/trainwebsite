@@ -6290,7 +6290,7 @@ Audit actions `recruiter_template.approve|archive|restore|copy`.
 
 ## 12LP. Follow-up reminders and outreach cadences (pob-008) — addendum, 2026-11-07
 
-`DEC-SCOPE-423`. Migration `0303_outreach_cadences`.
+`DEC-SCOPE-423`. Migration `0304_outreach_cadences`.
 
 - `GET /recruiter/cadences?include_inactive=false` (200): `{items: [{id, name, description, active, steps: [{day, channel, template {id, name} | null}], updated_at, can_edit}], can_edit}`. Recruiter-CRM roles (rec-003 `caller_scope`), else 403.
 - `POST /recruiter/cadences` (201) / `PATCH /recruiter/cadences/{id}` (200): `{name (1-120), description? (≤ 500), steps: [{day, channel, template_id?}] (2-10), active? (PATCH)}`. `placement_manager` / super_admin, else 403. 422 on `steps` (day 0 first, strictly increasing, ≤ 90; template approved, shared, of the step's channel); duplicate name (case-insensitive) 409; unknown id 404. Audit `recruiter_cadence.create` / `.update`.
