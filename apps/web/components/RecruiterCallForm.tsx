@@ -72,8 +72,8 @@ export default function RecruiterCallForm({ party, contacts = [], call, onLogged
     const controller = new AbortController();
     fetch(`${REQUIREMENTS_URL}?${new URLSearchParams({ company_id: companyId, limit: "100" })}`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((page: { items: { id: string; requirement_code: string; title: string }[] }) =>
-        setRequirements(page.items.map((j) => ({ id: j.id, label: `${j.requirement_code} — ${j.title}` }))))
+      .then((page: { items: { id: string; code: string; title: string }[] }) =>
+        setRequirements(page.items.map((j) => ({ id: j.id, label: `${j.code} — ${j.title}` }))))
       .catch(() => undefined); // the picker stays at "None": a requirement is optional
     return () => controller.abort();
   }, [companyId]);
@@ -239,7 +239,7 @@ export default function RecruiterCallForm({ party, contacts = [], call, onLogged
       </fieldset>
       <div className="form-grid" style={GRID}>
         <div className="field">
-          <label htmlFor={fid("objection_notes")}>Objection notes</label>
+          <label htmlFor={fid("objection_notes")}>Objection details</label>
           <input id={fid("objection_notes")} maxLength={OBJECTION_NOTES_MAX} value={v.objection_notes} onChange={set("objection_notes")} {...invalid("objection_notes")} />
           {error("objection_notes")}
         </div>

@@ -110,6 +110,29 @@ describe("RecruiterCompanyMeetings (rec-028)", () => {
     expect(sent("PATCH")).toEqual({ url: "/api/v1/recruiter/meetings/M1", body: { starts_at: "2026-12-02T09:00:00+05:30", reschedule_reason: "Client asked" } });
   });
 
+  it("pob-007 QA-01: removing an action item never moves its errors onto the next row; items are sent in order", async () => {
+    items = [recMeeting({ can_record_outcome: true })];
+    postReply = () => res(recMeeting({ status: "completed", outcome: "Agreed", can_change: false }));
+    render(<RecruiterCompanyMeetings companyId="C1" canWrite onChanged={vi.fn()} />);
+    const [m] = within(await screen.findByRole("list", { name: "Meetings" })).getAllByRole("listitem");
+    fireEvent.click(within(m).getByRole("button", { name: "Record outcome" }));
+    const form = within(m).getByRole("form", { name: "Record outcome" });
+    fireEvent.change(within(form).getByLabelText("Outcome (required)"), { target: { value: "Agreed" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Add action item" }));
+    fireEvent.click(within(form).getByRole("button", { name: "Add action item" }));
+    const second = within(form).getByRole("group", { name: "Action item 2" });
+    fireEvent.change(within(second).getByLabelText("Action", { exact: true }), { target: { value: "Send the JD" } });
+    fireEvent.change(within(second).getByLabelText("Due (IST)"), { target: { value: "2026-12-03T10:00" } });
+    fireEvent.change(within(second).getByLabelText("Follow-up reason"), { target: { value: "jd" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save outcome" }));
+    expect(within(form).getAllByText("Describe the action")).toHaveLength(1); // the empty first row only
+    fireEvent.click(within(within(form).getByRole("group", { name: "Action item 1" })).getByRole("button", { name: /Remove/ }));
+    expect(within(form).queryByText("Describe the action")).toBeNull();
+    fireEvent.click(within(form).getByRole("button", { name: "Save outcome" }));
+    await screen.findByText("Outcome saved.");
+    expect(sent("POST")?.body).toEqual({ outcome: "Agreed", action_items: [{ action: "Send the JD", due_at: "2026-12-03T10:00:00+05:30", reason: "jd" }] });
+  });
+
   it("records an outcome with a next action that becomes a follow-up (AC2)", async () => {
     items = [recMeeting({ can_record_outcome: true })];
     postReply = () => res(recMeeting({ status: "completed", outcome: "Agreed", can_change: false, follow_up: { id: "F9", due_at: "2026-12-03T04:30:00Z" } }));

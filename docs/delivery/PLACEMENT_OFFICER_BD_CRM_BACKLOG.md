@@ -268,6 +268,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** large. **Risk:** medium.
 
 #### pob-007: BD activity completeness (LinkedIn, call/meeting/follow-up fields, BD visits)
+- **Status:** built (`DEC-SCOPE-421`, 2026-11-07); Q-07 answered "a `company_visit` recruiter meeting; commercial notes gated by `commercials.client.view`" and A1-A12 are the builder's calls (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §4 activity table; §18 AC "The CRM records outreach, calls, emails, LinkedIn messages, meetings and next follow-up tasks".
 - **Existing behavior:**
   - Messages (WhatsApp/email) record the template used, but no outcome, reply status or next follow-up.

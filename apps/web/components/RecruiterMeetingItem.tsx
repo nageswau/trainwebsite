@@ -55,6 +55,11 @@ function OutcomeForm({ meeting, onSaved, onRefused, onCancel }: {
   const [forecast, setForecast] = useState<{ role: string; count: string; timeframe: string }[]>([]);
   const [items, setItems] = useState<{ action: string; due: string; reason: string }[]>([]);
   const setRow = <T,>(list: T[], set: (rows: T[]) => void, i: number, patch: Partial<T>) => set(list.map((row, j) => (j === i ? { ...row, ...patch } : row)));
+  /** QA-01: removing a row shifts the rows after it, so that list's row errors would land on the wrong row -- drop them. */
+  const removeRow = <T,>(list: T[], set: (rows: T[]) => void, i: number, prefix: string) => {
+    set(list.filter((_, j) => j !== i));
+    setErrors((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith(`${prefix}.`))));
+  };
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<Failure | null>(null);
@@ -156,7 +161,7 @@ function OutcomeForm({ meeting, onSaved, onRefused, onCancel }: {
               </select>
               {error(`forecast.${i}.timeframe`)}
             </div>
-            <button type="button" className="btn secondary small" onClick={() => setForecast(forecast.filter((_, j) => j !== i))}>
+            <button type="button" className="btn secondary small" onClick={() => removeRow(forecast, setForecast, i, "forecast")}>
               Remove<span className="visually-hidden"> forecast row {i + 1}</span>
             </button>
           </div>
@@ -187,7 +192,7 @@ function OutcomeForm({ meeting, onSaved, onRefused, onCancel }: {
               </select>
               {error(`items.${i}.reason`)}
             </div>
-            <button type="button" className="btn secondary small" onClick={() => setItems(items.filter((_, j) => j !== i))}>
+            <button type="button" className="btn secondary small" onClick={() => removeRow(items, setItems, i, "items")}>
               Remove<span className="visually-hidden"> action item {i + 1}</span>
             </button>
           </div>

@@ -12308,3 +12308,17 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - V10: a vendor-only company is left out of client-only views and refused as a requirement or drive's company.
   - V11: merging a vendor is refused. V12: migration 0300 normalises unknown `partner_type` values, with a logged count.
 - **Not built:** requirements via a vendor and the NDA gate on sharing (pob-011); payables and performance (pob-012); the `vendor_registration` stage (pob-004); vendor merge; `jobs.vendor_id` (pob-002's link, which pob-011 owns as `via_vendor_id`).
+
+### DEC-SCOPE-421 — BD activity completeness: LinkedIn, call/meeting/follow-up fields, BD visits (pob-007)
+
+- **Date:** 2026-11-07. **Classification:** builder's calls on Q-07 (`NEEDS_CONFIRMATION`); the source is the `UNVERIFIED` requirements draft.
+- **Spec:** `docs/superpowers/specs/2026-11-07-pob-007-bd-activity-design.md`.
+- **Decided (A1-A12):**
+  - A1-A2: LinkedIn outreach is a hand-logged `recruiter_messages` row (`channel='linkedin'`, `linkedin_action`), `POST /recruiter/messages/linkedin`; it moves Last contacted and the contact status and reads in the timelines. No LinkedIn API.
+  - A3: `POST /recruiter/messages/{id}/outcome` records a contact message's outcome once, with an optional next follow-up.
+  - A4: calls gain the requirement discussed, objections (an UNVERIFIED 8-key catalogue) with details, and the next action.
+  - A5-A6: a meeting outcome records a hiring forecast (role x count x timeframe) and up to 10 action items, each a rec-024 follow-up (`recruiter_meeting_action_items`); one refusal refuses the outcome.
+  - A7: commercial-discussion notes need `commercials.client.view` to write (403) and to read.
+  - A8: follow-ups gain `priority` (default medium) and a stored `remind_at` (delivery is pob-008).
+  - A9: a BD visit is a recruiter meeting of type `company_visit`; `BdmTrip` is not extended. A10: RBAC unchanged. A11: logs/audit carry ids only. A12: migration 0301 is additive.
+- **Not built:** reminder delivery and cadence (pob-008); BD-visit expenses; LinkedIn delivery tracking.
