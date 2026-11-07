@@ -12377,3 +12377,17 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - T7: a week is Monday-Sunday IST; counts are live until submission and frozen at it; resubmission 409; no Team Lead comment.
   - T8: `GET /recruiter/activity-contacts` is the drill-down behind the response rate (AC1).
 - **Not built:** reassigning company ownership by territory; Team Lead comments on reports; report reminders.
+
+### DEC-SCOPE-425 — Institution-supplied student pool with permission tracking (pob-014)
+- **Date:** 2026-11-07. **Status:** built; S1-S14 are the builder's calls (`NEEDS_CONFIRMATION`, answering Q-11). **Evidence:** backlog pob-014 (§6.1, §6.2, §8.1, §17).
+- **Spec:** `docs/superpowers/specs/2026-11-07-pob-014-institution-student-pool-design.md`. Migration `0306_institution_student_pool`; API §12LR; RBAC §2.316.
+- **Calls:**
+  - S1/S2: a data permission per college (pob-013 college): agreement reference, optional MoU of that college, purposes (placement, internship, training, campus_drive), valid from / expires on; active = not revoked and today (IST) in the window, evaluated in every query (no job).
+  - S3: each permission names its people (active candidate readers); **no role bypasses the list**, super_admin included.
+  - S4: placement_manager and super_admin create, change and revoke (final); every write audited (`institution_permission.*`).
+  - S5/S6: a candidate created from an institution list carries the college, the permission and the notice status (`notice_sent` | `consented`); it is in the pool only for the permission's people while it is active. `candidates.pool_filter(viewer)` fails closed without a viewer, so talent-pool counts, dashboards, insights, matching, the duplicate queue and merge never show these students.
+  - S7: the hrc-013 import takes `institution_permission_id` + `notice_status`; the importer must be named on an active permission (else 404). Matched people are unchanged (hrc-013 I7) and, when the importer may not see them, the report names no one.
+  - S8: duplicate panels never name an institution student ("Restricted record"); the one-person-one-candidate block still holds.
+  - S9: a profile share needs every institution student visible to the sharer and their permission to include `placement` (422 otherwise).
+  - S10/S11: the college's student pool (filters: permission, pass-out year, course, name/code; placement status = latest application status); the candidate list filters `institution_id` (the skill search needs a skill, so the institution filter lives on the list).
+- **Not built:** a second consent for a matched EduSphere student (S12); editing a student's notice status; student logins (hrc-022); MoU picker in the UI (the API accepts `mou_id`; BDM MoUs are not readable by the placement team).

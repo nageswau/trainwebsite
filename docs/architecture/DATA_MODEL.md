@@ -2452,3 +2452,11 @@ The downgrade refuses while a vendor or an NDA exists.
 **`recruiter_plan_items`:** (`recruiter_user_id`, `plan_date`, `follow_up_id` | `company_id` -- exactly one by CHECK, `done_at`); partial unique per PO/day/subject.
 
 **`recruiter_activity_reports`:** (`recruiter_user_id`, `period` daily|weekly, `period_start` -- a Monday for weekly by CHECK, `counts` JSON snapshot, `note` ≤ 2000, `submitted_at`); unique per PO/period/start.
+
+### pob-014 — institution student pool (`DEC-SCOPE-425`, migration `0306_institution_student_pool`)
+
+**`institution_data_permissions`:** (`organization_id` → bdm_organizations, `mou_id` → bdm_mous nullable, `agreement_reference` ≤ 100, `purposes` JSON list, `valid_from`, `expires_on` ≥ `valid_from` by CHECK, `notes` ≤ 500, `created_by_user_id`, `revoked_at`, `revoked_by_user_id`, timestamps); index (`organization_id`, `created_at`). Active = not revoked and today (IST) in the window.
+
+**`institution_data_permission_users`:** (`permission_id`, `user_id`) primary key, `added_by_user_id`, `created_at`; index on `user_id`. The people a permission names.
+
+**`candidates`** gains `institution_org_id` (indexed), `institution_permission_id` (partial index where not null) and `institution_notice_status` (`notice_sent` | `consented`); CHECK: the org and the permission are both set or both empty. **`candidate_import_batches`** gains `institution_permission_id`.

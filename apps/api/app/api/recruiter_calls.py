@@ -42,7 +42,7 @@ async def company_calls(company_id: UUID, limit: int = LIMIT, offset: int = OFFS
 @router.get("/candidates/{candidate_id}/calls")
 async def candidate_calls(candidate_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     candidates.require_reader(user)
-    await candidates.load(db, candidate_id)
+    await candidates.load(db, candidate_id, viewer_id=user.id)
     return await svc.page(db, user, RecruiterCall.candidate_id == candidate_id, await db_now(db), limit, offset)
 
 

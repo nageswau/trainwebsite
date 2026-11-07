@@ -28,6 +28,7 @@ from app.models import (
     Company,
     CompanyContact,
     EmployerProfile,
+    InstitutionDataPermission,
     Job,
     JobApplication,
     ProfileShare,
@@ -184,13 +185,22 @@ def _names(people) -> str:
     return ", ".join(f"{c.name} ({c.candidate_code})" for c in people)
 
 
-async def _candidates(db: AsyncSession, ids: list[UUID]) -> list[Candidate]:
-    """Pool members only (a student who has not opted in is not one, S4), read-locked, in the order chosen."""
-    rows = (await db.scalars(select(Candidate).where(Candidate.id.in_(ids), *candidates.pool_filter()).with_for_update(read=True))).all()
+async def _candidates(db: AsyncSession, ids: list[UUID], user: User) -> list[Candidate]:
+    """Pool members only (a student who has not opted in is not one, S4), read-locked, in the order chosen. pob-014 (DEC-SCOPE-425 S9):
+    an institution's student only while the sharer is on its active permission, and only when that permission allows placement."""
+    rows = (await db.scalars(select(Candidate).where(Candidate.id.in_(ids), *candidates.pool_filter(user.id)).with_for_update(read=True))).all()
     found = {c.id: c for c in rows}
     archived = [c for c in rows if c.archived_at is not None]
     if len(found) != len(ids) or archived:
         raise HTTPException(422, f"{NOT_IN_POOL}{f': {_names(archived)} is archived' if archived else ''}")
+    permission_ids = {c.institution_permission_id for c in rows} - {None}
+    if permission_ids:
+        # FOR SHARE: a concurrent revoke or purpose change waits for this share's commit
+        permissions = (await db.scalars(select(InstitutionDataPermission).where(InstitutionDataPermission.id.in_(permission_ids)).with_for_update(read=True))).all()
+        allowed = {p.id for p in permissions if "placement" in p.purposes}
+        barred = [c for c in rows if c.institution_permission_id is not None and c.institution_permission_id not in allowed]
+        if barred:
+            raise HTTPException(422, f"Their institution's permission does not cover the placement purpose: {_names(barred)}")
     return [found[i] for i in ids]
 
 
@@ -216,7 +226,7 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
         raise HTTPException(409, "Profiles cannot be shared for a closed or cancelled requirement")
     contact = await _contact(db, job, payload)
     await _check_channel(db, job, payload.channel, contact)
-    people = await _candidates(db, payload.candidate_ids)
+    people = await _candidates(db, payload.candidate_ids, user)
     existing = {
         a.candidate_id: a for a in (await db.scalars(select(JobApplication).where(JobApplication.job_id == job.id, JobApplication.candidate_id.in_(payload.candidate_ids)).with_for_update())).all()
     }

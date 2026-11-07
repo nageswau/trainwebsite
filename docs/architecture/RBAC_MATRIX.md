@@ -4039,3 +4039,9 @@ A placement officer has no company scope, but answering Missing still creates th
 
 - **PO (`placement_team`):** reads their own targets, territory and target companies; manages their own daily plan (today only); reads and submits their own daily/weekly reports and the contacts drill-down (another PO's is 403).
 - **Team Lead (`placement_manager`) and super_admin:** set targets, territory and target companies and read reports of their direct reports (super_admin: everyone); a PO outside the team is 404. The PO routes are 403 to them, and every other role gets 403. No new grant.
+
+### 2.316 Institution student pool *(added 2026-11-07 — `DEC-SCOPE-425`, pob-014)*
+
+- **Student pool (GET):** every pob-013 college reader (placement_team, placement_manager, the college BDMs in bdm-002 scope, super_admin); others 403, out of scope 404. It lists only the students the caller may see.
+- **Data permissions (create / change / revoke):** placement_manager and super_admin; placement_team and BDMs 403 after scope.
+- **New data-scope dimension on candidates:** an institution student is visible only to the people its permission names while it is active -- whatever their role (super_admin included). Outside it: 404 on every candidate route, absent from lists, search and system reads, unnamed in duplicate panels and import reports, 422 on share and apply.

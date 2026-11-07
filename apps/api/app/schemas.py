@@ -5364,6 +5364,7 @@ class BdmOrganizationEnvelope(BaseModel):
 PLACEMENT_LABELS = {
     "drive_process": "Drive process", "eligibility_rules": "Eligibility rules", "department": "Department", "course": "Course",
     "notes": "Notes", "title": "Title", "summary": "Summary", "next_step": "Next step", "office_details": "Office details",
+    "agreement_reference": "Agreement reference",  # pob-014
 }  # fmt: skip
 PLACEMENT_MULTILINE = frozenset({"drive_process", "eligibility_rules", "notes", "summary"})
 
@@ -5481,6 +5482,57 @@ class PlacementCollegePage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# pob-014 (DEC-SCOPE-425 S1/S3/S4): an institution data permission. The service checks the MoU belongs to the college and that each
+# listed user may read candidates.
+InstitutionPurpose = Literal["placement", "internship", "training", "campus_drive"]
+INSTITUTION_PERMISSION_USERS_MAX = 50
+
+
+def _distinct_list(message: str):
+    """Duplicates dropped; an empty list is refused in words (browser QA-01)."""
+
+    def check(values: list) -> list:
+        if not values:
+            raise ValueError(message)
+        return list(dict.fromkeys(values))
+
+    return AfterValidator(check)
+
+
+InstitutionPurposes = Annotated[list[InstitutionPurpose], Field(max_length=4), _distinct_list("Choose at least one permitted purpose")]
+InstitutionUsers = Annotated[list[UUID], Field(max_length=INSTITUTION_PERMISSION_USERS_MAX), _distinct_list("Choose at least one person")]
+
+
+class InstitutionPermissionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    agreement_reference: _placement_str(100, required=True)
+    mou_id: UUID | None = None
+    purposes: InstitutionPurposes
+    valid_from: date
+    expires_on: date
+    notes: _placement_str(500) = None
+    user_ids: InstitutionUsers
+
+    @model_validator(mode="after")
+    def _window(self):
+        if self.expires_on < self.valid_from:
+            raise ValueError("The expiry date must be on or after the start date")
+        return self
+
+
+class InstitutionPermissionUpdate(BaseModel):
+    """Omitted = unchanged. The window is checked against the stored dates in the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    agreement_reference: _placement_str(100, required=True) = None
+    mou_id: UUID | None = None
+    purposes: InstitutionPurposes = None
+    valid_from: date = None
+    expires_on: date = None
+    notes: _placement_str(500) = None
+    user_ids: InstitutionUsers = None
 
 
 class PlacementContactOut(BaseModel):

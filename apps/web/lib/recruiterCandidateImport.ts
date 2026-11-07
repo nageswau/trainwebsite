@@ -38,6 +38,9 @@ export const IMPORT_COLUMNS: BulkColumn[] = [
 ];
 
 export type CandidateRef = { id: string; candidate_code: string; name: string };
+/** pob-014 (DEC-SCOPE-425 S7): an institution's list, imported under one of its data permissions (`?college=&permission=`). */
+export type InstitutionImport = { college: string; permission: string };
+export type PermissionRef = { id: string; agreement_reference: string; organization_id: string; organization_name: string };
 type Counts = { total_rows: number; matched_count: number; error_count: number };
 
 export type PreviewRow = {
@@ -48,6 +51,7 @@ export type Preview = Counts & { new_count: number; rows: PreviewRow[] };
 export type ReportRow = { row_number: number; status: "created" | "matched" | "error"; candidate: CandidateRef | null; reason: string | null };
 export type ImportSummary = Counts & {
   id: string; file_name: string; source: { id: string; name: string }; uploaded_by: { id: string; full_name: string }; created_count: number; created_at: string;
+  institution_permission: PermissionRef | null;
 };
 export type ImportReport = ImportSummary & { replayed: boolean; rows: ReportRow[] };
 

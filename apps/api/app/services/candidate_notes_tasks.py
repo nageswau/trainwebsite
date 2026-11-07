@@ -155,7 +155,7 @@ def views(now: datetime) -> dict:
 
 async def my_page(db: AsyncSession, user: User, due: str, now: datetime, limit: int, offset: int) -> dict:
     """AC2: the caller's own open tasks, oldest due first, with the three views' totals (so the tabs agree with the lists)."""
-    mine = [T.assignee_user_id == user.id, *candidates.pool_filter()]
+    mine = [T.assignee_user_id == user.id, *candidates.pool_filter(user.id)]
     conditions = views(now)
     out = await _page(db, user, now, [*mine, conditions[due]], (T.due_at, T.id), limit, offset)
     counts = (await db.execute(
@@ -203,7 +203,7 @@ async def load_for_write(db: AsyncSession, user: User, task_id: UUID) -> Candida
     candidate_id = await db.scalar(select(T.candidate_id).where(T.id == task_id))
     if candidate_id is None:
         raise HTTPException(404, TASK_NOT_FOUND)
-    require_open_candidate(await candidates.load(db, candidate_id, lock=True))
+    require_open_candidate(await candidates.load(db, candidate_id, lock=True, viewer_id=user.id))
     task = await db.scalar(select(T).where(T.id == task_id).with_for_update())
     if task.status in STATE_REFUSALS:
         raise HTTPException(409, STATE_REFUSALS[task.status])

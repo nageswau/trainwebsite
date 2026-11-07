@@ -285,7 +285,7 @@ async def load_party(db: AsyncSession, user: User, contact_id: UUID | None, cand
         raise HTTPException(422, PARTY_REQUIRED)
     if candidate_id is not None:
         (candidates.require_writer if write else candidates.require_reader)(user)
-        candidate = await candidates.load(db, candidate_id, lock=write)
+        candidate = await candidates.load(db, candidate_id, lock=write, viewer_id=user.id)
         if write and candidate.archived_at is not None:
             raise HTTPException(409, CANDIDATE_ARCHIVED)
         return None, None, candidate

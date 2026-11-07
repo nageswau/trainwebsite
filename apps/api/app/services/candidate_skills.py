@@ -22,9 +22,9 @@ NOT_FOUND = "Skill not found on this candidate"
 STATUS_RANK = {"claimed": 0, "verified": 1, "assessed": 2}  # the stronger evidence wins a merge clash (SK7)
 
 
-async def writable(db: AsyncSession, candidate_id: UUID) -> Candidate:
+async def writable(db: AsyncSession, candidate_id: UUID, viewer_id: UUID | None = None) -> Candidate:
     """The candidate row locked FOR UPDATE: every write on its skills is serialised, and an archived candidate is read-only."""
-    candidate = await candidates.load(db, candidate_id, lock=True)
+    candidate = await candidates.load(db, candidate_id, lock=True, viewer_id=viewer_id)
     if candidate.archived_at is not None:
         raise HTTPException(409, candidates.ARCHIVED)
     return candidate

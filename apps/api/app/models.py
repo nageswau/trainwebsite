@@ -7176,6 +7176,16 @@ CANDIDATE_EMPLOYMENT_CHECKS = {
 CANDIDATE_CERTIFICATION_CHECKS = {"ck_candidate_certifications_dates": "expires_on IS NULL OR issued_on IS NULL OR expires_on >= issued_on"}
 
 
+# pob-014 (DEC-SCOPE-425): migration 0306 keeps frozen copies (test_pob_014_migration asserts they stay identical).
+INSTITUTION_PURPOSES = ("placement", "internship", "training", "campus_drive")
+INSTITUTION_NOTICE_STATUSES = ("notice_sent", "consented")
+INSTITUTION_PERMISSION_CHECKS = {"ck_institution_data_permissions_window": "expires_on >= valid_from"}
+CANDIDATE_INSTITUTION_CHECKS = {
+    "ck_candidates_institution_notice": "institution_notice_status IS NULL OR institution_notice_status IN ('notice_sent', 'consented')",
+    "ck_candidates_institution_pair": "(institution_permission_id IS NULL) = (institution_org_id IS NULL)",
+}
+
+
 class Candidate(Base, TimestampMixin):
     """rec-009: one person in the recruiter pool -- external (no login) or, from rec-010, an IT student who opted in (`user_id`).
     Q-07: one person is one candidate -- the normalised mobile and the lower-cased email are each unique. Archived, never deleted."""
@@ -7183,7 +7193,8 @@ class Candidate(Base, TimestampMixin):
     __tablename__ = "candidates"
     __table_args__ = (
         *(CheckConstraint(sql, name=name) for name, sql in (CANDIDATE_CHECKS | CANDIDATE_PACKAGE_CHECKS | CANDIDATE_MERGE_CHECKS | CANDIDATE_PROFILE_CHECKS
-                                                            | CANDIDATE_PRIVACY_CHECKS).items()),
+                                                            | CANDIDATE_PRIVACY_CHECKS | CANDIDATE_INSTITUTION_CHECKS).items()),
+        Index("ix_candidates_institution_permission", "institution_permission_id", postgresql_where=text("institution_permission_id IS NOT NULL")),
         Index("uq_candidates_mobile", "mobile_normalized", unique=True, postgresql_where=text("mobile_normalized IS NOT NULL")),
         Index("uq_candidates_email", text("lower(email)"), unique=True, postgresql_where=text("email IS NOT NULL")),
         Index("ix_candidates_source_id", "source_id"),
@@ -7265,6 +7276,44 @@ class Candidate(Base, TimestampMixin):
     # hrc-035 (DEC-SCOPE-396 K3/K4): set once by the anonymiser; an anonymised candidate is outside `candidates.pool_filter()` for good.
     anonymised_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     anonymised_reason: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # pob-014 (DEC-SCOPE-425 S5/S6): a student an institution supplied under a data permission. With a permission the candidate is in the
+    # pool only for that permission's listed users while it is active (services/institution_pool).
+    institution_org_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"), nullable=True, index=True)
+    institution_permission_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("institution_data_permissions.id", ondelete="RESTRICT"), nullable=True)
+    institution_notice_status: Mapped[str | None] = mapped_column(String(12), nullable=True)
+
+
+class InstitutionDataPermission(Base, TimestampMixin):
+    """pob-014 (S1/S2): an institution's permission to hold and use its students' data -- the agreement, the purposes and the window.
+    Active = not revoked and today (IST) within [valid_from, expires_on]. A revoke is final."""
+
+    __tablename__ = "institution_data_permissions"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in INSTITUTION_PERMISSION_CHECKS.items()),
+        Index("ix_institution_data_permissions_org", "organization_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    mou_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_mous.id", ondelete="RESTRICT"), nullable=True)
+    agreement_reference: Mapped[str] = mapped_column(String(100))
+    purposes: Mapped[list] = mapped_column(JSON, default=list)
+    valid_from: Mapped[date] = mapped_column(Date)
+    expires_on: Mapped[date] = mapped_column(Date)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+class InstitutionDataPermissionUser(Base):
+    """pob-014 (S3): a person the agreement names. Only listed people see the permission's students -- no role bypasses the list."""
+
+    __tablename__ = "institution_data_permission_users"
+    __table_args__ = (Index("ix_institution_data_permission_users_user", "user_id"),)
+    permission_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("institution_data_permissions.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), primary_key=True)
+    added_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 # hrc-035 (DEC-SCOPE-396 K8): one row (`id = 1`); `months` NULL = the retention rule is off (the default until legal sign-off).
@@ -7602,6 +7651,8 @@ class CandidateImportBatch(Base):
     matched_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     error_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # pob-014 (DEC-SCOPE-425 S7, AC1): the institution data permission an institution's list was imported under
+    institution_permission_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("institution_data_permissions.id", ondelete="RESTRICT"), nullable=True)
 
 
 class CandidateImportRow(Base):

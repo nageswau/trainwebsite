@@ -250,7 +250,7 @@ def _more(body: CandidateSearch, terms: dict[str, dict], user_id: UUID | None) -
 def filters(body: CandidateSearch, terms: dict[str, dict], user_id: UUID | None = None) -> list:
     """The pool (AC5), not archived, one EXISTS per AND term, one per OR group (hrc-019: at the minimum level and months), then the FS5
     filters and the hrc-019 groups -- all ANDed. `user_id` is the caller, for `owner=me` (S8)."""
-    out = [*pool_filter(), Candidate.archived_at.is_(None)]
+    out = [*pool_filter(user_id), Candidate.archived_at.is_(None)]
     level, months = body.min_level, body.skill_min_months
     out += [_has(terms[t.lower()]["ids"], body.verified_only, level, months) for t in dict.fromkeys(t.lower() for t in body.all)]
     out += [_has(set().union(*(terms[t.lower()]["ids"] for t in group)), body.verified_only, level, months) for group in body.any]

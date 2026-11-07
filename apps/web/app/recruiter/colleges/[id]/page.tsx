@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import CollegePlacement from "@/components/CollegePlacement";
+import InstitutionStudentPool from "@/components/InstitutionStudentPool";
 import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
 import { ORG_TYPE_LABEL, type OrgType, safeWebsite } from "@/lib/bdmOrganizations";
@@ -55,6 +56,7 @@ export default async function RecruiterCollegePage({ params }: { params: Promise
               </div>
             </div>
             <CollegePlacement orgId={college.id} initial={college} />
+            <InstitutionStudentPool orgId={college.id} viewerId={user.id} />
           </>
         ) : (
           <div className="action-card">

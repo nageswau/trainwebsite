@@ -29,7 +29,7 @@ async def list_notes(candidate_id: UUID, response: Response, limit: int = LIMIT,
                      db: AsyncSession = Depends(get_db)):  # fmt: skip
     """T2: internal only -- the one route that serves a note's text (the timeline shows an excerpt)."""
     candidates.require_reader(user)
-    candidate = await candidates.load(db, candidate_id)
+    candidate = await candidates.load(db, candidate_id, viewer_id=user.id)
     response.headers.update(NO_STORE)
     return await svc.note_page(db, candidate.id, limit, offset)
 
@@ -38,7 +38,7 @@ async def list_notes(candidate_id: UUID, response: Response, limit: int = LIMIT,
 async def add_note(candidate_id: UUID, payload: CandidateNoteIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Append-only; not idempotent (a retry adds a second note)."""
     candidates.require_writer(user)
-    candidate = await candidates.load(db, candidate_id, lock=True)
+    candidate = await candidates.load(db, candidate_id, lock=True, viewer_id=user.id)
     svc.require_open_candidate(candidate)
     note = await svc.add_note(db, user, candidate, payload.body)
     await db.commit()
@@ -49,7 +49,7 @@ async def add_note(candidate_id: UUID, payload: CandidateNoteIn, user: User = De
 @router.get("/candidates/{candidate_id}/tasks")
 async def list_candidate_tasks(candidate_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     candidates.require_reader(user)
-    candidate = await candidates.load(db, candidate_id)
+    candidate = await candidates.load(db, candidate_id, viewer_id=user.id)
     return await svc.candidate_page(db, user, candidate.id, await db_now(db), limit, offset)
 
 
@@ -57,7 +57,7 @@ async def list_candidate_tasks(candidate_id: UUID, limit: int = LIMIT, offset: i
 async def create_task(candidate_id: UUID, payload: CandidateTaskCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Not idempotent (a retry adds a second task)."""
     candidates.require_writer(user)
-    candidate = await candidates.load(db, candidate_id, lock=True)
+    candidate = await candidates.load(db, candidate_id, lock=True, viewer_id=user.id)
     svc.require_open_candidate(candidate)
     now = await db_now(db)
     task = await svc.create(db, user, candidate, payload, now)

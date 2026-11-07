@@ -18,7 +18,7 @@ import RecruiterWebsiteRegistrations from "@/components/RecruiterWebsiteRegistra
 import { ApiError, serverApi } from "@/lib/api";
 import { PORTAL_NAV, RECRUITER_MANAGER_NAV, RECRUITER_NAV, SUPER_ADMIN_NAV, type NavItem } from "@/lib/navigation";
 import { PLACEMENT_MANAGER_LABEL, RECRUITER_ROLE_LABEL } from "@/lib/recruiter";
-import { IMPORT_PATH } from "@/lib/recruiterCandidateImport";
+import { IMPORT_PATH, type InstitutionImport } from "@/lib/recruiterCandidateImport";
 import { CANDIDATES_PATH, candidateUrl, type CandidateDetail } from "@/lib/recruiterCandidates";
 import { DUPLICATES_PATH } from "@/lib/recruiterDuplicates";
 import { POOLS_PATH } from "@/lib/recruiterPools";
@@ -173,7 +173,7 @@ export async function NewCandidatePage() {
 }
 
 // hrc-013 (DEC-SCOPE-391 I12): the import wizard -- candidate writers; the API checks `candidates.import` and the wizard shows its refusal.
-export async function CandidateImportPage() {
+export async function CandidateImportPage({ institution = null }: { institution?: InstitutionImport | null } = {}) {
   const s = await shell();
   if (!("nav" in s)) return s;
   if (!s.writes) return <Frame s={s}><Back /><div className="action-card"><h2>Read only</h2><p>Your role can view candidates but not import them.</p></div></Frame>;
@@ -187,7 +187,7 @@ export async function CandidateImportPage() {
           <p className="muted">Check a spreadsheet of candidates row by row, then add the new people in one go.</p>
         </div>
       </div>
-      <RecruiterCandidateImport />
+      <RecruiterCandidateImport institution={institution} />
     </Frame>
   );
 }

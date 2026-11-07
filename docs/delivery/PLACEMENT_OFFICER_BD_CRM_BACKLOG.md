@@ -511,6 +511,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** large. **Risk:** high.
 
 #### pob-014: Institution-supplied student pool with permission tracking
+- **Status:** built (`DEC-SCOPE-425`, 2026-11-07); Q-11 answered by the builder's calls S1–S14 (`NEEDS_CONFIRMATION`); a second consent for a matched EduSphere student remains open.
 - **Business requirement:** §6.1 Student data; §6.2 "Collect authorised student data", "Record available student batches by course, skills, graduation year, location preference and placement status"; the privacy note "only with appropriate authority, notice and consent … restrict access … according to the institution agreement"; §8.1 college data; §17 "Import college/TPO candidate data only through authorised files or integrations, preserving source and permission details".
 - **Existing behavior:** `Candidate` can be external, but `college` is free text with no org FK, there is no batch, and there is no bulk import. Consent covers student opt-in only. There is no per-institution access restriction.
 - **Expected behavior:**

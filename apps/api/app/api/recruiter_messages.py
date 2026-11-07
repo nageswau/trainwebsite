@@ -301,5 +301,5 @@ async def company_messages(company_id: UUID, limit: int = LIMIT, offset: int = O
 @router.get("/candidates/{candidate_id}/messages")
 async def candidate_messages(candidate_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     candidates.require_reader(user)
-    await candidates.load(db, candidate_id)
+    await candidates.load(db, candidate_id, viewer_id=user.id)
     return await svc.page(db, RecruiterMessage.candidate_id == candidate_id, limit, offset)
