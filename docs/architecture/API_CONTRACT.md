@@ -6276,3 +6276,14 @@ Audit actions `recruiter_template.approve|archive|restore|copy`.
 - `GET /recruiter/interview-automation/settings`: returns `first_reminder_hours`, `second_reminder_hours`, `reminder_template_id`, `chase_after_hours`, `escalate_after_hours` and `chase_template_id`. Only `placement_manager` and super_admin may read it; anyone else gets 403.
 - `PUT /recruiter/interview-automation/settings`: a full replace with the same body. Reminder hours are 1–168 and the other hours 1–720, or null; the second reminder must be sooner than the first; templates must be approved shared email templates. A rule break returns 422 on its field. The response is the saved settings.
 - Notices: `it.interview.reminder` (tagged, candidate) and `it.interview.feedback_escalated` (catalogued, Team Lead).
+
+## 12LO. BD activity completeness (pob-007) — addendum, 2026-11-07
+
+`DEC-SCOPE-422`. Migration `0302_bd_activity`.
+
+- `POST /recruiter/messages/linkedin` (201): `{contact_id | candidate_id, action: connection_request|message, sent_at?, template_id?, body?, next_follow_up?}`. The send's party rules (scope 404, `can_edit` 403, inactive/archived 409, Do Not Contact 409); `body` required for `message` (422); `sent_at` not ahead and at most 7 days back (422 on `sent_at`); a usable LinkedIn template (422); 300 per sender per IST day (409); `next_follow_up` on a contact only. Moves Last contacted and the contact status. Audit `recruiter_message.create` (`channel: linkedin`).
+- `POST /recruiter/messages/{id}/outcome` (200): `{outcome, next_follow_up?}` on a contact message, once (409 again; 422 on a candidate message). Audit `recruiter_message.outcome`.
+- Message output adds `linkedin_action`, `outcome`, `follow_up {id, due_at, reason}`. Timeline message rows: `event` = `linkedin`, `status` = the action.
+- `POST /recruiter/calls`, `PATCH /recruiter/calls/{id}`: new `job_id` (a requirement of the contact's company; contact calls only; 422 on `job_id`), `objections` (catalogue keys, each once), `objection_notes` (≤ 1000), `next_action` (≤ 500). Output adds them plus `requirement {id, code, title}`.
+- `POST /recruiter/meetings/{id}/outcome`: new `hiring_forecast` (≤ 10 `{role, count, timeframe}`), `action_items` (≤ 10 `{action, due_at, reason}`, each a follow-up; 422 on `action_items.N.due_at`), `commercial_notes` (needs `commercials.client.view`, else 403). Meeting output adds `hiring_forecast`, `action_items`, `commercial_notes` (null without the grant) and `commercial_notes_visible`. Meeting type `company_visit` (BD visit).
+- Follow-ups: create/PATCH add `priority` (high|medium|low, default medium) and `remind_at` (future when set; not after `due_at`, 422 on `remind_at`). Output adds both.
