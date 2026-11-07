@@ -16,6 +16,8 @@ export const REASONS = [
   { key: "contract_mou", label: "Contract/MoU" },
   { key: "payment_commercial", label: "Payment/commercial discussion" },
   { key: "clarification", label: "Clarification from the client" }, // pob-016: not in EVID-018 §18; a checklist item the client must clarify
+  { key: "first_outreach", label: "First outreach" }, // pob-008 B10: a new company or contact
+  { key: "cadence_step", label: "Outreach cadence step" }, // pob-008 B8: no reply yet, the cadence's next step
 ] as const;
 export type FollowUpReason = (typeof REASONS)[number]["key"];
 const REASON_LABEL: Record<string, string> = Object.fromEntries(REASONS.map((r) => [r.key, r.label]));
@@ -34,6 +36,7 @@ export type RecFollowUp = {
   created_by: PersonRef; created_at: string; completed_at: string | null; completed_by: PersonRef | null; cancelled_at: string | null;
   cancel_reason: string | null; can_change: boolean;
   priority?: Priority; remind_at?: string | null; // pob-007 A8 (optional: older fixtures omit them)
+  reminded_at?: string | null; // pob-008 B1: when the owner was reminded
 };
 export type Due = "today" | "overdue" | "upcoming";
 export const DUE_TABS: [Due, string][] = [["today", "Today"], ["overdue", "Overdue"], ["upcoming", "Upcoming"]];

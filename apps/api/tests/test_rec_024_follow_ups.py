@@ -14,6 +14,17 @@ from app.services.bdm_appointments import IST
 from tests.rec001_helpers import as_role, login, make_pm, make_recruiter, make_user
 from tests.rec017_helpers import student_application
 
+
+@pytest.fixture(autouse=True)
+def _no_first_outreach(monkeypatch):
+    """These tests pin rec-024's lists exactly; pob-008 B10's automatic first-outreach follow-up (tested in test_pob_008_reminders_cadences)
+    would add one to every new company and contact."""
+
+    async def skip(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr("app.services.recruiter_cadences.first_outreach", skip)
+
 COMPANIES = "/api/v1/recruiter/companies"
 FOLLOW_UPS = "/api/v1/recruiter/follow-ups"
 

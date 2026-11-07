@@ -12350,3 +12350,16 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - A8: follow-ups gain `priority` (default medium) and a stored `remind_at` (delivery is pob-008).
   - A9: a BD visit is a recruiter meeting of type `company_visit`; `BdmTrip` is not extended. A10: RBAC unchanged. A11: logs/audit carry ids only. A12: migration 0301 is additive.
 - **Not built:** reminder delivery and cadence (pob-008); BD-visit expenses; LinkedIn delivery tracking.
+
+### DEC-SCOPE-423 — Recruiter follow-up reminders and outreach cadences (pob-008)
+
+- **Date:** 2026-11-07. **Classification:** builder's calls B1-B12 (`NEEDS_CONFIRMATION`); the source is the `UNVERIFIED` requirements draft. The owner said to proceed with the recommended answers.
+- **Spec:** `docs/superpowers/specs/2026-11-07-pob-008-follow-up-reminders-cadences-design.md`.
+- **Decided (B1-B12):**
+  - B1-B4: the `pob008-follow-up-reminders` beat (every 5 minutes) sends one `it.recruiter.follow_up_due` notice per open follow-up, at its `remind_at` or 30 minutes before it is due (overdue ones too), to the company's current assigned recruiter (else the creator). `reminded_at` marks it; a moved due or reminder time re-arms it; archived companies are skipped.
+  - B5: `recruiter_cadences`: 2-10 steps `{day 0..90 (first 0, increasing), channel email|whatsapp|linkedin|call, optional approved shared template of that channel}`. Read by every recruiter-CRM role; written by `placement_manager` and super_admin; audited; never deleted.
+  - B6-B7: a cadence starts on an outreach message to a contact (the message is step 1); the run keeps a snapshot; one active run per contact; refused for Do Not Contact / Not interested / inactive / already replied.
+  - B8: the `pob008-cadences` beat (every 15 minutes) turns a due step into a `cadence_step` follow-up for the current owner (template text rendered into the notes); the last step completes the run.
+  - B9: a logged reply, a move to Replied / Meeting scheduled, Do Not Contact, Not interested or deactivation end the run in the same transaction; the sweep re-checks; a manual stop exists.
+  - B10-B11: a new company / contact (the manual routes, not imports) gets one `first_outreach` follow-up due in 24 hours. B12: migration 0304 stamps overdue follow-ups so no backlog is sent.
+- **Not built:** automatic sending of any outreach; per-user reminder settings; first-outreach tasks for bulk imports.

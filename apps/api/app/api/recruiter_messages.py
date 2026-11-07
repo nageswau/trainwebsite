@@ -31,7 +31,7 @@ from app.schemas import (
     RecTemplateCreate,
     RecTemplateUpdate,
 )
-from app.services import candidates
+from app.services import candidates, recruiter_cadences
 from app.services import recruiter_companies as companies
 from app.services import recruiter_messages as svc
 from app.services.bdm_appointments import db_now
@@ -292,8 +292,10 @@ async def record_outcome(message_id: UUID, payload: RecMessageOutcome, user: Use
 @router.get("/companies/{company_id}/messages")
 async def company_messages(company_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Every contact message of the company, newest first -- whoever has the company in scope (a manager and the assigned BDM read)."""
-    await companies.load_scoped(db, user, company_id)
-    return await svc.page(db, RecruiterMessage.company_id == company_id, limit, offset)
+    company = await companies.load_scoped(db, user, company_id)
+    out = await svc.page(db, RecruiterMessage.company_id == company_id, limit, offset)
+    await recruiter_cadences.attach(db, user, company, out["items"])  # pob-008 B6: the run started on each message
+    return out
 
 
 @router.get("/candidates/{candidate_id}/messages")
