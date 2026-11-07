@@ -2400,3 +2400,11 @@ drops the five tables.
 survivor. `crm_import_batches` (uploader, idempotency key unique per uploader, `file_sha256`, file name, counts) and `crm_import_rows` (batch, row number, status, reason, company and contact
 ids, created flags) hold no cell value. The migration seeds the `placement_manager` `crm.import` and `crm.merge` grants and changes no existing row; the downgrade drops the tables, the columns
 and the grant rows.
+
+### Requirement validation checklist (`pob-016`, `DEC-SCOPE-419`, migration `0298_requirement_checklist`)
+
+- `job_checklist_items`: PK `(job_id, item_key)`; `job_id` FK `jobs` CASCADE; `status` CHECK `confirmed`/`not_applicable`/`missing`; `follow_up_id` FK `recruiter_follow_ups` SET NULL; `updated_by_user_id`; timestamps. An unanswered item has no row. `item_key` has no check: the items are `services/requirement_checklist.ITEMS`.
+- `job_checklist_overrides`: PK `job_id` FK `jobs` CASCADE; `reason`; `overridden_by_user_id`; timestamps. One per requirement, kept for good.
+- `requirement_checklist_settings`: `id` (one row, 1; no row = off); `block_sourcing`; `updated_by_user_id`; timestamps.
+- `companies.checklist_blocks_sourcing` boolean NULL: null = the global rule. A company merge keeps the survivor's value.
+- `recruiter_follow_ups.reason` gains `clarification`. The downgrade turns those rows into `jd`, so none is lost.

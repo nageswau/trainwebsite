@@ -595,3 +595,9 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 /* hrc-022 (DEC-SCOPE-386): the candidate portal's label/value lists -- two columns on wide screens, one on phones. */
 .candidate-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 22px;margin:0}.candidate-facts dt{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}.candidate-facts dd{margin:2px 0 0;overflow-wrap:anywhere}
 @media(max-width:640px){.candidate-facts{grid-template-columns:1fr}}
+/* pob-016 (DEC-SCOPE-419): the requirement validation checklist -- fieldset.form-section's tokens, answers wrapping on phones. */
+.checklist-items{display:grid;gap:12px}
+fieldset.checklist-item{border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:0;min-width:0;display:grid;gap:6px}
+fieldset.checklist-item legend{font-weight:800;padding:0 6px}
+.checklist-options{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px}
+.checklist-options label{display:inline-flex;align-items:center;gap:6px;min-height:32px;cursor:pointer}

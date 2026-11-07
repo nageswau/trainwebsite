@@ -6184,3 +6184,22 @@ Additive. `GET /recruiter/companies/{id}` gains optional `merged_into` `{id, cod
 | `POST /recruiter/contacts/{id}/merge` | `{victim_id, use_victim[], reason?}` | 200 `{id, victim_id, company_id, moved}`. 404 out of scope or another company's; 422 self; 409 merged, company archived |
 
 Import routes need `crm.import`, merge routes `crm.merge` (403). A row outcome is `created`, `matched` or `error` (`new` in a preview) with a `reason`.
+
+## 12LL. Requirement validation checklist (pob-016) — addendum, 2026-11-07
+
+`DEC-SCOPE-419`; the rights are `RBAC_MATRIX.md` §2.311.
+
+| Method and path | Body | Answer |
+| --- | --- | --- |
+| `GET /api/v1/recruiter/requirements/{id}/checklist` | | The checklist below |
+| `PUT /api/v1/recruiter/requirements/{id}/checklist/items/{key}` | `{status: "confirmed" \| "not_applicable" \| "missing"}` | The checklist. The same answer again changes nothing. An unknown key or status is 422 |
+| `POST /api/v1/recruiter/requirements/{id}/checklist/override` | `{reason}` (required, up to 500 characters) | The checklist. 409 when nothing is being blocked: the rule is off, the checklist is complete, sourcing has started, it is already overridden, or the requirement is cancelled |
+| `PUT /api/v1/recruiter/companies/{id}/checklist-rule` | `{block_sourcing: true \| false \| null}` (must be stated; null = the global rule) | `{block_sourcing}` |
+| `PUT /api/v1/recruiter/requirement-checklist/settings` | `{block_sourcing: true \| false}` | `{block_sourcing}` |
+
+**The checklist:** `items: [{key, label, hint, status (null = not reviewed), follow_up: {id, status, due_at, contact} | null}]`, `summary: {total, confirmed, not_applicable, missing, not_reviewed, complete}`,
+`blocking: {on, company_rule, global_rule}`, `override: {reason, by, at} | null`, `sourcing_started`, `warning` (text while sourcing has started and items are outstanding, else null), `company_id`, `can_edit`, `can_override`, `can_set_company_rule`, `can_set_global_rule`.
+
+**Changed behaviour:** `POST /recruiter/requirements/{id}/status` and `/workflows/it/jobs` status moves into `sourcing`, `shortlisting`, `profiles_shared`, `interviewing` or `selected` can now answer
+`409 {detail: {message, code: "checklist_incomplete", missing: [{key, label, status}]}}` when the rule applies, the checklist is incomplete, the requirement has never started sourcing and it has not been overridden. With the rules off (the default) nothing changes.
+**Added vocabulary:** follow-up reason `clarification`.

@@ -15,6 +15,7 @@ import RecruiterShares from "@/components/RecruiterShares";
 import RecruiterScreeningForm from "@/components/RecruiterScreeningForm";
 import { ApprovalDecision, SubmitForApproval, SubmittedLine } from "@/components/RequirementApproval";
 import { OwnersCard, OwnershipHistory } from "@/components/RequirementOwners";
+import RequirementChecklist from "@/components/RequirementChecklist";
 import RequirementRevisions from "@/components/RequirementRevisions";
 import RequirementVisibility from "@/components/RequirementVisibility";
 import SearchableSelect from "@/components/SearchableSelect";
@@ -219,6 +220,7 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
   const [notice, setNotice] = useState<string | null>(created ? `Requirement ${initial.code} created.` : null);
   const [shortlists, setShortlists] = useState(0);
   const [shares, setShares] = useState(0); // rec-019: a share from either section re-reads the board and the Shared profiles list
+  const [checklistSaves, setChecklistSaves] = useState(0); // pob-016: a checklist save leaves `updated_at` alone but adds to the History
   const focus = useFocusAfterRender();
   useEffect(() => {
     if (created) window.history.replaceState(null, "", `${REQUIREMENTS_PATH}/${initial.id}`);
@@ -329,6 +331,8 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
       )}
       {r.commercial_terms && !showEditor && <CommercialTermsCard terms={r.commercial_terms} id={`requirement-${r.id}-terms`} />}
       <RecruiterRequirementJd requirement={r} initial={initialJd} onRequirementChanged={changed} />
+      {/* pob-016: what must be known before sourcing starts; read again when the status moves */}
+      {!showEditor && <RequirementChecklist requirementId={r.id} status={r.status} onSaved={() => setChecklistSaves((n) => n + 1)} />}
       {/* hrc-007: send for approval, or (an approver) decide; the pending state is shown to every reader */}
       {r.approval.can_submit && !showEditor && <SubmitForApproval requirement={r} onDone={changed} />}
       {r.status === "pending_approval" && (
@@ -379,7 +383,7 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
       {/* hrc-004: who changed what, old → new; re-read after every save (the requirement's updated_at moves). */}
       {/* pob-002 (R5): each saved version, viewable and comparable; re-read after a save like the History */}
       <RequirementRevisions key={`revisions-${r.updated_at}`} requirementId={r.id} />
-      <RecruiterRecordHistory key={r.updated_at} url={`${REQUIREMENTS_URL}/${encodeURIComponent(r.id)}/history`} />
+      <RecruiterRecordHistory key={`${r.updated_at}-${checklistSaves}`} url={`${REQUIREMENTS_URL}/${encodeURIComponent(r.id)}/history`} />
     </>
   );
 }

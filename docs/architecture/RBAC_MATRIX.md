@@ -3989,3 +3989,17 @@ A grant does not widen company scope: every company resolves through `caller_sco
 its code and name only, no link, and adds nothing. A deny override removes a manager's grant. History is the caller's own, a manager's also their direct reports', super_admin's everyone's;
 another's batch is 404. Audit: `crm.import`, `recruiter_company.merge`, `recruiter_company.merged_into`, `recruiter_company.contact_merge`, with ids, counts and field names only. Pinned by
 `apps/api/tests/test_pob_006_import.py`, `apps/api/tests/test_pob_006_merge.py` and `apps/web/tests/e2e/pob-006-import-merge.spec.ts`.
+
+### 2.311 Requirement validation checklist *(added 2026-11-07 — `DEC-SCOPE-419`, pob-016)*
+
+Out of a requirement's or company's scope is 404. Roles without a requirement scope are 403.
+
+| Action | placement_team | placement_officer (assignee) | placement_manager | bdm (assigned) | super_admin |
+| --- | --- | --- | --- | --- | --- |
+| Read the checklist | Yes | Yes | Yes | Yes | Yes |
+| Answer an item | Yes | Yes | No (403): not a requirement writer (§2.298) | No (403) | Yes |
+| Override with a reason | No (403) | No (403) | Yes | No (403) | Yes |
+| Set a company's rule | No (403) | No (403) | Yes, in scope | No (403) | Yes |
+| Set the global rule | No (403) | No (403) | No (403) | No (403) | Yes |
+
+A placement officer has no company scope, but answering Missing still creates the follow-up: the requirement's scope is what counts. The follow-up itself is read through the company scope, as every follow-up is.

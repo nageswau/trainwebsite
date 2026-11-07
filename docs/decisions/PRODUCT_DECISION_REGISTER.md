@@ -12240,3 +12240,17 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Not built:** un-merge, moving a contact between companies, a company duplicate-review queue, updating existing records from a file, a shared rewrite of the hrc-013 engine.
 - **Numbering:** migration `0297_crm_import_merge`; API §12LK; RBAC §2.310.
 - **Feature ID authorized:** `pob-006`. **Status:** built on `worktree-pob-006`.
+
+### DEC-SCOPE-419 — Requirement validation checklist and clarification tasks (`pob-016`)
+
+- **Status:** `NEEDS_CONFIRMATION` on the builder's calls; built on `worktree-pob-016` under the owner's standing instruction to proceed with recommended answers (2026-11-07).
+- **Evidence:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` pob-016 (`UNVERIFIED` draft; Q-00 approved the backlog for build in waves). Spec: `docs/superpowers/specs/2026-11-07-pob-016-requirement-checklist-design.md`.
+- **Evidence gap:** the backlog cites "§7.1 (8 checks)" without naming them, and the source docx is not on this machine. **The eight items are a proposal drawn from the §7 field groups, not the document's wording.** They live in one constant (`services/requirement_checklist.ITEMS`); correcting them needs no migration.
+- **Checklist:** eight items per requirement: Role and responsibilities; Skills and experience; Number of openings; Location and work mode; Salary budget; Interview process and decision-maker; Commercial terms; Joining date and turnaround. Each is Confirmed, Not applicable or Missing; unanswered reads Not reviewed. Complete means every item is Confirmed or Not applicable. There is no free-text note, so no commercial value can pass pob-001's gate through this card.
+- **Follow-ups:** marking an item Missing creates a `clarification` follow-up (new reason) due in 2 days, with the requirement's active decision-maker, else the company's primary contact, else no contact. Leaving Missing completes it (Confirmed) or cancels it (Not applicable) if still open. rec-024's 50-open cap applies: a 409 and nothing saved.
+- **Rule:** global (one settings row, off by default; super admin) with a per-company value that wins (`companies.checklist_blocks_sourcing`, null = global; Team Lead in scope or super admin).
+- **Guard:** in `change_status`, so every route is covered. A blocked move to `sourcing`, or to any later working status (no skipping), is `409 {message, code: "checklist_incomplete", missing}`. A requirement that has already started sourcing is never blocked: editing its checklist only warns.
+- **Override:** a separate step, because a Team Lead is not a requirement writer: Team Lead in scope or super admin, a reason required, audited, one per requirement, no withdrawal. The owner then makes the move.
+- **Not built:** an item editor; notes on items; withdrawing an override; a settings page (the rules are on the card).
+- **Numbering:** migration `0298_requirement_checklist`; API §12LL; RBAC §2.311.
+- **Feature ID authorized:** `pob-016`. **Status:** built on `worktree-pob-016`.
