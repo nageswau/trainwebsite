@@ -44,7 +44,7 @@ async def duplicates(db: AsyncSession, user: User, company: Company, mobile: str
         conditions.append(CompanyContact.email == address)
     if not conditions:
         return {"matches": [], "others": 0}
-    where = [or_(*conditions), *([CompanyContact.id != exclude] if exclude else [])]
+    where = [or_(*conditions), CompanyContact.merged_into_id.is_(None), *([CompanyContact.id != exclude] if exclude else [])]  # pob-006 C5
     stmt = select(CompanyContact, Company).join(Company, Company.id == CompanyContact.company_id).where(*where)
     scope = await companies.caller_scope(db, user)
     visible = (await db.execute(stmt.where(*scope).order_by(CompanyContact.company_id != company.id, CompanyContact.position).limit(MAX_DUPLICATE_MATCHES))).all()
@@ -61,14 +61,15 @@ async def duplicates(db: AsyncSession, user: User, company: Company, mobile: str
 
 
 async def contacts_of(db: AsyncSession, company_id: UUID) -> list[CompanyContact]:
-    """Insertion order; fresh from the database (another request may have changed the primary since this session loaded them)."""
-    stmt = select(CompanyContact).where(CompanyContact.company_id == company_id).order_by(CompanyContact.position)
+    """Insertion order; fresh from the database (another request may have changed the primary since this session loaded them). A merged-away
+    contact is not one of them (pob-006 C5)."""
+    stmt = select(CompanyContact).where(CompanyContact.company_id == company_id, CompanyContact.merged_into_id.is_(None)).order_by(CompanyContact.position)
     return list((await db.scalars(stmt.execution_options(populate_existing=True))).all())
 
 
 async def load_for_write(db: AsyncSession, user: User, contact_id: UUID, route: str) -> tuple[Company, CompanyContact]:
     """The contact's company, locked and checked for scope (404) and write rights (403, then 409 when archived)."""
-    company_id = await db.scalar(select(CompanyContact.company_id).where(CompanyContact.id == contact_id))
+    company_id = await db.scalar(select(CompanyContact.company_id).where(CompanyContact.id == contact_id, CompanyContact.merged_into_id.is_(None)))
     if company_id is None:
         raise HTTPException(404, CONTACT_NOT_FOUND)
     try:

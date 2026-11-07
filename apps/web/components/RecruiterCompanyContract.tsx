@@ -8,7 +8,7 @@ import RecruiterContractHistory from "@/components/RecruiterContractHistory";
 import { sendRequest } from "@/lib/apiErrors";
 import { display } from "@/lib/bdmOrganizations";
 import { formatCalendarDate, formatSchoolDateTime } from "@/lib/formatDate";
-import { type CompanyContracts, companyContractsUrl, type Contract, CONTRACT_STATUSES, feeText, isCompanyContracts } from "@/lib/recruiterContracts";
+import { type CompanyContracts, companyContractsUrl, type Contract, type ContractParty, CONTRACT_STATUSES, directionText, feeText, isCompanyContracts } from "@/lib/recruiterContracts";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 type Step = "done" | "current" | "upcoming";
@@ -29,6 +29,7 @@ function details(c: Contract): [string, ReactNode][] {
   const terms: [string, ReactNode][] = c.permissions.can_view_terms
     ? [["Recruitment fee", feeText(c)], ["Payment terms", multiline(c.payment_terms ?? null)], ["Replacement policy", multiline(c.replacement_policy ?? null)]]
     : [];
+  if (c.party === "vendor" && c.permissions.can_view_terms) terms.unshift(["Who pays whom", directionText(c.direction)], ["Confidentiality terms", multiline(c.confidentiality_terms ?? null)]); // pob-010 V8
   return [
     ["Agreement type", display(c.agreement_type)],
     ["Contract start date", day(c.start_date)],
@@ -42,17 +43,21 @@ function details(c: Contract): [string, ReactNode][] {
 // last step, reached automatically), its terms, its two documents, its history, and the previous contracts. Edit, Start renewal and the
 // uploads render from `permissions` / `can_start` only; the server enforces every rule. After each write the section re-reads the
 // contracts and tells the page (`onChanged`), which re-reads the company's "Contract status" and announces the notice.
-export default function RecruiterCompanyContract({ companyId, onChanged }: { companyId: string; onChanged: (notice: string) => void }) {
+// pob-010 V8: `party="vendor"` is the same section for the vendor agreement, under its own ids.
+export default function RecruiterCompanyContract({ companyId, onChanged, party = "client" }: { companyId: string; onChanged: (notice: string) => void; party?: ContractParty }) {
   const [data, setData] = useState<CompanyContracts | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
   const [mode, setMode] = useState<"view" | "edit" | "create">("view");
   const [failure, setFailure] = useState<string | null>(null);
   const focus = useFocusAfterRender();
-  const id = (part: string) => `contract-card-${companyId}-${part}`;
+  const vendor = party === "vendor";
+  const noun = vendor ? "agreement" : "contract";
+  const Noun = vendor ? "Agreement" : "Contract";
+  const id = (part: string) => `contract-card-${companyId}-${party}-${part}`;
   const current = data?.current ?? null;
 
   async function reload() {
-    const outcome = await sendRequest(companyContractsUrl(companyId), { method: "GET" });
+    const outcome = await sendRequest(companyContractsUrl(companyId, party), { method: "GET" });
     if (outcome.ok && isCompanyContracts(outcome.data)) {
       setData(outcome.data);
       return setState("ready");
@@ -100,22 +105,22 @@ export default function RecruiterCompanyContract({ companyId, onChanged }: { com
     );
   } else if (mode !== "view") {
     body = (
-      <RecruiterContractForm companyId={companyId} contract={mode === "edit" ? current : null} onCancel={close} onConflict={conflicted}
+      <RecruiterContractForm companyId={companyId} party={party} contract={mode === "edit" ? current : null} onCancel={close} onConflict={conflicted}
         terms={mode === "edit" ? !!current?.permissions.can_edit_terms : data.can_edit_terms}
-        onSaved={(c) => saved(c, mode === "edit" ? "Contract saved." : current ? "Renewal started." : "Contract started.")} />
+        onSaved={(c) => saved(c, mode === "edit" ? `${Noun} saved.` : current ? "Renewal started." : `${Noun} started.`)} />
     );
   } else if (current === null) {
     body = (
       <>
-        <p className="muted">No contract yet.</p>
-        {data.can_start && <button id={id("start")} type="button" className="btn small" onClick={() => setMode("create")}>Start contract</button>}
+        <p className="muted">No {noun} yet.</p>
+        {data.can_start && <div className="actions"><button id={id("start")} type="button" className="btn small" onClick={() => setMode("create")}>Start {noun}</button></div>}
       </>
     );
   } else {
     body = (
       <>
         <p>Status: <span className="badge">{current.status_label}</span></p>
-        <ol className="jny-steps" aria-label="Contract statuses">
+        <ol className="jny-steps" aria-label={`${Noun} statuses`}>
           {steps(current).map((s) => (
             <li key={s.key} className={`jny-step jny-${s.state}`} aria-current={s.state === "current" ? "step" : undefined}>
               <span className="jny-glyph" aria-hidden="true">{GLYPH[s.state]}</span>
@@ -125,10 +130,10 @@ export default function RecruiterCompanyContract({ companyId, onChanged }: { com
           ))}
         </ol>
         {current.status === "expired" && current.expired_on && (
-          <p className="form-message">Expired on {formatCalendarDate(current.expired_on)} (the contract ended on {formatCalendarDate(current.end_date)}).</p>
+          <p className="form-message">Expired on {formatCalendarDate(current.expired_on)} (the {noun} ended on {formatCalendarDate(current.end_date)}).</p>
         )}
         <div className="actions">
-          {current.permissions.can_edit && <button id={id("edit")} type="button" className="btn secondary small" onClick={() => setMode("edit")}>Edit contract</button>}
+          {current.permissions.can_edit && <button id={id("edit")} type="button" className="btn secondary small" onClick={() => setMode("edit")}>Edit {noun}</button>}
           {current.permissions.can_renew && data.can_start && (
             <button id={id("renew")} type="button" className="btn small" onClick={() => setMode("create")}>Start renewal</button>
           )}
@@ -142,14 +147,14 @@ export default function RecruiterCompanyContract({ companyId, onChanged }: { com
   }
 
   return (
-    <section id="company-contract" className="action-card wide" aria-labelledby={id("title")}>
-      <h3 id={id("title")}>Contract / MoU</h3>
+    <section id={vendor ? "company-vendor-agreement" : "company-contract"} className="action-card wide" aria-labelledby={id("title")}>
+      <h3 id={id("title")}>{vendor ? "Vendor agreement" : "Contract / MoU"}</h3>
       {failure && <p className="form-error" role="alert">{failure}</p>}
       {body}
       {mode === "view" && data && data.previous.length > 0 && (
         <details>
-          <summary>Previous contracts ({data.previous.length})</summary>
-          <ul style={{ margin: 0, paddingLeft: 18 }} aria-label="Previous contracts">
+          <summary>Previous {noun}s ({data.previous.length})</summary>
+          <ul style={{ margin: 0, paddingLeft: 18 }} aria-label={`Previous ${noun}s`}>
             {data.previous.map((p) => (
               <li key={p.id}>
                 <span className="badge">{p.status_label}</span> {day(p.start_date)} – {day(p.end_date)}{p.permissions.can_view_terms && ` · ${feeText(p)}`}

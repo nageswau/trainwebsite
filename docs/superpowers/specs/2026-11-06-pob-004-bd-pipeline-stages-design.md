@@ -70,7 +70,7 @@ Lead + research/HR, Meeting + vendor registration.
 **D11 — Follow-up Due stays derived.** `follow_up_due` (an open follow-up due now or earlier) on the pipeline card and board rows as a badge, and a
 board filter tile. Never stored.
 
-## Migration `0296_company_bd_stages`
+## Migration `0303_company_bd_stages`
 Guarded throughout (0001 builds from today's models). Creates and seeds the two lists; adds `client_status`, `lost_reason_id`, `inactive_at`,
 `inactive_reason_id`, `inactive_reason`; replaces `ck_companies_stage` with the wider frozen list; adds the new CHECKs. **Backfill of
 `client_status` only**, since current clients must not read as prospects: `active_client` where a requirement ever reached Requirement Received or

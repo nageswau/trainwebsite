@@ -2242,6 +2242,8 @@ async def create_job(payload: dict, user: User = Depends(get_current_user), db: 
     company_id = payload.get("company_id")
     if not company_id and payload.get("company_name"):
         company = await db.scalar(select(Company).where(Company.name == payload["company_name"]))
+        if company and company.merged_into_id:  # pob-006 M8: a merged company's name leads to its survivor
+            company = await db.get(Company, company.merged_into_id)
         if not company:
             company = Company(name=payload["company_name"], website=payload.get("company_website"), partner_type="recruiter", assigned_recruiter_user_id=owner)
             db.add(company)
@@ -2252,6 +2254,9 @@ async def create_job(payload: dict, user: User = Depends(get_current_user), db: 
     company_id = uuid_reference(company_id, "company reference")
     if user.role != "it_admin":
         await recruiter_companies.load_scoped(db, user, company_id)  # out of the caller's company scope = 404
+    target = await db.get(Company, company_id)
+    if target is not None:
+        recruiter_companies.require_client(target)  # pob-010 V10
     job = Job(
         company_id=company_id,
         assigned_recruiter_user_id=owner,

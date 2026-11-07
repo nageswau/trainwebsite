@@ -67,6 +67,7 @@ export default function RecruiterFollowUpItem({ followUp: fu, card = false, cont
     card && ["Reason", reasonLabel(fu.reason)],
     ["Due", formatSchoolDateTime(fu.due_at, true)],
     fu.contact && ["Contact", fu.contact.name],
+    fu.remind_at && ["Reminder", formatSchoolDateTime(fu.remind_at, true)], // pob-007 A8
     fu.requirement && ["Requirement", fu.requirement.title],
     card && ["Recruiter", fu.company.assigned_recruiter?.full_name ?? "Unassigned"],
   ].filter(Boolean) as [string, string][];
@@ -81,6 +82,8 @@ export default function RecruiterFollowUpItem({ followUp: fu, card = false, cont
         ) : (
           <strong id={`${id}-title`}>{reasonLabel(fu.reason)}</strong>
         )}
+        {fu.priority === "high" && <span className="badge status pending">High priority</span>}
+        {fu.priority === "low" && <span className="badge">Low priority</span>}
         {fu.overdue && <span className="badge status error">Overdue</span>}
         {fu.status === "done" && <span className="badge">Done</span>}
         {fu.status === "cancelled" && <span className="badge">Cancelled</span>}

@@ -49,7 +49,8 @@ def test_recruiters_and_managers_keep_client_commercials_by_default_and_nobody_h
     assert holders == {"placement_team", "placement_manager", "bdm"}  # the BDM reads the assigned company's contract (rec-030 R10)
     assert editors == {"placement_team", "placement_manager"}
     for role, keys in rbac.DEFAULT_GRANTS.items():
-        assert not {k for k in keys if k.startswith(("commercials.vendor.", "candidates.contact."))}, role
+        assert not {k for k in keys if k.startswith("candidates.contact.")}, role
+        assert role in ("placement_team", "placement_manager") or not {k for k in keys if k.startswith("commercials.vendor.")}, role  # pob-010 V9
 
 
 # --- C5: contracts -------------------------------------------------------------------------------------------------------------------

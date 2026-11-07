@@ -1,7 +1,7 @@
 """pob-004 -- the BD pipeline: three more company stages, the client status, the Inactive flag and the two reason lists.
 
-Revision ID: 0296_company_bd_stages
-Revises: 0295_recruitment_report_grants
+Revision ID: 0303_company_bd_stages
+Revises: 0302_bd_activity
 
 docs/superpowers/specs/2026-11-06-pob-004-bd-pipeline-stages-design.md (DEC-SCOPE-417). 0001 builds a fresh database from today's models, so every
 object is created only when missing. Only `client_status` is backfilled (a current client must not read as a prospect); no stage or history row
@@ -15,8 +15,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0296_company_bd_stages"
-down_revision = "0295_recruitment_report_grants"
+revision = "0303_company_bd_stages"
+down_revision = "0302_bd_activity"
 branch_labels = None
 depends_on = None
 
@@ -40,7 +40,7 @@ SEED = {
     INACTIVE: ("No current hiring", "Contact left the company", "No response", "On hold by the company", "Other"),
 }
 RECEIVED = "SELECT 1 FROM jobs j JOIN job_status_history h ON h.job_id = j.id WHERE j.company_id = companies.id AND h.to_status = 'requirement_received'"
-SIGNED = "SELECT 1 FROM recruiter_contracts c WHERE c.company_id = companies.id AND c.status IN ('signed', 'active')"
+SIGNED = "SELECT 1 FROM recruiter_contracts c WHERE c.company_id = companies.id AND c.party = 'client' AND c.status IN ('signed', 'active')"
 REPEAT = """
     SELECT 1 FROM job_offers o
     JOIN job_applications a ON a.id = o.application_id
@@ -111,7 +111,7 @@ def downgrade() -> None:
         new = ", ".join(f"'{s}'" for s in NEW_STAGES)
         used = f"SELECT 1 FROM {TABLE} WHERE stage IN ({new}) OR inactive_at IS NOT NULL LIMIT 1"
         if op.get_bind().execute(sa.text(used)).first():
-            raise RuntimeError("Cannot downgrade 0296_company_bd_stages: a company sits at a new stage or is inactive. Clear it deliberately first.")
+            raise RuntimeError("Cannot downgrade 0303_company_bd_stages: a company sits at a new stage or is inactive. Clear it deliberately first.")
     op.drop_constraint(STAGE_CHECK, TABLE, type_="check")
     op.create_check_constraint(STAGE_CHECK, TABLE, _stage_sql(OLD_STAGES))
     for name in CHECKS:

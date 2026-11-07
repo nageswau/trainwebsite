@@ -19,7 +19,7 @@ type MeetingOption = { id: string; code: string; meeting_type: string; starts_at
 // pob-003 (DEC-SCOPE-406 D6-D8): the company's files -- profile, vendor form, agreement, JDs, meeting notes. Downloads are plain links to
 // the scoped route (the API audits and streams an attachment); `can_download` is false for an agreement without commercial access. The
 // upload form shows with `can_upload` (the assigned recruiter / super admin), the agreement type only with `can_upload_agreement`.
-export default function RecruiterCompanyDocuments({ companyId }: { companyId: string }) {
+export default function RecruiterCompanyDocuments({ companyId, onUploaded }: { companyId: string; onUploaded?: () => void }) {
   const [data, setData] = useState<DocumentPage | null>(null);
   const [failed, setFailed] = useState(false);
   const [kind, setKind] = useState<DocumentKind | "">("");
@@ -83,6 +83,7 @@ export default function RecruiterCompanyDocuments({ companyId }: { companyId: st
       setNotice("Document uploaded.");
       setOffset(0);
       setVersion((v) => v + 1);
+      onUploaded?.(); // pob-010: a vendor's "on file" lines
       return;
     }
     setFailure((outcome.status ?? 0) >= 500 ? SERVER_FAILED : outcome.message);

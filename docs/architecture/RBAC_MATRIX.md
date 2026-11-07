@@ -3977,3 +3977,54 @@ names. Pinned by `apps/api/tests/test_hrc_033_dashboards.py` and `apps/web/tests
 so there is no per-record scope, and no row carries a candidate's name, contact details or pay. A figure links to its action page only with that page's own
 grant (`candidates.merge`, `candidates.import`, `notifications.retry`). Pinned by `apps/api/tests/test_hrc_034_insights.py` and
 `apps/web/tests/e2e/hrc-034-insights.spec.ts`.
+
+### 2.310 Company import and merge *(added 2026-11-07 — `DEC-SCOPE-418`, pob-006)*
+
+| Action | `placement_manager` | `placement_team` | `super_admin` | Every other role |
+|---|---|---|---|---|
+| `crm.import`: template, preview, commit, history, report | Yes (default grant) | Only with a per-user allow | Yes | 403, whatever the override |
+| `crm.merge`: compare and merge companies and contacts | Yes (default grant) | Only with a per-user allow | Yes | 403, whatever the override |
+
+A grant does not widen company scope: every company resolves through `caller_scope`, and one outside it reads as 404 on merge routes. An import row naming an out-of-scope company shows
+its code and name only, no link, and adds nothing. A deny override removes a manager's grant. History is the caller's own, a manager's also their direct reports', super_admin's everyone's;
+another's batch is 404. Audit: `crm.import`, `recruiter_company.merge`, `recruiter_company.merged_into`, `recruiter_company.contact_merge`, with ids, counts and field names only. Pinned by
+`apps/api/tests/test_pob_006_import.py`, `apps/api/tests/test_pob_006_merge.py` and `apps/web/tests/e2e/pob-006-import-merge.spec.ts`.
+### 2.301 Recruiter template library governance *(added 2026-11-05 — `DEC-SCOPE-408`, pob-023)*
+
+- **Readers and writers:** `placement_team`, `placement_manager` and `super_admin`. rec-026's "manager only writes" is reversed by G6.
+- **Approver:** `placement_manager` (the Team Lead) and super_admin approve shared drafts; a manager also edits, archives and restores any
+  shared template.
+- **Authors:** a recruiter edits, archives and restores their own shared template while it is not approved.
+- **Personal templates:** visible, editable and usable only by their author, never by a manager; never approved.
+- **Hidden templates:** anything the caller cannot see is 404.
+- **Copies and context:** a copy needs the party's write right, as a send does. The render context goes through the requirement and
+  application scopes. `{package_range}` needs `commercials.client.view` (§2.296).
+
+Pinned by `apps/api/tests/test_pob_023_templates.py` and the rec-038 matrix rows.
+
+
+### 2.311 Requirement validation checklist *(added 2026-11-07 — `DEC-SCOPE-419`, pob-016)*
+
+Out of a requirement's or company's scope is 404. Roles without a requirement scope are 403.
+
+| Action | placement_team | placement_officer (assignee) | placement_manager | bdm (assigned) | super_admin |
+| --- | --- | --- | --- | --- | --- |
+| Read the checklist | Yes | Yes | Yes | Yes | Yes |
+| Answer an item | Yes | Yes | No (403): not a requirement writer (§2.298) | No (403) | Yes |
+| Override with a reason | No (403) | No (403) | Yes | No (403) | Yes |
+| Set a company's rule | No (403) | No (403) | Yes, in scope | No (403) | Yes |
+| Set the global rule | No (403) | No (403) | No (403) | No (403) | Yes |
+
+A placement officer has no company scope, but answering Missing still creates the follow-up: the requirement's scope is what counts. The follow-up itself is read through the company scope, as every follow-up is.
+
+### 2.312 Vendor master and agreements *(added 2026-11-07 — `DEC-SCOPE-420`, pob-010)*
+
+- **Scope and writers:** a vendor is a company, so `recruiter_companies` scope and `can_edit` apply (BDM: read, if assigned). This supersedes pob-001's "no default holder" note for `commercials.vendor` only.
+- **`commercials.vendor.view` / `.edit`:** a vendor agreement's fee, terms, direction, confidentiality and documents. Default holders: `placement_team`, `placement_manager` (migration 0300); super_admin implicitly. `NEEDS_CONFIRMATION`.
+- **Onboarding:** the assigned recruiter, a manager in scope or super_admin submit a registration and activate an approved vendor. Only a manager or super_admin approve, return, suspend or reinstate.
+
+### 2.313 Interview automation *(added 2026-11-07 — `DEC-SCOPE-421`, pob-022)*
+
+- **Settings:** `placement_manager` (the Team Lead) and super_admin read and write them; everyone else gets 403. No new grant.
+- **Confirmation template:** whoever may schedule or reschedule the interview, which keeps rec-020's scope and writer rules unchanged.
+- **Sweeps:** these run in the worker. Emails go out as the interview's owner. The chase follow-up belongs to the requirement's company, so its normal follow-up scope applies.

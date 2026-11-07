@@ -126,7 +126,8 @@ def _company_sources(company_id: UUID, contact_id: UUID | None = None) -> list:
         _branch(AuditLog.id, "contact_status", AuditLog.created_at, actor=AuditLog.user_id, event=meta["cause"].as_string(), from_value=meta["from"].as_string(),
                 to_value=meta["to"].as_string(), rank=EFFECT)
         .where(AuditLog.entity_type == "company", AuditLog.entity_id == str(company_id), AuditLog.action == "recruiter_company.contact_status",
-               meta["contact_id"].as_string() == str(contact_id)),
+               # pob-006 C5: a merged-away contact's status changes stay on the survivor's timeline
+               meta["contact_id"].as_string().in_(select(cast(CompanyContact.id, String)).where(or_(CompanyContact.id == contact_id, CompanyContact.merged_into_id == contact_id)))),
     ]  # fmt: skip
     return [
         *company_only,
@@ -157,7 +158,7 @@ def _company_sources(company_id: UUID, contact_id: UUID | None = None) -> list:
             from_value=M.template_name,
             to_name=CompanyContact.name,
             subject=M.subject,
-            status=M.delivery_status,
+            status=func.coalesce(M.delivery_status, M.linkedin_action),  # pob-007 A2: a LinkedIn row carries its action
             reason=_excerpt(M.body),
             rank=ACTIVITY,
         )
@@ -204,7 +205,8 @@ def _candidate_sources(candidate_id: UUID) -> list:
             C.candidate_id == candidate_id
         ),
         _branch(
-            M.id, "message", M.sent_at, actor=M.sender_user_id, event=M.channel, from_value=M.template_name, subject=M.subject, status=M.delivery_status, reason=_excerpt(M.body), rank=ACTIVITY
+            M.id, "message", M.sent_at, actor=M.sender_user_id, event=M.channel, from_value=M.template_name, subject=M.subject,
+            status=func.coalesce(M.delivery_status, M.linkedin_action), reason=_excerpt(M.body), rank=ACTIVITY
         ).where(M.candidate_id == candidate_id),
         _branch(AH.id, "application", AH.created_at, actor=AH.changed_by_user_id, from_value=AH.from_status, to_value=AH.to_status, reason=_excerpt(AH.note), rank=EFFECT, **on_requirement)
         .join(A, A.id == AH.application_id)

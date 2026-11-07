@@ -18,6 +18,7 @@ from app.core.database import get_db
 from app.models import User
 from app.notifications.dispatch import enqueue_recruiter_email
 from app.schemas import (
+    InterviewAutomationSettingsIn,
     InterviewPanelFeedbackIn,
     InterviewPanelIn,
     InterviewResultRelease,
@@ -30,6 +31,7 @@ from app.schemas import (
     RecInterviewUpdate,
 )
 from app.services import applications, candidates
+from app.services import interview_automation as automation
 from app.services import interview_panel as panel
 from app.services import interview_results as results
 from app.services import interviews as svc
@@ -45,6 +47,30 @@ def _publish(message_ids: list[UUID]) -> None:
     """After the commit (rec-026 MS7): a broker failure leaves the email queued for the sweep."""
     for message_id in message_ids:
         enqueue_recruiter_email(message_id)
+
+
+async def _confirmation(db: AsyncSession, template_id: UUID | None, notify: bool):
+    """pob-022 (A1): the confirmation's approved template (422 on `template_id`); ignored when nobody is notified."""
+    if template_id is None or not notify:
+        return None
+    return await automation.approved_template(db, template_id, field="template_id", kind="interview_confirmation")
+
+
+# --- pob-022 (DEC-SCOPE-421 A2): the interview automation settings, for the Team Lead -------------------------------------------------
+@router.get("/interview-automation/settings")
+async def automation_settings(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    automation.require_editor(user)
+    return automation.settings_out(await automation.settings(db))
+
+
+@router.put("/interview-automation/settings")
+async def save_automation_settings(payload: InterviewAutomationSettingsIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """A full replace; audited with the changed values."""
+    row = await automation.save_settings(db, user, payload.model_dump())
+    out = automation.settings_out(row)
+    await db.commit()
+    svc.log("interview_automation_settings_saved", user, None)
+    return out
 
 
 @router.get("/interviews")
@@ -77,12 +103,14 @@ async def schedule_interview(payload: RecInterviewCreate, user: User = Depends(g
     """Not idempotent (a retry is refused by the clash, since it is the same candidate at the same time)."""
     application, job = await applications.load_scoped(db, user, payload.application_id, lock=True)
     applications.require_writer(user, application.id, "interview_create")
+    template = await _confirmation(db, payload.template_id, payload.notify)
     now = await db_now(db)
     interview = await svc.create(db, user, application, job, payload, now)
-    notices, emails = await svc.notify(db, user, interview, application, job, "scheduled", payload.notify)
+    notices, emails = await svc.notify(db, user, interview, application, job, "scheduled", payload.notify, template=template)
     await db.commit()
     _publish(emails)
-    svc.log("recruiter_interview_scheduled", user, interview.id, application_id=str(application.id), round=payload.round, notices=notices)
+    svc.log("recruiter_interview_scheduled", user, interview.id, application_id=str(application.id), round=payload.round, notices=notices,
+            template_id=str(template.id) if template else None)  # fmt: skip
     return {"interview": await svc.one(db, user, interview.id, now), "notifications": notices}
 
 
@@ -125,12 +153,13 @@ async def cancel_interview(interview_id: UUID, payload: RecInterviewCancel, user
 async def reschedule_interview(interview_id: UUID, payload: RecInterviewReschedule, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """IV4 / AC1: the old and new times are kept on the event; the reason is never logged."""
     interview, application, job = await svc.load_for_write(db, user, interview_id, "interview_reschedule")
+    template = await _confirmation(db, payload.template_id, payload.notify)
     now = await db_now(db)
     await svc.reschedule(db, user, interview, application, payload.scheduled_at, payload.reason, now)
-    notices, emails = await svc.notify(db, user, interview, application, job, "rescheduled", payload.notify)
+    notices, emails = await svc.notify(db, user, interview, application, job, "rescheduled", payload.notify, template=template)
     await db.commit()
     _publish(emails)
-    svc.log("recruiter_interview_rescheduled", user, interview_id, notices=notices)
+    svc.log("recruiter_interview_rescheduled", user, interview_id, notices=notices, template_id=str(template.id) if template else None)
     return {"interview": await svc.one(db, user, interview_id, now), "notifications": notices}
 
 

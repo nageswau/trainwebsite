@@ -2393,3 +2393,50 @@ audit rows. The downgrade clears LinkedIn channels and drops the columns.
 (kind form|legacy, form_id + form_version, screener, notes, recommendation pass|hold|reject, knock-out triggered/overridden/reason, legacy_snapshot; never edited). **`screening_answers`**
 per session + form question (answer, score 0–5). `application_screenings` is unchanged; the migration copies each row to one legacy session and seeds the default template. The downgrade
 drops the five tables.
+
+## Company import and merge (`pob-006`, `DEC-SCOPE-418`; migration `0297_crm_import_merge`)
+
+`companies` and `company_contacts` gain `merged_into_id` (self FK, RESTRICT, never itself), `merged_at`, `merged_by_user_id`. A merged row stays, archived or inactive, one hop from its
+survivor. `crm_import_batches` (uploader, idempotency key unique per uploader, `file_sha256`, file name, counts) and `crm_import_rows` (batch, row number, status, reason, company and contact
+ids, created flags) hold no cell value. The migration seeds the `placement_manager` `crm.import` and `crm.merge` grants and changes no existing row; the downgrade drops the tables, the columns
+and the grant rows.
+## Template governance (`pob-023`, `DEC-SCOPE-408`; migration `0298_template_governance`, after `0297_crm_import_merge`)
+
+**`recruiter_message_templates`:**
+- `channel` CHECK adds `linkedin` and `call`. `kind` is nullable: null exactly for LinkedIn and call.
+- New columns:
+  - `category` (CHECK in company, linkedin, whatsapp, calling, college_tpo, candidate; backfilled from channel and kind)
+  - `purpose`, `language` (default English), `department`, `industry`, `role_type`
+  - `status` (draft, approved or archived): **replaces `active`**, true → approved, false → archived; the ORM keeps `active` as a hybrid
+  - `owner_user_id` (null = shared; CHECK that a personal template is never approved)
+  - `steps` (JSON, not null exactly for `call`)
+  - `version`, `created_by_user_id`, `updated_by_user_id`, `last_used_at`
+- The shared-name unique index becomes partial (`owner_user_id IS NULL`), and `uq_recruiter_message_templates_owner_name` covers
+  personal names.
+
+**`recruiter_template_versions`:** (`id`, `template_id` → templates CASCADE, `version`, unique per template, `content` JSON,
+`edited_by_user_id`, `created_at`). v1 is written for every existing row.
+
+The downgrade restores `active` and refuses while LinkedIn, call or personal templates exist. 0120's seed is column-aware, because a fresh
+database built by `create_all` has no `active` column.
+
+
+### Requirement validation checklist (`pob-016`, `DEC-SCOPE-419`, migration `0299_requirement_checklist`)
+
+- `job_checklist_items`: PK `(job_id, item_key)`; `job_id` FK `jobs` CASCADE; `status` CHECK `confirmed`/`not_applicable`/`missing`; `follow_up_id` FK `recruiter_follow_ups` SET NULL; `updated_by_user_id`; timestamps. An unanswered item has no row. `item_key` has no check: the items are `services/requirement_checklist.ITEMS`.
+- `job_checklist_overrides`: PK `job_id` FK `jobs` CASCADE; `reason`; `overridden_by_user_id`; timestamps. One per requirement, kept for good.
+- `requirement_checklist_settings`: `id` (one row, 1; no row = off); `block_sourcing`; `updated_by_user_id`; timestamps.
+- `companies.checklist_blocks_sourcing` boolean NULL: null = the global rule. A company merge keeps the survivor's value.
+- `recruiter_follow_ups.reason` gains `clarification`. The downgrade turns those rows into `jd`, so none is lost.
+
+### pob-010 — vendors (`DEC-SCOPE-420`, migration `0300_vendor_master`)
+
+**`companies`:** `partner_type` gains a CHECK (`recruiter`, `employer`, `vendor`, `vendor_client`); new `vendor_status` (NULL unless a vendor type, by CHECK), `vendor_specialisations`, `vendor_service_categories`, `vendor_locations` (JSON lists).
+
+**`company_vendor_status_history`:** (`id`, `company_id` → companies RESTRICT, `from_status`, `to_status`, `reason`, `actor_user_id`, `position`, `created_at`). Append-only.
+
+**`recruiter_contracts`:** new `party` (`client` default, `vendor`), `direction`, `confidentiality_terms` (vendor rows only, by CHECK). `uq_recruiter_contracts_current` is now (`company_id`, `party`) where current.
+
+**`company_documents.kind`:** adds `nda`.
+
+The downgrade refuses while a vendor or an NDA exists.

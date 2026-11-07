@@ -89,15 +89,26 @@ ROWS = [
     R("get", "/recruiter/candidates/{candidate}/calls", **allow(200, *POOL_READERS)),
     # rec-026 templates (MS3, R13: the manager's library; recruiters read active ones) and messages (§2.61)
     R("get", "/recruiter/templates", **allow(200, *CREATORS)),
-    R("post", "/recruiter/templates", lambda w: {"channel": "whatsapp", "kind": "follow_up", "name": tag("R38 T "), "body": "Hi {name}"}, **allow(201, *TEMPLATE_WRITERS)),
+    # pob-023 (DEC-SCOPE-408 G6): every library reader adds (a recruiter's shared template is a draft); an approved one is the manager's
+    R("post", "/recruiter/templates", lambda w: {"channel": "whatsapp", "kind": "follow_up", "name": tag("R38 T "), "body": "Hi {name}"}, **allow(201, *CREATORS)),
     R("patch", "/recruiter/templates/{activity_template}", {"body": "Hello {name}, {recruiter} here."}, **allow(200, *TEMPLATE_WRITERS)),
     R("get", "/recruiter/templates/{activity_template}/preview", **allow(200, *CREATORS)),
+    R("get", "/recruiter/templates/{activity_template}/versions", **allow(200, *CREATORS)),
+    # a shared draft / archived template nobody in the world wrote: invisible (404) to a recruiter, the manager's to approve / restore
+    R("post", "/recruiter/templates/{activity_draft}/approve", **allow(200, *TEMPLATE_WRITERS), **allow(404, "rec", "rec_out")),
+    R("post", "/recruiter/templates/{activity_template}/archive", **allow(200, *TEMPLATE_WRITERS)),
+    R("post", "/recruiter/templates/{activity_archived}/restore", **allow(200, *TEMPLATE_WRITERS), **allow(404, "rec", "rec_out")),
+    R("post", "/recruiter/messages/copies", lambda w: {"channel": "linkedin", "template_id": w["activity_linkedin"], "contact_id": w["contact"]},
+      **allow(201, *EDITORS), **allow(404, *OUT[:2])),
     R("post", "/recruiter/messages", lambda w: {"channel": "whatsapp", "contact_id": w["contact"], "body": "Hi"}, **allow(201, *EDITORS), **allow(404, *OUT)),
     # §2.61 / RM6: render is a template read -- the template readers' role first (the BDMs 403), then the contact's company scope (404)
     R("get", "/recruiter/messages/render?template_id={activity_template}&contact_id={contact}", **allow(200, "rec", "mgr", "super"), **allow(404, "rec_out", "mgr_out")),
     R("get", "/recruiter/companies/{company}/messages", **allow(200, *IN_SCOPE), **allow(404, *OUT)),
     # pob-005 D7 (§2.304): a reply logged on a contact message -- the company's can_edit
     R("post", "/recruiter/messages/{activity_message}/reply", {}, **allow(200, *EDITORS), **allow(404, *OUT)),
+    # pob-007 A1/A3: LinkedIn logging and a message outcome -- the company's can_edit, like a send and a reply
+    R("post", "/recruiter/messages/linkedin", lambda w: {"contact_id": w["contact"], "action": "connection_request"}, **allow(201, *EDITORS), **allow(404, *OUT)),
+    R("post", "/recruiter/messages/{activity_message}/outcome", {"outcome": "Asked for a call"}, **allow(200, *EDITORS), **allow(404, *OUT)),
     R("get", "/recruiter/candidates/{candidate}/messages", **allow(200, *POOL_READERS)),
     # rec-027 timeline (§2.107): the company's by scope (hr 403), the candidate's by the pool (bdm 403)
     R("get", "/recruiter/companies/{company}/timeline", **allow(200, *IN_SCOPE), **allow(404, *OUT)),
@@ -147,7 +158,7 @@ ROWS = [
     R("get", "/recruiter/performance.xlsx", **allow(200, *METRICS)),  # nehn-004
     R("get", "/recruiter/performance/by-recruiter?recruiter={rec_id}", **allow(200, "rec", "mgr", "super"), rec_out=403, mgr_out=404),
     R("get", "/recruiter/management", **allow(200, *METRICS)),
-    # hrc-033 (�2.308): `reports.recruitment` opens them; a filter or figure outside the caller's scope reads as zero, never 403
+    # hrc-033 (§2.308): `reports.recruitment` opens them; a filter or figure outside the caller's scope reads as zero, never 403
     R("get", "/recruiter/recruitment-dashboards/{board}", **allow(200, "rec", "rec_out", "mgr", "mgr_out", "super", "it_admin", "hr_mgr", "officer")),
     R("get", "/recruiter/recruitment-dashboards/{board}.csv", **allow(200, "rec", "rec_out", "mgr", "mgr_out", "super", "it_admin", "hr_mgr", "officer")),
     R("get", "/recruiter/recruitment-dashboards/{board}.xlsx", **allow(200, "rec", "rec_out", "mgr", "mgr_out", "super", "it_admin", "hr_mgr", "officer")),
@@ -192,6 +203,10 @@ async def build(client, db, w) -> None:
                                        outcome="connected"))  # fmt: skip
     message = await add(db, RecruiterMessage(company_id=company_id, contact_id=contact_id, sender_user_id=rec.id, channel="whatsapp", body="Hi", sent_at=now()))
     template = await add(db, RecruiterMessageTemplate(channel="whatsapp", kind="follow_up", name=tag("R38 T "), body="Hi {name}, {recruiter} here.", active=True))
+    # pob-023: a shared draft, an archived template and an approved LinkedIn one
+    draft = await add(db, RecruiterMessageTemplate(channel="whatsapp", kind="follow_up", category="whatsapp", name=tag("R38 D "), body="Hi", status="draft"))
+    archived = await add(db, RecruiterMessageTemplate(channel="whatsapp", kind="follow_up", category="whatsapp", name=tag("R38 A "), body="Hi", status="archived"))
+    linkedin = await add(db, RecruiterMessageTemplate(channel="linkedin", kind=None, category="linkedin", name=tag("R38 L "), body="Hi {name}"))
     meeting = await add(db, RecruiterMeeting(meeting_code=tag("MTG-"), company_id=company_id, meeting_type="contract_discussion",
                                              starts_at=now() - timedelta(hours=1), mode="Online", created_by_user_id=rec.id))  # fmt: skip
     drive = await add(db, RecruitmentDrive(drive_code=tag("DRV-"), company_id=company_id, college_name="ABC College", drive_date=now().date() + timedelta(days=1),
@@ -211,7 +226,7 @@ async def build(client, db, w) -> None:
     await db.commit()
     w.update({
         **college,
-        "activity_fu": str(fu.id), "activity_call": str(call.id), "activity_template": str(template.id), "activity_meeting": str(meeting.id),
+        "activity_fu": str(fu.id), "activity_call": str(call.id), "activity_template": str(template.id), "activity_draft": str(draft.id), "activity_archived": str(archived.id), "activity_linkedin": str(linkedin.id), "activity_meeting": str(meeting.id),
         "activity_drive": str(drive.id), "activity_contract_company": str(second.id), "activity_contract": str(contract.id), "activity_invoice": str(invoice.id),
         "activity_document": str(document.id), "activity_message": str(message.id),
     })  # fmt: skip

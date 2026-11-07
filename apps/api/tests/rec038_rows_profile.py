@@ -7,7 +7,7 @@ out of the company scope, so they read it as missing (404, rec-003 `load_scoped`
 
 from sqlalchemy import select
 
-from app.models import Company, RecCampaign, RecCompanyInactiveReason, RecCompanyLostReason, RecIndustry, RecLeadSource, Skill, SkillAlias, SkillCategory, SkillRelated
+from app.models import Company, CrmImportBatch, RecCampaign, RecCompanyInactiveReason, RecCompanyLostReason, RecIndustry, RecLeadSource, Skill, SkillAlias, SkillCategory, SkillRelated
 from tests.rec038_helpers import R, add, allow, now, tag
 
 PATH_VALUES = {"profile_kind": "industries"}
@@ -23,6 +23,15 @@ READ_ONE = {**allow(200, "rec", "mgr", "super", "bdm"), **OUT}  # in scope: the 
 EDIT = allow(403, "mgr", "bdm") | OUT
 # rec-003 can_restore / can_reassign, rec-005 reopen: the team's manager and super_admin; the assigned recruiter and the BDM are 403
 MANAGE = allow(403, "rec", "bdm") | OUT
+
+# pob-006 (DEC-SCOPE-418 G1-G3): `crm.import` / `crm.merge`, the managers' by default. A plain recruiter is 403; the grant never widens company scope.
+CRM = allow(200, "mgr", "mgr_out", "super")
+NO_VICTIM = allow(404, "mgr", "mgr_out", "super")  # the rules past the grant are in test_pob_006_merge: here the victim does not exist, so no cell merges anything
+
+
+def _company_file(_w) -> tuple:
+    return {}, {"file": ("companies.csv", f"company_name\n{tag('R38 Import ')}\n".encode(), "text/csv")}
+
 
 ROWS = [
     # rec-001 recruiter roles (§2.42): own profile; the manager's team; the admin Recruiter Staff list and manager picker (super / it_admin)
@@ -74,6 +83,16 @@ ROWS = [
     R("patch", "/recruiter/contacts/{contact}", lambda w: {"designation": tag("HR ")}, **allow(200, "rec", "super"), **EDIT),
     # pob-005 D8 (§2.304): the duplicate check is a read of the company's scope
     R("get", "/recruiter/companies/{company}/contacts/duplicates?mobile=9876543210", **READ_ONE),
+    R("get", "/recruiter/company-imports/template", **CRM),
+    R("post", "/recruiter/company-imports/preview", form=_company_file, **CRM),
+    R("post", "/recruiter/company-imports", form=_company_file, **allow(201, "mgr", "mgr_out", "super")),
+    R("get", "/recruiter/company-imports", **CRM),
+    R("get", "/recruiter/company-imports/{pf_import}", **allow(200, "mgr", "super"), **allow(404, "mgr_out")),
+    R("get", "/recruiter/company-imports/{pf_import}/report.csv", **allow(200, "mgr", "super"), **allow(404, "mgr_out")),
+    R("get", "/recruiter/companies/{company}/merge?victim=CMP-NOPE", **NO_VICTIM),
+    R("post", "/recruiter/companies/{company}/merge", {"victim_code": "CMP-NOPE"}, **NO_VICTIM),
+    R("get", "/recruiter/contacts/{contact}/merge?victim=00000000-0000-4000-8000-000000000000", **NO_VICTIM),
+    R("post", "/recruiter/contacts/{contact}/merge", {"victim_id": "00000000-0000-4000-8000-000000000000"}, **NO_VICTIM),
     R("get", "/recruiter/pipeline", **allow(200, *SCOPED)),
 ]
 
@@ -99,10 +118,11 @@ async def build(client, db, w) -> None:
     dormant = await add(db, company())
     lost_reason = await db.scalar(select(RecCompanyLostReason.id).where(RecCompanyLostReason.active.is_(True)).limit(1))
     inactive_reason = await db.scalar(select(RecCompanyInactiveReason.id).where(RecCompanyInactiveReason.active.is_(True)).limit(1))
+    crm_import = await add(db, CrmImportBatch(uploaded_by_user_id=w["users"]["mgr"].id, idempotency_key=tag("r38-"), file_sha256="0" * 64, file_name="r38.csv"))
     await db.commit()
     w.update({
         "pf_lead_source": str(source.id), "pf_campaign": str(campaign.id), "pf_industry": str(industry.id), "pf_category": str(category.id),
         "pf_skill": str(skill.id), "pf_related": str(related.id), "pf_unrelated": str(unrelated.id), "pf_merge_source": str(merge_source.id),
-        "pf_alias": str(alias.id), "pf_company": str(active.id), "pf_archived": str(archived.id), "pf_lost": str(lost.id),
+        "pf_alias": str(alias.id), "pf_company": str(active.id), "pf_archived": str(archived.id), "pf_lost": str(lost.id), "pf_import": str(crm_import.id),
         "pf_dormant": str(dormant.id), "pf_lost_reason": str(lost_reason), "pf_inactive_reason": str(inactive_reason),
     })  # fmt: skip

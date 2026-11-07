@@ -242,6 +242,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** low.
 
 #### pob-006: Company and contact import, and authorised merge
+- **Status:** built (`DEC-SCOPE-418`, 2026-11-07); the grants, matching and merge rules are the builder's calls (`NEEDS_CONFIRMATION`); Q-06 answered "block" per this item.
 - **Business requirement:** §3.2 "through an approved data import"; §3.3 "Prevent duplicate companies and contacts where possible; allow authorised merging"; §17 "duplicate detection, validation reports".
 - **Existing behavior:** manual add only. There is a company name-key duplicate check; merge is not built.
 - **Expected behavior:**
@@ -267,6 +268,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** large. **Risk:** medium.
 
 #### pob-007: BD activity completeness (LinkedIn, call/meeting/follow-up fields, BD visits)
+- **Status:** built (`DEC-SCOPE-422`, 2026-11-07); Q-07 answered "a `company_visit` recruiter meeting; commercial notes gated by `commercials.client.view`" and A1-A12 are the builder's calls (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §4 activity table; §18 AC "The CRM records outreach, calls, emails, LinkedIn messages, meetings and next follow-up tasks".
 - **Existing behavior:**
   - Messages (WhatsApp/email) record the template used, but no outcome, reply status or next follow-up.
@@ -356,6 +358,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** low.
 
 #### pob-023: Template library governance and composer everywhere
+- **Status:** built (`DEC-SCOPE-408`, 2026-11-05); G1–G12 are the builder's calls (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §14 (6 categories, 10 features, 7-step workflow); §12 "interview confirmation … template"; §18 AC "Template library supports adding, editing, approving, searching and reusing email, LinkedIn, WhatsApp and calling templates" and "Interview confirmation and feedback follow-up templates can be selected, personalised and logged".
 - **Existing behavior:**
   - `RecruiterMessageTemplate` supports WhatsApp and email, 12 fixed kinds, 3 placeholders and an `active` flag.
@@ -396,6 +399,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 ### Phase 2: Vendors and College/TPO
 
 #### pob-010: Vendor and staffing-partner master, onboarding and agreements
+- **Status:** built (`DEC-SCOPE-420`, 2026-11-07); Q-08 answered "yes, and one company can be both" and V1-V12 are the builder's calls (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §2 "Vendor & Recruitment Partner CRM"; §5 bullets 1–2; §3.1 Status "vendor registration".
 - **Existing behavior:** there is no vendor concept. `Company.partner_type` is an unchecked string ("recruiter"/"employer"). Overseas `Agent*` models are unrelated.
 - **Expected behavior:** per Q-08:
@@ -570,6 +574,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 ### Phase 3: Intake and sourcing
 
 #### pob-016: Requirement validation checklist and clarification tasks
+- **Status:** built (`DEC-SCOPE-419`, 2026-11-07); the eight items are a proposal because the source's §7.1 wording is not available, and the follow-up, rule and override rules are the builder's calls (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §7.1 (8 checks); §16 "Requirement missing key details → Create clarification checklist and block sourcing status if configured".
 - **Existing behavior:** there is no checklist; sourcing is never blocked.
 - **Expected behavior:**
@@ -743,6 +748,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** large. **Risk:** high.
 
 #### pob-022: Interview coordination automation (confirmation, reminders, feedback chase)
+- **Status:** built (`DEC-SCOPE-421`, 2026-11-07; migration `0301_interview_automation`, API §12LN, RBAC §2.313). A1–A10 are the builder's calls (`NEEDS_CONFIRMATION`). The design is in `docs/superpowers/specs/2026-11-07-pob-022-interview-automation-design.md`. The metrics are left to pob-028/029 (A10).
 - **Business requirement:** §12 bullets 3–8; §16 "Interview scheduled → Send approved confirmation/reminder"; "Feedback overdue → Notify the responsible contact owner and manager based on escalation rules".
 - **Existing behavior:** schedule and reschedule notices use hard-coded text. Template kinds exist but are sent by hand. `no_show` is a status. There are no scheduled reminders, no feedback-chase and only the raw `stage_changed_at`.
 - **Expected behavior:**

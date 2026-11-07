@@ -62,6 +62,8 @@ from app.models import (
     CANDIDATE_STATUSES,
     CANDIDATE_TASK_TYPES,
     CAPITAL_ENTRY_KINDS,
+    COMPANY_CONTACT_SOURCES,
+    COMPANY_CONTACT_STATUSES,
     CONTACT_CHANNELS,
     CONTACT_PREFERENCES,
     COUNSELING_DECISION_MAKERS,
@@ -85,6 +87,7 @@ from app.models import (
     INTERVIEW_ROUNDS,
     INVESTMENT_STATUSES,
     INVESTMENT_VERTICALS,
+    JOB_CHECKLIST_ITEM_STATUSES,
     JOB_EMPLOYMENT_TYPES,
     JOB_FEE_BASES,
     JOB_PAYMENT_TRIGGERS,
@@ -118,14 +121,16 @@ from app.models import (
     QUAL_STUDY_LEVELS,
     QUALIFICATION_LEVELS,
     RANKING_SYSTEMS,
-    COMPANY_CONTACT_SOURCES,
-    COMPANY_CONTACT_STATUSES,
+    REC_LINKEDIN_ACTIONS,
     RECRUITER_CALL_DIRECTIONS,
     RECRUITER_CALL_MAX_SECONDS,
+    RECRUITER_CALL_OBJECTIONS,
     RECRUITER_CALL_OUTCOMES,
     RECRUITER_CONTRACT_FEE_BASES,
     RECRUITER_CONTRACT_STATUSES,
+    RECRUITER_FOLLOW_UP_PRIORITIES,
     RECRUITER_FOLLOW_UP_REASONS,
+    RECRUITER_FORECAST_TIMEFRAMES,
     RECRUITER_MEETING_TYPES,
     REJECTION_REASONS,
     RELATIONSHIP_STRENGTHS,
@@ -6535,6 +6540,9 @@ TelAssetKind = Literal[TEL_ASSET_KINDS]
 TEL_CONTENT_FIELD_LABELS = {
     "name": "Name", "product_id": "Product", "steps": "Steps", "active": "Active", "channel": "Channel", "kind": "Kind",
     "asset_id": "Brochure", "subject": "Subject", "body": "Message",
+    # pob-023: the recruiter template library's fields
+    "category": "Category", "purpose": "Purpose", "language": "Language", "department": "Department", "industry": "Industry",
+    "role_type": "Role type", "visibility": "Visibility", "template_id": "Template", "contact_id": "Contact", "candidate_id": "Candidate",
 }
 _TEL_BODY_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")  # tabs and newlines are text in a message body
 TelContentName = _tel_name(160)
@@ -9829,6 +9837,7 @@ REC_COMPANY_FIELDS = (  # the columns a create or edit may write; everything els
     "name", "website", "linkedin_url", "industry_id", "company_size_id", "employee_count", "city", "state", "country", "head_office",
     "branches", "description", "lead_source_id", "campaign_id", "priority", "assigned_bdm_user_id",
     "products_services", "departments_hiring", "hiring_locations", "target_roles",  # pob-003 D2
+    "partner_type", "vendor_specialisations", "vendor_service_categories", "vendor_locations",  # pob-010 V2/V3
 )
 REC_COMPANY_RELATIONS = ("branch_locations", "skill_demand_ids")  # pob-003 D1/D3: rows in their own tables, replaced as a set
 
@@ -9874,7 +9883,12 @@ RecCompanyPriority = Literal["hot", "warm", "cold"]
 REC_CONTEXT_LIST_MAX = 20
 REC_BRANCHES_MAX = 50
 REC_SKILL_DEMAND_MAX = 30
-REC_CONTEXT_LIST_LABELS = {"departments_hiring": "Departments hiring", "hiring_locations": "Hiring locations", "target_roles": "Target roles"}
+REC_CONTEXT_LIST_LABELS = {
+    "departments_hiring": "Departments hiring", "hiring_locations": "Hiring locations", "target_roles": "Target roles",
+    "vendor_specialisations": "Specialisations", "vendor_service_categories": "Service categories", "vendor_locations": "Vendor locations",  # pob-010 V3
+}  # fmt: skip
+RecPartnerType = Literal["recruiter", "vendor", "vendor_client"]  # pob-010 V2: `employer` is set by employer registration alone
+RecVendorStatus = Literal["prospect", "registration_submitted", "approved", "active", "suspended"]  # pob-010 V5
 
 
 def _rec_context_list(value: list[str], info: ValidationInfo) -> list[str]:
@@ -10055,6 +10069,20 @@ class RecCompanyUpdate(BaseModel):
     target_roles: RecContextList = None
     branch_locations: Annotated[list[RecBranchIn], Field(max_length=REC_BRANCHES_MAX)] = None
     skill_demand_ids: Annotated[list[UUID], Field(max_length=REC_SKILL_DEMAND_MAX), AfterValidator(_rec_unique_ids)] = None
+    # pob-010 (DEC-SCOPE-420 V2/V3): null is refused (a type is never cleared; send [] to clear a list)
+    partner_type: RecPartnerType = None
+    vendor_specialisations: RecContextList = None
+    vendor_service_categories: RecContextList = None
+    vendor_locations: RecContextList = None
+
+
+class RecVendorStatusMove(BaseModel):
+    """pob-010 V5: `from_status` is what the card showed; a different stored status is a 409."""
+
+    model_config = ConfigDict(extra="forbid")
+    status: RecVendorStatus
+    from_status: RecVendorStatus
+    reason: BdmPipelineNote = None
 
 
 class RecCompanyCreate(RecCompanyUpdate):
@@ -10106,6 +10134,9 @@ class RecCompanyRow(BaseModel):
     client_status_label: str = "Prospect"
     next_follow_up_at: datetime | None = None  # rec-024 FU9: the earliest open follow-up (derived)
     last_contacted_at: datetime | None = None  # pob-003 D4: the latest call, message or completed meeting
+    partner_type: str = "recruiter"  # pob-010 V2
+    vendor_status: str | None = None  # pob-010 V5
+    vendor_status_label: str | None = None
 
 
 class RecCompanyPage(BaseModel):
@@ -10316,7 +10347,36 @@ class RecCompanyContractRef(BaseModel):
     status_label: str
 
 
+class RecCompanyMergedInto(BaseModel):
+    id: UUID
+    code: str
+    name: str
+
+
+class RecVendorEventOut(BaseModel):
+    from_status: str
+    to_status: str
+    to_label: str
+    reason: str | None
+    actor: RecPersonRef
+    created_at: datetime
+
+
+class RecVendorOut(BaseModel):
+    """pob-010 V3/V5: a vendor's block of the company detail; null for a company that is not a vendor."""
+
+    specialisations: list[str]
+    service_categories: list[str]
+    locations: list[str]
+    onboarding_form_on_file: bool
+    nda_on_file: bool
+    agreement: RecCompanyContractRef | None
+    next_statuses: list[dict]
+    history: list[RecVendorEventOut]
+
+
 class RecCompanyOut(RecCompanyRow):
+    vendor: RecVendorOut | None = None  # pob-010
     website: str | None
     linkedin_url: str | None
     company_size: RecCatalogueRef | None
@@ -10340,6 +10400,7 @@ class RecCompanyOut(RecCompanyRow):
     target_roles: list[str] = []
     branch_locations: list[RecBranchOut] = []
     skill_demand: list[RecCatalogueRef] = []
+    merged_into: RecCompanyMergedInto | None = None  # pob-006 M6
     archived_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -10350,7 +10411,7 @@ class RecCompanyEnvelope(BaseModel):
 
 
 # --- pob-003 (DEC-SCOPE-406 D6): the company document store -------------------------------------------------------------------------
-RecCompanyDocumentKind = Literal["company_profile", "vendor_onboarding_form", "recruitment_agreement", "job_description", "meeting_notes"]
+RecCompanyDocumentKind = Literal["company_profile", "vendor_onboarding_form", "recruitment_agreement", "job_description", "meeting_notes", "nda"]
 
 
 class RecDocumentMeetingRef(BaseModel):
@@ -11025,6 +11086,27 @@ class CandidateMergeBody(BaseModel):
     reason: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=500)] = None
 
 
+# pob-006 (DEC-SCOPE-418 M5, C3): what a merge may take from the duplicate; services/company_merge keeps the same tuples.
+RecCompanyMergeField = Literal[
+    "website", "linkedin_url", "industry_id", "company_size_id", "employee_count", "city", "state", "country", "head_office", "description", "lead_source_id", "priority", "products_services",
+]  # fmt: skip
+RecContactMergeField = Literal["name", "designation", "department", "role_id", "mobile", "email", "linkedin_url", "preferred_channel", "notes", "source", "verified_on"]
+
+
+class RecCompanyMergeBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    victim_code: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20)]
+    use_victim: list[RecCompanyMergeField] = []
+    reason: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=500)] = None
+
+
+class RecContactMergeBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    victim_id: UUID
+    use_victim: list[RecContactMergeField] = []
+    reason: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=500)] = None
+
+
 class CandidateDuplicateDismiss(BaseModel):
     model_config = ConfigDict(extra="forbid")
     note: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=500)] = None
@@ -11214,6 +11296,25 @@ class RecRequirementReject(BaseModel):
     reason: Annotated[_rec_requirement_text_type(500, multiline=True), AfterValidator(_required_reason)]
 
 
+class RecChecklistItemSet(BaseModel):
+    """pob-016 (C2): an item's answer. There is no note: see the spec (a note could carry commercial terms past pob-001's gate)."""
+
+    model_config = ConfigDict(extra="forbid")
+    status: Literal[JOB_CHECKLIST_ITEM_STATUSES]
+
+
+class RecChecklistGlobalRule(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    block_sourcing: StrictBool
+
+
+class RecChecklistCompanyRule(BaseModel):
+    """pob-016 (C6): must be stated -- null means "use the global rule"."""
+
+    model_config = ConfigDict(extra="forbid")
+    block_sourcing: StrictBool | None
+
+
 class RecRequirementVisibility(BaseModel):
     """hrc-008 (DEC-SCOPE-385 V1/V7): who sees the job; a segment names its talent pool and nothing else does."""
 
@@ -11336,6 +11437,7 @@ class RecJdCreate(BaseModel):
 # --- rec-024 (DEC-SCOPE-131, spec §3): recruiter follow-ups ----------------------------------------------------------------------
 REC_FOLLOW_UP_LABELS = {"notes": "Notes", "outcome": "Outcome"}
 RecFollowUpReason = Literal[RECRUITER_FOLLOW_UP_REASONS]
+RecFollowUpPriority = Literal[RECRUITER_FOLLOW_UP_PRIORITIES]
 RecFollowUpNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, REC_FOLLOW_UP_LABELS))]
 RecFollowUpOutcome = Annotated[Annotated[str, _trimmed(500)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, REC_FOLLOW_UP_LABELS))]
 
@@ -11351,11 +11453,13 @@ class RecFollowUpCreate(BaseModel):
     job_id: UUID | None = None
     application_id: UUID | None = None
     notes: RecFollowUpNotes = None
+    priority: RecFollowUpPriority = "medium"  # pob-007 A8
+    remind_at: AwareDatetime | None = None  # pob-007 A8: checked against now and `due_at` in the service
 
 
 class RecFollowUpUpdate(BaseModel):
-    """Reschedule (`due_at`) or edit an open follow-up: only the keys sent are considered; null clears a link or the notes, never the due
-    time or the reason."""
+    """Reschedule (`due_at`) or edit an open follow-up: only the keys sent are considered; null clears a link, the notes or the reminder,
+    never the due time, the reason or the priority."""
 
     model_config = ConfigDict(extra="forbid")
     due_at: AwareDatetime | None = None
@@ -11364,10 +11468,12 @@ class RecFollowUpUpdate(BaseModel):
     job_id: UUID | None = None
     application_id: UUID | None = None
     notes: RecFollowUpNotes = None
+    priority: RecFollowUpPriority | None = None
+    remind_at: AwareDatetime | None = None
 
     @model_validator(mode="after")
     def _required_stay_set(self):
-        for key, label in (("due_at", "Due time"), ("reason", "Reason")):
+        for key, label in (("due_at", "Due time"), ("reason", "Reason"), ("priority", "Priority")):
             if key in self.model_fields_set and getattr(self, key) is None:
                 raise ValueError(f"{label} can't be removed")
         return self
@@ -11383,6 +11489,18 @@ class RecFollowUpComplete(BaseModel):
 # --- rec-025 (DEC-SCOPE-133, spec §3): recruiter calls -----------------------------------------------------------------------------
 RecCallNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, {"notes": "Notes"}))]
 RecCallDuration = Annotated[int, Field(ge=0, le=RECRUITER_CALL_MAX_SECONDS)]
+# pob-007 (DEC-SCOPE-422 A4): the call's details -- objections from the catalogue, each once
+RecCallObjectionNotes = Annotated[Annotated[str, _trimmed(1000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, {"objection_notes": "Objection notes"}))]
+RecCallNextAction = Annotated[Annotated[str, _trimmed(500)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, {"next_action": "Next action"}))]
+
+
+def _distinct(values: list | None) -> list | None:
+    if values is not None and len(set(values)) != len(values):
+        raise ValueError("Choose each objection once")
+    return values or None
+
+
+RecCallObjections = Annotated[list[Literal[RECRUITER_CALL_OBJECTIONS]] | None, Field(max_length=len(RECRUITER_CALL_OBJECTIONS)), AfterValidator(_distinct)]
 
 
 class RecCallFollowUp(BaseModel):
@@ -11407,17 +11525,25 @@ class RecCallCreate(BaseModel):
     outcome: Literal[RECRUITER_CALL_OUTCOMES]
     notes: RecCallNotes = None
     next_follow_up: RecCallFollowUp | None = None
+    job_id: UUID | None = None  # pob-007 A4: the requirement discussed (a contact call, at the contact's company)
+    objections: RecCallObjections = None
+    objection_notes: RecCallObjectionNotes = None
+    next_action: RecCallNextAction = None
 
 
 class RecCallUpdate(BaseModel):
     """CA4: same-day details only -- the outcome and the party are locked (unknown fields here). Time and direction can't be cleared; a
-    null duration or notes clears them."""
+    null duration, notes or pob-007 detail clears it."""
 
     model_config = ConfigDict(extra="forbid")
     occurred_at: AwareDatetime | None = None
     duration_seconds: RecCallDuration | None = None
     direction: Literal[RECRUITER_CALL_DIRECTIONS] | None = None
     notes: RecCallNotes = None
+    job_id: UUID | None = None
+    objections: RecCallObjections = None
+    objection_notes: RecCallObjectionNotes = None
+    next_action: RecCallNextAction = None
 
     @model_validator(mode="after")
     def _required_stay_set(self):
@@ -11476,6 +11602,27 @@ class RecMeetingUpdate(BaseModel):
         return self
 
 
+class RecForecastRow(BaseModel):
+    """pob-007 A5: roles x count x timeframe."""
+
+    model_config = ConfigDict(extra="forbid")
+    role: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+    count: Annotated[int, Field(ge=1, le=10000)]
+    timeframe: Literal[RECRUITER_FORECAST_TIMEFRAMES]
+
+
+class RecActionItem(BaseModel):
+    """pob-007 A6: one action item -- it becomes a rec-024 follow-up (due time checked there)."""
+
+    model_config = ConfigDict(extra="forbid")
+    action: Annotated[str, _trimmed(500), AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True, {"action": "Action"}))]
+    due_at: AwareDatetime
+    reason: RecFollowUpReason
+
+
+RecCommercialNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, {"commercial_notes": "Commercial notes"}))]
+
+
 class RecMeetingOutcome(BaseModel):
     """MT7: the outcome, and optionally a next action that becomes a rec-024 follow-up (due time and reason checked in the service, so
     each missing one is placed on its own field)."""
@@ -11485,30 +11632,66 @@ class RecMeetingOutcome(BaseModel):
     next_action: RecMeetingNextAction = None
     next_action_due_at: AwareDatetime | None = None
     next_action_reason: RecFollowUpReason | None = None
+    # pob-007 (DEC-SCOPE-422 A5-A7)
+    hiring_forecast: Annotated[list[RecForecastRow], Field(max_length=10)] = []
+    commercial_notes: RecCommercialNotes = None
+    action_items: Annotated[list[RecActionItem], Field(max_length=10)] = []
 
 
 # --- rec-026 (DEC-SCOPE-135): recruiter message templates, WhatsApp and email --------------------------------------------------------
+RecTemplateChannel = Literal["whatsapp", "email", "linkedin", "call"]  # pob-023 G1
+# pob-023 G1: a calling script's steps; the count (1-20) and the channel are checked in the service, so the 422 is one sentence
+RecTemplateSteps = list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]] | None
+
+
 class RecTemplateCreate(BaseModel):
     """MS3. `kind` is a string checked against the channel's list in the service, so the 422 names the channel (tel-012's shape)."""
 
     model_config = ConfigDict(extra="forbid")
-    channel: TelChannel
-    kind: str
+    channel: RecTemplateChannel
+    kind: str | None = None
     name: TelContentName
     subject: TelSubject = None
     body: TelBody
+    # pob-023 (DEC-SCOPE-408): G2 a category (omitted = derived from the channel and kind), G3 metadata, G5 visibility, G1 calling steps
+    category: str | None = None
+    purpose: _rec_requirement_text_type(200) = None
+    language: _rec_requirement_text_type(40) = None
+    department: _rec_requirement_text_type(80) = None
+    industry: _rec_requirement_text_type(80) = None
+    role_type: _rec_requirement_text_type(80) = None
+    visibility: Literal["shared", "personal"] = "shared"
+    steps: RecTemplateSteps = None
 
 
 class RecTemplateUpdate(BaseModel):
-    """Omitted = unchanged. `channel` exists only so a change is refused with a sentence."""
+    """Omitted = unchanged. `channel` and `visibility` exist only so a change is refused with a sentence."""
 
     model_config = ConfigDict(extra="forbid")
-    channel: TelChannel = None
-    kind: str = None
+    channel: RecTemplateChannel = None
+    kind: str | None = None
     name: TelContentName = None
     subject: TelSubject = None
     body: TelBody = None
     active: StrictBool = None
+    category: str = None
+    purpose: _rec_requirement_text_type(200) = None
+    language: _rec_requirement_text_type(40) = None
+    department: _rec_requirement_text_type(80) = None
+    industry: _rec_requirement_text_type(80) = None
+    role_type: _rec_requirement_text_type(80) = None
+    visibility: Literal["shared", "personal"] = None
+    steps: RecTemplateSteps = None
+
+
+class RecTemplateCopy(BaseModel):
+    """pob-023 G10: a LinkedIn message or calling script copied for one party -- logged, never sent."""
+
+    model_config = ConfigDict(extra="forbid")
+    channel: Literal["linkedin", "call"]
+    template_id: UUID
+    contact_id: UUID | None = None
+    candidate_id: UUID | None = None
 
 
 class RecMessageParty(BaseModel):
@@ -11538,6 +11721,28 @@ class RecEmailCreate(RecMessageParty):
 
 
 RecMessageCreate = Annotated[RecWhatsAppCreate | RecEmailCreate, Field(discriminator="channel")]
+
+
+class RecLinkedInCreate(BaseModel):
+    """pob-007 (DEC-SCOPE-422 A1): LinkedIn outreach the recruiter did by hand -- logged, never sent. The text is optional for a connection
+    request (checked in the service so the 422 names the field); `next_follow_up` is a contact's only."""
+
+    model_config = ConfigDict(extra="forbid")
+    contact_id: UUID | None = None
+    candidate_id: UUID | None = None
+    action: Literal[REC_LINKEDIN_ACTIONS]
+    sent_at: AwareDatetime | None = None
+    template_id: UUID | None = None
+    body: Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)] = ""
+    next_follow_up: RecCallFollowUp | None = None
+
+
+class RecMessageOutcome(BaseModel):
+    """pob-007 A3: what came of a message to a contact, and optionally the next follow-up."""
+
+    model_config = ConfigDict(extra="forbid")
+    outcome: Annotated[str, _trimmed(500), AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True, {"outcome": "Outcome"}))]
+    next_follow_up: RecCallFollowUp | None = None
 
 # --- rec-017 (DEC-SCOPE-136): a candidate on a requirement and its status (services/applications) -----------------------------------
 class RecApplicationCreate(BaseModel):
@@ -11842,6 +12047,7 @@ class RecInterviewCreate(BaseModel):
     instructions: _rec_interview_text(2000) = None
     documents_required: _rec_interview_text(1000) = None
     notify: StrictBool = True
+    template_id: UUID | None = None  # pob-022 (DEC-SCOPE-421 A1): an approved interview confirmation template for the notices
 
 
 class RecInterviewUpdate(BaseModel):
@@ -11878,6 +12084,7 @@ class RecInterviewReschedule(BaseModel):
     scheduled_at: BdmApptStart
     reason: _bdm_appt_optional(500) = None
     notify: StrictBool = True
+    template_id: UUID | None = None  # pob-022 A1
 
 
 class RecInterviewCancel(BaseModel):
@@ -11971,6 +12178,21 @@ class InterviewResultRelease(BaseModel):
 class InterviewResultSettingsIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     auto_release: StrictBool
+
+
+# pob-022 (DEC-SCOPE-421 A2): every field is sent (a full replace); null switches a step off or means the fixed text
+ReminderHours = Annotated[StrictInt, Field(ge=1, le=168)] | None
+ChaseHours = Annotated[StrictInt, Field(ge=1, le=720)] | None
+
+
+class InterviewAutomationSettingsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    first_reminder_hours: ReminderHours
+    second_reminder_hours: ReminderHours
+    reminder_template_id: UUID | None
+    chase_after_hours: ChaseHours
+    escalate_after_hours: ChaseHours
+    chase_template_id: UUID | None
 
 
 # --- rec-022 (DEC-SCOPE-155, spec §1/§3): offers ------------------------------------------------------------------------------------
@@ -12904,6 +13126,8 @@ class RecContractCreate(BaseModel):
     fee_value: RecContractFee = None
     payment_terms: RecContractTerms = None
     replacement_policy: RecContractTerms = None
+    direction: Literal["vendor_pays_us", "we_pay_vendor"] | None = None  # pob-010 V8: a vendor agreement's alone
+    confidentiality_terms: RecContractTerms = None
 
 
 class RecContractUpdate(RecContractCreate):
@@ -12939,6 +13163,7 @@ class RecContractPermissions(BaseModel):
 
 class RecContractOut(BaseModel):
     id: UUID
+    party: Literal["client", "vendor"] = "client"  # pob-010 V8
     status: RecContractStatus
     status_label: str
     status_changed_at: datetime
@@ -12951,6 +13176,8 @@ class RecContractOut(BaseModel):
     fee_value: Decimal | None = None
     payment_terms: str | None = None
     replacement_policy: str | None = None
+    direction: str | None = None  # pob-010 V9: absent without `commercials.vendor.view`, as the terms above
+    confidentiality_terms: str | None = None
     contract_document: RecContractDocumentOut | None
     mou_document: RecContractDocumentOut | None
     is_current: bool

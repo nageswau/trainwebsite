@@ -11,6 +11,7 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import HTTPException
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -33,6 +34,8 @@ JOB_INVALID = "Choose a requirement of this company"
 APPLICATION_INVALID = "Choose an application to one of this company's requirements"
 APPLICATION_MISMATCH = "The application is for another requirement"
 VIEWS = ("today", "overdue", "upcoming")
+REMIND_PAST = "Choose a reminder time in the future"
+REMIND_AFTER_DUE = "The reminder can't be after the due time"
 
 FU = RecruiterFollowUp
 IS_OPEN = FU.status == "open"
@@ -59,6 +62,7 @@ def _person(user: User | None) -> dict | None:
 def _out(user: User, now: datetime, fu: FU, company: Company, recruiter, contact, job, creator, completer) -> dict:
     return {
         "id": fu.id, "reason": fu.reason, "due_at": fu.due_at, "notes": fu.notes, "status": fu.status, "outcome": fu.outcome,
+        "priority": fu.priority, "remind_at": fu.remind_at,  # pob-007 A8
         "overdue": fu.status == "open" and fu.due_at < now,
         "company": {"id": company.id, "code": company.company_code, "name": company.name, "assigned_recruiter": _person(recruiter)},
         "contact": None if contact is None else {"id": contact.id, "name": contact.name},
@@ -130,9 +134,21 @@ async def check_links(db: AsyncSession, company_id: UUID, values: dict, stored: 
             raise HTTPException(422, APPLICATION_MISMATCH)
 
 
+def check_reminder(remind_at: datetime | None, due_at: datetime, now: datetime, *, moved: bool = True) -> None:
+    """pob-007 A8: a reminder set or moved is in the future; any reminder is no later than the due time (422 on `remind_at`)."""
+    if remind_at is None:
+        return
+    if moved and remind_at <= now:
+        raise RequestValidationError([{"type": "value_error", "loc": ("body", "remind_at"), "msg": REMIND_PAST, "input": remind_at.isoformat()}])
+    if remind_at > due_at:
+        raise RequestValidationError([{"type": "value_error", "loc": ("body", "remind_at"), "msg": REMIND_AFTER_DUE, "input": remind_at.isoformat()}])
+
+
 async def create(db: AsyncSession, user: User, company: Company, payload: RecFollowUpCreate, now: datetime) -> FU:
-    """The caller locked the company and checked `can_edit`. FU5 time; FU8 cap (counted under the company lock, so exact); FU6 links."""
+    """The caller locked the company and checked `can_edit`. FU5 time; pob-007 the reminder; FU8 cap (counted under the company lock, so
+    exact); FU6 links."""
     check_due(payload.due_at, now)
+    check_reminder(payload.remind_at, payload.due_at, now)
     if (await db.scalar(select(func.count()).select_from(FU).where(FU.company_id == company.id, IS_OPEN)) or 0) >= OPEN_CAP:
         raise HTTPException(409, OPEN_CAP_REACHED)
     values = payload.model_dump()

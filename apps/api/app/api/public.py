@@ -43,7 +43,7 @@ async def home(db: AsyncSession = Depends(get_db)):
     programs = (await db.scalars(select(Program).where(Program.active.is_(True)).limit(6))).all()
     testimonials = (await db.scalars(social_proof.public_testimonials().order_by(Testimonial.display_order, Testimonial.created_at).limit(6))).all()
     events = (await db.scalars(select(Event).order_by(Event.starts_at).limit(6))).all()
-    partners = (await db.scalars(select(Company).limit(12))).all()
+    partners = (await db.scalars(select(Company).where(Company.partner_type != "vendor").limit(12))).all()  # pob-010 V10
     return {
         "hero": {"title": "Welcome to EduSphere", "tagline": "Empowering Careers. Building Global Opportunities."},
         "verticals": [{"key": "it", "title": "IT Training & Placement", "href": "/it"}, {"key": "overseas", "title": "Overseas Education", "href": "/overseas"}],

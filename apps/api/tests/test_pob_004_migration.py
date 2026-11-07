@@ -1,4 +1,4 @@
-"""pob-004 -- migration 0296_company_bd_stages (DEC-SCOPE-417). Round trip, backfill and downgrade refusal run in a throwaway database built from
+"""pob-004 -- migration 0303_company_bd_stages (DEC-SCOPE-417). Round trip, backfill and downgrade refusal run in a throwaway database built from
 scratch (the rec-005 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -16,11 +16,11 @@ from app.recruiter_stages import CLIENT_ORDER, ORDER
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_pob_004_migration", VERSIONS / "0296_company_bd_stages.py")
+_spec = importlib.util.spec_from_file_location("_pob_004_migration", VERSIONS / "0303_company_bd_stages.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0295_recruitment_report_grants", "0296_company_bd_stages"
+BASE, HEAD = "0302_bd_activity", "0303_company_bd_stages"
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
 
@@ -50,7 +50,7 @@ def isolated_db():
     try:
         settings.database_url = url
         command.upgrade(cfg, "head")
-        command.downgrade(cfg, BASE)  # the real 0295 shape of `companies`
+        command.downgrade(cfg, BASE)  # the real 0302 shape of `companies`
         yield {"cfg": cfg, "url": url}
     finally:
         settings.database_url = original
@@ -142,5 +142,5 @@ def test_downgrade_refuses_while_new_data_exists(isolated_db, change):
     _company(url)
     command.upgrade(cfg, HEAD)
     _sql(url, change)
-    with pytest.raises(Exception, match="0296_company_bd_stages"):
+    with pytest.raises(Exception, match="0303_company_bd_stages"):
         command.downgrade(cfg, BASE)

@@ -4,6 +4,8 @@ import { COMPANIES_URL } from "@/lib/recruiterCompanies";
 // these helpers only shape requests and read responses. The statuses are the source's, in its order (EVID-018 §22; AC1).
 export type ContractStatus = "discussion" | "proposal_sent" | "negotiation" | "contract_sent" | "signed" | "active" | "expired";
 export type FeeBasis = "fixed" | "percent_of_ctc";
+export type ContractParty = "client" | "vendor"; // pob-010 V8: one current contract per side
+export const DIRECTIONS = [{ key: "we_pay_vendor", label: "We pay the vendor" }, { key: "vendor_pays_us", label: "The vendor pays us" }];
 export type DocumentKind = "contract" | "mou";
 export const CONTRACT_STATUSES: { key: ContractStatus; label: string }[] = [
   { key: "discussion", label: "Discussion" },
@@ -29,10 +31,10 @@ export type ContractPerson = { id: string; full_name: string; active: boolean };
 export type Contract = {
   id: string; status: ContractStatus; status_label: string; status_changed_at: string; agreement_type: string | null; start_date: string | null;
   end_date: string | null; expired_on: string | null; contract_document: ContractDocument | null; mou_document: ContractDocument | null;
-  is_current: boolean; created_by: ContractPerson; permissions: ContractPermissions; created_at: string; updated_at: string;
+  is_current: boolean; created_by: ContractPerson; permissions: ContractPermissions; created_at: string; updated_at: string; party?: ContractParty;
 } & Partial<ContractTerms>;
 // pob-001 (DEC-SCOPE-403 C5): the terms are absent without `commercials.client.view`; `can_view_terms` / `can_edit_terms` say which.
-export type ContractTerms = { fee_basis: FeeBasis | null; fee_value: string | null; payment_terms: string | null; replacement_policy: string | null };
+export type ContractTerms = { fee_basis: FeeBasis | null; fee_value: string | null; payment_terms: string | null; replacement_policy: string | null; direction?: string | null; confidentiality_terms?: string | null };
 export type ContractPermissions = { can_edit: boolean; can_upload: boolean; can_renew: boolean; can_view_terms: boolean; can_edit_terms: boolean };
 export type CompanyContracts = { current: Contract | null; previous: Contract[]; can_start: boolean; can_view_terms: boolean; can_edit_terms: boolean };
 export type ContractEvent = {
@@ -41,6 +43,7 @@ export type ContractEvent = {
 };
 export type ContractFields = {
   agreement_type: string; start_date: string; end_date: string; fee_basis: string; fee_value: string; payment_terms: string; replacement_policy: string;
+  direction: string; confidentiality_terms: string;
 };
 
 export const CONTRACTS_URL = "/api/v1/recruiter/contracts";
@@ -48,10 +51,11 @@ export const CONTRACT_HISTORY_PAGE = 20;
 export const FIELD_LABEL: Record<string, string> = {
   status: "Status", agreement_type: "Agreement type", start_date: "Contract start date", end_date: "Contract end date",
   fee_basis: "Fee basis", fee_value: "Recruitment fee", payment_terms: "Payment terms", replacement_policy: "Replacement policy",
-  contract_document: "Contract document", mou_document: "MoU",
+  contract_document: "Contract document", mou_document: "MoU", direction: "Who pays whom", confidentiality_terms: "Confidentiality terms",
 };
 
-export const companyContractsUrl = (companyId: string) => `${COMPANIES_URL}/${companyId}/contracts`;
+export const companyContractsUrl = (companyId: string, party: ContractParty = "client") => `${COMPANIES_URL}/${companyId}/contracts${party === "vendor" ? "?party=vendor" : ""}`;
+export const directionText = (value: string | null | undefined) => DIRECTIONS.find((d) => d.key === value)?.label ?? "—";
 export const contractDocumentUrl = (contractId: string, kind: DocumentKind) => `${CONTRACTS_URL}/${contractId}/documents/${kind}`;
 export const contractHistoryUrl = (contractId: string, offset = 0) => `${CONTRACTS_URL}/${contractId}/history?limit=${CONTRACT_HISTORY_PAGE}&offset=${offset}`;
 

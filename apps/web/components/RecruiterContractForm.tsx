@@ -4,7 +4,7 @@ import { type FormEvent, useRef, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
 import { fieldErrors } from "@/lib/bdmPipeline";
 import {
-  companyContractsUrl, type Contract, contractConflict, type ContractFields, contractOverlap, type ContractStatus, FEE_BASES, FIELD_LABEL, isContractBody,
+  companyContractsUrl, type Contract, contractConflict, type ContractFields, contractOverlap, type ContractParty, type ContractStatus, DIRECTIONS, FEE_BASES, FIELD_LABEL, isContractBody,
   SETTABLE_CONTRACT_STATUSES,
 } from "@/lib/recruiterContracts";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -16,6 +16,7 @@ const TERMS = ["payment_terms", "replacement_policy"] as const;
 const fieldsOf = (c: Contract | null): ContractFields => ({
   agreement_type: c?.agreement_type ?? "", start_date: c?.start_date ?? "", end_date: c?.end_date ?? "", fee_basis: c?.fee_basis ?? "",
   fee_value: c?.fee_value ?? "", payment_terms: c?.payment_terms ?? "", replacement_policy: c?.replacement_policy ?? "",
+  direction: c?.direction ?? "", confidentiality_terms: c?.confidentiality_terms ?? "",
 });
 
 // rec-030 (spec §4): start (contract = null, a first contract or a renewal) or edit the current contract. Required markers follow the
@@ -23,8 +24,8 @@ const fieldsOf = (c: Contract | null): ContractFields => ({
 // sends only what changed, plus `from_status` with a status change and the version it showed. A 409 with a code goes to the section,
 // which reloads; an overlap (CT8) stays on the form. pob-001 (DEC-SCOPE-403 C5): without `terms` (`commercials.client.edit`) the fee
 // and terms inputs are not offered -- left empty and unchanged, they are never sent.
-export default function RecruiterContractForm({ companyId, contract, terms, onSaved, onCancel, onConflict }: {
-  companyId: string; contract: Contract | null; terms: boolean; onSaved: (c: Contract) => void; onCancel: () => void; onConflict: (text: string) => void;
+export default function RecruiterContractForm({ companyId, contract, terms, onSaved, onCancel, onConflict, party = "client" }: {
+  companyId: string; party?: ContractParty; contract: Contract | null; terms: boolean; onSaved: (c: Contract) => void; onCancel: () => void; onConflict: (text: string) => void;
 }) {
   const expired = contract?.status === "expired";
   const [status, setStatus] = useState<ContractStatus>(contract?.status ?? "discussion");
@@ -34,7 +35,9 @@ export default function RecruiterContractForm({ companyId, contract, terms, onSa
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false); // a double click sends nothing twice
   const focus = useFocusAfterRender();
-  const id = (part: string) => `contract-${companyId}-${part}`;
+  const id = (part: string) => `contract-${companyId}-${party}-${part}`;
+  const vendor = party === "vendor"; // pob-010 V8
+  const noun = vendor ? "agreement" : "contract";
   const needsWindow = status === "active";
   const set = (f: keyof ContractFields, value: string) => setFields((current) => ({ ...current, [f]: value }));
   const noDocument = !contract?.contract_document;
@@ -55,9 +58,9 @@ export default function RecruiterContractForm({ companyId, contract, terms, onSa
     setFailure(null);
     setErrors({});
     try {
-      const outcome = await sendJson(companyContractsUrl(companyId), contract ? "PATCH" : "POST", body());
+      const outcome = await sendJson(companyContractsUrl(companyId, party), contract ? "PATCH" : "POST", body());
       if (outcome.ok && isContractBody(outcome.data)) return onSaved(outcome.data.contract);
-      if (outcome.ok) return setFailure("Unable to save the contract.");
+      if (outcome.ok) return setFailure(`Unable to save the ${noun}.`);
       const conflict = contractConflict(outcome.detail);
       if (conflict !== null) return onConflict(conflict);
       const found = fieldErrors(outcome.detail);
@@ -83,7 +86,7 @@ export default function RecruiterContractForm({ companyId, contract, terms, onSa
   );
 
   return (
-    <form className="form-grid" onSubmit={submit} aria-label={contract ? "Edit contract" : "Start contract"}>
+    <form className="form-grid" onSubmit={submit} aria-label={contract ? `Edit ${noun}` : `Start ${noun}`}>
       {failure && <p className="form-error" role="alert">{failure}</p>}
       <div className="field">
         <label htmlFor={id("status")}>{FIELD_LABEL.status}</label>
@@ -103,6 +106,23 @@ export default function RecruiterContractForm({ companyId, contract, terms, onSa
           {error(f)}
         </div>
       ))}
+      {terms && vendor && (
+        <>
+          <div className="field">
+            <label htmlFor={id("direction")}>{FIELD_LABEL.direction}</label>
+            <select id={id("direction")} value={fields.direction} onChange={(e) => set("direction", e.target.value)} aria-describedby={describedBy("direction")}>
+              <option value="">Not agreed yet</option>
+              {DIRECTIONS.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
+            </select>
+            {error("direction")}
+          </div>
+          <div className="field">
+            <label htmlFor={id("confidentiality_terms")}>{FIELD_LABEL.confidentiality_terms}</label>
+            <textarea id={id("confidentiality_terms")} value={fields.confidentiality_terms} onChange={(e) => set("confidentiality_terms", e.target.value)} maxLength={2000} rows={3} aria-describedby={describedBy("confidentiality_terms")} />
+            {error("confidentiality_terms")}
+          </div>
+        </>
+      )}
       {terms && (
         <>
           <div className="field">
@@ -128,7 +148,7 @@ export default function RecruiterContractForm({ companyId, contract, terms, onSa
         </>
       )}
       <div className="actions">
-        <button id={id("save")} type="submit" className="btn small" disabled={busy}>{busy ? "Saving…" : contract ? "Save contract" : "Start contract"}</button>
+        <button id={id("save")} type="submit" className="btn small" disabled={busy}>{busy ? "Saving…" : contract ? `Save ${noun}` : `Start ${noun}`}</button>
         <button type="button" className="btn secondary small" onClick={onCancel} disabled={busy}>Cancel</button>
       </div>
     </form>

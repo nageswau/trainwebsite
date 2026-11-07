@@ -241,7 +241,7 @@ async def board(db: AsyncSession, filters: list, stage: str | None, limit: int, 
     stage, one bucket (D3/D11), or every open company."""
     if stage is not None and stage not in BUCKET_LABELS and stage not in KINDS:
         raise HTTPException(422, BOARD_STAGE_UNKNOWN)
-    scope = [*filters, Company.archived_at.is_(None)]
+    scope = [*filters, Company.archived_at.is_(None), Company.partner_type != "vendor"]  # pob-010 V10: the board is the client pipeline
     is_lost, is_inactive = Company.lost_at.is_not(None), Company.inactive_at.is_not(None)
     is_open = [Company.lost_at.is_(None), Company.inactive_at.is_(None)]
     follow_up_due = exists().where(RecruiterFollowUp.company_id == Company.id, RecruiterFollowUp.status == "open", RecruiterFollowUp.due_at <= func.now())
@@ -306,7 +306,8 @@ async def run_inactive_sweep(now: datetime | None = None) -> dict[str, int]:
     now = now or datetime.now(UTC)
     cutoff = now - timedelta(days=INACTIVE_AFTER_DAYS)
     candidates = (
-        Company.archived_at.is_(None), Company.lost_at.is_(None), Company.inactive_at.is_(None), Company.created_at < cutoff, Company.stage_changed_at < cutoff,
+        Company.archived_at.is_(None), Company.lost_at.is_(None), Company.inactive_at.is_(None), Company.partner_type != "vendor",  # pob-010 V10
+        Company.created_at < cutoff, Company.stage_changed_at < cutoff,
         or_(Company.last_contacted_at.is_(None), Company.last_contacted_at < cutoff),
         ~exists().where(Job.company_id == Company.id, or_(Job.status.not_in(ENDED), Job.updated_at >= cutoff)),
         ~exists().where(RecruiterFollowUp.company_id == Company.id, RecruiterFollowUp.status == "open"),

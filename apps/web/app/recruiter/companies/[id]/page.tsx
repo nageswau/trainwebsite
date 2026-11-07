@@ -12,9 +12,10 @@ import { canSeeRevenue } from "@/lib/recruiterRevenue";
 import type { User } from "@/lib/types";
 
 // rec-003: one company. A 404 (unknown, or outside the caller's scope) is a plain "not found" -- it never says which.
-export default async function RecruiterCompanyPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string }> }) {
+export default async function RecruiterCompanyPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string; merged?: string }> }) {
   const { id } = await params;
-  const created = (await searchParams).created === "1";
+  const { created: createdParam, merged } = await searchParams;
+  const created = createdParam === "1";
   let user: User;
   let permissions: string[] = [];
   let company: Company | null = null;
@@ -40,7 +41,7 @@ export default async function RecruiterCompanyPage({ params, searchParams }: { p
     <PortalShell nav={nav} roleLabel={roleLabel} userName={user.full_name}>
       <div className="portal-content">
         {company ? (
-          <RecruiterCompanyDetail initial={company} created={created} history={history} showRevenue={canSeeRevenue(user.role, permissions)} />
+          <RecruiterCompanyDetail initial={company} created={created} history={history} showRevenue={canSeeRevenue(user.role, permissions)} canMerge={permissions.includes("crm.merge")} merged={merged} />
         ) : (
           <div className="action-card">
             <h2>Company not found</h2>

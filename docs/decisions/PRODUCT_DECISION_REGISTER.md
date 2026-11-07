@@ -12216,3 +12216,123 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **I6 Frontend:** three server-rendered pages under `/recruiter/insights`, one nav entry per affected role.
 - **Numbering:** migration `0294_portal_events`; API §12LJ; RBAC §2.309.
 - **Feature ID authorized:** `hrc-034`. **Status:** built on `worktree-hrc-034`.
+
+### DEC-SCOPE-418 — Company and contact import, and authorised merge (`pob-006`)
+
+- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-006` (§3.2 "through an approved data import"; §3.3 "Prevent duplicate companies and contacts where
+  possible; allow authorised merging"; §17 "duplicate detection, validation reports"; source classified `UNVERIFIED`). The owner assigned pob-006 for build and said to proceed
+  with the recommended answers, so the grants, the matching rules and the merge rules are **the builder's calls (`NEEDS_CONFIRMATION`)**. Depends on hrc-013, hrc-014 and pob-005
+  (all merged). Design `docs/superpowers/specs/2026-11-06-pob-006-company-import-merge-design.md`.
+- **Grants:** new catalogue resource `crm` with `import` and `merge`, held by `placement_manager` (the Team Lead) by default; an authorised Placement Officer is a `placement_team`
+  user given a per-user allow; `super_admin` always holds them. The grant is additive to the role gate and never widens company scope.
+- **Import:** a CSV or XLSX of companies and contacts (one row is a company and optionally one contact), up to 1 MB and 1,000 rows, each row checked by the same schemas as the
+  forms. A read-only preview, then a commit in one transaction with one savepoint per row. A known company (the normalised name, archived included, a merged one answering as its
+  survivor) and a known contact (mobile or email within that company, the name when the row has neither) are matched and never changed. A row writing to an out-of-scope or archived
+  company is that row's error. A new company is the recruiter's own, or a manager's goes to the unassigned queue. The same key replays the stored report; another key with the same
+  file replays only when that file imported without errors, so a file with row errors can run again once they are fixed (a catalogue value added, a company restored). The report's
+  CSV escapes formulas. No cell value is stored: names come from the linked records.
+- **Company merge:** both companies in the caller's scope, locked in id order, every rule re-checked once locked. Refused: self; an archived survivor; an archived or merged victim;
+  an employer's own account as the victim; **both with a contract in effect (Q-06: block)**. Contacts, requirements, follow-ups, calls, messages, meetings, contracts, documents,
+  shares, drives and the stage and assignment history move; branches only to a survivor with none; skill demand where the survivor lacks it. The user chooses each differing field;
+  an empty survivor field is filled. The victim is archived for good with `merged_into_id` and keeps its name and code. Both sides are audited.
+- **Contact merge:** within one company. A Do Not Contact victim makes the survivor Do Not Contact (cause `merge`); decision-maker is OR-ed; a primary victim makes the survivor
+  primary. The victim is inactive, hidden from the list and the duplicate warning, refused by edits (404); its status changes stay on the survivor's timeline.
+- **Not built:** un-merge, moving a contact between companies, a company duplicate-review queue, updating existing records from a file, a shared rewrite of the hrc-013 engine.
+- **Numbering:** migration `0297_crm_import_merge`; API §12LK; RBAC §2.310.
+- **Feature ID authorized:** `pob-006`. **Status:** built on `worktree-pob-006`.
+### DEC-SCOPE-408 — Template library governance and the composer everywhere (`pob-023`)
+
+- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-023`:
+  - §14 categories, features and workflow; §12 interview confirmation template.
+  - §18 AC "Template library supports adding, editing, approving, searching and reusing email, LinkedIn, WhatsApp and calling templates".
+  - The source is classified `UNVERIFIED` and the DOCX is not in the repo, so the full §14.1 placeholder list is not inspectable.
+- **Authority:** the owner assigned pob-023 on 2026-11-05 and said to proceed with the recommended answers, so G1–G12 are **the
+  builder's calls (`NEEDS_CONFIRMATION`)**. Dependency pob-001 (`DEC-SCOPE-403`) merged.
+- **Design:** `docs/superpowers/specs/2026-11-05-pob-023-template-governance-design.md`.
+- **Behaviour:**
+  - Email, LinkedIn, WhatsApp and calling-script templates, with a §14 category and metadata.
+  - Draft → Approved → Archived: recruiters add shared drafts, and the Team Lead (`placement_manager`) approves. Personal templates are
+    the author's only.
+  - Every content edit is a version, with the author, the editor and the last-used date.
+  - A fixed placeholder allow-list is filled from the party and an optional requirement or interview. `{package_range}` needs
+    `commercials.client.view`.
+  - LinkedIn and calling scripts copy to the clipboard with a logged copy.
+  - The composer (with LinkedIn and calling) is on the company/contact, candidate, requirement (which covers submissions) and interview
+    screens.
+- **Builder's calls:**
+  - G1: no SMS (no integration).
+  - G2: category backfill by kind.
+  - G3: metadata limits; a blank language is "English", on an edit as on create.
+  - G4: `status` replaces `active` (kept as a view; PATCH `active` approves or archives); restore → draft.
+  - G5: visibility is fixed at create; a manager's shared template is approved at once.
+  - G6: who edits, approves and archives. `placement_officer` (pob-001 C1) has no template access: the role has no company or candidate scope to message (hrc-006 O5). `NEEDS_CONFIRMATION` when the officer's candidate access arrives.
+  - G7: versions on content only.
+  - G8: `{snake_case}` placeholders (`{{PackageRange}}` = `{package_range}`).
+  - G9: context scope.
+  - G10: a copy is an audit row, not a message. pob-005 D6 applies: a copy for a Do Not Contact person is refused (409).
+  - G11: the preview comes before send or copy (UI).
+  - G12: the screens. A requirement page's Messages section follows the company, not the requirement: it is hidden for a caller outside the company's scope (an assignee or backup owner), and writing needs the company's `can_edit`.
+- **Not built:**
+  - SMS.
+  - Merging the UPC/overseas libraries.
+  - Automated sends (pob-022/027).
+  - Deletion.
+- **Numbering:** migration `0298_template_governance`; API §12LB; RBAC §2.301.
+- **Feature ID authorized:** `pob-023`. **Status:** built on `worktree-pob-023`.
+
+
+### DEC-SCOPE-419 — Requirement validation checklist and clarification tasks (`pob-016`)
+
+- **Status:** `NEEDS_CONFIRMATION` on the builder's calls; built on `worktree-pob-016` under the owner's standing instruction to proceed with recommended answers (2026-11-07).
+- **Evidence:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` pob-016 (`UNVERIFIED` draft; Q-00 approved the backlog for build in waves). Spec: `docs/superpowers/specs/2026-11-07-pob-016-requirement-checklist-design.md`.
+- **Evidence gap:** the backlog cites "§7.1 (8 checks)" without naming them, and the source docx is not on this machine. **The eight items are a proposal drawn from the §7 field groups, not the document's wording.** They live in one constant (`services/requirement_checklist.ITEMS`); correcting them needs no migration.
+- **Checklist:** eight items per requirement: Role and responsibilities; Skills and experience; Number of openings; Location and work mode; Salary budget; Interview process and decision-maker; Commercial terms; Joining date and turnaround. Each is Confirmed, Not applicable or Missing; unanswered reads Not reviewed. Complete means every item is Confirmed or Not applicable. There is no free-text note, so no commercial value can pass pob-001's gate through this card.
+- **Follow-ups:** marking an item Missing creates a `clarification` follow-up (new reason) due in 2 days, with the requirement's active decision-maker, else the company's primary contact, else no contact. Leaving Missing completes it (Confirmed) or cancels it (Not applicable) if still open. rec-024's 50-open cap applies: a 409 and nothing saved.
+- **Rule:** global (one settings row, off by default; super admin) with a per-company value that wins (`companies.checklist_blocks_sourcing`, null = global; Team Lead in scope or super admin).
+- **Guard:** in `change_status`, so every route is covered. A blocked move to `sourcing`, or to any later working status (no skipping), is `409 {message, code: "checklist_incomplete", missing}`. A requirement that has already started sourcing is never blocked: editing its checklist only warns.
+- **Override:** a separate step, because a Team Lead is not a requirement writer: Team Lead in scope or super admin, a reason required, audited, one per requirement, no withdrawal. The owner then makes the move.
+- **Not built:** an item editor; notes on items; withdrawing an override; a settings page (the rules are on the card).
+- **Numbering:** migration `0299_requirement_checklist`; API §12LL; RBAC §2.311.
+- **Feature ID authorized:** `pob-016`. **Status:** built on `worktree-pob-016`.
+
+### DEC-SCOPE-420 — Vendor and staffing-partner master, onboarding and agreements (pob-010)
+
+- **Date:** 2026-11-07. **Classification:** builder's calls on Q-08 (`NEEDS_CONFIRMATION`); the source is the `UNVERIFIED` requirements draft.
+- **Spec:** `docs/superpowers/specs/2026-11-07-pob-010-vendor-master-design.md`.
+- **Decided (V1-V12):**
+  - V1: a vendor is a `Company`. V2: `partner_type` gains `vendor` and `vendor_client` (one company in both relationships) and a CHECK.
+  - V3-V4: vendor lists and status; a change of relationship is refused where the company's records would no longer fit.
+  - V5-V6: onboarding prospect → registration submitted → approved → active ⇄ suspended, with its needs (form, NDA, signed agreement), manager steps and history.
+  - V7: an `nda` document kind. V8: a vendor agreement is a `recruiter_contracts` row with `party='vendor'`, `direction` and `confidentiality_terms`; one current row per party.
+  - V9: `commercials.vendor.*` gates its terms; default holders `placement_team` and `placement_manager`.
+  - V10: a vendor-only company is left out of client-only views and refused as a requirement or drive's company.
+  - V11: merging a vendor is refused. V12: migration 0300 normalises unknown `partner_type` values, with a logged count.
+- **Not built:** requirements via a vendor and the NDA gate on sharing (pob-011); payables and performance (pob-012); the `vendor_registration` stage (pob-004); vendor merge; `jobs.vendor_id` (pob-002's link, which pob-011 owns as `via_vendor_id`).
+
+### DEC-SCOPE-421 — Interview coordination automation: confirmation template, reminders, feedback chase (pob-022)
+
+- **Date:** 2026-11-07. **Classification:** builder's calls A1-A10 (`NEEDS_CONFIRMATION`); the source is the `UNVERIFIED` requirements draft.
+- **Spec:** `docs/superpowers/specs/2026-11-07-pob-022-interview-automation-design.md`.
+- **Decided (A1-A10):**
+  - A1: schedule and reschedule take an optional `template_id`, which must be an approved shared email `interview_confirmation` template (422 otherwise). It leads the candidate's and the contact's text, rendered per recipient, followed by the details; the `.ics` is unchanged and no template keeps the standard text.
+  - A2: one `interview_automation_settings` row: reminders 24 h and 2 h (1-168, null = off, second < first), chase 24 h, escalate 24 h (1-720) and the approved reminder and chase templates. Only `placement_manager` and super_admin edit it, and changes are audited.
+  - A3: the `pob022-interview-reminders` beat runs every 15 minutes; each reminder is sent once (markers on `interviews`, `SKIP LOCKED`, 200 per run), with no invite and through the confirmation's channels.
+  - A4: schedule and reschedule re-arm the reminders, and a slot already inside its window counts as sent.
+  - A5: hourly `pob022-feedback-chase`: feedback missing N hours after the end creates one `interview_feedback` follow-up for the owner, with the chase text in its notes. It sends no extra notice (hrc-032 already notifies).
+  - A6: a chase still open after M hours with feedback still missing escalates once to the owner's reporting placement manager (else every active one) as `it.interview.feedback_escalated`.
+  - A7: migration 0301 stamps existing interviews, so no backlog is sent. A8: the new types join `RECRUITMENT_EVENTS`. A9: a template select in the schedule and reschedule forms, and the Team Lead's panel on `/recruiter/interviews`.
+- **Not built (A10):** time-in-stage and no-show metrics; the data exists, and pob-028/029 own those widgets and reports. No automated WhatsApp from a recruiter's number and no unreviewed chase email to the client.
+
+### DEC-SCOPE-422 — BD activity completeness: LinkedIn, call/meeting/follow-up fields, BD visits (pob-007)
+
+- **Date:** 2026-11-07. **Classification:** builder's calls on Q-07 (`NEEDS_CONFIRMATION`); the source is the `UNVERIFIED` requirements draft.
+- **Spec:** `docs/superpowers/specs/2026-11-07-pob-007-bd-activity-design.md`.
+- **Decided (A1-A12):**
+  - A1-A2: LinkedIn outreach is a hand-logged `recruiter_messages` row (`channel='linkedin'`, `linkedin_action`), `POST /recruiter/messages/linkedin`; it moves Last contacted and the contact status and reads in the timelines. No LinkedIn API.
+  - A3: `POST /recruiter/messages/{id}/outcome` records a contact message's outcome once, with an optional next follow-up.
+  - A4: calls gain the requirement discussed, objections (an UNVERIFIED 8-key catalogue) with details, and the next action.
+  - A5-A6: a meeting outcome records a hiring forecast (role x count x timeframe) and up to 10 action items, each a rec-024 follow-up (`recruiter_meeting_action_items`); one refusal refuses the outcome.
+  - A7: commercial-discussion notes need `commercials.client.view` to write (403) and to read.
+  - A8: follow-ups gain `priority` (default medium) and a stored `remind_at` (delivery is pob-008).
+  - A9: a BD visit is a recruiter meeting of type `company_visit`; `BdmTrip` is not extended. A10: RBAC unchanged. A11: logs/audit carry ids only. A12: migration 0301 is additive.
+- **Not built:** reminder delivery and cadence (pob-008); BD-visit expenses; LinkedIn delivery tracking.

@@ -78,6 +78,7 @@ def test_the_catalogue_names_the_pilot_resources_and_known_actions():
         "commercials.client", "commercials.vendor", "candidates.contact",  # pob-001
         "notifications",  # hrc-032
         "reports.recruitment_insights",  # hrc-034
+        "crm",  # pob-006
     }  # nehn-030, nehn-008, nehn-009, nehn-018, nehn-016
     for resource in rbac.CATALOGUE.values():
         assert set(resource["actions"]) <= set(rbac.ACTIONS)

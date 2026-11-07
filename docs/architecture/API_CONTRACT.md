@@ -6165,3 +6165,125 @@ otherwise) and only read. `limit` is 1-100, default 50; `offset` is at least 0.
 
 `GET /candidate/jobs` now writes `job_view` events for the cards it returns, and `POST /candidate/jobs/{id}/apply` and `POST /workflows/it/jobs/{id}/apply`
 write `apply_start` and `apply_submit`. Their requests and responses are unchanged.
+
+## 12LK. Company and contact import, and authorised merge (pob-006) — addendum, 2026-11-07
+
+Additive. `GET /recruiter/companies/{id}` gains optional `merged_into` `{id, code, name}`; contact lists omit merged-away contacts. Nothing else changes.
+
+| Route | Body | Result |
+|---|---|---|
+| `GET /recruiter/company-imports/template` | | CSV header row |
+| `POST /recruiter/company-imports/preview` | multipart `file` | 200 counts and `rows`; writes nothing |
+| `POST /recruiter/company-imports` | multipart `file`, `Idempotency-Key` | 201 the report; `replayed: true` for a repeated key or a same file that imported cleanly. 422 bad file, bad key, key reused for another file. 409 another import still running |
+| `GET /recruiter/company-imports` | `limit`, `offset` | own batches; a manager's team's too; super_admin all |
+| `GET /recruiter/company-imports/{id}` | | the report, or 404 |
+| `GET /recruiter/company-imports/{id}/report.csv` | | formula-escaped CSV, or 404 |
+| `GET /recruiter/companies/{id}/merge?victim=CMP-x` | | both sides, `fields`, `moved`, `blocked` |
+| `POST /recruiter/companies/{id}/merge` | `{victim_code, use_victim[], reason?}` | 200 `{id, code, victim_id, victim_code, moved}`. 404 out of scope; 422 self; 409 archived, merged, employer's account, both with a contract in effect |
+| `GET /recruiter/contacts/{id}/merge?victim=<id>` | | both sides, `fields`, `moved` |
+| `POST /recruiter/contacts/{id}/merge` | `{victim_id, use_victim[], reason?}` | 200 `{id, victim_id, company_id, moved}`. 404 out of scope or another company's; 422 self; 409 merged, company archived |
+
+Import routes need `crm.import`, merge routes `crm.merge` (403). A row outcome is `created`, `matched` or `error` (`new` in a preview) with a `reason`.
+## 12LB. Template library governance and copy mode (pob-023) — addendum, 2026-11-05
+
+`DEC-SCOPE-408`, migration `0298`.
+
+**Changed (additive):**
+- `GET /api/v1/recruiter/templates`:
+  - Accepts `channel=whatsapp|email|linkedin|call`, `category`, `status=draft|approved|archived`, `language` (case-insensitive) and
+    `mine=true`.
+  - `usable=true` returns what the caller may use in a composer: approved shared templates and their own non-archived personal ones.
+  - `q` matches the name or the purpose.
+  - The caller sees their own personal templates and the shared ones they may see: a recruiter sees approved ones and their own drafts;
+    a manager or super_admin sees all of them.
+  - Item fields add `category`, `purpose`, `language`, `department`, `industry`, `role_type`, `status`, `visibility` (`shared` or
+    `personal`), `steps`, `version`, `created_by`, `updated_by`, `created_at`, `updated_at`, `last_used_at`, `can_edit`, `can_approve`,
+    `can_archive` and `can_restore`.
+  - `active` stays and means approved; the `active` filter still works.
+- `POST /recruiter/templates`:
+  - Open to `placement_team` as well. A recruiter's shared template is a `draft`; a manager's or super_admin's is `approved`.
+  - New fields: `category` (omitted = derived from the channel and kind), the metadata, and `visibility` (default `shared`).
+  - `steps`: a `call` template needs 1–20 steps of ≤ 500 characters; any other channel with steps is 422.
+  - LinkedIn and call templates have no `kind` and no `subject`.
+  - Body limits: LinkedIn 2000, call 5000.
+  - Every `{…}` must be one of the 12 placeholders: `name`, `company`, `recruiter`, `designation`, `job_title`, `job_location`,
+    `package_range`, `candidate`, `interview_date`, `interview_time`, `interview_mode`, `interview_link`.
+- `PATCH /recruiter/templates/{id}`:
+  - A template the caller cannot see is 404.
+  - The channel and visibility are fixed (422).
+  - A content change needs `can_edit`: an approved shared template is the manager's (403); an archived one is 409. It increments
+    `version` and writes a version.
+  - `active: true` approves and `active: false` archives a shared template (manager only; personal 422).
+- `GET /recruiter/messages/render`:
+  - Accepts `job_id` **or** `interview_id`; both is 422.
+  - A requirement must be in the caller's scope and, for a contact, at the contact's company (404 "Job requirement not found").
+  - An interview must be in scope and the candidate's own, or at the contact's company (404 "Interview not found").
+  - `package_range` is empty without `commercials.client.view` and is then listed in `missing`.
+  - The response adds `steps`.
+- `POST /recruiter/messages`: accepts any usable template of the same channel, and sets the template's `last_used_at`.
+
+**New:**
+- `POST /recruiter/templates/{id}/approve | archive | restore` → the template. Approve: manager or super_admin, shared drafts only (409
+  otherwise). Archive and restore: the manager for shared templates, the author for their own personal template or unapproved draft.
+  Restore returns a template to `draft`.
+- `GET /recruiter/templates/{id}/versions` → `{items: [{version, created_at, edited_by, name, kind, category, subject, body, steps,
+  purpose, language, department, industry, role_type}], total}`, newest first.
+- `POST /recruiter/messages/copies`:
+  - Body `{channel: linkedin|call, template_id, contact_id | candidate_id}` → 201 `{template_id, channel, copied_at}`.
+  - The send's party rules apply (scope 404, right 403, state 409, and pob-005's Do Not Contact 409). A template that is not usable or of
+    another channel is 422.
+  - It writes an audit row `recruiter_template.copy` (ids only) and is not a message: no last-contacted change, no cap.
+
+Audit actions `recruiter_template.approve|archive|restore|copy`.
+
+
+## 12LL. Requirement validation checklist (pob-016) — addendum, 2026-11-07
+
+`DEC-SCOPE-419`; the rights are `RBAC_MATRIX.md` §2.311.
+
+| Method and path | Body | Answer |
+| --- | --- | --- |
+| `GET /api/v1/recruiter/requirements/{id}/checklist` | | The checklist below |
+| `PUT /api/v1/recruiter/requirements/{id}/checklist/items/{key}` | `{status: "confirmed" \| "not_applicable" \| "missing"}` | The checklist. The same answer again changes nothing. An unknown key or status is 422 |
+| `POST /api/v1/recruiter/requirements/{id}/checklist/override` | `{reason}` (required, up to 500 characters) | The checklist. 409 when nothing is being blocked: the rule is off, the checklist is complete, sourcing has started, it is already overridden, or the requirement is cancelled |
+| `PUT /api/v1/recruiter/companies/{id}/checklist-rule` | `{block_sourcing: true \| false \| null}` (must be stated; null = the global rule) | `{block_sourcing}` |
+| `PUT /api/v1/recruiter/requirement-checklist/settings` | `{block_sourcing: true \| false}` | `{block_sourcing}` |
+
+**The checklist:** `items: [{key, label, hint, status (null = not reviewed), follow_up: {id, status, due_at, contact} | null}]`, `summary: {total, confirmed, not_applicable, missing, not_reviewed, complete}`,
+`blocking: {on, company_rule, global_rule}`, `override: {reason, by, at} | null`, `sourcing_started`, `warning` (text while sourcing has started and items are outstanding, else null), `company_id`, `can_edit`, `can_override`, `can_set_company_rule`, `can_set_global_rule`.
+
+**Changed behaviour:** `POST /recruiter/requirements/{id}/status` and `/workflows/it/jobs` status moves into `sourcing`, `shortlisting`, `profiles_shared`, `interviewing` or `selected` can now answer
+`409 {detail: {message, code: "checklist_incomplete", missing: [{key, label, status}]}}` when the rule applies, the checklist is incomplete, the requirement has never started sourcing and it has not been overridden. With the rules off (the default) nothing changes.
+**Added vocabulary:** follow-up reason `clarification`.
+
+## 12LM. Vendor master, onboarding and agreements (pob-010) — addendum, 2026-11-07
+
+`DEC-SCOPE-420`. All routes keep the company scope (out of scope 404).
+
+- `GET /recruiter/companies`: new `relationship=client|vendor|all` (default `client`) and `vendor_status`. Rows add `partner_type`, `vendor_status`, `vendor_status_label`.
+- `POST`/`PATCH /recruiter/companies[/{id}]`: new `partner_type` (`recruiter|vendor|vendor_client`), `vendor_specialisations`, `vendor_service_categories`, `vendor_locations`. Vendor lists on a non-vendor 422; a change of relationship the records don't allow 409.
+- `GET /recruiter/companies/{id}`: adds `vendor` (null for a non-vendor): lists, `onboarding_form_on_file`, `nda_on_file`, `agreement`, `next_statuses`, `history`.
+- `POST /recruiter/companies/{id}/vendor-status` `{status, from_status, reason?}`: 200 the company. 403 a manager's step; 409 not a vendor, archived, stale (`vendor_status_changed`) or a missing form, NDA or signed agreement; 422 no such step or no reason.
+- `GET|POST|PATCH /recruiter/companies/{id}/contracts` and `PUT .../contracts/document`: new `?party=client|vendor`; unsent = the client side, or the vendor side of a vendor-only company; a side the company lacks is 422. Bodies add `direction`, `confidentiality_terms` (vendor side only, else 422; `direction` required from Signed). Output adds `party`. Vendor terms and documents need `commercials.vendor.*`.
+- `POST /recruiter/requirements`, `POST /recruiter/drives`, `POST /workflows/it/jobs`: a vendor-only company is 422. `GET /recruiter/pipeline` and `GET /public/home` partners leave it out. Merging a vendor is 409.
+- Company documents: new kind `nda`.
+
+## 12LN. Interview coordination automation (pob-022) — addendum, 2026-11-07
+
+`DEC-SCOPE-421`.
+
+- `POST /recruiter/interviews` and `POST /recruiter/interviews/{id}/reschedule`: new optional `template_id`, which must be an approved shared email template of kind `interview_confirmation` (otherwise 422 on `template_id`). It is ignored with `notify: false`. Queued emails keep `template_id`.
+- `GET /recruiter/interview-automation/settings`: returns `first_reminder_hours`, `second_reminder_hours`, `reminder_template_id`, `chase_after_hours`, `escalate_after_hours` and `chase_template_id`. Only `placement_manager` and super_admin may read it; anyone else gets 403.
+- `PUT /recruiter/interview-automation/settings`: a full replace with the same body. Reminder hours are 1–168 and the other hours 1–720, or null; the second reminder must be sooner than the first; templates must be approved shared email templates. A rule break returns 422 on its field. The response is the saved settings.
+- Notices: `it.interview.reminder` (tagged, candidate) and `it.interview.feedback_escalated` (catalogued, Team Lead).
+
+## 12LO. BD activity completeness (pob-007) — addendum, 2026-11-07
+
+`DEC-SCOPE-422`. Migration `0302_bd_activity`.
+
+- `POST /recruiter/messages/linkedin` (201): `{contact_id | candidate_id, action: connection_request|message, sent_at?, template_id?, body?, next_follow_up?}`. The send's party rules (scope 404, `can_edit` 403, inactive/archived 409, Do Not Contact 409); `body` required for `message` (422); `sent_at` not ahead and at most 7 days back (422 on `sent_at`); a usable LinkedIn template (422); 300 per sender per IST day (409); `next_follow_up` on a contact only. Moves Last contacted and the contact status. Audit `recruiter_message.create` (`channel: linkedin`).
+- `POST /recruiter/messages/{id}/outcome` (200): `{outcome, next_follow_up?}` on a contact message, once (409 again; 422 on a candidate message). Audit `recruiter_message.outcome`.
+- Message output adds `linkedin_action`, `outcome`, `follow_up {id, due_at, reason}`. Timeline message rows: `event` = `linkedin`, `status` = the action.
+- `POST /recruiter/calls`, `PATCH /recruiter/calls/{id}`: new `job_id` (a requirement of the contact's company; contact calls only; 422 on `job_id`), `objections` (catalogue keys, each once), `objection_notes` (≤ 1000), `next_action` (≤ 500). Output adds them plus `requirement {id, code, title}`.
+- `POST /recruiter/meetings/{id}/outcome`: new `hiring_forecast` (≤ 10 `{role, count, timeframe}`), `action_items` (≤ 10 `{action, due_at, reason}`, each a follow-up; 422 on `action_items.N.due_at`), `commercial_notes` (needs `commercials.client.view`, else 403). Meeting output adds `hiring_forecast`, `action_items`, `commercial_notes` (null without the grant) and `commercial_notes_visible`. Meeting type `company_visit` (BD visit).
+- Follow-ups: create/PATCH add `priority` (high|medium|low, default medium) and `remind_at` (future when set; not after `due_at`, 422 on `remind_at`). Output adds both.

@@ -28,6 +28,7 @@ beforeEach(() => {
     if (url.includes("/calls")) return listReply();
     if (url === "/api/v1/recruiter/companies/C1/contacts")
       return Promise.resolve(res({ items: [{ id: "K1", name: "Priya HR", active: true }, { id: "K2", name: "Old Contact", active: false }], can_edit: true }));
+    if (url.startsWith("/api/v1/recruiter/requirements?")) return Promise.resolve(res(pageOf([{ id: "J1", code: "REQ-000042", title: "Java Developer" }])));
     return Promise.resolve(res({}, 404));
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -79,6 +80,8 @@ describe("RecruiterCalls (rec-025)", () => {
     const form = screen.getByRole("form", { name: "Log call" });
     await waitFor(() => expect(within(form).getAllByRole("option", { name: "Priya HR" })).toHaveLength(1));
     expect(within(form).queryByRole("option", { name: "Old Contact" })).toBeNull();
+    // pob-007 QA-02: the requirement discussed reads by its code and title
+    expect(await within(form).findByRole("option", { name: "REQ-000042 — Java Developer" })).toBeTruthy();
     fireEvent.click(within(form).getByRole("button", { name: "Save call" }));
     expect(within(form).getByText("Choose a contact")).toBeTruthy(); // caught before any request
     expect(within(form).getByText("Choose an outcome")).toBeTruthy();

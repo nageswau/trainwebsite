@@ -70,12 +70,79 @@ export const RECRUITER_LIBRARY: TemplateLibrary = {
   deactivateHint: "It disappears from the recruiters' pickers; messages already sent keep its name.",
 };
 
-/** The composers' endpoints for one party: the party id rides on the render query and the send body. */
-export function recruiterTarget(party: Party): ComposerTarget {
+// --- pob-023 (DEC-SCOPE-408): the governed library -----------------------------------------------------------------------------------
+export type TemplateChannel = Channel | "linkedin" | "call";
+export type CopyChannel = "linkedin" | "call";
+export type TemplateStatus = "draft" | "approved" | "archived";
+export const TEMPLATE_CHANNELS: { key: TemplateChannel; label: string }[] = [
+  { key: "whatsapp", label: "WhatsApp" }, { key: "email", label: "Email" }, { key: "linkedin", label: "LinkedIn" }, { key: "call", label: "Calling script" },
+];
+export const templateChannelLabel = (channel: TemplateChannel) => TEMPLATE_CHANNELS.find((c) => c.key === channel)?.label ?? channel;
+/** §14's six categories, in source order. */
+export const TEMPLATE_CATEGORIES: { key: string; label: string }[] = [
+  { key: "company", label: "Company" }, { key: "linkedin", label: "LinkedIn" }, { key: "whatsapp", label: "WhatsApp" },
+  { key: "calling", label: "Calling" }, { key: "college_tpo", label: "College/TPO" }, { key: "candidate", label: "Candidate" },
+];
+export const categoryLabel = (key: string) => TEMPLATE_CATEGORIES.find((c) => c.key === key)?.label ?? key;
+/** The category a new template starts with (the API's G2 default, so the form agrees with it). */
+export const DEFAULT_CATEGORY: Record<TemplateChannel, string> = { whatsapp: "whatsapp", email: "company", linkedin: "linkedin", call: "calling" };
+export const STATUS_LABEL: Record<TemplateStatus, string> = { draft: "Draft", approved: "Approved", archived: "Archived" };
+export const GOVERNED_BODY_LIMIT: Record<TemplateChannel, number> = { whatsapp: 1000, email: 5000, linkedin: 2000, call: 5000 };
+export const STEPS_MAX = 20;
+/** G8: the API's allow-list, with what each fills in. */
+export const GOVERNED_PLACEHOLDERS: { key: string; label: string }[] = [
+  { key: "name", label: "the recipient" }, { key: "company", label: "the contact's company" }, { key: "recruiter", label: "you" },
+  { key: "designation", label: "the contact's designation" }, { key: "job_title", label: "the requirement's title" },
+  { key: "job_location", label: "the requirement's location" }, { key: "package_range", label: "the salary range (needs the client commercials permission)" },
+  { key: "candidate", label: "the candidate" }, { key: "interview_date", label: "the interview date" }, { key: "interview_time", label: "the interview time" },
+  { key: "interview_mode", label: "the interview mode" }, { key: "interview_link", label: "the meeting link or location" },
+];
+export const GOVERNED_PLACEHOLDER_KEYS = GOVERNED_PLACEHOLDERS.map((p) => p.key);
+type Person = { id: string; full_name: string } | null;
+export type GovernedTemplate = {
+  id: string; channel: TemplateChannel; kind: string | null; name: string; subject: string | null; body: string; active: boolean;
+  category: string; purpose: string | null; language: string; department: string | null; industry: string | null; role_type: string | null;
+  status: TemplateStatus; visibility: "shared" | "personal"; steps: string[] | null; version: number; created_by: Person; updated_by: Person;
+  created_at: string; updated_at: string; last_used_at: string | null; can_edit: boolean; can_approve: boolean; can_archive: boolean; can_restore: boolean;
+};
+export type TemplateVersion = Omit<GovernedTemplate, "id" | "channel" | "active" | "status" | "visibility" | "version" | "created_by" | "updated_by" | "updated_at" | "last_used_at" | "can_edit" | "can_approve" | "can_archive" | "can_restore"> & {
+  version: number; edited_by: Person;
+};
+export const templateUrl = (id: string, action = "") => `${TEMPLATES_URL}/${encodeURIComponent(id)}${action ? `/${action}` : ""}`;
+export const COPIES_URL = `${MESSAGES_URL}/copies`;
+
+// --- pob-007 (DEC-SCOPE-422 A1/A3): LinkedIn outreach logged by hand, and a message's outcome ------------------------------------------
+export const LINKEDIN_URL = `${MESSAGES_URL}/linkedin`;
+export const messageOutcomeUrl = (id: string) => `${MESSAGES_URL}/${encodeURIComponent(id)}/outcome`;
+export const LINKEDIN_ACTIONS = [{ key: "connection_request", label: "Connection request" }, { key: "message", label: "Message" }] as const;
+export type LinkedInAction = (typeof LINKEDIN_ACTIONS)[number]["key"];
+/** "LinkedIn connection request sent" / "LinkedIn message sent". */
+export const linkedinTitle = (action: string | null | undefined) =>
+  action === "connection_request" ? "LinkedIn connection request sent" : "LinkedIn message sent";
+export const MESSAGE_OUTCOME_MAX = 500;
+
+/** What a composer may use (G5): approved shared templates and the caller's own personal ones, page after page. */
+export const usableTemplates = async (channel: TemplateChannel, signal?: AbortSignal): Promise<GovernedTemplate[]> => {
+  const items: GovernedTemplate[] = [];
+  for (;;) {
+    const page = await getPage<GovernedTemplate>(`${TEMPLATES_URL}?channel=${channel}&usable=true&limit=${CATALOGUE_PAGE_SIZE}&offset=${items.length}`, signal);
+    items.push(...page.items);
+    if (page.items.length === 0 || items.length >= page.total) return items;
+  }
+};
+
+/** G8/G12: the record a message is about -- its values fill the requirement or interview placeholders. */
+export type MessageContext = { jobId?: string; interviewId?: string };
+const contextQuery = (context?: MessageContext) =>
+  (context?.jobId ? `&job_id=${encodeURIComponent(context.jobId)}` : "") + (context?.interviewId ? `&interview_id=${encodeURIComponent(context.interviewId)}` : "");
+
+/** The composers' endpoints for one party: the party id rides on the render query and the send body. pob-023: the picker offers what
+ *  the caller may use (their personal templates too), and an optional context fills the requirement/interview placeholders. */
+export function recruiterTarget(party: Party, context?: MessageContext): ComposerTarget {
   const key = party.kind === "contact" ? "contact_id" : "candidate_id";
   return {
-    loadTemplates: activeTemplates,
-    renderUrl: (templateId) => `${MESSAGES_URL}/render?template_id=${encodeURIComponent(templateId)}&${key}=${encodeURIComponent(party.id)}`,
+    loadTemplates: usableTemplates,
+    renderUrl: (templateId) => `${MESSAGES_URL}/render?template_id=${encodeURIComponent(templateId)}&${key}=${encodeURIComponent(party.id)}${contextQuery(context)}`,
     createUrl: MESSAGES_URL,
     payload: { [key]: party.id },
   };

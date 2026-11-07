@@ -47,8 +47,15 @@ def test_models_match_the_migration():
     from app.models import REC_EMAIL_KINDS, REC_WHATSAPP_KINDS, RECRUITER_MESSAGE_CHECKS, RECRUITER_TEMPLATE_CHECKS, RecruiterMessage, RecruiterMessageTemplate
 
     assert (_migration.WHATSAPP_KINDS, _migration.EMAIL_KINDS) == (REC_WHATSAPP_KINDS, REC_EMAIL_KINDS)
-    assert _migration.TEMPLATE_CHECKS == RECRUITER_TEMPLATE_CHECKS and _migration.MESSAGE_CHECKS == RECRUITER_MESSAGE_CHECKS
-    assert {c.name for c in RecruiterMessage.__table__.columns} == MESSAGE_COLUMNS
+    # pob-023's 0298 revised the template checks (G1-G5); test_pob_023_migration pins those, 0120's stay as they were
+    assert {k: v for k, v in _migration.TEMPLATE_CHECKS.items() if k == "ck_recruiter_message_templates_subject"} == {
+        "ck_recruiter_message_templates_subject": RECRUITER_TEMPLATE_CHECKS["ck_recruiter_message_templates_subject"]
+    }
+    # pob-007's 0302 revised the channel check and added the LinkedIn one; test_pob_007_migration pins those
+    later_checks = {"ck_recruiter_messages_channel", "ck_recruiter_messages_linkedin"}
+    assert {k: v for k, v in _migration.MESSAGE_CHECKS.items() if k not in later_checks} == {k: v for k, v in RECRUITER_MESSAGE_CHECKS.items() if k not in later_checks}
+    later = {"calendar_ics", "replied_at", "linkedin_action", "outcome", "follow_up_id"}  # hrc-028, pob-005 and pob-007 columns
+    assert {c.name for c in RecruiterMessage.__table__.columns} - later == MESSAGE_COLUMNS
     for model, checks in ((RecruiterMessageTemplate, RECRUITER_TEMPLATE_CHECKS), (RecruiterMessage, RECRUITER_MESSAGE_CHECKS)):
         table = model.__table__
         for name, sql in checks.items():

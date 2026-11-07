@@ -8,7 +8,7 @@ the interview. Functions only; nothing here commits -- the route owns the transa
 never a note, a reason, a name or an address."""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
@@ -34,11 +34,24 @@ from app.models import (
     JobApplication,
     Notification,
     RecruiterMessage,
+    RecruiterMessageTemplate,
     User,
 )
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import RecInterviewCreate, RecInterviewUpdate
-from app.services import applications, calendar_ics, company_pipeline, contact_status, interview_results, mailer, recruiter_companies, recruitment_history
+from app.services import (
+    applications,
+    calendar_ics,
+    company_pipeline,
+    contact_status,
+    interview_automation,
+    interview_results,
+    mailer,
+    recruiter_companies,
+    recruiter_contracts,
+    recruiter_messages,
+    recruitment_history,
+)
 from app.services import recruiter_requirements as requirements
 
 logger = logging.getLogger("app.recruiter")
@@ -183,6 +196,7 @@ async def insert(db: AsyncSession, actor: User, application: JobApplication, sch
     """Every creator (recruiter, legacy staff, employer): the clash, the row (the database numbers it) and its `scheduled` event."""
     await check_clash(db, application.candidate_id, scheduled_at)
     interview = Interview(application_id=application.id, scheduled_at=scheduled_at, status="scheduled", created_by_user_id=actor.id, **fields)
+    await interview_automation.arm(db, interview, datetime.now(UTC))  # pob-022 A4
     db.add(interview)
     await db.flush()
     _event(db, interview, actor, "scheduled")
@@ -208,7 +222,7 @@ async def create(db: AsyncSession, user: User, application: JobApplication, job:
     check_time(payload.scheduled_at, now)
     check_end(payload.scheduled_at, payload.ends_at)
     await _check_contact(db, job.company_id, payload.contact_id)
-    fields = payload.model_dump(exclude={"application_id", "scheduled_at", "notify"})
+    fields = payload.model_dump(exclude={"application_id", "scheduled_at", "notify", "template_id"})
     interview = await insert(db, user, application, payload.scheduled_at, **fields)
     applications.follow(db, user, application, "interview", f"Interview scheduled: {ROUND_LABELS[payload.round]}")
     company = await db.scalar(select(Company).where(Company.id == job.company_id).with_for_update().execution_options(populate_existing=True))
@@ -265,6 +279,7 @@ async def reschedule(db: AsyncSession, user: User | None, interview: Interview, 
     if interview.ends_at is not None:  # hrc-028 (I2): the duration is kept
         interview.ends_at = when + (interview.ends_at - old)
     interview.scheduled_at, interview.status = when, "rescheduled"
+    await interview_automation.arm(db, interview, now or datetime.now(UTC))  # pob-022 A4: the reminders and the chase start over
     _event(db, interview, user, "rescheduled", from_status=previous, old=old, note=reason)
     if user is not None:
         audit(db, user, "reschedule", interview, {"from_status": previous, "changes": recruitment_history.diff(
@@ -432,27 +447,55 @@ def invite(interview: Interview, job: Job, company: Company, details: list[str])
     return calendar_ics.calendar([vevent], method=method), method
 
 
-async def notify(db: AsyncSession, user: User, interview: Interview, application: JobApplication, job: Job, kind: str, enabled: bool) -> tuple[dict, list[UUID]]:
+async def template_values(db: AsyncSession, user: User | None, interview: Interview, application: JobApplication, job: Job) -> dict[str, str]:
+    """pob-022 (A1): what a template reads about this interview -- pob-023's allow-list; the recipient's `name` and `designation` are added
+    per recipient, and `{package_range}` keeps pob-001's grant (the sender's)."""
+    candidate = await db.get(Candidate, application.candidate_id)
+    company = await db.get(Company, job.company_id)
+    sees = user is not None and await recruiter_contracts.sees_commercials(db, user)
+    return {
+        "company": company.name, "recruiter": user.full_name if user else "", "candidate": candidate.name, "job_title": job.title,
+        "job_location": job.location or "", "package_range": recruiter_messages.package_range(job) if sees else "",
+        **recruiter_messages.interview_values(interview),
+    }  # fmt: skip
+
+
+async def notify(db: AsyncSession, user: User | None, interview: Interview, application: JobApplication, job: Job, kind: str, enabled: bool,
+                 template: RecruiterMessageTemplate | None = None) -> tuple[dict, list[UUID]]:  # fmt: skip
     """On schedule, reschedule, a visible detail change and cancel (`kind`): the candidate (in-app plus the email delivery for a student, else
     a queued email) and the chosen contact (a queued email naming the candidate by name and code only -- R8), each with the calendar invite
-    (hrc-028 I6; every notice after the first moves the SEQUENCE on). Returns the summary and the email ids to publish after the commit."""
+    (hrc-028 I6; every notice after the first moves the SEQUENCE on). pob-022: `reminder` (the worker's) sends no invite and moves no SEQUENCE;
+    `user` is the sender, and with none only the in-app notice goes; an approved `template` (A1) leads each text, rendered for its
+    recipient, with the details after it. Returns the summary and the email ids to publish after the commit."""
     contact = await db.get(CompanyContact, interview.contact_id) if interview.contact_id else None
     if not enabled:
         return {"candidate": "off", "contact": "off" if contact else None}, []
     candidate = await db.get(Candidate, application.candidate_id)
     company = await db.get(Company, job.company_id)
-    if kind != "scheduled":
+    reminder = kind == "reminder"
+    if kind not in ("scheduled", "reminder"):
         interview.calendar_sequence += 1
     title = f"Interview {kind}"
     subject = f"{title}: {round_text(interview)} - {job.title}"[:200]
     details = _details(interview, job, company)
-    ics, method = invite(interview, job, company, details)
+    ics, method = (None, None) if reminder else invite(interview, job, company, details)
+    values = await template_values(db, user, interview, application, job) if template else {}
+
+    def text(name: str, designation: str, lines: list[str]) -> tuple[str, str]:
+        """The email's subject and body: the template's, rendered for this recipient, then the details; else the standard text."""
+        if template is None:
+            return subject, "\n".join([f"Dear {name},", "", *lines])
+        out = recruiter_messages.rendered(template, values | {"name": name, "designation": designation})
+        return (out["subject"] or subject)[:200], "\n".join([out["body"], "", *lines])
+
     summary: dict = {"candidate": None, "contact": None}
     emails: list[RecruiterMessage] = []
-    smtp = mailer.smtp_configured()
+    smtp = mailer.smtp_configured() and user is not None
+    off = "email_off" if not mailer.smtp_configured() else "no_sender"
     if candidate.user_id is not None:
         student = await db.get(User, candidate.user_id)
-        item = Notification(user_id=student.id, title=title, body="\n".join(details), read=False,
+        body = text(candidate.name, "", details)[1] if template else "\n".join(details)
+        item = Notification(user_id=student.id, title=title, body=body, read=False,
                             action_url="/it/careers/portal/interviews" if student.role == "candidate" else "/it/student/job-applications",
                             event_type=f"it.interview.{kind}", entity_type="interview", entity_id=str(interview.id))  # fmt: skip
         db.add(item)
@@ -460,29 +503,33 @@ async def notify(db: AsyncSession, user: User, interview: Interview, application
         await queue_deliveries(db, item, student, context={"kind": INVITE_KIND, "ics": ics, "method": method})
         summary["candidate"] = "in_app"
     elif not smtp or not candidate.email:
-        summary["candidate"] = "email_off" if not smtp else "no_email"
+        summary["candidate"] = off if not smtp else "no_email"
     else:
-        emails.append(RecruiterMessage(candidate_id=candidate.id, body="\n".join([f"Dear {candidate.name},", "", *details]), subject=subject, calendar_ics=ics, **_mail(user)))
+        mail_subject, body = text(candidate.name, "", details)
+        emails.append(RecruiterMessage(candidate_id=candidate.id, body=body, subject=mail_subject, calendar_ics=ics, **_mail(user, template)))
         summary["candidate"] = "queued"
     if contact is not None:
         if contact.status == "do_not_contact":  # pob-005 D6: the interview goes ahead; this person is not emailed
             summary["contact"] = "do_not_contact"
         elif not smtp or not contact.email:
-            summary["contact"] = "email_off" if not smtp else "no_email"
+            summary["contact"] = off if not smtp else "no_email"
         else:
-            lines = [f"Dear {contact.name},", "", f"Candidate: {candidate.name} ({candidate.candidate_code})", *details]
-            emails.append(RecruiterMessage(company_id=company.id, contact_id=contact.id, body="\n".join(lines), subject=subject, calendar_ics=ics, **_mail(user)))
+            mail_subject, body = text(contact.name, contact.designation or "", [f"Candidate: {candidate.name} ({candidate.candidate_code})", *details])
+            emails.append(RecruiterMessage(company_id=company.id, contact_id=contact.id, body=body, subject=mail_subject, calendar_ics=ics,
+                                           **_mail(user, template)))  # fmt: skip
             summary["contact"] = "queued"
     db.add_all(emails)
     await db.flush()
     if summary["contact"] == "queued":
         await recruiter_companies.refresh_last_contact(db, company.id)  # pob-003 D4: the invite emailed to the client contact
         await contact_status.advance(db, user, [contact.id], "contacted", "interview")  # pob-005 D4
+    if template is not None:
+        await recruiter_messages.mark_used(db, template.id, datetime.now(UTC))  # pob-023 G7
     return summary, [m.id for m in emails]
 
 
-def _mail(user: User) -> dict:
-    return {"sender_user_id": user.id, "channel": "email", "delivery_status": "queued", "sent_at": func.now()}
+def _mail(user: User, template: RecruiterMessageTemplate | None = None) -> dict:
+    return {"sender_user_id": user.id, "channel": "email", "delivery_status": "queued", "sent_at": func.now(), "template_id": template.id if template else None}
 
 
 # --- reads --------------------------------------------------------------------------------------------------------------------------

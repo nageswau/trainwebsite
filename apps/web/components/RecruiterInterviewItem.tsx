@@ -3,7 +3,9 @@ import Link from "next/link";
 import { type FormEvent, type ReactNode, useId, useRef, useState } from "react";
 
 import InterviewPanelSection from "@/components/InterviewPanelSection";
+import InterviewTemplateSelect from "@/components/InterviewTemplateSelect";
 import RecruiterInterviewForm, { type ContactOption } from "@/components/RecruiterInterviewForm";
+import RecruiterInterviewMessages from "@/components/RecruiterInterviewMessages";
 import ReturnToLoginLink from "@/components/ReturnToLoginLink";
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
 import { istInputToIso, nowIstInput } from "@/lib/bdmAppointments";
@@ -13,6 +15,7 @@ import { fieldErrors } from "@/lib/bdmTravel";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import { RECRUITER_SIGN_IN, safeLink } from "@/lib/recruiterCompanies";
 import {
+  CONFIRMATION_KIND,
   DECISIONS,
   FEEDBACK_TEXT_MAX,
   type FeedbackFields,
@@ -125,12 +128,14 @@ function RescheduleForm({ interview, onSaved, onCancel }: { interview: RecInterv
   const [start, setStart] = useState("");
   const [reason, setReason] = useState("");
   const [notify, setNotify] = useState(true);
+  const [templateId, setTemplateId] = useState(""); // pob-022 (A1)
   const [now] = useState(nowIstInput);
   const { busy, errors, setErrors, failure, run } = useSubmit(onSaved);
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!start) return setErrors({ scheduled_at: "Choose the new date and time" });
-    void run(() => sendJson(interviewUrl(interview.id, "reschedule"), "POST", { scheduled_at: istInputToIso(start), reason: reason.trim() || null, notify }));
+    const template = notify && templateId ? { template_id: templateId } : {};
+    void run(() => sendJson(interviewUrl(interview.id, "reschedule"), "POST", { scheduled_at: istInputToIso(start), reason: reason.trim() || null, notify, ...template }));
   }
   return (
     <form aria-label={`Reschedule ${interview.code}`} className="action-card" noValidate onSubmit={submit} onKeyDown={(e) => e.key === "Escape" && onCancel()}>
@@ -147,6 +152,10 @@ function RescheduleForm({ interview, onSaved, onCancel }: { interview: RecInterv
         <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
         Notify the candidate{interview.contact ? " and the contact" : ""}
       </label>
+      {notify && (
+        <InterviewTemplateSelect id={`${id}-template`} label="Confirmation message" kind={CONFIRMATION_KIND} value={templateId} onChange={setTemplateId}
+          error={errors.template_id} />
+      )}
       <Problem failure={failure} />
       <div className="actions">
         <button type="submit" className="btn small" disabled={busy}>{busy ? "Saving…" : "Reschedule"}</button>
@@ -330,6 +339,7 @@ export default function RecruiterInterviewItem({ interview: given, card = false,
 }) {
   const [mode, setMode] = useState<"view" | "status" | "reschedule" | "edit" | "feedback" | "cancel" | "panel">("view");
   const [latest, setLatest] = useState<RecInterview | null>(null); // hrc-003 QA-03: a stale edit's reload shows here until the list reloads
+  const [messaging, setMessaging] = useState(false);
   const i = latest && latest.updated_at > given.updated_at ? latest : given;
   const id = useId();
   const cancelled = i.status === "cancelled";
@@ -429,6 +439,15 @@ export default function RecruiterInterviewItem({ interview: given, card = false,
           )}
         </div>
       )}
+      {/* pob-023 (G12): a confirmation or feedback follow-up from a template, filled with this interview */}
+      {mode === "view" && i.can_edit && (
+        <div>
+          <button type="button" className="btn secondary small" aria-expanded={messaging} onClick={() => setMessaging((m) => !m)}>
+            {messaging ? "Hide messages" : "Message candidate"}<span className="visually-hidden"> about {i.code}</span>
+          </button>
+        </div>
+      )}
+      {messaging && <RecruiterInterviewMessages candidateId={i.candidate.id} interviewId={i.id} />}
     </li>
   );
 }

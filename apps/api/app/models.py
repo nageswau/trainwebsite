@@ -27,6 +27,7 @@ from sqlalchemy import (
     true,
 )
 from sqlalchemy.dialects.postgresql import TSVECTOR
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column, relationship, validates
 from sqlalchemy.sql import func
 
@@ -675,6 +676,12 @@ COMPANY_CHECKS = {
     "ck_companies_employee_count": "employee_count IS NULL OR employee_count BETWEEN 0 AND 10000000",
 }
 # rec-005 (DEC-SCOPE-127): the pipeline stage and the Lost flag (both or neither); migration 0108 keeps a frozen copy.
+# pob-010 (DEC-SCOPE-420 V2/V3): migration 0300 keeps a frozen copy.
+COMPANY_VENDOR_CHECKS = {
+    "ck_companies_partner_type": "partner_type IN ('recruiter', 'employer', 'vendor', 'vendor_client')",
+    "ck_companies_vendor_status": "vendor_status IS NULL OR vendor_status IN ('prospect', 'registration_submitted', 'approved', 'active', 'suspended')",
+    "ck_companies_vendor_status_type": "(partner_type IN ('vendor', 'vendor_client')) = (vendor_status IS NOT NULL)",
+}
 COMPANY_PIPELINE_CHECKS = {
     "ck_companies_stage": "stage IN (" + ", ".join(f"'{s}'" for s in COMPANY_STAGES) + ")",
     "ck_companies_lost": "(lost_at IS NULL) = (lost_reason IS NULL)",
@@ -698,6 +705,8 @@ class Company(Base, TimestampMixin):
         Index("ix_companies_assigned_bdm", "assigned_bdm_user_id"),
         Index("ix_companies_name_key", text(COMPANY_NAME_KEY_SQL)),  # the duplicate check (services/recruiter_companies.NAME_KEY)
         Index("ix_companies_last_contacted", "last_contacted_at"),  # pob-003 D5: the list's "last contacted" sort
+        *(CheckConstraint(sql, name=name) for name, sql in COMPANY_VENDOR_CHECKS.items()),  # pob-010
+        CheckConstraint("merged_into_id IS NULL OR merged_into_id <> id", name="ck_companies_merged_not_self"),  # pob-006
     )
     __mapper_args__ = {"eager_defaults": True}  # INSERT ... RETURNING company_code: no lazy load of the server default under asyncio
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -748,6 +757,32 @@ class Company(Base, TimestampMixin):
     target_roles: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
     # pob-003 D4: the latest call / message / completed meeting -- recomputed by services/recruiter_companies.refresh_last_contact only.
     last_contacted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # pob-006 (DEC-SCOPE-418 M6): the company this duplicate became -- always the final survivor (a later merge re-points it); the row stays archived.
+    merged_into_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"), nullable=True)
+    merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    merged_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    # pob-016 (C6): whether this company's requirements need a complete checklist before sourcing; NULL = the global rule
+    checklist_blocks_sourcing: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # pob-010 (DEC-SCOPE-420 V3): set only while `partner_type` is a vendor type (ck_companies_vendor_status). Lists are replaced whole; [] when unset.
+    vendor_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    vendor_specialisations: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    vendor_service_categories: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    vendor_locations: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+
+
+class CompanyVendorStatusHistory(Base):
+    """pob-010 (DEC-SCOPE-420 V6): one row per onboarding move. Append-only; `position` orders rows created in one transaction."""
+
+    __tablename__ = "company_vendor_status_history"
+    __table_args__ = (Index("ix_company_vendor_status_history_company", "company_id", "position"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    from_status: Mapped[str] = mapped_column(String(30))
+    to_status: Mapped[str] = mapped_column(String(30))
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class CompanyStageHistory(Base):
@@ -807,6 +842,7 @@ class CompanyContact(Base, TimestampMixin):
         Index("uq_company_contacts_primary", "company_id", unique=True, postgresql_where=text("is_primary")),
         Index("ix_company_contacts_mobile", "mobile_normalized"),
         Index("ix_company_contacts_email", "email"),  # pob-005 D8: the duplicate check (emails are stored lower-cased)
+        CheckConstraint("merged_into_id IS NULL OR merged_into_id <> id", name="ck_company_contacts_merged_not_self"),  # pob-006
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
@@ -830,6 +866,10 @@ class CompanyContact(Base, TimestampMixin):
     verified_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(String(24), default="not_contacted", server_default=text("'not_contacted'"))
     status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # pob-006 (DEC-SCOPE-418 C5): the contact this duplicate became -- always the final survivor; the row stays inactive and leaves the lists.
+    merged_into_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    merged_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
 
     @validates("mobile")
     def _derive_mobile_normalized(self, _key: str, mobile: str | None) -> str | None:
@@ -841,7 +881,7 @@ class CompanyContact(Base, TimestampMixin):
 # RECRUITER_FOLLOW_UP_CHECKS (test_rec_024_migration asserts they stay identical). Labels live in the web client.
 RECRUITER_FOLLOW_UP_REASONS = (
     "new_requirement", "jd", "profile_feedback", "interview_feedback", "offer_status", "joining_confirmation", "new_openings",
-    "contract_mou", "payment_commercial",
+    "contract_mou", "payment_commercial", "clarification",  # pob-016 (C4): a checklist item the client must clarify
 )
 RECRUITER_FOLLOW_UP_CHECKS = {
     "ck_recruiter_follow_ups_reason": f"reason IN ({', '.join(repr(r) for r in RECRUITER_FOLLOW_UP_REASONS)})",
@@ -850,7 +890,11 @@ RECRUITER_FOLLOW_UP_CHECKS = {
         "(status = 'done') = (completed_at IS NOT NULL) AND (completed_at IS NULL) = (completed_by_user_id IS NULL) "
         "AND (status = 'cancelled') = (cancelled_at IS NOT NULL) AND (cancelled_at IS NULL) = (cancel_reason IS NULL)"
     ),
+    # pob-007 (DEC-SCOPE-422 A8): a priority and an optional reminder, never after the due time; migration 0302 repeats these
+    "ck_recruiter_follow_ups_priority": "priority IN ('high', 'medium', 'low')",
+    "ck_recruiter_follow_ups_remind": "remind_at IS NULL OR remind_at <= due_at",
 }
+RECRUITER_FOLLOW_UP_PRIORITIES = ("high", "medium", "low")
 
 
 class RecruiterFollowUp(Base, TimestampMixin):
@@ -880,6 +924,8 @@ class RecruiterFollowUp(Base, TimestampMixin):
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    priority: Mapped[str] = mapped_column(String(8), default="medium", server_default=text("'medium'"))  # pob-007 A8
+    remind_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # pob-007 A8: stored; pob-008 delivers
 
 
 # rec-025 (DEC-SCOPE-133 CA1/CA8): the call outcomes (the source names none -- UNVERIFIED default) and directions; migration 0118 repeats
@@ -892,7 +938,10 @@ RECRUITER_CALL_CHECKS = {
     "ck_recruiter_calls_direction": f"direction IN ({', '.join(repr(d) for d in RECRUITER_CALL_DIRECTIONS)})",
     "ck_recruiter_calls_duration": f"duration_seconds IS NULL OR duration_seconds BETWEEN 0 AND {RECRUITER_CALL_MAX_SECONDS}",
     "ck_recruiter_calls_party": "(contact_id IS NULL) = (company_id IS NULL) AND (contact_id IS NULL) <> (candidate_id IS NULL)",
+    "ck_recruiter_calls_job": "job_id IS NULL OR contact_id IS NOT NULL",  # pob-007 A4: a requirement is discussed with a company contact
 }
+# pob-007 (DEC-SCOPE-422 A4): the objections a company raises (UNVERIFIED: the source names none), in the order the form offers them
+RECRUITER_CALL_OBJECTIONS = ("no_current_requirement", "existing_vendors", "fee_too_high", "no_budget", "timing", "not_decision_maker", "in_house", "other")
 
 
 class RecruiterCall(Base, TimestampMixin):
@@ -918,6 +967,11 @@ class RecruiterCall(Base, TimestampMixin):
     direction: Mapped[str] = mapped_column(String(16))
     outcome: Mapped[str] = mapped_column(String(32))
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # pob-007 A4: the requirement discussed, objections (catalogue keys) with notes, and the next action
+    job_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"), nullable=True)
+    objections: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    objection_notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    next_action: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 class EmployerProfile(Base, TimestampMixin):
@@ -1083,6 +1137,42 @@ class Job(Base, TimestampMixin):
     backup_owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     match_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # hrc-032 (DEC-SCOPE-413 N7): candidates told once
     company = relationship("Company")
+
+
+# pob-016 (DEC-SCOPE-419): the requirement validation checklist; migration 0299 repeats the check.
+JOB_CHECKLIST_ITEM_STATUSES = ("confirmed", "not_applicable", "missing")
+JOB_CHECKLIST_ITEM_CHECKS = {"ck_job_checklist_items_status": f"status IN ({', '.join(repr(s) for s in JOB_CHECKLIST_ITEM_STATUSES)})"}
+
+
+class JobChecklistItem(Base, TimestampMixin):
+    """pob-016 (C1/C2): one answered item of a requirement's checklist. An unanswered item has no row. `item_key` has no check: the items live in
+    `services.requirement_checklist.ITEMS`. `follow_up_id` is the clarification the item last created (C4/C5)."""
+
+    __tablename__ = "job_checklist_items"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in JOB_CHECKLIST_ITEM_CHECKS.items())
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), primary_key=True)
+    item_key: Mapped[str] = mapped_column(String(40), primary_key=True)
+    status: Mapped[str] = mapped_column(String(16))
+    follow_up_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_follow_ups.id", ondelete="SET NULL"), nullable=True)
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class JobChecklistOverride(Base, TimestampMixin):
+    """pob-016 (C11): a Team Lead let this requirement start sourcing with an incomplete checklist. One per requirement, kept for good."""
+
+    __tablename__ = "job_checklist_overrides"
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), primary_key=True)
+    reason: Mapped[str] = mapped_column(Text)
+    overridden_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class RequirementChecklistSetting(Base, TimestampMixin):
+    """pob-016 (C6): one row (`id = 1`) holding the global rule; no row means off. A company's `checklist_blocks_sourcing` wins over it."""
+
+    __tablename__ = "requirement_checklist_settings"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    block_sourcing: Mapped[bool] = mapped_column(Boolean)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
 
 
 # pob-002 (DEC-SCOPE-407 R1): an append-only snapshot of a requirement's material fields per save; migration 0285 repeats the checks.
@@ -1585,6 +1675,11 @@ class Interview(Base, TimestampMixin):
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     calendar_sequence: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     overdue_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # hrc-032 (DEC-SCOPE-413 N6): told once
+    # pob-022 (DEC-SCOPE-421 A3-A6): each reminder sent once (re-armed by a reschedule); the feedback chase's follow-up and its escalation
+    first_reminder_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    second_reminder_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    chase_follow_up_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_follow_ups.id", ondelete="RESTRICT"), nullable=True)
+    chase_escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class InterviewFeedback(Base, TimestampMixin):
@@ -1724,6 +1819,32 @@ class ResultReleaseSetting(Base, TimestampMixin):
     __tablename__ = "result_release_settings"
     id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
     auto_release: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+# pob-022 (DEC-SCOPE-421 A2): migration 0301 repeats these (test_pob_022_migration keeps them identical)
+INTERVIEW_AUTOMATION_CHECKS = {
+    "ck_interview_automation_first": "first_reminder_hours IS NULL OR first_reminder_hours BETWEEN 1 AND 168",
+    "ck_interview_automation_second": "second_reminder_hours IS NULL OR second_reminder_hours BETWEEN 1 AND 168",
+    "ck_interview_automation_order": "first_reminder_hours IS NULL OR second_reminder_hours IS NULL OR second_reminder_hours < first_reminder_hours",
+    "ck_interview_automation_chase": "chase_after_hours IS NULL OR chase_after_hours BETWEEN 1 AND 720",
+    "ck_interview_automation_escalate": "escalate_after_hours IS NULL OR escalate_after_hours BETWEEN 1 AND 720",
+}
+
+
+class InterviewAutomationSetting(Base, TimestampMixin):
+    """pob-022 (A2): the one global row (id 1, seeded by migration 0301) -- the reminder slots, the feedback chase and its escalation (hours;
+    null switches a step off) and the approved templates they use (null = the fixed text)."""
+
+    __tablename__ = "interview_automation_settings"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in INTERVIEW_AUTOMATION_CHECKS.items())
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    first_reminder_hours: Mapped[int | None] = mapped_column(SmallInteger, nullable=True, default=24, server_default=text("24"))
+    second_reminder_hours: Mapped[int | None] = mapped_column(SmallInteger, nullable=True, default=2, server_default=text("2"))
+    reminder_template_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_message_templates.id", ondelete="RESTRICT"), nullable=True)
+    chase_after_hours: Mapped[int | None] = mapped_column(SmallInteger, nullable=True, default=24, server_default=text("24"))
+    escalate_after_hours: Mapped[int | None] = mapped_column(SmallInteger, nullable=True, default=24, server_default=text("24"))
+    chase_template_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_message_templates.id", ondelete="RESTRICT"), nullable=True)
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
@@ -7348,6 +7469,59 @@ class CandidateImportRow(Base):
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+# pob-006 (DEC-SCOPE-418 I9): migration 0297 keeps a frozen copy (test_pob_006_migration asserts they stay identical).
+CRM_IMPORT_BATCH_CHECKS = {"ck_crm_import_batches_counts": "created_count + matched_count + error_count = total_rows"}
+CRM_IMPORT_ROW_CHECKS = {
+    "ck_crm_import_rows_status": "status IN ('created', 'matched', 'error')",
+    "ck_crm_import_rows_outcome": "(status <> 'created' OR company_id IS NOT NULL) AND (status = 'created' OR reason IS NOT NULL)",
+}
+
+
+class CrmImportBatch(Base):
+    """pob-006 (I8/I9): one committed company file. Its hash, name and counts -- never the file. The Idempotency-Key is scoped to the uploader."""
+
+    __tablename__ = "crm_import_batches"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CRM_IMPORT_BATCH_CHECKS.items()),
+        UniqueConstraint("uploaded_by_user_id", "idempotency_key", name="uq_crm_import_batches_key"),
+        Index("ix_crm_import_batches_uploader", "uploaded_by_user_id", "created_at"),
+        Index("ix_crm_import_batches_file", "uploaded_by_user_id", "file_sha256"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    file_name: Mapped[str] = mapped_column(String(200))
+    total_rows: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    matched_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    error_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    companies_created: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    contacts_created: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CrmImportRow(Base):
+    """pob-006 (I9): one row's outcome: ids and a reason, no cell value. A merge re-points the ids, so an old report leads to the survivor."""
+
+    __tablename__ = "crm_import_rows"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CRM_IMPORT_ROW_CHECKS.items()),
+        UniqueConstraint("batch_id", "row_number", name="uq_crm_import_rows_row"),
+        Index("ix_crm_import_rows_company", "company_id"),
+        Index("ix_crm_import_rows_contact", "contact_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("crm_import_batches.id", ondelete="CASCADE"))
+    row_number: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(10))
+    company_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"), nullable=True)
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    company_created: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    contact_created: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class PortalEvent(Base):
     """hrc-034 (DEC-SCOPE-416 I3): one step a student or portal candidate took on a job -- ids only, no PII. One row per person, job, kind and IST day,
     so a refresh or a double click cannot inflate a figure. Deleted after portal_events.RETENTION_DAYS (I4)."""
@@ -7567,7 +7741,10 @@ class ProgramSkill(Base):
 RECRUITER_MEETING_TYPES = (
     "company_meeting", "hr_meeting", "requirement_discussion", "recruitment_presentation", "contract_discussion",
     "campus_recruitment_discussion", "placement_drive_discussion",
+    "company_visit",  # pob-007 (DEC-SCOPE-422 A9): a BD visit to the company; migration 0302 revises ck_recruiter_meetings_type
 )
+# pob-007 A5: a hiring forecast row's timeframe (UNVERIFIED: the source names roles x count x timeframe only)
+RECRUITER_FORECAST_TIMEFRAMES = ("this_month", "next_3_months", "next_6_months", "next_12_months")
 RECRUITER_MEETING_STATUSES = ("scheduled", "completed", "cancelled")
 RECRUITER_MEETING_EVENTS = ("scheduled", "rescheduled", "completed", "cancelled")
 RECRUITER_MEETING_CODE_SEQ = Sequence("recruiter_meeting_code_seq", metadata=Base.metadata)
@@ -7620,6 +7797,23 @@ class RecruiterMeeting(Base, TimestampMixin):
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    # pob-007 A5/A7: recorded with the outcome; the commercial notes are read and written only with `commercials.client.view`
+    hiring_forecast: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    commercial_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class RecruiterMeetingActionItem(Base):
+    """pob-007 (DEC-SCOPE-422 A6): an outcome's action item -- one rec-024 follow-up each, kept in the order entered."""
+
+    __tablename__ = "recruiter_meeting_action_items"
+    __table_args__ = (
+        UniqueConstraint("meeting_id", "position", name="uq_recruiter_meeting_action_items_position"),
+        UniqueConstraint("follow_up_id", name="uq_recruiter_meeting_action_items_follow_up"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    meeting_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_meetings.id", ondelete="RESTRICT"))
+    follow_up_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_follow_ups.id", ondelete="RESTRICT"))
+    position: Mapped[int] = mapped_column(Integer)
 
 
 class RecruiterMeetingParticipant(Base):
@@ -7664,20 +7858,32 @@ REC_EMAIL_KINDS = (
     "company_introduction", "recruitment_proposal", "candidate_profiles", "jd_acknowledgement", "interview_confirmation", "offer_follow_up",
     "joining_confirmation",
 )
+# pob-023 (DEC-SCOPE-408 G1-G5): LinkedIn and calling-script channels (no kind), the §14 categories, Draft -> Approved -> Archived and
+# personal (owner set) vs shared; migration 0298 repeats these (test_pob_023_migration keeps them identical).
+REC_TEMPLATE_CHANNELS = ("whatsapp", "email", "linkedin", "call")
+REC_TEMPLATE_CATEGORIES = ("company", "linkedin", "whatsapp", "calling", "college_tpo", "candidate")
+REC_TEMPLATE_STATUSES = ("draft", "approved", "archived")
 RECRUITER_TEMPLATE_CHECKS = {
-    "ck_recruiter_message_templates_channel": "channel IN ('whatsapp', 'email')",
+    "ck_recruiter_message_templates_channel": f"channel IN ({', '.join(repr(c) for c in REC_TEMPLATE_CHANNELS)})",
     "ck_recruiter_message_templates_kind": (
         f"(channel = 'whatsapp' AND kind IN ({', '.join(repr(k) for k in REC_WHATSAPP_KINDS)})) OR "
-        f"(channel = 'email' AND kind IN ({', '.join(repr(k) for k in REC_EMAIL_KINDS)}))"
+        f"(channel = 'email' AND kind IN ({', '.join(repr(k) for k in REC_EMAIL_KINDS)})) OR "
+        "(channel IN ('linkedin', 'call') AND kind IS NULL)"
     ),
     "ck_recruiter_message_templates_subject": "(channel = 'email') = (subject IS NOT NULL)",
+    "ck_recruiter_message_templates_category": f"category IN ({', '.join(repr(c) for c in REC_TEMPLATE_CATEGORIES)})",
+    "ck_recruiter_message_templates_status": f"status IN ({', '.join(repr(c) for c in REC_TEMPLATE_STATUSES)})",
+    "ck_recruiter_message_templates_steps": "(channel = 'call') = (steps IS NOT NULL)",
+    "ck_recruiter_message_templates_personal": "owner_user_id IS NULL OR status <> 'approved'",
 }
 RECRUITER_MESSAGE_CHECKS = {
     "ck_recruiter_messages_party": "(contact_id IS NULL) = (company_id IS NULL) AND (contact_id IS NULL) <> (candidate_id IS NULL)",
-    "ck_recruiter_messages_channel": "channel IN ('whatsapp', 'email')",
+    "ck_recruiter_messages_channel": "channel IN ('whatsapp', 'email', 'linkedin')",  # pob-007 A1: LinkedIn, logged by hand (0302)
     "ck_recruiter_messages_email": "(channel = 'email') = (delivery_status IS NOT NULL) AND (channel = 'email') = (subject IS NOT NULL)",
     "ck_recruiter_messages_status": "delivery_status IS NULL OR delivery_status IN ('queued', 'sending', 'retrying', 'sent', 'failed')",
+    "ck_recruiter_messages_linkedin": "(channel = 'linkedin') = (linkedin_action IS NOT NULL) AND (linkedin_action IS NULL OR linkedin_action IN ('connection_request', 'message'))",
 }
+REC_LINKEDIN_ACTIONS = ("connection_request", "message")  # pob-007 A1
 
 
 class RecruiterMessageTemplate(Base, TimestampMixin):
@@ -7687,15 +7893,57 @@ class RecruiterMessageTemplate(Base, TimestampMixin):
     __tablename__ = "recruiter_message_templates"
     __table_args__ = (
         *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_TEMPLATE_CHECKS.items()),
-        Index("uq_recruiter_message_templates_channel_name", "channel", text("lower(name)"), unique=True),
+        # pob-023 G5: a shared name is unique per channel; a personal one per author and channel
+        Index("uq_recruiter_message_templates_channel_name", "channel", text("lower(name)"), unique=True, postgresql_where=text("owner_user_id IS NULL")),
+        Index("uq_recruiter_message_templates_owner_name", "owner_user_id", "channel", text("lower(name)"), unique=True, postgresql_where=text("owner_user_id IS NOT NULL")),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     channel: Mapped[str] = mapped_column(String(20))
-    kind: Mapped[str] = mapped_column(String(40))
+    kind: Mapped[str | None] = mapped_column(String(40), nullable=True)  # pob-023 G1: null for LinkedIn and calling scripts
     name: Mapped[str] = mapped_column(String(160))
     subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
     body: Mapped[str] = mapped_column(Text)
-    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    # pob-023 (DEC-SCOPE-408): category and metadata (G2, G3), status and visibility (G4, G5), calling steps (G1), versions and authors (G7)
+    category: Mapped[str] = mapped_column(String(20), default="company", server_default=text("'company'"))
+    purpose: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    language: Mapped[str] = mapped_column(String(40), default="English", server_default=text("'English'"))
+    department: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    industry: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    role_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    status: Mapped[str] = mapped_column(String(10), default="approved", server_default=text("'approved'"))
+    owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True, index=True)
+    steps: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    @hybrid_property
+    def active(self) -> bool:
+        """rec-026's flag, kept as a view of the status (G4): approved = active. Setting it approves or archives."""
+        return self.status == "approved"
+
+    @active.inplace.setter
+    def _active_setter(self, value: bool) -> None:
+        self.status = "approved" if value else "archived"
+
+    @active.inplace.expression
+    @classmethod
+    def _active_expression(cls):
+        return cls.status == "approved"
+
+
+class RecruiterTemplateVersion(Base):
+    """pob-023 G7: one row per saved content of a template (v1 at create, then each content change) -- append-only."""
+
+    __tablename__ = "recruiter_template_versions"
+    __table_args__ = (UniqueConstraint("template_id", "version", name="uq_recruiter_template_versions_version"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    template_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_message_templates.id", ondelete="CASCADE"))
+    version: Mapped[int] = mapped_column(Integer)
+    content: Mapped[dict] = mapped_column(JSON)
+    edited_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class RecruiterMessage(Base, TimestampMixin):
@@ -7726,6 +7974,10 @@ class RecruiterMessage(Base, TimestampMixin):
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     calendar_ics: Mapped[str | None] = mapped_column(Text, nullable=True)  # hrc-028 (I6): an interview invite, built when queued
     replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # pob-005 D7: a reply logged by hand
+    # pob-007 (DEC-SCOPE-422 A1/A3): what a LinkedIn row records, and an outcome with its next follow-up (set once)
+    linkedin_action: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    outcome: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    follow_up_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_follow_ups.id", ondelete="RESTRICT"), nullable=True)
 
 
 # upc-026 (DEC-SCOPE-139, spec §2): the §28 document centre. The 12 kinds in source order (DC1); the commission agreement is never
@@ -7981,6 +8233,14 @@ RECRUITER_CONTRACT_CHECKS = {
     "ck_recruiter_contracts_contract_document": "(contract_document_key IS NULL) = (contract_document_content_type IS NULL)",
     "ck_recruiter_contracts_mou_document": "(mou_document_key IS NULL) = (mou_document_content_type IS NULL)",
 }
+# pob-010 (DEC-SCOPE-420 V8): a vendor agreement is a contract with party='vendor'; direction and confidentiality belong to it alone. 0300 keeps a frozen copy.
+RECRUITER_CONTRACT_PARTIES = ("client", "vendor")
+RECRUITER_CONTRACT_DIRECTIONS = ("vendor_pays_us", "we_pay_vendor")
+RECRUITER_CONTRACT_VENDOR_CHECKS = {
+    "ck_recruiter_contracts_party": "party IN ('client', 'vendor')",
+    "ck_recruiter_contracts_direction": "direction IS NULL OR direction IN ('vendor_pays_us', 'we_pay_vendor')",
+    "ck_recruiter_contracts_vendor_terms": "party = 'vendor' OR (direction IS NULL AND confidentiality_terms IS NULL)",
+}
 
 
 class RecruiterContract(Base, TimestampMixin):
@@ -7990,7 +8250,8 @@ class RecruiterContract(Base, TimestampMixin):
     __tablename__ = "recruiter_contracts"
     __table_args__ = (
         *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_CONTRACT_CHECKS.items()),
-        Index("uq_recruiter_contracts_current", "company_id", unique=True, postgresql_where=text("is_current")),
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_CONTRACT_VENDOR_CHECKS.items()),
+        Index("uq_recruiter_contracts_current", "company_id", "party", unique=True, postgresql_where=text("is_current")),  # pob-010 V8: per party
         Index("ix_recruiter_contracts_company", "company_id", "created_at"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -8014,6 +8275,9 @@ class RecruiterContract(Base, TimestampMixin):
     mou_document_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     mou_document_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_current: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    party: Mapped[str] = mapped_column(String(10), default="client", server_default="client")  # pob-010 V8
+    direction: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    confidentiality_terms: Mapped[str | None] = mapped_column(String(2000), nullable=True)
 
 
 class RecruiterContractEvent(Base):
@@ -8061,7 +8325,7 @@ class CompanySkillDemand(Base):
 
 
 # pob-003 D6: the §3.1 document types, in source order; migration 0283 freezes a copy (test_pob_003_migration keeps them identical).
-COMPANY_DOCUMENT_KINDS = ("company_profile", "vendor_onboarding_form", "recruitment_agreement", "job_description", "meeting_notes")
+COMPANY_DOCUMENT_KINDS = ("company_profile", "vendor_onboarding_form", "recruitment_agreement", "job_description", "meeting_notes", "nda")  # nda: pob-010 V7
 
 
 class CompanyDocument(Base):

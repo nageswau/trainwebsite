@@ -310,6 +310,22 @@ def feedback_overdue_task():
 
 
 @celery.task
+def interview_reminders_task():
+    """pob-022 (DEC-SCOPE-421 A3): every 15 minutes via beat. Idempotent (`interviews.first_reminder_at` / `second_reminder_at`)."""
+    from app.services.interview_automation import run_reminders
+
+    return _run_with_fresh_pool(run_reminders)
+
+
+@celery.task
+def interview_feedback_chase_task():
+    """pob-022 (A5/A6): hourly via beat. Idempotent (`interviews.chase_follow_up_id` / `chase_escalated_at`)."""
+    from app.services.interview_automation import run_feedback_chase
+
+    return _run_with_fresh_pool(run_feedback_chase)
+
+
+@celery.task
 def new_matches_task():
     """hrc-032 (DEC-SCOPE-413 N7): hourly via beat. Idempotent (`jobs.match_notified_at`)."""
     from app.services.recruitment_notices import run_new_matches
@@ -339,6 +355,8 @@ celery.conf.beat_schedule = {
     "hrc032-feedback-overdue": {"task": "app.worker.feedback_overdue_task", "schedule": crontab(minute=10)},
     "hrc032-new-matches": {"task": "app.worker.new_matches_task", "schedule": crontab(minute=40)},
     "pob004-company-inactive-sweep": {"task": "app.worker.company_inactive_sweep_task", "schedule": crontab(hour=19, minute=30)},  # UTC = 01:00 IST
+    "pob022-interview-reminders": {"task": "app.worker.interview_reminders_task", "schedule": crontab(minute="*/15")},
+    "pob022-feedback-chase": {"task": "app.worker.interview_feedback_chase_task", "schedule": crontab(minute=20)},
     "hrc034-portal-events-retention": {"task": "app.worker.portal_events_retention_task", "schedule": crontab(hour=19, minute=15)},  # UTC = 00:45 IST
     "agn017-daily-reminders": {"task": "app.worker.send_daily_reminders_task", "schedule": crontab(hour=2, minute=30)},  # UTC = 08:00 IST
     "ccrm030-counselor-reminders": {"task": "app.worker.send_counselor_reminders_task", "schedule": crontab(hour=2, minute=45)},  # UTC = 08:15 IST

@@ -19,8 +19,14 @@ const INTRO: Record<string, string> = {
 // recruiter without a profile gets its 403 message here, from the probe read alongside the session.
 export default async function RecruiterCompaniesPage() {
   let user: User;
+  let canImport = false; // pob-006: a failed read only hides the link
   try {
-    [user] = await Promise.all([serverApi<User>("/api/v1/auth/me"), serverApi(`${COMPANIES_URL}?limit=1`)]);
+    const [me, , grants] = await Promise.all([
+      serverApi<User>("/api/v1/auth/me"), serverApi(`${COMPANIES_URL}?limit=1`),
+      serverApi<{ permissions: string[] }>("/api/v1/auth/me/permissions").catch(() => ({ permissions: [] as string[] })),
+    ]);
+    user = me;
+    canImport = grants.permissions.includes("crm.import");
   } catch (e) {
     return accessUnavailable(e, RECRUITER_SIGN_IN);
   }
@@ -39,7 +45,7 @@ export default async function RecruiterCompaniesPage() {
           </div>
         </div>
         <Suspense fallback={<p className="muted" role="status">Loading companies…</p>}>
-          <RecruiterCompaniesPanel canCreate={CREATOR_ROLES.includes(user.role)} isManager={manager} />
+          <RecruiterCompaniesPanel canCreate={CREATOR_ROLES.includes(user.role)} isManager={manager} canImport={canImport} />
         </Suspense>
       </div>
     </PortalShell>
