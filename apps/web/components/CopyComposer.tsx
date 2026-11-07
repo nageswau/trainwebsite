@@ -2,7 +2,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
-import { COPIES_URL, type CopyChannel, type GovernedTemplate, type MessageContext, type Party, recruiterTarget, usableTemplates } from "@/lib/recruiterMessages";
+import {
+  COPIES_URL, type CopyChannel, type GovernedTemplate, LINKEDIN_ACTIONS, LINKEDIN_URL, type LinkedInAction, type MessageContext, type Party, recruiterTarget,
+  usableTemplates,
+} from "@/lib/recruiterMessages";
 import { missingNote } from "@/lib/telecallerMessages";
 
 type Rendered = { body: string; steps: string[] | null; missing: string[] };
@@ -24,6 +27,9 @@ export default function CopyComposer({ channel, party, context, onCopied, onCanc
   const copying = useRef(false);
   const id = useId();
   const target = recruiterTarget(party, context);
+  // pob-007 (DEC-SCOPE-421 A1): LinkedIn outreach is logged as sent -- with or without a template; the text is optional for a connection request
+  const linkedin = channel === "linkedin";
+  const [action, setAction] = useState<LinkedInAction>("connection_request");
 
   useEffect(() => {
     picker.current?.focus();
@@ -46,6 +52,29 @@ export default function CopyComposer({ channel, party, context, onCopied, onCanc
   }, [renderUrl]);
 
   const ready = typeof preview === "object" && preview !== null && text.trim() !== "";
+  const canLog = linkedin && preview !== "loading" && preview !== "failed" && (action === "connection_request" || text.trim() !== "");
+
+  async function log() {
+    if (!canLog || copying.current) return;
+    copying.current = true;
+    setBusy(true);
+    setError(null);
+    let copied = false;
+    if (templateId && text.trim()) {
+      try {
+        await navigator.clipboard.writeText(text.trim());
+        copied = true;
+      } catch {
+        // the log still records what was sent; the recruiter can select the text by hand
+      }
+    }
+    const outcome = await sendJson(LINKEDIN_URL, "POST", { ...target.payload, action, template_id: templateId || null, body: text.trim() });
+    copying.current = false;
+    setBusy(false);
+    const what = action === "connection_request" ? "LinkedIn connection request" : "LinkedIn message";
+    if (outcome.ok) return onCopied(`${what} to ${party.name} ${copied ? "copied and logged" : "logged"}.`);
+    setError(outcome.message);
+  }
 
   async function copy() {
     if (!ready || copying.current) return;
@@ -70,6 +99,14 @@ export default function CopyComposer({ channel, party, context, onCopied, onCanc
 
   return (
     <div className="action-card" style={{ display: "grid", gap: 8, marginTop: 8 }} role="group" aria-label={NOUN[channel]}>
+      {linkedin && (
+        <div className="field">
+          <label htmlFor={`${id}-action`}>What did you send on LinkedIn?</label>
+          <select id={`${id}-action`} value={action} disabled={busy} onChange={(e) => setAction(e.target.value as LinkedInAction)}>
+            {LINKEDIN_ACTIONS.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}
+          </select>
+        </div>
+      )}
       <div className="field">
         <label htmlFor={`${id}-template`}>Template</label>
         <select ref={picker} id={`${id}-template`} value={templateId} disabled={busy} onChange={(e) => setTemplateId(e.target.value)}>
@@ -98,9 +135,20 @@ export default function CopyComposer({ channel, party, context, onCopied, onCanc
           )}
         </>
       )}
+      {linkedin && !templateId && (
+        <div className="field">
+          <label htmlFor={`${id}-free`}>Message sent{action === "connection_request" ? " (optional for a connection request)" : ""}</label>
+          <textarea id={`${id}-free`} rows={3} maxLength={2000} value={text} disabled={busy} onChange={(e) => setText(e.target.value)} />
+        </div>
+      )}
       {error && <p className="form-error" role="alert" style={{ margin: 0 }}>{error}</p>}
       <div className="actions">
         {ready && <button type="button" className="btn small" disabled={busy} onClick={() => void copy()}>{busy ? "Copying…" : "Copy to clipboard"}</button>}
+        {linkedin && (
+          <button type="button" className={ready ? "btn secondary small" : "btn small"} disabled={busy || !canLog} onClick={() => void log()}>
+            {busy ? "Logging…" : templateId && text.trim() ? "Copy and log as sent" : "Log as sent"}
+          </button>
+        )}
         <button type="button" className="btn secondary small" onClick={onCancel}>Cancel</button>
       </div>
     </div>

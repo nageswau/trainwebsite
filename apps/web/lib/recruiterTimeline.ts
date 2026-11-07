@@ -8,6 +8,7 @@ import { COMPANIES_URL } from "@/lib/recruiterCompanies";
 import { reasonLabel } from "@/lib/recruiterFollowUps";
 import { ROUNDS } from "@/lib/recruiterInterviews";
 import { meetingTypeLabel } from "@/lib/recruiterMeetings";
+import { linkedinTitle } from "@/lib/recruiterMessages";
 import { CHANNELS, RESPONSES } from "@/lib/recruiterShares";
 
 type Kind = "stage" | "call" | "message" | "meeting" | "follow_up" | "requirement" | "share" | "share_response" | "contract" | "application" | "interview" | "offer"
@@ -100,6 +101,9 @@ export function timelineEntry(row: RecTimelineRow): TimelineEntry {
       return { ...base, badge: "Call", tone: TONE.contact, title: `${row.event === "incoming" ? "Incoming" : "Outgoing"} call: ${row.from_label}`,
         meta: compact([row.to_label && `With ${row.to_label}`, row.duration_seconds != null && `Duration ${duration(row.duration_seconds)}`]) };
     case "message": {
+      if (row.event === "linkedin") // pob-007 A2: the action travels in `status`
+        return { ...base, badge: "LinkedIn", tone: TONE.contact, title: linkedinTitle(row.status),
+          meta: compact([row.to_label && `To ${row.to_label}`, row.from_value || (row.status === "message" ? "Custom message" : null)]) };
       const email = row.event === "email";
       return { ...base, badge: email ? "Email" : "WhatsApp", tone: row.status === "failed" ? TONE.stop : TONE.contact,
         title: email ? EMAIL_TITLE[row.status ?? "queued"] ?? "Email" : "WhatsApp sent",

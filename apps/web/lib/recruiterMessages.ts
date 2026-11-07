@@ -111,6 +111,16 @@ export type TemplateVersion = Omit<GovernedTemplate, "id" | "channel" | "active"
 export const templateUrl = (id: string, action = "") => `${TEMPLATES_URL}/${encodeURIComponent(id)}${action ? `/${action}` : ""}`;
 export const COPIES_URL = `${MESSAGES_URL}/copies`;
 
+// --- pob-007 (DEC-SCOPE-421 A1/A3): LinkedIn outreach logged by hand, and a message's outcome ------------------------------------------
+export const LINKEDIN_URL = `${MESSAGES_URL}/linkedin`;
+export const messageOutcomeUrl = (id: string) => `${MESSAGES_URL}/${encodeURIComponent(id)}/outcome`;
+export const LINKEDIN_ACTIONS = [{ key: "connection_request", label: "Connection request" }, { key: "message", label: "Message" }] as const;
+export type LinkedInAction = (typeof LINKEDIN_ACTIONS)[number]["key"];
+/** "LinkedIn connection request sent" / "LinkedIn message sent". */
+export const linkedinTitle = (action: string | null | undefined) =>
+  action === "connection_request" ? "LinkedIn connection request sent" : "LinkedIn message sent";
+export const MESSAGE_OUTCOME_MAX = 500;
+
 /** What a composer may use (G5): approved shared templates and the caller's own personal ones, page after page. */
 export const usableTemplates = async (channel: TemplateChannel, signal?: AbortSignal): Promise<GovernedTemplate[]> => {
   const items: GovernedTemplate[] = [];

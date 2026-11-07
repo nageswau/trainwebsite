@@ -5,17 +5,20 @@ import CopyComposer from "@/components/CopyComposer";
 import EmailComposer from "@/components/EmailComposer";
 import WhatsAppComposer from "@/components/WhatsAppComposer";
 import type { Page } from "@/lib/apiErrors";
-import { CHANNEL_LABEL, isPending, messageTitle, type Channel, type CopyChannel, type MessageContext, type Party } from "@/lib/recruiterMessages";
+import { formatSchoolDateTime } from "@/lib/formatDate";
+import { CHANNEL_LABEL, isPending, linkedinTitle, messageTitle, type Channel, type CopyChannel, type MessageContext, type Party } from "@/lib/recruiterMessages";
 import { getPage } from "@/lib/telecallerCatalogue";
 import { sentLabel, type ComposerTarget, type DeliveryStatus } from "@/lib/telecallerMessages";
 
 /** What a message line needs: rec-026's recruiter messages and upc-012's university messages both fit. ccrm-037's student messages add
  *  the application they are about and replies recorded by hand (`direction: "inbound"`). */
 export type MessageLine = {
-  id: string; contact?: { name: string } | null; candidate?: { name: string } | null; channel: Channel; template: { name: string } | null;
+  id: string; contact?: { name: string } | null; candidate?: { name: string } | null; channel: Channel | "linkedin"; template: { name: string } | null;
   subject: string | null; body: string; delivery_status: DeliveryStatus | null; sent_at: string; sender: { full_name: string };
   direction?: "outbound" | "inbound"; application?: { label: string } | null;
   replied_at?: string | null; // pob-005 D7: a reply the recruiter logged on this message
+  // pob-007 (A1/A3): a LinkedIn row's action; an outcome and its next follow-up
+  linkedin_action?: string | null; outcome?: string | null; follow_up?: { id: string; due_at: string } | null;
 };
 const TEXT = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
 const POLL_MS = 5000; // a queued email is usually sent within seconds
@@ -26,13 +29,16 @@ function MessageItem({ message, showTo, action }: { message: MessageLine; showTo
   const reply = message.direction === "inbound";
   return (
     <li className="action-card" style={{ listStyle: "none", gap: 6 }} aria-labelledby={`${id}-title`}>
-      <strong id={`${id}-title`}>{reply ? sentLabel(message.sent_at, `${CHANNEL_LABEL[message.channel]} reply received`) : messageTitle(message)}</strong>
+      <strong id={`${id}-title`}>
+        {message.channel === "linkedin" ? sentLabel(message.sent_at, linkedinTitle(message.linkedin_action))
+          : reply ? sentLabel(message.sent_at, `${CHANNEL_LABEL[message.channel]} reply received`) : messageTitle({ ...message, channel: message.channel })}
+      </strong>
       <p className="muted" style={{ margin: 0 }}>
         {showTo && to ? `To ${to} · ` : ""}{message.application ? `About ${message.application.label} · ` : ""}
         {reply ? `Recorded by ${message.sender.full_name}` : `${message.template?.name ?? "Custom message"} · ${message.sender.full_name}`}
       </p>
       {message.subject && <p style={{ ...TEXT, margin: 0 }}><strong>Subject:</strong> {message.subject}</p>}
-      <p style={{ ...TEXT, margin: 0 }}>{message.body}</p>
+      {message.body && <p style={{ ...TEXT, margin: 0 }}>{message.body}</p>}
       {message.delivery_status === "failed" && (
         <p className="form-error" style={{ margin: 0, fontSize: 13 }}>This email was not delivered. Check the email address and send it again.</p>
       )}
@@ -40,6 +46,11 @@ function MessageItem({ message, showTo, action }: { message: MessageLine; showTo
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>The mail server didn&apos;t accept it yet. It will be retried automatically.</p>
       )}
       {message.replied_at && <p className="form-message" style={{ margin: 0, fontSize: 13 }}>{sentLabel(message.replied_at, "Reply received")}</p>}
+      {message.outcome && (
+        <p style={{ ...TEXT, margin: 0, fontSize: 13 }}>
+          <strong>Outcome:</strong> {message.outcome}{message.follow_up && ` (follow-up due ${formatSchoolDateTime(message.follow_up.due_at, true)})`}
+        </p>
+      )}
       {action}
     </li>
   );
@@ -143,7 +154,7 @@ export default function MessagesSection({ listUrl, parties, picker, targetFor, c
       )}
       {party && copy && (composing === "linkedin" || composing === "call") && (
         <CopyComposer key={`${party.id}-${composing}`} channel={composing} party={party} context={copy.context} onCancel={() => setComposing(null)}
-          onCopied={(text) => { setComposing(null); setNotice(text); }} />
+          onCopied={done} />
       )}
       {failed ? (
         <div>

@@ -1,5 +1,5 @@
 "use client";
-import { type ChangeEvent, type FormEvent, useId, useRef, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useId, useRef, useState } from "react";
 
 import type { ContactOption } from "@/components/RecruiterFollowUpForm";
 import ReturnToLoginLink from "@/components/ReturnToLoginLink";
@@ -7,14 +7,18 @@ import { sendJson, type SendOutcome } from "@/lib/apiErrors";
 import { istInputToIso, isoToIstInput, nowIstInput } from "@/lib/bdmAppointments";
 import { SAVE_FAILED, SESSION_ENDED, writeFailure } from "@/lib/bdmTasks";
 import { fieldErrors } from "@/lib/bdmTravel";
-import { type CallParty, CALLS_URL, callUrl, DIRECTIONS, isLogCallResult, isRecCall, type LogCallResult, NOTES_MAX, OUTCOMES, type RecCall } from "@/lib/recruiterCalls";
+import {
+  type CallParty, CALLS_URL, callUrl, DIRECTIONS, isLogCallResult, isRecCall, type LogCallResult, NEXT_ACTION_MAX, NOTES_MAX, OBJECTION_NOTES_MAX, OBJECTIONS,
+  OUTCOMES, type RecCall,
+} from "@/lib/recruiterCalls";
 import { RECRUITER_SIGN_IN } from "@/lib/recruiterCompanies";
 import { NOTES_MAX as FOLLOW_UP_NOTES_MAX, REASONS } from "@/lib/recruiterFollowUps";
+import { REQUIREMENTS_URL } from "@/lib/recruiterRequirements";
 import { toSeconds } from "@/lib/telecallerCalls";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
 
 type Values = { contact_id: string; outcome: string; when: string; direction: string; minutes: string; seconds: string; notes: string; due: string;
-  reason: string; fu_notes: string };
+  reason: string; fu_notes: string; job_id: string; objection_notes: string; next_action: string };
 const LEGEND = { fontWeight: 800, fontSize: 13, padding: 0, marginBottom: 7 } as const; // reads like the `.field label` beside it (tel-010 QA-01)
 const BACKDATE_DAYS = 7; // CA5: the API's bound; the picker's min is a hint only
 const GRID = { display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))", alignItems: "start" } as const; // QA-01: a select is not stretched to the duration row
@@ -43,7 +47,11 @@ export default function RecruiterCallForm({ party, contacts = [], call, onLogged
     contact_id: "", outcome: "", when: call ? isoToIstInput(call.occurred_at) : nowIstInput(), direction: call?.direction ?? "outgoing",
     minutes: call?.duration_seconds != null ? String(Math.floor(call.duration_seconds / 60)) : "",
     seconds: call?.duration_seconds != null ? String(call.duration_seconds % 60) : "", notes: call?.notes ?? "", due: "", reason: "", fu_notes: "",
+    job_id: call?.requirement?.id ?? "", objection_notes: call?.objection_notes ?? "", next_action: call?.next_action ?? "",
   }));
+  const [startObjections] = useState<string[]>(() => call?.objections ?? []);
+  const [objections, setObjections] = useState(startObjections);
+  const [requirements, setRequirements] = useState<{ id: string; label: string }[]>([]);
   const [v, setV] = useState(start);
   const [addFollowUp, setAddFollowUp] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -52,10 +60,26 @@ export default function RecruiterCallForm({ party, contacts = [], call, onLogged
   const [failure, setFailure] = useState<string | null>(null);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [limits] = useState(() => ({ max: nowIstInput(), min: call ? `${nowIstInput().slice(0, 10)}T00:00` : earliestInput() }));
-  const dirty = (Object.keys(start) as (keyof Values)[]).some((key) => v[key] !== start[key]);
+  const dirty = (Object.keys(start) as (keyof Values)[]).some((key) => v[key] !== start[key]) || objections.join() !== startObjections.join();
   useLeaveGuard(!busy && dirty, "Discard this call?");
 
   const contactCall = party.kind === "contact";
+  const companyId = party.kind === "contact" ? party.companyId : null;
+
+  useEffect(() => {
+    // pob-007 A4: the requirement discussed is one of the company's (a contact call only)
+    if (!companyId) return;
+    const controller = new AbortController();
+    fetch(`${REQUIREMENTS_URL}?${new URLSearchParams({ company_id: companyId, limit: "100" })}`, { signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((page: { items: { id: string; requirement_code: string; title: string }[] }) =>
+        setRequirements(page.items.map((j) => ({ id: j.id, label: `${j.requirement_code} — ${j.title}` }))))
+      .catch(() => undefined); // the picker stays at "None": a requirement is optional
+    return () => controller.abort();
+  }, [companyId]);
+  const stored = call?.requirement;
+  const requirementOptions = stored && !requirements.some((r) => r.id === stored.id) ? [...requirements, { id: stored.id, label: `${stored.code} — ${stored.title}` }] : requirements;
+  const toggle = (key: string) => setObjections((list) => (list.includes(key) ? list.filter((k) => k !== key) : [...list, key]));
   const withFollowUp = !call && contactCall && addFollowUp;
   const fid = (key: string) => `${id}-${key}`;
   const set = (key: keyof Values) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setV({ ...v, [key]: e.target.value });
@@ -79,18 +103,27 @@ export default function RecruiterCallForm({ party, contacts = [], call, onLogged
 
   function send(): Promise<SendOutcome> | null {
     const notes = v.notes.trim() || null;
+    const ordered = OBJECTIONS.map((o) => o.key as string).filter((k) => objections.includes(k));
+    const details = { // pob-007 A4
+      ...(contactCall ? { job_id: v.job_id || null } : {}), objections: ordered.length ? ordered : null,
+      objection_notes: v.objection_notes.trim() || null, next_action: v.next_action.trim() || null,
+    };
     if (!call) {
       return sendJson(CALLS_URL, "POST", {
-        ...(party.kind === "contact" ? { contact_id: v.contact_id } : { candidate_id: party.candidateId }),
+        ...(party.kind === "contact" ? { contact_id: v.contact_id } : { candidate_id: party.candidateId }), ...details,
         outcome: v.outcome, occurred_at: istInputToIso(v.when), direction: v.direction, duration_seconds: seconds, notes,
         next_follow_up: withFollowUp ? { due_at: istInputToIso(v.due), reason: v.reason, notes: v.fu_notes.trim() || null } : null,
       });
     }
-    const changes: Record<string, string | number | null> = {};
+    const changes: Record<string, string | string[] | number | null> = {};
     if (v.when !== start.when) changes.occurred_at = istInputToIso(v.when);
     if (seconds !== call.duration_seconds) changes.duration_seconds = seconds;
     if (v.direction !== call.direction) changes.direction = v.direction;
     if (notes !== (call.notes ?? null)) changes.notes = notes;
+    if (contactCall && v.job_id !== start.job_id) changes.job_id = v.job_id || null;
+    if (ordered.join() !== (call.objections ?? []).join()) changes.objections = details.objections;
+    if (details.objection_notes !== (call.objection_notes ?? null)) changes.objection_notes = details.objection_notes;
+    if (details.next_action !== (call.next_action ?? null)) changes.next_action = details.next_action;
     return Object.keys(changes).length ? sendJson(callUrl(call.id), "PATCH", changes) : null;
   }
 
@@ -182,6 +215,39 @@ export default function RecruiterCallForm({ party, contacts = [], call, onLogged
           aria-describedby={errors.notes ? `${fid("notes")}-count ${fid("notes")}-error` : `${fid("notes")}-count`} />
         <p id={`${fid("notes")}-count`} className="muted" style={{ margin: 0 }}>{v.notes.length}/{NOTES_MAX}</p>
         {error("notes")}
+      </div>
+      {contactCall && (
+        <div className="field">
+          <label htmlFor={fid("job_id")}>Requirement discussed</label>
+          <select id={fid("job_id")} value={v.job_id} onChange={set("job_id")} {...invalid("job_id")}>
+            <option value="">None</option>
+            {requirementOptions.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+          </select>
+          {error("job_id")}
+        </div>
+      )}
+      <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }} aria-describedby={errors.objections ? `${fid("objections")}-error` : undefined}>
+        <legend style={LEGEND}>Objections</legend>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px" }}>
+          {OBJECTIONS.map((o) => (
+            <label key={o.key} style={{ display: "flex", gap: 6, alignItems: "center", fontWeight: 400 }}>
+              <input type="checkbox" checked={objections.includes(o.key)} onChange={() => toggle(o.key)} /> {o.label}
+            </label>
+          ))}
+        </div>
+        {error("objections")}
+      </fieldset>
+      <div className="form-grid" style={GRID}>
+        <div className="field">
+          <label htmlFor={fid("objection_notes")}>Objection notes</label>
+          <input id={fid("objection_notes")} maxLength={OBJECTION_NOTES_MAX} value={v.objection_notes} onChange={set("objection_notes")} {...invalid("objection_notes")} />
+          {error("objection_notes")}
+        </div>
+        <div className="field">
+          <label htmlFor={fid("next_action")}>Next action</label>
+          <input id={fid("next_action")} maxLength={NEXT_ACTION_MAX} value={v.next_action} onChange={set("next_action")} {...invalid("next_action")} />
+          {error("next_action")}
+        </div>
       </div>
       {!call && contactCall && (
         <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>

@@ -7,10 +7,10 @@ import { istInputToIso, isoToIstInput, nowIstInput } from "@/lib/bdmAppointments
 import { SAVE_FAILED, SESSION_ENDED, writeFailure } from "@/lib/bdmTasks";
 import { fieldErrors } from "@/lib/bdmTravel";
 import { RECRUITER_SIGN_IN } from "@/lib/recruiterCompanies";
-import { companyFollowUpsUrl, followUpUrl, isRecFollowUp, NOTES_MAX, REASONS, type RecFollowUp } from "@/lib/recruiterFollowUps";
+import { companyFollowUpsUrl, followUpUrl, isRecFollowUp, NOTES_MAX, PRIORITIES, REASONS, type RecFollowUp } from "@/lib/recruiterFollowUps";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
 
-type Values = { due: string; reason: string; contact_id: string; notes: string };
+type Values = { due: string; reason: string; contact_id: string; notes: string; priority: string; remind: string };
 export type ContactOption = { id: string; name: string };
 
 // rec-024 (spec §4; FU5, FU6): add a follow-up to a company, or reschedule / edit an open one. Times are entered and shown in IST. The
@@ -22,7 +22,7 @@ export default function RecruiterFollowUpForm({ companyId, contacts, followUp, o
   const id = useId();
   const [start] = useState<Values>({
     due: followUp ? isoToIstInput(followUp.due_at) : "", reason: followUp?.reason ?? "", contact_id: followUp?.contact?.id ?? "",
-    notes: followUp?.notes ?? "",
+    notes: followUp?.notes ?? "", priority: followUp?.priority ?? "medium", remind: followUp?.remind_at ? isoToIstInput(followUp.remind_at) : "",
   });
   const [v, setV] = useState(start);
   const [busy, setBusy] = useState(false);
@@ -42,6 +42,8 @@ export default function RecruiterFollowUpForm({ companyId, contacts, followUp, o
   function send(): Promise<SendOutcome> | null {
     const body: Record<string, string | null> = {
       due_at: istInputToIso(v.due), reason: v.reason, notes: v.notes.trim() || null, ...(contacts ? { contact_id: v.contact_id || null } : {}),
+      // pob-007 A8: sent only when chosen (the API defaults to medium, no reminder)
+      ...(v.priority !== "medium" ? { priority: v.priority } : {}), ...(v.remind ? { remind_at: istInputToIso(v.remind) } : {}),
     };
     if (!followUp) return sendJson(companyFollowUpsUrl(companyId), "POST", body);
     const changes: Record<string, string | null> = {};
@@ -49,6 +51,8 @@ export default function RecruiterFollowUpForm({ companyId, contacts, followUp, o
     if (v.reason !== start.reason) changes.reason = body.reason;
     if (contacts && v.contact_id !== start.contact_id) changes.contact_id = body.contact_id;
     if (body.notes !== (followUp.notes ?? null)) changes.notes = body.notes;
+    if (v.priority !== start.priority) changes.priority = v.priority;
+    if (v.remind !== start.remind) changes.remind_at = v.remind ? istInputToIso(v.remind) : null;
     return Object.keys(changes).length ? sendJson(followUpUrl(followUp.id), "PATCH", changes) : null;
   }
 
@@ -89,6 +93,18 @@ export default function RecruiterFollowUpForm({ companyId, contacts, followUp, o
             {REASONS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
           </select>
           {error("reason")}
+        </div>
+        <div className="field">
+          <label htmlFor={fid("priority")}>Priority</label>
+          <select id={fid("priority")} value={v.priority} onChange={set("priority")} {...invalid("priority")}>
+            {PRIORITIES.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+          </select>
+          {error("priority")}
+        </div>
+        <div className="field">
+          <label htmlFor={fid("remind_at")}>Reminder (IST, optional)</label>
+          <input id={fid("remind_at")} type="datetime-local" min={now} max={v.due || undefined} value={v.remind} onChange={set("remind")} {...invalid("remind_at")} />
+          {error("remind_at")}
         </div>
         {contactOptions && (
           <div className="field">
