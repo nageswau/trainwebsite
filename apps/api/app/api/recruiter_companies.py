@@ -77,6 +77,7 @@ async def list_companies(
     lead_source_id: UUID | None = None,
     industry_id: UUID | None = None,
     city: str | None = Query(None, max_length=120),
+    territory: str | None = Query(None, max_length=120, description="pob-009 T4: exact territory, case-insensitive"),
     assigned: str | None = Query(None, max_length=36),
     include_archived: bool = False,
     sort: Literal["name", "last_contacted"] = "name",  # pob-003 D5
@@ -93,6 +94,8 @@ async def list_companies(
         filters.append(Company.archived_at.is_(None))
     filters += _matching(like_pattern(q), Company.name, Company.company_code)
     filters += _matching(like_pattern(city), Company.city)
+    if territory and territory.strip():
+        filters.append(func.lower(Company.territory) == territory.strip().lower())
     if priority:
         filters.append(Company.priority == priority)
     if lead_source_id:

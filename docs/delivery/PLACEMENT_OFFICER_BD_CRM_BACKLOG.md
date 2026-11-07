@@ -331,6 +331,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** low.
 
 #### pob-009: Targets, territories, daily plans and daily/weekly reports for POs
+- **Status:** built (`DEC-SCOPE-423`, 2026-11-07; migration `0305_po_targets_reports`, API §12LP, RBAC §2.314); T1-T8 are the builder's calls (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §4 "Create daily activity plans and daily/weekly reports"; "Track outreach volume, response rate, meetings, requirements generated, vendor registrations and active accounts"; "Allow the manager to assign target companies, territories and monthly activity targets".
 - **Existing behavior:** BDM has targets (`BdmTarget`), territory and daily reports. Recruiters have only reassignment and `by_recruiter` BD counts. There is no response rate, no vendor registrations metric and no weekly report.
 - **Expected behavior:**

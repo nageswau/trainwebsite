@@ -768,6 +768,7 @@ class Company(Base, TimestampMixin):
     vendor_specialisations: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
     vendor_service_categories: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
     vendor_locations: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    territory: Mapped[str | None] = mapped_column(String(120), nullable=True)  # pob-009 T4: free text, filterable case-insensitively
 
 
 class CompanyVendorStatusHistory(Base):
@@ -6887,6 +6888,98 @@ class RecruiterProfile(Base, TimestampMixin):
     user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
     employee_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     reporting_manager_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    territory: Mapped[str | None] = mapped_column(String(120), nullable=True)  # pob-009 T4: set by the Team Lead
+
+
+# pob-009 (spec 2026-11-07-pob-009-po-targets-reports-design.md): PO targets, target companies, the daily plan and the activity reports.
+# Migration 0304 repeats these checks; test_pob_009_migration asserts they stay identical.
+PO_TARGET_KPIS = ("outreach", "responses", "meetings", "requirements", "vendor_registrations", "active_accounts", "placements")  # T2
+PO_TARGET_MAX = 100_000  # T3: the bdm-016 bound
+PO_REPORT_PERIODS = ("daily", "weekly")  # T7
+RECRUITER_TARGET_CHECKS = {
+    "ck_recruiter_targets_month_start": "EXTRACT(DAY FROM month) = 1",
+    "ck_recruiter_targets_target_range": f"target >= 0 AND target <= {PO_TARGET_MAX}",
+    "ck_recruiter_targets_kpi": "kpi_key IN (" + ", ".join(f"'{k}'" for k in PO_TARGET_KPIS) + ")",
+}
+RECRUITER_TARGET_COMPANY_CHECKS = {"ck_recruiter_target_companies_month_start": "EXTRACT(DAY FROM month) = 1"}
+RECRUITER_PLAN_ITEM_CHECKS = {"ck_recruiter_plan_items_one_subject": "(follow_up_id IS NULL) <> (company_id IS NULL)"}
+RECRUITER_ACTIVITY_REPORT_CHECKS = {
+    "ck_recruiter_activity_reports_period": "period IN ('daily', 'weekly')",
+    "ck_recruiter_activity_reports_monday": "period = 'daily' OR EXTRACT(ISODOW FROM period_start) = 1",
+}
+
+
+class RecruiterTarget(Base, TimestampMixin):
+    """pob-009 T3: a Team Lead-set monthly target for one KPI of one PO. Achieved is never stored (recruiter_metrics.po_counts); clearing
+    a target deletes the row."""
+
+    __tablename__ = "recruiter_targets"
+    __table_args__ = (
+        UniqueConstraint("recruiter_user_id", "month", "kpi_key", name="uq_recruiter_targets_user_month_kpi"),
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_TARGET_CHECKS.items()),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    recruiter_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    month: Mapped[date] = mapped_column(Date)
+    kpi_key: Mapped[str] = mapped_column(String(40))
+    target: Mapped[int] = mapped_column(Integer)
+    set_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    set_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class RecruiterTargetCompany(Base):
+    """pob-009 T5: a company on a PO's target list for a month. Ownership (`assigned_recruiter_user_id`) is not touched."""
+
+    __tablename__ = "recruiter_target_companies"
+    __table_args__ = (
+        UniqueConstraint("recruiter_user_id", "month", "company_id", name="uq_recruiter_target_companies"),
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_TARGET_COMPANY_CHECKS.items()),
+        Index("ix_recruiter_target_companies_company", "company_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    recruiter_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    month: Mapped[date] = mapped_column(Date)
+    added_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class RecruiterPlanItem(Base):
+    """pob-009 T6: one planned activity of a PO's day -- a due follow-up or a target company. Only today's plan changes."""
+
+    __tablename__ = "recruiter_plan_items"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_PLAN_ITEM_CHECKS.items()),
+        Index("uq_recruiter_plan_items_follow_up", "recruiter_user_id", "plan_date", "follow_up_id", unique=True, postgresql_where=text("follow_up_id IS NOT NULL")),
+        Index("uq_recruiter_plan_items_company", "recruiter_user_id", "plan_date", "company_id", unique=True, postgresql_where=text("company_id IS NOT NULL")),
+    )
+    __mapper_args__ = {"eager_defaults": True}
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    recruiter_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    plan_date: Mapped[date] = mapped_column(Date)
+    follow_up_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_follow_ups.id", ondelete="CASCADE"), nullable=True)
+    company_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True)
+    done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class RecruiterActivityReport(Base):
+    """pob-009 T7: a PO's submitted daily or weekly (Monday-Sunday IST) report. A row exists only once submitted; `counts` is the snapshot
+    of `recruiter_metrics.po_counts` at submission, so later edits never rewrite it."""
+
+    __tablename__ = "recruiter_activity_reports"
+    __table_args__ = (
+        UniqueConstraint("recruiter_user_id", "period", "period_start", name="uq_recruiter_activity_reports"),
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_ACTIVITY_REPORT_CHECKS.items()),
+    )
+    __mapper_args__ = {"eager_defaults": True}
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    recruiter_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    period: Mapped[str] = mapped_column(String(10))
+    period_start: Mapped[date] = mapped_column(Date)
+    counts: Mapped[dict] = mapped_column(JSON, default=dict)
+    note: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class _RecCatalogueValue(TimestampMixin):

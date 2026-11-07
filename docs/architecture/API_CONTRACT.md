@@ -6299,3 +6299,17 @@ Audit actions `recruiter_template.approve|archive|restore|copy`.
 - Message output (company messages, start/stop) adds `cadence {id, cadence_id, name, status, step, steps, next_step_at, end_reason, ended_at, can_stop} | null`. Follow-up output adds `reminded_at`. Follow-up reasons add `first_outreach`, `cadence_step`.
 - Notification event `it.recruiter.follow_up_due` (entity `recruiter_follow_up`, fixed text, action `/recruiter/follow-ups`); in `RECRUITMENT_EVENTS`.
 - `POST /recruiter/companies` and `POST /recruiter/companies/{id}/contacts` also create one open `first_outreach` follow-up (due in 24 hours) in the same transaction.
+
+## 12LQ. PO targets, territories, plans and activity reports (pob-009) — addendum, 2026-11-07
+
+`DEC-SCOPE-424`. Migration `0305_po_targets_reports`.
+
+- `GET /recruiter/targets?month=YYYY-MM` (PO), `GET /recruiter/manager/targets?month&limit&offset` (Team Lead: each PO's `kpis[{key, target, achieved, percent}]`, `response_rate`), `GET /recruiter/manager/targets/{user}?month` (one PO's sheet: `kpis[{key, label, definition, tracked, target, achieved, percent}]`, `contacts_reached`, `response_rate`, `territory`, `target_companies[]`, `editable`, `month_status`). Achieved is null for a future month.
+- `PUT /recruiter/manager/targets` `{month, items[{recruiter_user_id, kpi_key, target|null}]}` → `{month, changed}`; past month 422 (super_admin may), > 12 ahead 422, unknown KPI 422, other team 404, inactive PO 422. Audit `recruiter_target.set`.
+- `PUT /recruiter/manager/team/{user}/territory` `{territory|null}`. Audit `recruiter_territory.set`.
+- `POST /recruiter/manager/target-companies` (201) `{recruiter_user_id, month, company_ids[] | territory}` → `{month, added}`; exactly one source (422); a company outside the Team Lead's scope 404. `DELETE /recruiter/manager/target-companies/{id}` (204).
+- `GET /recruiter/daily-plan?date` → `{date, editable, items[], suggested_follow_ups[], suggested_companies[]}` (future 422). `POST /recruiter/daily-plan/items` (201) `{follow_up_id | company_id}` (duplicate 409, not a target 422, ≤ 50); `PATCH /recruiter/daily-plan/items/{id}` `{done}`; `DELETE` (204); an earlier day's item 422, another PO's 404.
+- `GET /recruiter/activity-reports/{daily|weekly}/{start}` and `POST .../submit` (201) `{note?}` → `{period, period_start, period_end, status, counts, plan, note, submitted_at, kpis}`; a weekly start not a Monday 422, a future start 422, resubmission 409. Audit `recruiter_activity_report.submitted`.
+- `GET /recruiter/activity-contacts?period&start&recruiter_id&limit&offset` → `{total, responses, response_rate, items[{contact, company, outreach, replied}]}`.
+- `GET /recruiter/manager/activity-reports?period&start` (grid: `status` submitted|missing) and `GET /recruiter/manager/activity-reports/{user}/{period}/{start}`.
+- Companies: create/PATCH/list/detail add `territory` (≤ 120); `GET /recruiter/companies?territory=` filters it exactly, case-insensitively.

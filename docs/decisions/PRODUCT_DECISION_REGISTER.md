@@ -12363,3 +12363,17 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - B9: a logged reply, a move to Replied / Meeting scheduled, Do Not Contact, Not interested or deactivation end the run in the same transaction; the sweep re-checks; a manual stop exists.
   - B10-B11: a new company / contact (the manual routes, not imports) gets one `first_outreach` follow-up due in 24 hours. B12: migration 0304 stamps overdue follow-ups so no backlog is sent.
 - **Not built:** automatic sending of any outreach; per-user reminder settings; first-outreach tasks for bulk imports.
+
+### DEC-SCOPE-424 — PO targets, territories, target companies, daily plans and daily/weekly reports (pob-009)
+- **Date:** 2026-11-07. **Status:** built; T1-T8 are the builder's calls (`NEEDS_CONFIRMATION`). **Evidence:** backlog pob-009 (§4), Appendix B.
+- **Spec:** `docs/superpowers/specs/2026-11-07-pob-009-po-targets-reports-design.md`. Migration `0305_po_targets_reports`; API §12LQ; RBAC §2.315.
+- **Calls:**
+  - T1: PO = `placement_team` (own records); Team Lead = `placement_manager` (direct reports; another team's PO is 404); super_admin all. No new grant.
+  - T2: outreach = contact messages (email, WhatsApp, LinkedIn) + outgoing contact calls; responses = distinct contacts reached in the period with a reply logged in the period; response rate = responses ÷ contacts reached; meetings completed, requirements created, vendor moves to `approved`, placements (joined recorded) -- each credited to the actor; active accounts is a snapshot of now. One `recruiter_metrics.po_counts` statement.
+  - T3: monthly targets per KPI (0-100000); current month + 12 ahead; past months super_admin only (bdm-016's rule); a mid-month change is audited from/to and applies at once.
+  - T4: territory is free text on companies and POs; the company list filters it exactly, case-insensitively.
+  - T5: target companies are a per-month list (by ids or by territory, ≤ 200, client companies in the Team Lead's scope); ownership is untouched.
+  - T6: only today's plan changes; items come from open follow-ups due by today on the PO's companies and this month's target companies; ≤ 50.
+  - T7: a week is Monday-Sunday IST; counts are live until submission and frozen at it; resubmission 409; no Team Lead comment.
+  - T8: `GET /recruiter/activity-contacts` is the drill-down behind the response rate (AC1).
+- **Not built:** reassigning company ownership by territory; Team Lead comments on reports; report reminders.

@@ -4034,3 +4034,8 @@ A placement officer has no company scope, but answering Missing still creates th
 - **Cadence library:** every recruiter-CRM role reads it (rec-003 `caller_scope`, others 403); `placement_manager` (the Team Lead) and super_admin create and edit (403 otherwise). No new grant.
 - **Start / stop on a message:** the contact's company scope (404) and `can_edit` (403), as a reply or outcome on the message (pob-005 / pob-007).
 - **Sweeps:** run in the worker. A reminder goes only to the company's current assigned recruiter (else the follow-up's creator); a step's follow-up is created for that owner and belongs to the company, so rec-024's scope applies.
+
+### 2.315 PO targets, plans and activity reports *(added 2026-11-07 — `DEC-SCOPE-424`, pob-009)*
+
+- **PO (`placement_team`):** reads their own targets, territory and target companies; manages their own daily plan (today only); reads and submits their own daily/weekly reports and the contacts drill-down (another PO's is 403).
+- **Team Lead (`placement_manager`) and super_admin:** set targets, territory and target companies and read reports of their direct reports (super_admin: everyone); a PO outside the team is 404. The PO routes are 403 to them, and every other role gets 403. No new grant.

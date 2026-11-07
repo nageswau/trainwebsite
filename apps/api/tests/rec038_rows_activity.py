@@ -28,10 +28,13 @@ from app.models import (
     RecruiterMeeting,
     RecruiterMessage,
     RecruiterMessageTemplate,
+    RecruiterPlanItem,
+    RecruiterTargetCompany,
     RecruitmentDrive,
 )
 from app.services import bdm_organizations as orgs
 from app.services import recruiter_contracts as contracts
+from app.services.bdm_appointments import today_ist
 from tests.rec038_helpers import PDF, R, add, allow, now, tag
 
 IN_SCOPE = ("rec", "mgr", "super", "bdm")  # rec-003 caller_scope readers of the world's company (R10: the assigned BDM)
@@ -46,8 +49,14 @@ REVENUE_OUT = ("rec_out", "mgr_out")  # a revenue reader without the requirement
 METRICS = ("mgr", "mgr_out", "super", "it_admin")  # rec-033 PF1 / rec-035 MG1 (it_admin reads: recruiters are IT staff)
 COLLEGE_READERS = ("rec", "rec_out", "mgr", "mgr_out", "super", "bdm", "bdm_out")  # pob-013 P3 (both BDMs are of the college module)
 COLLEGE_WRITERS = ("rec", "rec_out", "super", "bdm")  # pob-013 P4: `bdm` is the college's assigned BDM
+POS = ("rec", "rec_out")  # pob-009 T1: a PO's own targets, plan and reports
+TEAM_LEADS = ("mgr", "super")  # pob-009 T1: `rec` reports to `mgr`; `mgr_out` names a PO outside their team (404)
 
-PATH_VALUES = {"activity_kind": "contract"}
+
+def _po_targets(w) -> dict:
+    return {"month": w["po_month"], "items": [{"recruiter_user_id": w["rec_id"], "kpi_key": "outreach", "target": 5}]}
+
+PATH_VALUES = {"activity_kind": "contract", "po_period": "daily"}
 _DOC: dict[str, str] = {}  # one stored PDF reused by every world's contract (only its key is per row)
 
 
@@ -187,6 +196,24 @@ ROWS = [
     R("delete", "/recruiter/colleges/{college}/calendar/{college_event}", **allow(200, *COLLEGE_WRITERS)),
     R("post", "/recruiter/colleges/{college}/interactions", lambda w: {"channel": "meeting", "occurred_at": now().isoformat(), "summary": "Met the TPO"}, **allow(201, *COLLEGE_WRITERS)),
     R("patch", "/recruiter/colleges/{college}/contacts/{college_contact}", lambda w: {"office_details": f"Block {tag()}"}, **allow(200, *COLLEGE_WRITERS)),
+    # pob-009 (§2.315, T1): targets, territory, target companies, the daily plan and activity reports -- a PO's own; the Team Lead's direct reports
+    R("get", "/recruiter/targets", **allow(200, *POS)),
+    R("get", "/recruiter/manager/targets", **allow(200, "mgr", "mgr_out", "super")),
+    R("get", "/recruiter/manager/targets/{rec_id}", **allow(200, *TEAM_LEADS), mgr_out=404),
+    R("put", "/recruiter/manager/targets", _po_targets, **allow(200, *TEAM_LEADS), mgr_out=404),
+    R("put", "/recruiter/manager/team/{rec_id}/territory", {"territory": "North"}, **allow(200, *TEAM_LEADS), mgr_out=404),
+    R("post", "/recruiter/manager/target-companies", lambda w: {"recruiter_user_id": w["rec_id"], "month": w["po_month"], "company_ids": [w["company"]]},
+      **allow(201, *TEAM_LEADS), mgr_out=404),
+    R("delete", "/recruiter/manager/target-companies/{po_target_company}", **allow(204, *TEAM_LEADS), mgr_out=404),
+    R("get", "/recruiter/daily-plan", **allow(200, *POS)),
+    R("post", "/recruiter/daily-plan/items", lambda w: {"follow_up_id": w["activity_fu"]}, rec=201, rec_out=404),
+    R("patch", "/recruiter/daily-plan/items/{po_plan_item}", {"done": True}, rec=200, rec_out=404),
+    R("delete", "/recruiter/daily-plan/items/{po_plan_item}", rec=204, rec_out=404),
+    R("get", "/recruiter/activity-reports/{po_period}/{po_today}", **allow(200, *POS)),
+    R("post", "/recruiter/activity-reports/{po_period}/{po_today}/submit", {}, **allow(201, *POS)),
+    R("get", "/recruiter/activity-contacts?period=daily&start={po_today}&recruiter_id={rec_id}", **allow(200, "rec", *TEAM_LEADS), rec_out=403, mgr_out=404),
+    R("get", "/recruiter/manager/activity-reports?period=daily&start={po_today}", **allow(200, "mgr", "mgr_out", "super")),
+    R("get", "/recruiter/manager/activity-reports/{rec_id}/{po_period}/{po_today}", **allow(200, *TEAM_LEADS), mgr_out=404),
 ]
 
 
@@ -234,6 +261,9 @@ async def build(client, db, w) -> None:
     invoice = await add(db, RecruiterInvoice(job_id=job_id, invoice_number=tag("INV-"), invoice_date=now().date() - timedelta(days=1),
                                              due_date=now().date() + timedelta(days=30), amount=Decimal("150000.00"), created_by_user_id=rec.id))  # fmt: skip
     college = await _college(db, users["bdm"])
+    po_today = today_ist(now())  # pob-009: a target company and a plan item of rec's for today (IST)
+    target = await add(db, RecruiterTargetCompany(recruiter_user_id=rec.id, company_id=company_id, month=po_today.replace(day=1), added_by_user_id=users["mgr"].id))
+    plan_item = await add(db, RecruiterPlanItem(recruiter_user_id=rec.id, plan_date=po_today, company_id=company_id))
     # pob-008: a cadence, and a second contact whose message runs it (the first contact's message stays free to start one)
     steps = [{"day": 0, "channel": "email", "template_id": None}, {"day": 3, "channel": "call", "template_id": None}]
     cadence = await add(db, RecruiterCadence(name=tag("R38 Cadence "), steps=steps))
@@ -248,4 +278,5 @@ async def build(client, db, w) -> None:
         "activity_fu": str(fu.id), "activity_call": str(call.id), "activity_template": str(template.id), "activity_draft": str(draft.id), "activity_archived": str(archived.id), "activity_linkedin": str(linkedin.id), "activity_meeting": str(meeting.id),
         "activity_drive": str(drive.id), "activity_contract_company": str(second.id), "activity_contract": str(contract.id), "activity_invoice": str(invoice.id),
         "activity_document": str(document.id), "activity_message": str(message.id),
+        "po_today": po_today.isoformat(), "po_month": po_today.strftime("%Y-%m"), "po_target_company": str(target.id), "po_plan_item": str(plan_item.id),
     })  # fmt: skip

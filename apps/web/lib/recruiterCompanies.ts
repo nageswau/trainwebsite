@@ -10,7 +10,7 @@ export type Person = { id: string; full_name: string; active: boolean };
 export type Priority = "hot" | "warm" | "cold";
 export type CompanyPermissions = { can_edit: boolean; can_archive: boolean; can_restore: boolean; can_reassign: boolean };
 export type CompanyRow = {
-  id: string; code: string; name: string; city: string | null; priority: Priority | null; industry: Ref | null; lead_source: Ref | null;
+  id: string; code: string; name: string; city: string | null; territory?: string | null; /* pob-009 T4 */ priority: Priority | null; industry: Ref | null; lead_source: Ref | null;
   assigned_recruiter: Person | null; archived: boolean; permissions: CompanyPermissions;
   stage: string; stage_label: string; lost: boolean; // rec-005: the lead's Status
   inactive?: boolean; // pob-004 D3
@@ -71,7 +71,7 @@ export function companyShell(role: string): { nav: NavItem[]; roleLabel: string 
 }
 
 /** The form's text fields, in screen order (EVID-018 §2/§3, company side). */
-export const TEXT_FIELDS = ["name", "website", "linkedin_url", "city", "state", "country", "head_office", "branches", "description", "employee_count"] as const;
+export const TEXT_FIELDS = ["name", "website", "linkedin_url", "city", "state", "country", "head_office", "branches", "description", "employee_count", "territory"] as const; // pob-009 T4: territory
 export const PICK_FIELDS = ["industry_id", "company_size_id", "lead_source_id", "campaign_id", "priority", "assigned_bdm_user_id", "partner_type"] as const;
 export type FormField = (typeof TEXT_FIELDS)[number] | (typeof PICK_FIELDS)[number];
 export type FormValues = Record<FormField, string>;
@@ -81,7 +81,7 @@ export function valuesOf(c?: Company): FormValues {
   return {
     name: text(c?.name), website: text(c?.website), linkedin_url: text(c?.linkedin_url), city: text(c?.city), state: text(c?.state),
     country: text(c?.country), head_office: text(c?.head_office), branches: text(c?.branches), description: text(c?.description),
-    employee_count: text(c?.employee_count), industry_id: text(c?.industry?.id), company_size_id: text(c?.company_size?.id),
+    employee_count: text(c?.employee_count), territory: text(c?.territory), industry_id: text(c?.industry?.id), company_size_id: text(c?.company_size?.id),
     lead_source_id: text(c?.lead_source?.id), campaign_id: text(c?.campaign?.id), priority: text(c?.priority),
     assigned_bdm_user_id: text(c?.assigned_bdm?.id), partner_type: c?.partner_type ?? "recruiter",
   };
