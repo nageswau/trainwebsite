@@ -1815,4 +1815,5 @@ half.
 | `pob-023-AC3` | `{package_range}` is blank without `commercials.client.view`; requirement and interview context fill their placeholders in scope only | `::test_a_requirement_context_fills_job_placeholders_and_package_range_needs_the_grant`, `::test_a_context_outside_the_partys_company_or_scope_is_404`, `::test_an_interview_context_fills_the_interview_placeholders_for_its_candidate_only` |
 | `pob-023-AC4` | A LinkedIn copy is logged (ids only), and is not a message | `::test_a_linkedin_copy_is_logged_without_its_text_and_is_not_a_message`; vitest `CopyComposer`; e2e |
 | `pob-023-AC5` | A calling script shows its steps | `::test_a_calling_script_keeps_and_renders_its_steps`, `::test_invalid_governed_templates_are_422`; vitest `CopyComposer` |
+| `pob-023-E2` | A copy for a Do Not Contact person is refused and not logged (pob-005 D6) | `::test_a_do_not_contact_person_cannot_be_copied_for` |
 | `pob-023-E1` | An archived template referenced in old logs still renders its name | `::test_an_archived_template_keeps_its_name_in_the_log_and_sending_bumps_last_used`; `test_pob_023_migration.py` |

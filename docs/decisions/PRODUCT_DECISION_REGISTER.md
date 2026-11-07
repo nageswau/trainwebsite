@@ -12245,7 +12245,7 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - G7: versions on content only.
   - G8: `{snake_case}` placeholders (`{{PackageRange}}` = `{package_range}`).
   - G9: context scope.
-  - G10: a copy is an audit row, not a message.
+  - G10: a copy is an audit row, not a message. pob-005 D6 applies: a copy for a Do Not Contact person is refused (409).
   - G11: the preview comes before send or copy (UI).
   - G12: the screens.
 - **Not built:**
