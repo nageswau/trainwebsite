@@ -11,7 +11,7 @@ async function signIn(page: Page, email: string) {
   await page.fill("#login-email", email);
   await page.fill("#login-password", "Demo@123");
   await page.click("button:has-text('Sign in securely')");
-  await page.waitForURL(/\/(recruiter|admin)\//);
+  await page.waitForURL((url) => !url.pathname.endsWith("/login")); // /admin/login is itself under /admin/
 }
 
 test("the checklist blocks sourcing until a Team Lead overrides it", async ({ page }) => {

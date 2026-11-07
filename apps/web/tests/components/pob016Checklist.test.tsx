@@ -113,19 +113,46 @@ describe("the checklist card", () => {
     await show();
     answer = () => res({ detail: "This company already has 50 open follow-ups" }, 409);
     fireEvent.click(group("Number of openings").getByRole("radio", { name: "Missing" }));
-    expect((await screen.findByRole("alert")).textContent).toBe("This company already has 50 open follow-ups");
+    expect((await screen.findByRole("alert")).textContent).toBe("Number of openings: This company already has 50 open follow-ups");
     expect((group("Number of openings").getByRole("radio", { name: "Missing" }) as HTMLInputElement).checked).toBe(false);
   });
 
-  it("sends one save at a time", async () => {
+  // QA-02/QA-03: going down the list quickly, no answer is lost and each shows at once
+  it("shows an answer at once and saves quick answers in order, one at a time", async () => {
     await show();
-    let finish: (r: Response) => void = () => {};
-    answer = () => new Promise<Response>((resolve) => { finish = resolve; }) as unknown as Response;
+    const finish: ((r: Response) => void)[] = [];
+    answer = () => new Promise<Response>((resolve) => { finish.push(resolve); }) as unknown as Response;
+    const puts = () => calls.filter((c) => c.method === "PUT");
+    const openings = group("Number of openings").getByRole("radio", { name: "Confirmed" }) as HTMLInputElement;
+    const timeline = group("Joining date and turnaround").getByRole("radio", { name: "Missing" }) as HTMLInputElement;
+    fireEvent.click(openings);
+    fireEvent.click(timeline);
+    expect(openings.checked).toBe(true);
+    expect(timeline.checked).toBe(true);
+    await waitFor(() => expect(puts()).toHaveLength(1));
+    expect(puts()[0].url).toBe(`${URL}/items/openings`);
+    finish[0](res(checklist()));
+    await waitFor(() => expect(puts()).toHaveLength(2));
+    expect(puts()[1].url).toBe(`${URL}/items/timeline`);
+    expect(timeline.checked).toBe(true); // the first answer's reply does not undo a choice still being saved
+    finish[1](res(checklist()));
+    await screen.findByText(/Joining date and turnaround: Missing/);
+  });
+
+  it("keeps the last of two quick answers to one item", async () => {
+    await show();
+    const finish: ((r: Response) => void)[] = [];
+    answer = () => new Promise<Response>((resolve) => { finish.push(resolve); }) as unknown as Response;
+    const missing = group("Number of openings").getByRole("radio", { name: "Missing" }) as HTMLInputElement;
     fireEvent.click(group("Number of openings").getByRole("radio", { name: "Confirmed" }));
-    fireEvent.click(group("Number of openings").getByRole("radio", { name: "Missing" }));
-    expect(calls.filter((c) => c.method === "PUT")).toHaveLength(1);
-    finish(res(checklist()));
-    await screen.findByText(/Number of openings: Confirmed/);
+    fireEvent.click(missing);
+    await waitFor(() => expect(finish).toHaveLength(1));
+    finish[0](res(checklist()));
+    await waitFor(() => expect(finish).toHaveLength(2));
+    expect(missing.checked).toBe(true);
+    expect(calls.filter((c) => c.method === "PUT").map((c) => c.body)).toEqual([{ status: "confirmed" }, { status: "missing" }]);
+    finish[1](res(checklist()));
+    await screen.findByText(/Number of openings: Missing/);
   });
 
   it("shows answers as text with no radios to someone who cannot edit", async () => {

@@ -2,6 +2,8 @@
 sourcing guard (C7-C9), the warning after sourcing has started (C10), the Team Lead's override (C11), who may do what (C12) and the audit (C14).
 Names are unique per test (the database is shared and never truncated)."""
 
+import subprocess
+import sys
 from datetime import timedelta
 
 import pytest
@@ -10,6 +12,7 @@ from fastapi import HTTPException
 from sqlalchemy import delete, event, select
 
 from app.models import AuditLog, Company, CompanyContact, Job, RecruiterFollowUp, RequirementChecklistSetting
+from app.services import recruiter_follow_ups
 from app.services import recruiter_requirements as requirements
 from app.services import requirement_checklist as checklist
 from tests.rec001_helpers import login, make_pm, make_recruiter, make_user
@@ -194,7 +197,7 @@ async def test_c5_a_follow_up_closed_by_hand_is_left_alone(client, db):
 
 
 async def test_c4_the_open_follow_up_cap_refuses_and_saves_nothing(client, db, monkeypatch):
-    monkeypatch.setattr(checklist.follow_ups, "OPEN_CAP", 0)
+    monkeypatch.setattr(recruiter_follow_ups, "OPEN_CAP", 0)
     w = await _world(client, db)
     await _mark(client, w, "openings", "missing", expected=409)
     assert _item((await client.get(w["url"])).json(), "openings")["status"] is None
@@ -451,3 +454,10 @@ async def test_the_read_makes_a_bounded_number_of_queries(client, db):
     finally:
         event.remove(engine, "before_cursor_execute", count)
     assert len(statements) == 1
+
+
+@pytest.mark.parametrize("module", ["app.services.recruiter_requirements", "app.services.applications", "app.services.requirement_checklist", "app.seed"])
+async def test_each_module_imports_in_a_fresh_interpreter(module):
+    """QA-01: `python -m app.seed` and the worker start without `app.main`, which every test here has already imported, so only a new interpreter sees an import cycle."""
+    done = subprocess.run([sys.executable, "-c", f"import {module}"], capture_output=True, text=True, timeout=120)
+    assert done.returncode == 0, done.stderr[-600:]

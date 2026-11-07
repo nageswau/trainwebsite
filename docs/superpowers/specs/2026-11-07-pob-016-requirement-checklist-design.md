@@ -68,13 +68,17 @@ The three requirement routes return the whole checklist: `items`, `summary`, `bl
 
 ## Web
 
-`RequirementChecklist` card on the requirement page, after the JD: the summary, one radio group per item (a save on change, one at a time, focus kept), the follow-up's due date and contact, the
+`RequirementChecklist` card on the requirement page, after the JD: the summary, one radio group per item (the answer shows at once and saves in order, one request at a time, so quick answers are never dropped; focus kept), the follow-up's due date and contact, the
 blocking state, the override form when `can_override`, and the rule selects for those who may change them. Loading, load-failure and save-failure states. Read-only readers see labels, not radios. `detailMessage` learns to read `{message}` from a structured detail,
 so the status form (and `/workflows/it/jobs`' screen) show the 409's list rather than "Something went wrong." New `clarification` label in `lib/recruiterFollowUps.ts`.
 
 ## Regression risks
 
 rec-007 transitions (default off); rec-024 reasons (web and API pins; 0116's frozen check test); pob-006 merge; rec-038 route matrix (five new rows); `detailMessage` on object details.
+
+## QA findings fixed (2026-11-07)
+
+QA-01 the top-level `recruiter_follow_ups` import broke `python -m app.seed` and worker start (fresh-interpreter test). QA-02 quick answers after the first were dropped silently. QA-03 a radio did not show the click until the reply.
 
 ## Tests
 

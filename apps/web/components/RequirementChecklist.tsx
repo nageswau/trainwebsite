@@ -17,8 +17,8 @@ import {
   statusLabel,
 } from "@/lib/requirementChecklist";
 
-// pob-016 (DEC-SCOPE-419): the validation checklist on the requirement page. An answer saves as it is chosen, one at a time; radios stay enabled during a save so keyboard focus
-// is not lost. Everything renders from the API's answer and its `can_*` flags; the server enforces every rule. `status` is a dependency because a status move can start sourcing.
+// pob-016 (DEC-SCOPE-419): the validation checklist on the requirement page. An answer shows at once and saves in order, one request at a time, so going down the list quickly loses
+// nothing; radios stay enabled during a save so keyboard focus is not lost. Everything renders from the API's answer and its `can_*` flags; the server enforces every rule. `status` is a dependency because a status move can start sourcing.
 type Props = { requirementId: string; status: string; onSaved: () => void };
 
 const RULE_VALUE = (rule: boolean | null) => (rule === null ? "global" : rule ? "block" : "allow");
@@ -53,7 +53,9 @@ export default function RequirementChecklist({ requirementId, status, onSaved }:
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [reason, setReason] = useState("");
-  const inFlight = useRef(false);
+  const [chosen, setChosen] = useState<Record<string, ItemStatus>>({}); // answers still being saved, shown ahead of the server's
+  const queue = useRef(Promise.resolve());
+  const inFlight = useRef(0);
   const url = checklistUrl(requirementId);
   const id = `requirement-${requirementId}-checklist`;
 
@@ -68,18 +70,20 @@ export default function RequirementChecklist({ requirementId, status, onSaved }:
     void load();
   }, [load, status]);
 
-  /** One request at a time. `after` runs on success with the answer. A rule's answer is not the checklist, so those re-read it. */
-  async function send(target: string, method: "PUT" | "POST", body: unknown, after: (answer: Record<string, unknown>) => Promise<void> | void) {
-    if (inFlight.current) return;
-    inFlight.current = true;
+  /** Queued, one at a time, so each reply is newer than the last. `after` runs on success with the answer; `settled` always. A rule's answer is not the checklist, so those re-read it. */
+  function send(target: string, method: "PUT" | "POST", body: unknown, after: (answer: Record<string, unknown>) => Promise<void> | void, settled?: (message: string | null) => void) {
+    inFlight.current += 1;
     setBusy(true);
     setFailure(null);
     setNotice(null);
-    const outcome = await sendJson(target, method, body);
-    if (outcome.ok) await after(outcome.data);
-    else setFailure(outcome.message);
-    inFlight.current = false;
-    setBusy(false);
+    queue.current = queue.current.then(async () => {
+      const outcome = await sendJson(target, method, body);
+      if (outcome.ok) await after(outcome.data);
+      if (settled) settled(outcome.ok ? null : outcome.message);
+      else if (!outcome.ok) setFailure(outcome.message);
+      inFlight.current -= 1;
+      if (!inFlight.current) setBusy(false);
+    });
   }
 
   function accept(answer: Record<string, unknown>, text: string) {
@@ -90,9 +94,12 @@ export default function RequirementChecklist({ requirementId, status, onSaved }:
   }
 
   function answer(item: ChecklistItem, next: ItemStatus) {
-    if (item.status === next) return;
     const text = `${item.label}: ${statusLabel(next)}.${next === "missing" ? " A follow-up was added." : ""}`;
-    void send(`${url}/items/${encodeURIComponent(item.key)}`, "PUT", { status: next }, (body) => accept(body, text));
+    setChosen((now) => ({ ...now, [item.key]: next }));
+    send(`${url}/items/${encodeURIComponent(item.key)}`, "PUT", { status: next }, (body) => accept(body, text), (message) => {
+      if (message) setFailure(`${item.label}: ${message}`);
+      setChosen(({ [item.key]: mine, ...others }) => (mine === next ? others : { ...others, [item.key]: mine })); // a later choice for this item stays until its own reply
+    });
   }
 
   function override(event: FormEvent) {
@@ -103,14 +110,14 @@ export default function RequirementChecklist({ requirementId, status, onSaved }:
       document.getElementById(`${id}-reason`)?.focus();
       return;
     }
-    void send(`${url}/override`, "POST", { reason: text }, (body) => {
+    send(`${url}/override`, "POST", { reason: text }, (body) => {
       setReason("");
       accept(body, "Checklist overridden.");
     });
   }
 
   function saveRule(target: string, value: boolean | null, text: string) {
-    void send(target, "PUT", { block_sourcing: value }, async () => {
+    send(target, "PUT", { block_sourcing: value }, async () => {
       setNotice(text);
       await load();
       onSaved();
@@ -156,10 +163,10 @@ export default function RequirementChecklist({ requirementId, status, onSaved }:
               <div className="checklist-options">
                 {ITEM_STATUSES.map((s) => (
                   <label key={s.key}>
-                    <input type="radio" name={`${id}-${item.key}`} checked={item.status === s.key} onChange={() => answer(item, s.key)} /> {s.label}
+                    <input type="radio" name={`${id}-${item.key}`} checked={(chosen[item.key] ?? item.status) === s.key} onChange={() => answer(item, s.key)} /> {s.label}
                   </label>
                 ))}
-                {!item.status && <span className="muted">{NOT_REVIEWED}</span>}
+                {!item.status && !chosen[item.key] && <span className="muted">{NOT_REVIEWED}</span>}
               </div>
             ) : (
               <p style={{ margin: 0 }}><strong>{statusLabel(item.status)}</strong></p>

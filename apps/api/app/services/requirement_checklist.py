@@ -24,7 +24,6 @@ from app.models import (
     User,
 )
 from app.schemas import RecFollowUpCreate
-from app.services import recruiter_follow_ups as follow_ups
 from app.services.bdm_appointments import db_now
 from app.services.recruiter import MANAGER_ROLE
 from app.services.recruiter_companies import person
@@ -98,6 +97,8 @@ def _audit(db: AsyncSession, user: User, action: str, entity_type: str, entity_i
 
 async def _open_follow_up(db: AsyncSession, user: User, job: Job, key: str, now: datetime) -> RecruiterFollowUp:
     """C4: `follow_ups.create` counts its cap under the company lock. Job, then company: the order `_move` already takes."""
+    from app.services import recruiter_follow_ups as follow_ups  # see `_close_follow_up`
+
     company = await db.scalar(select(Company).where(Company.id == job.company_id).with_for_update())
     contacts = (await db.execute(
         select(CompanyContact.id, CompanyContact.id == job.decision_maker_contact_id).where(
@@ -113,7 +114,10 @@ async def _open_follow_up(db: AsyncSession, user: User, job: Job, key: str, now:
 
 
 async def _close_follow_up(db: AsyncSession, user: User, follow_up_id, status: str, now: datetime) -> None:
-    """C5: only one still open; one closed by hand keeps its own outcome."""
+    """C5: only one still open; one closed by hand keeps its own outcome. Imported here because `recruiter_follow_ups` reaches the telecaller services, whose import cycle only
+    `app.main`'s order resolves, and `app.seed` and the worker import this module, through `recruiter_requirements`, without it (QA-01)."""
+    from app.services import recruiter_follow_ups as follow_ups
+
     fu = await db.scalar(select(RecruiterFollowUp).where(RecruiterFollowUp.id == follow_up_id, RecruiterFollowUp.status == "open").with_for_update())
     if fu is None:
         return

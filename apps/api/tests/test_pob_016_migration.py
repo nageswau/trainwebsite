@@ -72,7 +72,7 @@ def test_the_round_trip_keeps_existing_rows(isolated_db):
     _sql(url, f"ALTER TABLE recruiter_follow_ups DROP CONSTRAINT {REASON}", autocommit=True)
     _sql(url, f"ALTER TABLE recruiter_follow_ups ADD CONSTRAINT {REASON} CHECK ({_migration.OLD_REASON_CHECK})", autocommit=True)
     _sql(url, f"INSERT INTO companies (id, name, partner_type, owner_type) VALUES ('{COMPANY}', 'Pob 016 Kept', 'recruiter', 'recruiter')", autocommit=True)
-    _sql(url, f"INSERT INTO users (id, email, full_name, role, division, password_hash, active, email_verified, locale) VALUES ('{USER}', 'pob016@x.local', 'P', 'placement_team', 'it', 'x', true, true, 'en')", autocommit=True)
+    _sql(url, f"INSERT INTO users (id, email, full_name, role, division, password_hash, active, email_verified, locale, profile) VALUES ('{USER}', 'pob016@x.local', 'P', 'placement_team', 'it', 'x', true, true, 'en', '{{}}')", autocommit=True)
     _follow_up(url, "jd")
     with pytest.raises(Exception, match=REASON):
         _follow_up(url, "clarification")
