@@ -15,7 +15,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import RECRUITER_CALL_OUTCOMES, AuditLog, Candidate, Company, CompanyContact, RecruiterCall, User
+from app.models import RECRUITER_CALL_OUTCOMES, AuditLog, Candidate, Company, CompanyContact, Job, RecruiterCall, User
 from app.schemas import RecCallCreate, RecFollowUpCreate
 from app.services import candidates, contact_status
 from app.services import recruiter_companies as companies
@@ -40,6 +40,7 @@ CALLER_ONLY = "Only the person who logged this call can change it"
 NOT_TODAY = "Only today's calls can be changed"
 MOVE_TODAY = "A call can only be moved within today"
 CAP_REACHED = f"You've logged {DAILY_CAP} calls for this day"
+JOB_CANDIDATE = "A requirement is discussed on a company contact's call"
 
 Call = RecruiterCall
 
@@ -62,15 +63,16 @@ def _writable(user: User, company: Company | None, candidate: Candidate | None) 
 def _rows():
     """One query: the call, its caller and its party (contact + company, or candidate) -- no N+1."""
     return (
-        select(Call, User, CompanyContact, Company, Candidate)
+        select(Call, User, CompanyContact, Company, Candidate, Job)
         .join(User, User.id == Call.caller_user_id)
         .outerjoin(CompanyContact, CompanyContact.id == Call.contact_id)
         .outerjoin(Company, Company.id == Call.company_id)
         .outerjoin(Candidate, Candidate.id == Call.candidate_id)
+        .outerjoin(Job, Job.id == Call.job_id)
     )
 
 
-def _out(user: User, now: datetime, call: Call, caller: User, contact, company, candidate) -> dict:
+def _out(user: User, now: datetime, call: Call, caller: User, contact, company, candidate, job) -> dict:
     return {
         "id": call.id, "kind": "contact" if contact is not None else "candidate", "company_id": call.company_id,
         "contact": None if contact is None else {"id": contact.id, "name": contact.name},
@@ -78,6 +80,9 @@ def _out(user: User, now: datetime, call: Call, caller: User, contact, company, 
         "occurred_at": call.occurred_at, "duration_seconds": call.duration_seconds, "direction": call.direction, "outcome": call.outcome,
         "outcome_label": OUTCOMES[call.outcome], "connected": call.outcome in CONNECTED, "notes": call.notes,
         "caller": {"id": caller.id, "full_name": caller.full_name}, "created_at": call.created_at,
+        # pob-007 A4
+        "requirement": None if job is None else {"id": job.id, "code": job.requirement_code, "title": job.title},
+        "objections": call.objections or [], "objection_notes": call.objection_notes, "next_action": call.next_action,
         "can_change": call.caller_user_id == user.id and editable(call, now) and _writable(user, company, candidate),
     }
 
@@ -136,10 +141,14 @@ async def create(db: AsyncSession, user: User, payload: RecCallCreate, now: date
             raise HTTPException(409, CONTACT_INACTIVE)
         if payload.direction == "outgoing":  # pob-005 D6: they may still call us
             contact_status.refuse_do_not_contact(contact)
+        if payload.job_id is not None:
+            await check_job(db, company.id, payload.job_id)  # pob-007 A4
     else:
         if payload.next_follow_up is not None:
             raise _invalid("next_follow_up", FOLLOW_UP_CANDIDATE, None)
         await _locked_candidate(db, user, payload.candidate_id)
+        if payload.job_id is not None:
+            await check_job(db, None, payload.job_id)
     occurred_at = check_time(payload.occurred_at or now, now)
     start, end = day_range(today_ist(occurred_at))
     count = await db.scalar(select(func.count()).select_from(Call).where(Call.caller_user_id == user.id, Call.occurred_at >= start, Call.occurred_at < end))
@@ -148,6 +157,7 @@ async def create(db: AsyncSession, user: User, payload: RecCallCreate, now: date
     call = Call(
         company_id=company.id if company else None, contact_id=payload.contact_id, candidate_id=payload.candidate_id, caller_user_id=user.id,
         occurred_at=occurred_at, duration_seconds=payload.duration_seconds, direction=payload.direction, outcome=payload.outcome, notes=payload.notes,
+        job_id=payload.job_id, objections=payload.objections, objection_notes=payload.objection_notes, next_action=payload.next_action,
     )
     db.add(call)
     await db.flush()
@@ -161,6 +171,14 @@ async def create(db: AsyncSession, user: User, payload: RecCallCreate, now: date
     party = {"contact_id": str(call.contact_id)} if company else {"candidate_id": str(call.candidate_id)}
     audit(db, user, "create", call.id, {**party, "outcome": call.outcome, "follow_up_id": str(follow_up.id) if follow_up else None})
     return call, follow_up.id if follow_up else None
+
+
+async def check_job(db: AsyncSession, company_id: UUID | None, job_id: UUID) -> None:
+    """pob-007 A4: the requirement discussed is one of the contact's company; a candidate call has none (422 on `job_id`)."""
+    if company_id is None:
+        raise _invalid("job_id", JOB_CANDIDATE, str(job_id))
+    if await db.scalar(select(Job.id).where(Job.id == job_id, Job.company_id == company_id)) is None:
+        raise _invalid("job_id", follow_ups.JOB_INVALID, str(job_id))
 
 
 async def load_for_write(db: AsyncSession, user: User, call_id: UUID, route: str, now: datetime) -> Call:

@@ -14,6 +14,15 @@ export const OUTCOMES = [
 export const DIRECTIONS = [{ key: "outgoing", label: "Outgoing" }, { key: "incoming", label: "Incoming" }] as const;
 export const NOTES_MAX = 2000;
 export const LIST_LIMIT = 50;
+/** pob-007 (DEC-SCOPE-422 A4): the objections a company raises (UNVERIFIED, mirrors RECRUITER_CALL_OBJECTIONS), in form order. */
+export const OBJECTIONS = [
+  { key: "no_current_requirement", label: "No current requirement" }, { key: "existing_vendors", label: "Already works with vendors" },
+  { key: "fee_too_high", label: "Fees too high" }, { key: "no_budget", label: "No hiring budget" }, { key: "timing", label: "Not the right time" },
+  { key: "not_decision_maker", label: "Not the decision-maker" }, { key: "in_house", label: "Hires in-house only" }, { key: "other", label: "Other" },
+] as const;
+export const objectionLabel = (key: string) => OBJECTIONS.find((o) => o.key === key)?.label ?? key;
+export const OBJECTION_NOTES_MAX = 1000;
+export const NEXT_ACTION_MAX = 500;
 
 type PersonRef = { id: string; full_name: string };
 export type RecCall = {
@@ -21,6 +30,8 @@ export type RecCall = {
   candidate: { id: string; name: string; code: string } | null; occurred_at: string; duration_seconds: number | null;
   direction: "outgoing" | "incoming"; outcome: string; outcome_label: string; connected: boolean; notes: string | null; caller: PersonRef;
   created_at: string; can_change: boolean;
+  // pob-007 A4 (optional: older fixtures omit them)
+  requirement?: { id: string; code: string; title: string } | null; objections?: string[]; objection_notes?: string | null; next_action?: string | null;
 };
 export type LogCallResult = { call: RecCall; follow_up_id: string | null };
 /** Who a call is with: a contact of the company (picked in the form) or one candidate. */

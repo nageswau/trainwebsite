@@ -18,6 +18,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,17 +32,19 @@ from app.models import (
     CompanyContact,
     Interview,
     Job,
+    RecruiterFollowUp,
     RecruiterMessage,
     RecruiterMessageTemplate,
     RecruiterTemplateVersion,
     User,
 )
 from app.notifications.phone import wa_number
-from app.schemas import RecEmailCreate, RecTemplateCopy, RecWhatsAppCreate
+from app.schemas import RecEmailCreate, RecFollowUpCreate, RecLinkedInCreate, RecMessageOutcome, RecTemplateCopy, RecWhatsAppCreate
 from app.services import applications, candidates, contact_status, mailer, recruiter_contracts
 from app.services import recruiter_companies as companies
+from app.services import recruiter_follow_ups as follow_ups
 from app.services import recruiter_requirements as requirements
-from app.services.bdm_activities import day_range
+from app.services.bdm_activities import BACKDATE_DAYS, CLOCK_TOLERANCE, day_range
 from app.services.bdm_appointments import today_ist
 from app.services.recruiter import MANAGER_ROLE, ROLE
 from app.services.telecaller_content import _TOKEN
@@ -96,6 +99,14 @@ MESSAGE_NOT_FOUND = "Message not found"
 REPLY_CONTACT_ONLY = "Only a message to a company contact can be marked as replied"
 REPLY_FUTURE = "The reply time can't be in the future"
 REPLY_BEFORE_SENT = "The reply can't be earlier than the message"
+# pob-007 (DEC-SCOPE-422 A1/A3): LinkedIn logging and a message's outcome
+LINKEDIN_CAP_REACHED = f"You've logged {DAILY_CAP} LinkedIn messages today"
+LINKEDIN_BODY_MISSING = "Write the message you sent"
+FOLLOW_UP_CANDIDATE = "Follow-ups belong to a company: add one on a contact's message"
+OUTCOME_CONTACT_ONLY = "Only a message to a company contact can have an outcome and a follow-up"
+OUTCOME_RECORDED = "This message's outcome is already recorded"
+SENT_FUTURE = "The time sent can't be in the future"
+SENT_TOO_OLD = f"LinkedIn activity can be logged up to {BACKDATE_DAYS} days back"
 
 RM = RecruiterMessage
 NOT_FAILED = ~and_(RM.channel == "email", RM.delivery_status == "failed")
@@ -388,7 +399,7 @@ async def check_cap(db: AsyncSession, user: User, channel: str, now: datetime) -
     """MS8: the sender's per-IST-day cap for the channel (409 WhatsApp / 429 email). rec-019's shares count too."""
     start, end = day_range(today_ist(now))
     count = await db.scalar(select(func.count()).select_from(RM).where(RM.sender_user_id == user.id, RM.channel == channel, RM.sent_at >= start, RM.sent_at < end))
-    cap, status, detail = (EMAIL_DAILY_CAP, 429, EMAIL_CAP_REACHED) if channel == "email" else (DAILY_CAP, 409, CAP_REACHED)
+    cap, status, detail = (EMAIL_DAILY_CAP, 429, EMAIL_CAP_REACHED) if channel == "email" else (DAILY_CAP, 409, LINKEDIN_CAP_REACHED if channel == "linkedin" else CAP_REACHED)
     if (count or 0) >= cap:
         raise HTTPException(status, detail)
 
@@ -467,17 +478,93 @@ async def log_reply(db: AsyncSession, user: User, message_id: UUID, replied_at: 
     return message.id
 
 
+def _field(field: str, msg: str) -> RequestValidationError:
+    return RequestValidationError([{"type": "value_error", "loc": ("body", field), "msg": msg, "input": None}])
+
+
+async def log_linkedin(db: AsyncSession, user: User, payload: RecLinkedInCreate, now: datetime) -> RecruiterMessage:
+    """pob-007 A1: LinkedIn outreach done by hand. The send's party rules (scope 404, right 403, state 409, Do Not Contact 409); the text
+    (a message needs one, 422); the time (lead_calls' rule: not ahead, at most 7 days back); a usable LinkedIn template (422); the cap
+    (409). It is outreach: last contacted, the contact's status and an optional next follow-up (rec-024's rules) move with it."""
+    company, contact, candidate = await load_party(db, user, payload.contact_id, payload.candidate_id, write=True)
+    if contact:
+        contact_status.refuse_do_not_contact(contact)
+    elif payload.next_follow_up is not None:
+        raise _field("next_follow_up", FOLLOW_UP_CANDIDATE)
+    if payload.action == "message" and not payload.body:
+        raise _field("body", LINKEDIN_BODY_MISSING)
+    sent_at = payload.sent_at or now  # the call form's rule (lead_calls.check_time), placed on `sent_at`
+    if sent_at > now + CLOCK_TOLERANCE:
+        raise _field("sent_at", SENT_FUTURE)
+    if today_ist(sent_at) < today_ist(now) - timedelta(days=BACKDATE_DAYS):
+        raise _field("sent_at", SENT_TOO_OLD)
+    sent_at = min(sent_at, now)
+    template = await db.get(RecruiterMessageTemplate, payload.template_id) if payload.template_id else None
+    if payload.template_id and (template is None or not is_usable(user, template) or template.channel != "linkedin"):
+        raise HTTPException(422, TEMPLATE_UNUSABLE["linkedin"])
+    await check_cap(db, user, "linkedin", now)
+    if template:
+        await mark_used(db, template.id, now)
+    party, kind = (contact, "contact") if contact else (candidate, "candidate")
+    message = RM(
+        company_id=company.id if company else None, contact_id=contact.id if contact else None, candidate_id=candidate.id if candidate else None,
+        sender_user_id=user.id, channel="linkedin", linkedin_action=payload.action, template_id=payload.template_id,
+        template_name=template.name if template else None, body=payload.body, sent_at=sent_at,
+    )
+    db.add(message)
+    await db.flush()
+    await companies.refresh_last_contact(db, message.company_id)  # pob-003 D4
+    await contact_status.advance(db, user, [message.contact_id], "contacted", "message")  # pob-005 D4
+    if payload.next_follow_up is not None:
+        fu = await follow_ups.create(db, user, company, RecFollowUpCreate(**payload.next_follow_up.model_dump(), contact_id=contact.id), now)
+        message.follow_up_id = fu.id
+    audit(db, user, message.id, {"kind": kind, "party_id": str(party.id), "channel": "linkedin", "action": payload.action,
+                                 "template_id": str(template.id) if template else None, "follow_up_id": str(message.follow_up_id) if message.follow_up_id else None})
+    return message
+
+
+async def record_outcome(db: AsyncSession, user: User, message_id: UUID, payload: RecMessageOutcome, now: datetime) -> UUID:
+    """pob-007 A3: what came of a contact message, once, with an optional next follow-up. The reply's scope and right (404 / 403 / 409
+    archived); a candidate message is 422; a second outcome is 409 under the message lock."""
+    contact_id = await db.scalar(select(RM.contact_id).where(RM.id == message_id))
+    if contact_id is None:
+        if await db.scalar(select(RM.id).where(RM.id == message_id)) is None:
+            await companies.caller_scope(db, user)  # the role check (403) comes before "not found"
+            raise HTTPException(404, MESSAGE_NOT_FOUND)
+        raise HTTPException(422, OUTCOME_CONTACT_ONLY)
+    try:
+        company, contact, _ = await load_party(db, user, contact_id, None)
+    except HTTPException as exc:
+        if exc.status_code == 404:
+            raise HTTPException(404, MESSAGE_NOT_FOUND) from None
+        raise
+    company = await companies.load_scoped(db, user, company.id, lock=True)
+    companies.require(user, company, "can_edit", "message_outcome")
+    message = await db.scalar(select(RM).where(RM.id == message_id).with_for_update().execution_options(populate_existing=True))
+    if message.outcome is not None:
+        raise HTTPException(409, OUTCOME_RECORDED)
+    if payload.next_follow_up is not None:
+        values = payload.next_follow_up.model_dump() | {"contact_id": contact.id if contact.active else None}
+        message.follow_up_id = (await follow_ups.create(db, user, company, RecFollowUpCreate(**values), now)).id
+    message.outcome = payload.outcome
+    await db.flush()
+    db.add(AuditLog(user_id=user.id, action="recruiter_message.outcome", entity_type="recruiter_message", entity_id=str(message.id),
+                    metadata_json={"contact_id": str(contact.id), "follow_up_id": str(message.follow_up_id) if message.follow_up_id else None}))
+    return message.id
+
+
 def _rows():
-    """One query: the message, its sender, and the contact or candidate -- no N+1."""
+    """One query: the message, its sender, the contact or candidate, and (pob-007) its follow-up -- no N+1."""
     return (
-        select(RM, User, CompanyContact, Candidate)
+        select(RM, User, CompanyContact, Candidate, RecruiterFollowUp)
         .join(User, User.id == RM.sender_user_id)
         .outerjoin(CompanyContact, CompanyContact.id == RM.contact_id)
         .outerjoin(Candidate, Candidate.id == RM.candidate_id)
+        .outerjoin(RecruiterFollowUp, RecruiterFollowUp.id == RM.follow_up_id)
     )
 
 
-def out(message: RecruiterMessage, sender: User, contact: CompanyContact | None, candidate: Candidate | None) -> dict:
+def out(message: RecruiterMessage, sender: User, contact: CompanyContact | None, candidate: Candidate | None, fu: RecruiterFollowUp | None = None) -> dict:
     return {
         "id": message.id,
         "kind": "contact" if contact else "candidate",
@@ -491,6 +578,9 @@ def out(message: RecruiterMessage, sender: User, contact: CompanyContact | None,
         "delivery_status": message.delivery_status,
         "sent_at": message.sent_at,
         "replied_at": message.replied_at,  # pob-005 D7
+        # pob-007 A1/A3
+        "linkedin_action": message.linkedin_action, "outcome": message.outcome,
+        "follow_up": {"id": fu.id, "due_at": fu.due_at, "reason": fu.reason} if fu else None,
         "sender": {"id": sender.id, "full_name": sender.full_name},
     }
 

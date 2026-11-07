@@ -20,7 +20,17 @@ from app.api.telecaller_catalogue import NOT_AN_OBJECT
 from app.core.database import get_db
 from app.models import RecruiterMessage, RecruiterMessageTemplate, RecruiterTemplateVersion, User
 from app.notifications.dispatch import enqueue_recruiter_email
-from app.schemas import TEL_CONTENT_FIELD_LABELS, RecMessageCreate, RecMessageReply, RecTemplateChannel, RecTemplateCopy, RecTemplateCreate, RecTemplateUpdate
+from app.schemas import (
+    TEL_CONTENT_FIELD_LABELS,
+    RecLinkedInCreate,
+    RecMessageCreate,
+    RecMessageOutcome,
+    RecMessageReply,
+    RecTemplateChannel,
+    RecTemplateCopy,
+    RecTemplateCreate,
+    RecTemplateUpdate,
+)
 from app.services import candidates
 from app.services import recruiter_companies as companies
 from app.services import recruiter_messages as svc
@@ -259,6 +269,24 @@ async def log_reply(message_id: UUID, payload: RecMessageReply, user: User = Dep
     await db.commit()
     svc.log("recruiter_message_reply_logged", user, reply_id)
     return await svc.one(db, reply_id)
+
+
+@router.post("/messages/linkedin", status_code=201)
+async def log_linkedin(payload: RecLinkedInCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """pob-007 A1: LinkedIn outreach done by hand (there is no LinkedIn API). Not idempotent (a retry logs it twice; the daily cap bounds it)."""
+    message = await svc.log_linkedin(db, user, payload, await db_now(db))
+    await db.commit()
+    svc.log("recruiter_linkedin_logged", user, message.id, action=payload.action, follow_up=message.follow_up_id is not None)
+    return await svc.one(db, message.id)
+
+
+@router.post("/messages/{message_id}/outcome")
+async def record_outcome(message_id: UUID, payload: RecMessageOutcome, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """pob-007 A3: what came of a contact message, with an optional next follow-up. Set once: a second is 409."""
+    out_id = await svc.record_outcome(db, user, message_id, payload, await db_now(db))
+    await db.commit()
+    svc.log("recruiter_message_outcome_recorded", user, out_id)
+    return await svc.one(db, out_id)
 
 
 @router.get("/companies/{company_id}/messages")

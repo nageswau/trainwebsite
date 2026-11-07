@@ -22,6 +22,9 @@ const REASON_LABEL: Record<string, string> = Object.fromEntries(REASONS.map((r) 
 export const reasonLabel = (key: string) => REASON_LABEL[key] ?? key;
 export const NOTES_MAX = 2000;
 export const OUTCOME_MAX = 500;
+/** pob-007 (DEC-SCOPE-422 A8): the priority; the reminder time is stored (pob-008 delivers it). */
+export const PRIORITIES = [{ key: "high", label: "High" }, { key: "medium", label: "Medium" }, { key: "low", label: "Low" }] as const;
+export type Priority = (typeof PRIORITIES)[number]["key"];
 
 type PersonRef = { id: string; full_name: string };
 export type RecFollowUp = {
@@ -30,6 +33,7 @@ export type RecFollowUp = {
   contact: { id: string; name: string } | null; requirement: { id: string; title: string } | null; application_id: string | null;
   created_by: PersonRef; created_at: string; completed_at: string | null; completed_by: PersonRef | null; cancelled_at: string | null;
   cancel_reason: string | null; can_change: boolean;
+  priority?: Priority; remind_at?: string | null; // pob-007 A8 (optional: older fixtures omit them)
 };
 export type Due = "today" | "overdue" | "upcoming";
 export const DUE_TABS: [Due, string][] = [["today", "Today"], ["overdue", "Overdue"], ["upcoming", "Upcoming"]];

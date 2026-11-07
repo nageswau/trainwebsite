@@ -74,6 +74,8 @@ async def update_follow_up(fu_id: UUID, payload: RecFollowUpUpdate, user: User =
     changed = sorted(key for key, value in changes.items() if getattr(fu, key) != value)
     if "due_at" in changed:
         check_due(changes["due_at"], now)
+    if "due_at" in changed or "remind_at" in changed:  # pob-007 A8: a moved due time must not leave the reminder after it
+        svc.check_reminder(changes.get("remind_at", fu.remind_at), changes.get("due_at", fu.due_at), now, moved="remind_at" in changed)
     await svc.check_links(db, company.id, {k: changes[k] for k in changed}, fu)
     for key in changed:
         setattr(fu, key, changes[key])

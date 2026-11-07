@@ -6,7 +6,7 @@ import type { ContactOption } from "@/components/RecruiterFollowUpForm";
 import { sendRequest, type Page } from "@/lib/apiErrors";
 import { SAVE_FAILED, writeFailure } from "@/lib/bdmTasks";
 import { formatSchoolDateTime } from "@/lib/formatDate";
-import { type CallParty, callUrl, type LogCallResult, partyCallsUrl, type RecCall } from "@/lib/recruiterCalls";
+import { type CallParty, callUrl, type LogCallResult, objectionLabel, partyCallsUrl, type RecCall } from "@/lib/recruiterCalls";
 import { contactsOf, isContactList } from "@/lib/recruiterContacts";
 import { formatDuration } from "@/lib/telecallerCalls";
 import { getPage } from "@/lib/telecallerCatalogue";
@@ -47,6 +47,13 @@ function CallItem({ call, party, onEdited, onDeleted, onRefused }: {
       </div>
       <p className="muted" style={{ margin: 0 }}>{details}</p>
       {call.notes && <p style={{ ...TEXT, margin: 0 }}>{call.notes}</p>}
+      {call.requirement && <p className="muted" style={{ ...TEXT, margin: 0 }}>Requirement discussed: {call.requirement.code} — {call.requirement.title}</p>}
+      {(call.objections?.length || call.objection_notes) && (
+        <p style={{ ...TEXT, margin: 0 }}>
+          <strong>Objections:</strong> {[(call.objections ?? []).map(objectionLabel).join(", "), call.objection_notes].filter(Boolean).join(" — ")}
+        </p>
+      )}
+      {call.next_action && <p style={{ ...TEXT, margin: 0 }}><strong>Next action:</strong> {call.next_action}</p>}
       {mode === "edit" && (
         <RecruiterCallForm party={party} call={call} onCancel={() => setMode("view")} onEdited={() => { setMode("view"); onEdited(); }} />
       )}

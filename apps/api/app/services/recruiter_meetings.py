@@ -23,12 +23,13 @@ from app.models import (
     CompanyContact,
     RecruiterFollowUp,
     RecruiterMeeting,
+    RecruiterMeetingActionItem,
     RecruiterMeetingEvent,
     RecruiterMeetingParticipant,
     User,
 )
 from app.schemas import RecFollowUpCreate, RecMeetingCreate, RecMeetingOutcome, RecMeetingUpdate
-from app.services import company_pipeline, contact_status
+from app.services import company_pipeline, contact_status, recruiter_contracts
 from app.services import recruiter_companies as companies
 from app.services import recruiter_follow_ups as follow_ups
 from app.services.lead_follow_ups import DUE_FAR, DUE_PAST, HORIZON
@@ -47,6 +48,7 @@ NEXT_ACTION_MISSING = "Describe the next action"
 NEXT_DUE_MISSING = "Choose when the next action is due"
 NEXT_REASON_MISSING = "Choose a follow-up reason"
 PEOPLE_ROLES = (ROLE, MANAGER_ROLE)
+COMMERCIAL_REFUSED = "Your role cannot record commercial discussion notes"  # pob-007 A7
 
 M = RecruiterMeeting
 P = RecruiterMeetingParticipant
@@ -78,12 +80,13 @@ def _rows():
     )
 
 
-async def _extras(db: AsyncSession, ids: list[UUID]) -> tuple[dict, dict]:
-    """Participants and history for a page of meetings -- two queries, whatever the page size."""
+async def _extras(db: AsyncSession, ids: list[UUID]) -> tuple[dict, dict, dict]:
+    """Participants, history and (pob-007) action items for a page of meetings -- three queries, whatever the page size."""
     people: dict[UUID, dict] = {i: {"contacts": [], "recruiters": []} for i in ids}
     history: dict[UUID, list] = {i: [] for i in ids}
+    actions: dict[UUID, list] = {i: [] for i in ids}
     if not ids:
-        return people, history
+        return people, history, actions
     rows = await db.execute(
         select(P.meeting_id, CompanyContact.id, CompanyContact.name, User.id, User.full_name)
         .outerjoin(CompanyContact, CompanyContact.id == P.contact_id)
@@ -105,12 +108,22 @@ async def _extras(db: AsyncSession, ids: list[UUID]) -> tuple[dict, dict]:
             "event": event.event, "old_starts_at": event.old_starts_at, "new_starts_at": event.new_starts_at, "reason": event.reason,
             "actor": companies.person(actor), "created_at": event.created_at,
         })
-    return people, history
+    items = await db.execute(  # pob-007 A6: the action items' follow-ups, in the order entered
+        select(RecruiterMeetingActionItem.meeting_id, RecruiterFollowUp).join(RecruiterFollowUp, RecruiterFollowUp.id == RecruiterMeetingActionItem.follow_up_id)
+        .where(RecruiterMeetingActionItem.meeting_id.in_(ids)).order_by(RecruiterMeetingActionItem.position)
+    )
+    for meeting_id, fu in items:
+        actions[meeting_id].append({"follow_up_id": fu.id, "action": fu.notes, "due_at": fu.due_at, "reason": fu.reason, "status": fu.status})
+    return people, history, actions
 
 
-def _out(user: User, now: datetime, people: dict, history: dict, m: M, company: Company, recruiter, contact, creator, completer, fu) -> dict:
+def _out(user: User, now: datetime, extras: tuple[dict, dict, dict], visible: bool, m: M, company: Company, recruiter, contact, creator, completer, fu) -> dict:
+    people, history, actions = extras
     can_change = m.status == "scheduled" and companies.permissions(user, company)["can_edit"]
     return {
+        # pob-007 A5-A7: the commercial notes only with `commercials.client.view`
+        "hiring_forecast": m.hiring_forecast or [], "action_items": actions[m.id],
+        "commercial_notes": m.commercial_notes if visible else None, "commercial_notes_visible": visible,
         "id": m.id, "code": m.meeting_code, "meeting_type": m.meeting_type, "starts_at": m.starts_at, "mode": m.mode, "location": m.location,
         "meeting_url": m.meeting_url, "purpose": m.purpose, "status": m.status, "outcome": m.outcome, "next_action": m.next_action,
         "company": {"id": company.id, "code": company.company_code, "name": company.name, "assigned_recruiter": companies.person(recruiter)},
@@ -124,8 +137,9 @@ def _out(user: User, now: datetime, people: dict, history: dict, m: M, company: 
 
 
 async def _items(db: AsyncSession, user: User, now: datetime, rows) -> list[dict]:
-    people, history = await _extras(db, [row[0].id for row in rows])
-    return [_out(user, now, people, history, *row) for row in rows]
+    extras = await _extras(db, [row[0].id for row in rows])
+    visible = bool(rows) and await recruiter_contracts.sees_commercials(db, user)
+    return [_out(user, now, extras, visible, *row) for row in rows]
 
 
 async def _page(db: AsyncSession, user: User, now: datetime, where: list, order: tuple, limit: int, offset: int) -> dict:
@@ -301,7 +315,15 @@ async def record_outcome(db: AsyncSession, user: User, company: Company, meeting
     (its rules -- future time, the open cap -- refuse the whole outcome)."""
     if meeting.starts_at > now:
         raise HTTPException(422, NOT_STARTED)
+    if payload.commercial_notes is not None and not await recruiter_contracts.sees_commercials(db, user):  # pob-007 A7
+        raise HTTPException(403, COMMERCIAL_REFUSED)
     follow_up = None
+    for i, item in enumerate(payload.action_items):  # pob-007 A6: each due time on its own row of the form
+        if item.due_at <= now or item.due_at > now + HORIZON:
+            raise RequestValidationError([{"type": "value_error", "loc": ("body", "action_items", i, "due_at"), "msg": DUE_PAST if item.due_at <= now else DUE_FAR,
+                                           "input": item.due_at.isoformat()}])
+    active_contact = meeting.contact_id and await db.scalar(select(CompanyContact.active).where(CompanyContact.id == meeting.contact_id))
+    contact_id = meeting.contact_id if active_contact else None
     if payload.next_action is None:
         if payload.next_action_due_at is not None or payload.next_action_reason is not None:
             raise field_error("next_action", NEXT_ACTION_MISSING)
@@ -311,17 +333,23 @@ async def record_outcome(db: AsyncSession, user: User, company: Company, meeting
         if missing:
             raise RequestValidationError([{"type": "value_error", "loc": ("body", f), "msg": msg, "input": None} for f, msg in missing])
         check_time("next_action_due_at", payload.next_action_due_at, now, DUE_PAST, DUE_FAR)
-        active_contact = meeting.contact_id and await db.scalar(select(CompanyContact.active).where(CompanyContact.id == meeting.contact_id))
         follow_up = await follow_ups.create(db, user, company, RecFollowUpCreate(
-            due_at=payload.next_action_due_at, reason=payload.next_action_reason, contact_id=meeting.contact_id if active_contact else None,
-            notes=payload.next_action,
+            due_at=payload.next_action_due_at, reason=payload.next_action_reason, contact_id=contact_id, notes=payload.next_action,
         ), now)
+    items = [  # pob-007 A6 (AC2): each action item is a follow-up; one refusal (the open cap) refuses the whole outcome
+        await follow_ups.create(db, user, company, RecFollowUpCreate(due_at=item.due_at, reason=item.reason, contact_id=contact_id, notes=item.action), now)
+        for item in payload.action_items
+    ]
+    db.add_all([RecruiterMeetingActionItem(meeting_id=meeting.id, follow_up_id=fu.id, position=i) for i, fu in enumerate(items)])
     meeting.status, meeting.outcome, meeting.next_action = "completed", payload.outcome, payload.next_action
     meeting.completed_at, meeting.completed_by_user_id, meeting.follow_up_id = now, user.id, follow_up.id if follow_up else None
+    meeting.hiring_forecast = [row.model_dump() for row in payload.hiring_forecast] or None  # pob-007 A5
+    meeting.commercial_notes = payload.commercial_notes
     _event(db, meeting.id, user, "completed")
     await db.flush()
     await companies.refresh_last_contact(db, meeting.company_id)  # pob-003 D4
-    audit(db, user, "complete", meeting.id, {"with_next_action": follow_up is not None, "follow_up_id": str(follow_up.id) if follow_up else None})
+    audit(db, user, "complete", meeting.id, {"with_next_action": follow_up is not None, "follow_up_id": str(follow_up.id) if follow_up else None,
+                                             "action_items": len(items), "forecast_rows": len(payload.hiring_forecast)})
 
 
 def cancel(db: AsyncSession, user: User, meeting: M, reason: str, now: datetime) -> None:

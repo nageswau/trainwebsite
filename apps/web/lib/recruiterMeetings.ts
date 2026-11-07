@@ -14,7 +14,18 @@ export const MEETING_TYPES = [
   { key: "contract_discussion", label: "Contract discussion" },
   { key: "campus_recruitment_discussion", label: "Campus recruitment discussion" },
   { key: "placement_drive_discussion", label: "Placement drive discussion" },
+  { key: "company_visit", label: "Company visit (BD visit)" }, // pob-007 A9
 ] as const;
+/** pob-007 (DEC-SCOPE-422 A5): a hiring forecast row's timeframe. */
+export const TIMEFRAMES = [
+  { key: "this_month", label: "This month" }, { key: "next_3_months", label: "Next 3 months" }, { key: "next_6_months", label: "Next 6 months" },
+  { key: "next_12_months", label: "Next 12 months" },
+] as const;
+export const timeframeLabel = (key: string) => TIMEFRAMES.find((t) => t.key === key)?.label ?? key;
+export const COMMERCIAL_NOTES_MAX = 2000;
+export const ROWS_MAX = 10;
+export type ForecastRow = { role: string; count: number; timeframe: string };
+export type ActionItem = { follow_up_id: string; action: string; due_at: string; reason: string; status: "open" | "done" | "cancelled" };
 export type MeetingType = (typeof MEETING_TYPES)[number]["key"];
 const TYPE_LABEL: Record<string, string> = Object.fromEntries(MEETING_TYPES.map((t) => [t.key, t.label]));
 export const meetingTypeLabel = (key: string) => TYPE_LABEL[key] ?? key;
@@ -36,6 +47,8 @@ export type RecMeeting = {
   contact: ContactRef | null; participants: { contacts: ContactRef[]; recruiters: PersonRef[] }; history: HistoryEvent[];
   follow_up: { id: string; due_at: string } | null; created_by: PersonRef; created_at: string; completed_at: string | null;
   completed_by: PersonRef | null; cancelled_at: string | null; cancel_reason: string | null; can_change: boolean; can_record_outcome: boolean;
+  // pob-007 A5-A7 (optional: older fixtures omit them)
+  hiring_forecast?: ForecastRow[]; commercial_notes?: string | null; commercial_notes_visible?: boolean; action_items?: ActionItem[];
 };
 export type MeetingView = "upcoming" | "awaiting_outcome" | "completed" | "cancelled";
 export const VIEW_TABS: [MeetingView, string][] = [["upcoming", "Upcoming"], ["awaiting_outcome", "Awaiting outcome"], ["completed", "Completed"], ["cancelled", "Cancelled"]];
