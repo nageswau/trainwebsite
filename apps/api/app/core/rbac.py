@@ -123,9 +123,9 @@ CATALOGUE: dict[str, dict] = {
     # pob-001 (DEC-SCOPE-403 C2/C4): client commercial terms -- a contract's fee, payment terms, replacement policy and documents, a
     # requirement's fee, and the revenue priced from them. `edit` counts only together with `view`.
     "commercials.client": {"label": "Client commercials (fees, terms, revenue)", "actions": ("view", "edit")},
-    # Declared ahead of their routes (hrc-002 R4 precedent), no default holder: vendor commercials (pob-010/012) and candidate phone and
-    # email (pob-030's share gate).
+    # pob-010 (DEC-SCOPE-420 V9): a vendor agreement's fee, terms, direction, confidentiality and documents.
     "commercials.vendor": {"label": "Vendor commercials", "actions": ("view", "edit")},
+    # Declared ahead of its route (hrc-002 R4 precedent), no default holder: candidate phone and email (pob-030's share gate).
     "candidates.contact": {"label": "Candidate contact details (phone, email)", "actions": ("view",)},
     # pob-006 (DEC-SCOPE-418 G1): the company and contact import, and merging duplicate companies and contacts.
     "crm": {"label": "Company CRM (import, merge)", "actions": ("import", "merge")},
@@ -137,6 +137,7 @@ _TELECALLER_REPORTS = ("reports.telecaller.view", "reports.telecaller.download")
 _TRAINING_REPORTS = ("reports.training.view", "reports.training.download")  # nehn-009 (migration 0210 seeds it); a trainer's rows are own batches
 _PLACEMENT_REPORTS = ("reports.placement.view", "reports.placement.download")  # nehn-016 (migration 0212 seeds it); rows = opted-in students
 _CLIENT_COMMERCIALS = ("commercials.client.view", "commercials.client.edit")  # pob-001 (migration 0278 seeds it)
+_VENDOR_COMMERCIALS = ("commercials.vendor.view", "commercials.vendor.edit")  # pob-010 (DEC-SCOPE-420 V9; migration 0300 seeds it)
 _RECRUITMENT_REPORTS = ("reports.recruitment.download", "reports.recruitment.view")  # hrc-033 (migration 0295 seeds it)
 DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "it_admin": (
@@ -148,7 +149,7 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     # hrc-001 (DEC-SCOPE-371 H2, Q-03; migration 0250 seeds it): the recruiters and their managers see candidate compensation.
     # hrc-013 (DEC-SCOPE-391 I1, migration 0268 seeds it): recruiters and their managers import candidate files.
     # pob-001 (DEC-SCOPE-403 C3, Q-01; migration 0278 seeds it): recruiters and their managers keep today's client commercials.
-    "placement_team": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.import") + _CLIENT_COMMERCIALS + _RECRUITMENT_REPORTS,
+    "placement_team": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.import") + _CLIENT_COMMERCIALS + _VENDOR_COMMERCIALS + _RECRUITMENT_REPORTS,
     # hrc-014 (migration 0256 seeds merge); hrc-008 (DEC-SCOPE-385 V4, migration 0262 seeds publish): who sees a vacancy
     # hrc-020 (DEC-SCOPE-401 X12, migration 0277 seeds it): the Find Candidates export.
     # hrc-032 (DEC-SCOPE-413 N10, migration 0291 seeds it): the placement manager and the HR Manager handle failed deliveries.
@@ -157,6 +158,7 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     + ("candidates.compensation.view", "candidates.merge", "jobs.publish", "candidates.import", "candidates.export", "notifications.retry", "reports.recruitment_insights.view")
     + ("crm.import", "crm.merge")  # pob-006 (DEC-SCOPE-418 G1, migration 0297 seeds it): the Team Lead; an authorised recruiter gets a per-user allow
     + _CLIENT_COMMERCIALS
+    + _VENDOR_COMMERCIALS
     + _RECRUITMENT_REPORTS,
     # hrc-007 (DEC-SCOPE-380 A12; migration 0257 seeds it): the HR Manager is the vacancy approver.
     # hrc-035 (DEC-SCOPE-396 K7; migration 0273 seeds it): the HR Manager decides candidate deletion requests.

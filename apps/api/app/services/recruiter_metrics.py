@@ -94,7 +94,7 @@ async def dashboard(db: AsyncSession, user: User, recruiter_id: UUID | None, now
     first, today, month_start = period(now)
     recent = now - timedelta(days=RECENT_DAYS)
 
-    open_company = [Company.archived_at.is_(None), Company.lost_at.is_(None)]
+    open_company = [Company.archived_at.is_(None), Company.lost_at.is_(None), companies.CLIENT_COMPANY]  # pob-010 V10: leads are clients
     new_lead = [*company_scope, *open_company, Company.stage == "new_lead"]
     history_job = ((JobApplication, JobApplication.id == JobApplicationStatusHistory.application_id), (Job, Job.id == JobApplication.job_id))
 
@@ -303,7 +303,7 @@ async def performance(
     selected = JobApplicationStatusHistory
 
     statement = union_all(
-        grouped("recruiter_leads", company_owner, func.count(), Company, where=during(Company.created_at)),
+        grouped("recruiter_leads", company_owner, func.count(), Company, where=[*during(Company.created_at), companies.CLIENT_COMPANY]),
         grouped("active_companies", company_owner, func.count(), Company, where=[
             or_(Company.archived_at.is_(None), Company.archived_at >= end),
             exists().where(Job.company_id == Company.id, Job.created_at < end, status_at_end.not_in(PARKED_REQUIREMENTS)),
@@ -402,7 +402,8 @@ async def by_recruiter(db: AsyncSession, user: User, recruiter_id: UUID | None, 
     crossed = first_past_interested()
     signed = _first(
         RecruiterContractEvent.contract_id, RecruiterContractEvent.actor_user_id, RecruiterContractEvent.created_at,
-        RecruiterContractEvent.to_status.in_(RECRUITER_CONTRACT_EXPIRING), order=RecruiterContractEvent.position,
+        and_(RecruiterContractEvent.to_status.in_(RECRUITER_CONTRACT_EXPIRING), RecruiterContractEvent.contract_id.in_(select(RecruiterContract.id).where(RecruiterContract.party == "client"))),  # pob-010 V10
+        order=RecruiterContractEvent.position,
     )
     selected = _first(
         JobApplicationStatusHistory.application_id, JobApplicationStatusHistory.changed_by_user_id, JobApplicationStatusHistory.created_at,
@@ -419,7 +420,7 @@ async def by_recruiter(db: AsyncSession, user: User, recruiter_id: UUID | None, 
         grouped("companies_contacted", touches.c.actor, func.count(distinct(touches.c.company)), touches, where=[]),
         grouped("meetings", RecruiterMeeting.completed_by_user_id, func.count(), RecruiterMeeting,
                 where=[RecruiterMeeting.status == "completed", *during(RecruiterMeeting.completed_at)]),
-        grouped("new_leads", Company.created_by_user_id, func.count(), Company, where=during(Company.created_at)),
+        grouped("new_leads", Company.created_by_user_id, func.count(), Company, where=[*during(Company.created_at), companies.CLIENT_COMPANY]),
         grouped("new_companies", crossed.c.actor, func.count(), crossed, where=during(crossed.c.at)),
         grouped("new_contracts", signed.c.actor, func.count(), signed, where=during(signed.c.at)),
         grouped("new_requirements", Job.created_by_user_id, func.count(), Job, where=during(Job.created_at)),
@@ -433,7 +434,7 @@ async def by_recruiter(db: AsyncSession, user: User, recruiter_id: UUID | None, 
 
     # B11 / B12: the period's joinings (as P8), credited to whoever recorded the Joined, priced by rec-031's fee per hire (BP7).
     joined_by = _latest_actor(JobOfferEvent, JobOfferEvent.offer_id == JobOffer.id, JobOfferEvent.event == "joined")
-    contract = and_(RecruiterContract.company_id == Job.company_id, RecruiterContract.is_current, RecruiterContract.fee_basis.is_not(None))
+    contract = and_(RecruiterContract.company_id == Job.company_id, RecruiterContract.party == "client", RecruiterContract.is_current, RecruiterContract.fee_basis.is_not(None))
     hires = await db.execute(
         select(joined_by, Job.fee_basis, Job.fee_value, RecruiterContract.fee_basis, RecruiterContract.fee_value, JobOffer.compensation, JobOffer.currency)
         .select_from(JobOffer)

@@ -15,6 +15,22 @@ export type CompanyRow = {
   stage: string; stage_label: string; lost: boolean; // rec-005: the lead's Status
   next_follow_up_at?: string | null; // rec-024 FU9: the earliest open follow-up (derived)
   last_contacted_at?: string | null; // pob-003 D4: the latest call, message or completed meeting
+  partner_type?: PartnerType | "employer"; vendor_status?: string | null; vendor_status_label?: string | null; // pob-010
+};
+// pob-010 (DEC-SCOPE-420 V2/V3/V5): a vendor is a company; `vendor_client` is one company in both relationships.
+export type PartnerType = "recruiter" | "vendor" | "vendor_client";
+export const PARTNER_TYPES: { id: PartnerType; name: string }[] = [
+  { id: "recruiter", name: "Client" }, { id: "vendor", name: "Vendor" }, { id: "vendor_client", name: "Both client and vendor" },
+];
+export const VENDOR_STATUSES = [
+  { key: "prospect", label: "Prospect" }, { key: "registration_submitted", label: "Registration submitted" }, { key: "approved", label: "Approved" },
+  { key: "active", label: "Active" }, { key: "suspended", label: "Suspended" },
+];
+export type VendorNext = { status: string; label: string; needs_reason: boolean };
+export type Vendor = {
+  specialisations: string[]; service_categories: string[]; locations: string[]; onboarding_form_on_file: boolean; nda_on_file: boolean;
+  agreement: { status: string; status_label: string } | null; next_statuses: VendorNext[];
+  history: { from_status: string; to_status: string; to_label: string; reason: string | null; actor: Person; created_at: string }[];
 };
 export type Assignment = { from_user: Person | null; to_user: Person; changed_by: Person; created_at: string };
 export type Company = CompanyRow & {
@@ -24,6 +40,7 @@ export type Company = CompanyRow & {
   created_at: string; updated_at: string;
   contract?: { status: string; status_label: string } | null; // rec-030 CT10: the current contract's status
   merged_into?: { id: string; code: string; name: string } | null; // pob-006 M6
+  vendor?: Vendor | null; // pob-010: null for a company that is not a vendor
 } & Partial<BusinessContext>;
 // pob-003 (DEC-SCOPE-406 D1-D3): the company's business context, as the API returns it.
 export type Branch = { city: string; state: string | null; country: string | null };
@@ -36,6 +53,7 @@ export type Duplicate = { message: string; matches: DuplicateMatch[]; total: num
 
 export const COMPANIES_URL = "/api/v1/recruiter/companies";
 export const COMPANIES_PATH = "/recruiter/companies";
+export const VENDORS_PATH = "/recruiter/vendors"; // pob-010
 export const RECRUITER_SIGN_IN = "/it/login";
 export const PRIORITIES: Priority[] = ["hot", "warm", "cold"];
 export const PRIORITY_LABEL: Record<Priority, string> = { hot: "Hot", warm: "Warm", cold: "Cold" };
@@ -53,7 +71,7 @@ export function companyShell(role: string): { nav: NavItem[]; roleLabel: string 
 
 /** The form's text fields, in screen order (EVID-018 §2/§3, company side). */
 export const TEXT_FIELDS = ["name", "website", "linkedin_url", "city", "state", "country", "head_office", "branches", "description", "employee_count"] as const;
-export const PICK_FIELDS = ["industry_id", "company_size_id", "lead_source_id", "campaign_id", "priority", "assigned_bdm_user_id"] as const;
+export const PICK_FIELDS = ["industry_id", "company_size_id", "lead_source_id", "campaign_id", "priority", "assigned_bdm_user_id", "partner_type"] as const;
 export type FormField = (typeof TEXT_FIELDS)[number] | (typeof PICK_FIELDS)[number];
 export type FormValues = Record<FormField, string>;
 
@@ -64,7 +82,7 @@ export function valuesOf(c?: Company): FormValues {
     country: text(c?.country), head_office: text(c?.head_office), branches: text(c?.branches), description: text(c?.description),
     employee_count: text(c?.employee_count), industry_id: text(c?.industry?.id), company_size_id: text(c?.company_size?.id),
     lead_source_id: text(c?.lead_source?.id), campaign_id: text(c?.campaign?.id), priority: text(c?.priority),
-    assigned_bdm_user_id: text(c?.assigned_bdm?.id),
+    assigned_bdm_user_id: text(c?.assigned_bdm?.id), partner_type: c?.partner_type ?? "recruiter",
   };
 }
 
@@ -79,7 +97,7 @@ export function wire(key: FormField, value: string): unknown {
 
 /** Create: every filled field. Edit: only the fields that changed. */
 export function companyBody(values: FormValues, original?: FormValues): Record<string, unknown> {
-  const keys = [...TEXT_FIELDS, ...PICK_FIELDS].filter((k) => (original ? values[k] !== original[k] : values[k].trim() !== ""));
+  const keys = [...TEXT_FIELDS, ...PICK_FIELDS].filter((k) => (original ? values[k] !== original[k] : values[k].trim() !== "" && !(k === "partner_type" && values[k] === "recruiter")));
   return Object.fromEntries(keys.map((k) => [k, wire(k, values[k])]));
 }
 

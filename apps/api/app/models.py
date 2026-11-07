@@ -674,6 +674,12 @@ COMPANY_CHECKS = {
     "ck_companies_employee_count": "employee_count IS NULL OR employee_count BETWEEN 0 AND 10000000",
 }
 # rec-005 (DEC-SCOPE-127): the pipeline stage and the Lost flag (both or neither); migration 0108 keeps a frozen copy.
+# pob-010 (DEC-SCOPE-420 V2/V3): migration 0300 keeps a frozen copy.
+COMPANY_VENDOR_CHECKS = {
+    "ck_companies_partner_type": "partner_type IN ('recruiter', 'employer', 'vendor', 'vendor_client')",
+    "ck_companies_vendor_status": "vendor_status IS NULL OR vendor_status IN ('prospect', 'registration_submitted', 'approved', 'active', 'suspended')",
+    "ck_companies_vendor_status_type": "(partner_type IN ('vendor', 'vendor_client')) = (vendor_status IS NOT NULL)",
+}
 COMPANY_PIPELINE_CHECKS = {
     "ck_companies_stage": "stage IN (" + ", ".join(f"'{s}'" for s in COMPANY_STAGES) + ")",
     "ck_companies_lost": "(lost_at IS NULL) = (lost_reason IS NULL)",
@@ -695,6 +701,7 @@ class Company(Base, TimestampMixin):
         Index("ix_companies_assigned_bdm", "assigned_bdm_user_id"),
         Index("ix_companies_name_key", text(COMPANY_NAME_KEY_SQL)),  # the duplicate check (services/recruiter_companies.NAME_KEY)
         Index("ix_companies_last_contacted", "last_contacted_at"),  # pob-003 D5: the list's "last contacted" sort
+        *(CheckConstraint(sql, name=name) for name, sql in COMPANY_VENDOR_CHECKS.items()),  # pob-010
         CheckConstraint("merged_into_id IS NULL OR merged_into_id <> id", name="ck_companies_merged_not_self"),  # pob-006
     )
     __mapper_args__ = {"eager_defaults": True}  # INSERT ... RETURNING company_code: no lazy load of the server default under asyncio
@@ -745,6 +752,26 @@ class Company(Base, TimestampMixin):
     merged_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     # pob-016 (C6): whether this company's requirements need a complete checklist before sourcing; NULL = the global rule
     checklist_blocks_sourcing: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # pob-010 (DEC-SCOPE-420 V3): set only while `partner_type` is a vendor type (ck_companies_vendor_status). Lists are replaced whole; [] when unset.
+    vendor_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    vendor_specialisations: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    vendor_service_categories: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    vendor_locations: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+
+
+class CompanyVendorStatusHistory(Base):
+    """pob-010 (DEC-SCOPE-420 V6): one row per onboarding move. Append-only; `position` orders rows created in one transaction."""
+
+    __tablename__ = "company_vendor_status_history"
+    __table_args__ = (Index("ix_company_vendor_status_history_company", "company_id", "position"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    from_status: Mapped[str] = mapped_column(String(30))
+    to_status: Mapped[str] = mapped_column(String(30))
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class CompanyStageHistory(Base):
@@ -8114,6 +8141,14 @@ RECRUITER_CONTRACT_CHECKS = {
     "ck_recruiter_contracts_contract_document": "(contract_document_key IS NULL) = (contract_document_content_type IS NULL)",
     "ck_recruiter_contracts_mou_document": "(mou_document_key IS NULL) = (mou_document_content_type IS NULL)",
 }
+# pob-010 (DEC-SCOPE-420 V8): a vendor agreement is a contract with party='vendor'; direction and confidentiality belong to it alone. 0300 keeps a frozen copy.
+RECRUITER_CONTRACT_PARTIES = ("client", "vendor")
+RECRUITER_CONTRACT_DIRECTIONS = ("vendor_pays_us", "we_pay_vendor")
+RECRUITER_CONTRACT_VENDOR_CHECKS = {
+    "ck_recruiter_contracts_party": "party IN ('client', 'vendor')",
+    "ck_recruiter_contracts_direction": "direction IS NULL OR direction IN ('vendor_pays_us', 'we_pay_vendor')",
+    "ck_recruiter_contracts_vendor_terms": "party = 'vendor' OR (direction IS NULL AND confidentiality_terms IS NULL)",
+}
 
 
 class RecruiterContract(Base, TimestampMixin):
@@ -8123,7 +8158,8 @@ class RecruiterContract(Base, TimestampMixin):
     __tablename__ = "recruiter_contracts"
     __table_args__ = (
         *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_CONTRACT_CHECKS.items()),
-        Index("uq_recruiter_contracts_current", "company_id", unique=True, postgresql_where=text("is_current")),
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_CONTRACT_VENDOR_CHECKS.items()),
+        Index("uq_recruiter_contracts_current", "company_id", "party", unique=True, postgresql_where=text("is_current")),  # pob-010 V8: per party
         Index("ix_recruiter_contracts_company", "company_id", "created_at"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -8147,6 +8183,9 @@ class RecruiterContract(Base, TimestampMixin):
     mou_document_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     mou_document_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_current: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    party: Mapped[str] = mapped_column(String(10), default="client", server_default="client")  # pob-010 V8
+    direction: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    confidentiality_terms: Mapped[str | None] = mapped_column(String(2000), nullable=True)
 
 
 class RecruiterContractEvent(Base):
@@ -8194,7 +8233,7 @@ class CompanySkillDemand(Base):
 
 
 # pob-003 D6: the §3.1 document types, in source order; migration 0283 freezes a copy (test_pob_003_migration keeps them identical).
-COMPANY_DOCUMENT_KINDS = ("company_profile", "vendor_onboarding_form", "recruitment_agreement", "job_description", "meeting_notes")
+COMPANY_DOCUMENT_KINDS = ("company_profile", "vendor_onboarding_form", "recruitment_agreement", "job_description", "meeting_notes", "nda")  # nda: pob-010 V7
 
 
 class CompanyDocument(Base):

@@ -154,7 +154,7 @@ def _fee_value(basis: str | None, value) -> dict:
 
 
 async def _contract_fees(db: AsyncSession, company_ids: set[UUID]) -> dict[UUID, RecruiterContract]:
-    rows = await db.scalars(select(RecruiterContract).where(RecruiterContract.company_id.in_(company_ids), RecruiterContract.is_current, RecruiterContract.fee_basis.is_not(None)))
+    rows = await db.scalars(select(RecruiterContract).where(RecruiterContract.company_id.in_(company_ids), RecruiterContract.party == "client", RecruiterContract.is_current, RecruiterContract.fee_basis.is_not(None)))
     return {c.company_id: c for c in rows}
 
 

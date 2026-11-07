@@ -2428,3 +2428,15 @@ database built by `create_all` has no `active` column.
 - `requirement_checklist_settings`: `id` (one row, 1; no row = off); `block_sourcing`; `updated_by_user_id`; timestamps.
 - `companies.checklist_blocks_sourcing` boolean NULL: null = the global rule. A company merge keeps the survivor's value.
 - `recruiter_follow_ups.reason` gains `clarification`. The downgrade turns those rows into `jd`, so none is lost.
+
+### pob-010 — vendors (`DEC-SCOPE-420`, migration `0300_vendor_master`)
+
+**`companies`:** `partner_type` gains a CHECK (`recruiter`, `employer`, `vendor`, `vendor_client`); new `vendor_status` (NULL unless a vendor type, by CHECK), `vendor_specialisations`, `vendor_service_categories`, `vendor_locations` (JSON lists).
+
+**`company_vendor_status_history`:** (`id`, `company_id` → companies RESTRICT, `from_status`, `to_status`, `reason`, `actor_user_id`, `position`, `created_at`). Append-only.
+
+**`recruiter_contracts`:** new `party` (`client` default, `vendor`), `direction`, `confidentiality_terms` (vendor rows only, by CHECK). `uq_recruiter_contracts_current` is now (`company_id`, `party`) where current.
+
+**`company_documents.kind`:** adds `nda`.
+
+The downgrade refuses while a vendor or an NDA exists.

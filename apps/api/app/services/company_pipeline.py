@@ -157,7 +157,7 @@ async def board(db: AsyncSession, filters: list, stage: str | None, limit: int, 
     open company."""
     if stage is not None and stage != LOST and stage not in KINDS:
         raise HTTPException(422, BOARD_STAGE_UNKNOWN)
-    scope = [*filters, Company.archived_at.is_(None)]
+    scope = [*filters, Company.archived_at.is_(None), Company.partner_type != "vendor"]  # pob-010 V10: the board is the client pipeline
     is_lost = Company.lost_at.is_not(None)
     grouped = (await db.execute(select(Company.stage, is_lost, func.count()).where(*scope).group_by(Company.stage, is_lost))).all()
     counts = {key: n for key, lost, n in grouped if not lost}

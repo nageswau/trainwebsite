@@ -31,8 +31,10 @@ LABELS = {
     "active": "Active",
     "expired": "Expired",
 }
-FIELDS = ("agreement_type", "start_date", "end_date", "fee_basis", "fee_value", "payment_terms", "replacement_policy")
-TERMS = ("fee_basis", "fee_value", "payment_terms", "replacement_policy")  # pob-001 C5: behind `commercials.client`
+FIELDS = ("agreement_type", "start_date", "end_date", "fee_basis", "fee_value", "payment_terms", "replacement_policy", "direction", "confidentiality_terms")
+VENDOR_TERMS = ("direction", "confidentiality_terms")  # pob-010 V8: a vendor agreement's alone
+TERMS = ("fee_basis", "fee_value", "payment_terms", "replacement_policy", *VENDOR_TERMS)  # pob-001 C5: behind `commercials.client`; pob-010 V9: `commercials.vendor` for a vendor agreement
+CLIENT, VENDOR = "client", "vendor"
 DOCUMENT_KINDS = ("contract", "mou")
 RENEWABLE = ("signed", "active", "expired")  # CT7: a renewal follows a concluded contract
 NO_CONTRACT = "No contract yet"
@@ -55,6 +57,10 @@ UPLOAD_LIMIT = 20  # per user per rolling hour (bdm-005 M8)
 UPLOAD_WINDOW = timedelta(hours=1)
 THROTTLED = "Too many uploads. Try again later."
 NO_TERMS = "Your role cannot view or change client commercial terms"  # pob-001 C5
+NO_VENDOR_TERMS = "Your role cannot view or change vendor commercial terms"  # pob-010 V9
+WRONG_PARTY = "This company has no such agreement side"
+VENDOR_ONLY = "Only a vendor agreement has this term"
+DIRECTION_REQUIRED = "Choose who pays whom before signing"
 
 logger = logging.getLogger("app.recruiter")
 
@@ -75,7 +81,17 @@ def effective_status(contract: RecruiterContract, on: date) -> str:
 
 
 def stored_state(contract: RecruiterContract) -> dict:
-    return {"status": contract.status, **{f: getattr(contract, f) for f in FIELDS}, "has_document": contract.contract_document_key is not None}
+    return {"status": contract.status, "party": contract.party, **{f: getattr(contract, f) for f in FIELDS}, "has_document": contract.contract_document_key is not None}
+
+
+def resolve_party(company: Company, party: str | None) -> str:
+    """pob-010 V8: unsent = the company's client side, or the vendor side of a vendor-only company. A side the company does not have is a 422."""
+    sides = {"vendor": (VENDOR,), "vendor_client": (CLIENT, VENDOR)}.get(company.partner_type, (CLIENT,))
+    if party is None:
+        return sides[0]
+    if party not in sides:
+        raise HTTPException(422, WRONG_PARTY)
+    return party
 
 
 def check_rules(state: dict) -> None:
@@ -90,6 +106,12 @@ def check_rules(state: dict) -> None:
         raise _invalid("fee_value", FEE_PERCENT_MAX, str(state["fee_value"]))
     if state["status"] in RECRUITER_CONTRACT_EXPIRING and not state["has_document"]:
         raise _invalid("status", DOCUMENT_REQUIRED, state["status"])
+    if state["party"] == CLIENT:  # pob-010 V8
+        for field in VENDOR_TERMS:
+            if state[field] is not None:
+                raise _invalid(field, VENDOR_ONLY, None)
+    elif state["status"] in RECRUITER_CONTRACT_EXPIRING and state["direction"] is None:
+        raise _invalid("direction", DIRECTION_REQUIRED, None)
     if state["status"] == "active":
         for field in ("start_date", "end_date"):
             if state[field] is None:
@@ -118,16 +140,16 @@ async def check_overlap(db: AsyncSession, company: Company, state: dict, exclude
     if start is None:
         return
     end = state["end_date"] or date.max
-    where = [RecruiterContract.company_id == company.id, RecruiterContract.start_date.is_not(None), RecruiterContract.start_date <= end,
-             func.coalesce(RecruiterContract.end_date, date.max) >= start]
+    where = [RecruiterContract.company_id == company.id, RecruiterContract.party == state["party"], RecruiterContract.start_date.is_not(None), RecruiterContract.start_date <= end,
+             func.coalesce(RecruiterContract.end_date, date.max) >= start]  # fmt: skip
     if exclude_id is not None:
         where.append(RecruiterContract.id != exclude_id)
     if await db.scalar(select(RecruiterContract.id).where(*where).limit(1)):
         raise HTTPException(409, CONTRACT_OVERLAP)
 
 
-async def load_current(db: AsyncSession, company: Company, *, lock: bool = False) -> RecruiterContract | None:
-    stmt = select(RecruiterContract).where(RecruiterContract.company_id == company.id, RecruiterContract.is_current.is_(True))
+async def load_current(db: AsyncSession, company: Company, *, lock: bool = False, party: str = CLIENT) -> RecruiterContract | None:
+    stmt = select(RecruiterContract).where(RecruiterContract.company_id == company.id, RecruiterContract.party == party, RecruiterContract.is_current.is_(True))
     if lock:
         stmt = stmt.with_for_update().execution_options(populate_existing=True)
     return await db.scalar(stmt)
@@ -142,24 +164,25 @@ async def load_scoped_contract(db: AsyncSession, user: User, contract_id: UUID) 
     return row[0], row[1]
 
 
-async def sees_commercials(db: AsyncSession, user: User) -> bool:
-    """pob-001 (DEC-SCOPE-403): `commercials.client.view` -- the user's own override, else their role (at most two indexed reads)."""
-    return await permissions.user_has_grant(db, user, "commercials.client", "view")
+async def sees_commercials(db: AsyncSession, user: User, party: str = CLIENT) -> bool:
+    """pob-001 (DEC-SCOPE-403): `commercials.client.view` (pob-010 V9: `commercials.vendor.view` for a vendor agreement) -- the user's own
+    override, else their role (at most two indexed reads)."""
+    return await permissions.user_has_grant(db, user, f"commercials.{party}", "view")
 
 
-async def commercial_access(db: AsyncSession, user: User) -> tuple[bool, bool]:
-    """pob-001 C4: (view, edit) of the client commercials; `edit` counts only with `view`."""
-    view = await sees_commercials(db, user)
-    return view, view and await permissions.user_has_grant(db, user, "commercials.client", "edit")
+async def commercial_access(db: AsyncSession, user: User, party: str = CLIENT) -> tuple[bool, bool]:
+    """pob-001 C4: (view, edit) of that side's commercials; `edit` counts only with `view`."""
+    view = await sees_commercials(db, user, party)
+    return view, view and await permissions.user_has_grant(db, user, f"commercials.{party}", "edit")
 
 
-async def require_terms(db: AsyncSession, user: User, route: str, *, edit: bool, message: str = NO_TERMS) -> None:
-    """403 without `commercials.client.view` (or, with `edit`, the effective edit), logged with the actor, role and route only --
-    never the value that was sent."""
-    allowed = (await commercial_access(db, user))[1] if edit else await sees_commercials(db, user)
+async def require_terms(db: AsyncSession, user: User, route: str, *, edit: bool, message: str | None = None, party: str = CLIENT) -> None:
+    """403 without that side's `view` (or, with `edit`, the effective edit), logged with the actor, role and route only -- never the value
+    that was sent."""
+    allowed = (await commercial_access(db, user, party))[1] if edit else await sees_commercials(db, user, party)
     if not allowed:
-        logger.warning("recruiter_commercials_refused", extra={"extra_fields": {"actor_id": str(user.id), "role": user.role, "route": route}})
-        raise HTTPException(403, message)
+        logger.warning("recruiter_commercials_refused", extra={"extra_fields": {"actor_id": str(user.id), "role": user.role, "route": route, "party": party}})
+        raise HTTPException(403, message or (NO_VENDOR_TERMS if party == VENDOR else NO_TERMS))
 
 
 def can_write(user: User, company: Company) -> bool:
@@ -235,11 +258,12 @@ def _document(contract: RecruiterContract, kind: str) -> dict | None:
 async def contract_out(db: AsyncSession, user: User, company: Company, contract: RecruiterContract, on: date, access: tuple[bool, bool] | None = None) -> dict:
     """pob-001 C5: without `commercials.client.view` the terms are absent (the routes answer with response_model_exclude_unset)."""
     status = effective_status(contract, on)
-    view, edit = access or await commercial_access(db, user)
+    view, edit = access or await commercial_access(db, user, contract.party)
     editable = can_write(user, company) and contract.is_current
     creator = await db.get_one(User, contract.created_by_user_id)  # RESTRICT foreign key: always exists
     return {
         "id": contract.id,
+        "party": contract.party,
         "status": status,
         "status_label": LABELS[status],
         "status_changed_at": contract.status_changed_at,
@@ -258,13 +282,13 @@ async def contract_out(db: AsyncSession, user: User, company: Company, contract:
     }
 
 
-async def company_contracts_out(db: AsyncSession, user: User, company: Company) -> dict:
+async def company_contracts_out(db: AsyncSession, user: User, company: Company, party: str = CLIENT) -> dict:
     on = today()
-    rows = (await db.scalars(select(RecruiterContract).where(RecruiterContract.company_id == company.id)
+    rows = (await db.scalars(select(RecruiterContract).where(RecruiterContract.company_id == company.id, RecruiterContract.party == party)
                              .order_by(RecruiterContract.created_at.desc(), RecruiterContract.id))).all()
     current = next((r for r in rows if r.is_current), None)
     renewable = current is None or effective_status(current, on) in RENEWABLE
-    access = await commercial_access(db, user)
+    access = await commercial_access(db, user, party)
     return {
         "current": await contract_out(db, user, company, current, on, access) if current else None,
         "previous": [await contract_out(db, user, company, r, on, access) for r in rows if not r.is_current],
@@ -274,9 +298,9 @@ async def company_contracts_out(db: AsyncSession, user: User, company: Company) 
     }
 
 
-async def company_contract_ref(db: AsyncSession, company: Company) -> dict | None:
+async def company_contract_ref(db: AsyncSession, company: Company, party: str = CLIENT) -> dict | None:
     """CT10: the current contract's effective status for the company detail."""
-    current = await load_current(db, company)
+    current = await load_current(db, company, party=party)
     if current is None:
         return None
     status = effective_status(current, today())

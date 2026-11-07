@@ -29,7 +29,7 @@ def test_migration_is_in_the_single_chain():
 
 
 def test_the_document_kinds_are_a_frozen_copy():
-    assert _migration.DOCUMENT_KINDS == COMPANY_DOCUMENT_KINDS
+    assert (*_migration.DOCUMENT_KINDS, "nda") == COMPANY_DOCUMENT_KINDS  # pob-010 V7 added the NDA (migration 0300)
 
 
 @pytest.fixture

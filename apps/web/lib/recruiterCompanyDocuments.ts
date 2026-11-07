@@ -2,7 +2,7 @@
 // `can_upload` / `can_upload_agreement` / `can_download`, sniffs the bytes and audits every upload and download.
 import { COMPANIES_URL, type Person } from "@/lib/recruiterCompanies";
 
-export const DOCUMENT_KINDS = ["company_profile", "vendor_onboarding_form", "recruitment_agreement", "job_description", "meeting_notes"] as const;
+export const DOCUMENT_KINDS = ["company_profile", "vendor_onboarding_form", "recruitment_agreement", "job_description", "meeting_notes", "nda"] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 export const KIND_LABEL: Record<DocumentKind, string> = {
   company_profile: "Company profile",
@@ -10,6 +10,7 @@ export const KIND_LABEL: Record<DocumentKind, string> = {
   recruitment_agreement: "Recruitment agreement",
   job_description: "Job description",
   meeting_notes: "Meeting notes",
+  nda: "Signed NDA",
 };
 export const AGREEMENT: DocumentKind = "recruitment_agreement";
 

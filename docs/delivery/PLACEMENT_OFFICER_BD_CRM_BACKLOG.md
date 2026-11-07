@@ -398,6 +398,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 ### Phase 2: Vendors and College/TPO
 
 #### pob-010: Vendor and staffing-partner master, onboarding and agreements
+- **Status:** built (`DEC-SCOPE-420`, 2026-11-07); Q-08 answered "yes, and one company can be both" and V1-V12 are the builder's calls (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §2 "Vendor & Recruitment Partner CRM"; §5 bullets 1–2; §3.1 Status "vendor registration".
 - **Existing behavior:** there is no vendor concept. `Company.partner_type` is an unchecked string ("recruiter"/"employer"). Overseas `Agent*` models are unrelated.
 - **Expected behavior:** per Q-08:

@@ -33,7 +33,7 @@ export default function RecruiterContractDocument({ companyId, contract, kind, o
     setBusy(true);
     const body = new FormData();
     body.append("file", file);
-    const outcome = await sendRequest(`${companyContractsUrl(companyId)}/document?kind=${kind}`, { method: "PUT", body });
+    const outcome = await sendRequest(`${companyContractsUrl(companyId)}/document?kind=${kind}${contract.party === "vendor" ? "&party=vendor" : ""}`, { method: "PUT", body });
     setBusy(false);
     input.value = "";
     refocus(inputId);
