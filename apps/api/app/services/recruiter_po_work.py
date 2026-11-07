@@ -56,6 +56,13 @@ KPI_LABELS = {
     "outreach": "Outreach", "responses": "Responses", "meetings": "Meetings", "requirements": "Requirements generated",
     "vendor_registrations": "Vendor registrations", "active_accounts": "Active accounts", "placements": "Placements",
 }
+KPI_DEFINITIONS = {  # backlog Appendix B, as built (T2)
+    "outreach": "Emails, LinkedIn and WhatsApp messages to contacts plus outgoing contact calls",
+    "responses": "Contacts reached in the period with a reply logged in the period",
+    "meetings": "Meetings you completed", "requirements": "Requirements you created",
+    "vendor_registrations": "Vendors you moved to Approved", "active_accounts": "Your active or repeat clients with an open requirement (now)",
+    "placements": "Joinings you recorded",
+}
 
 
 def _person(user: User) -> dict:
@@ -120,7 +127,8 @@ def _kpis(targets: dict[str, int], counts: dict | None) -> list[dict]:
     rows = []
     for key in metrics.PO_KPIS:
         achieved = counts[key] if counts else None
-        rows.append({"key": key, "label": KPI_LABELS[key], "target": targets.get(key), "achieved": achieved, "percent": _percent(targets.get(key), achieved)})
+        rows.append({"key": key, "label": KPI_LABELS[key], "definition": KPI_DEFINITIONS[key], "tracked": True, "target": targets.get(key), "achieved": achieved,
+                     "percent": _percent(targets.get(key), achieved)})
     return rows
 
 

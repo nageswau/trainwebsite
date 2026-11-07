@@ -196,6 +196,7 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
     ["State", display(company.state)],
     ["Country", display(company.country)],
     ["Head office", display(company.head_office)],
+    ["Territory", display(company.territory)], // pob-009 T4
     ["Branch notes", multiline(company.branches)], // pob-003: structured branches are in Business context
     ["Company description", multiline(company.description)],
     ["Lead source", display(company.lead_source?.name)],

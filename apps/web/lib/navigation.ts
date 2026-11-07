@@ -179,6 +179,9 @@ export const RECRUITER_NAV: NavItem[] = withResources([ // pob-001: Receivables 
   { label: "Campus Drives", href: "/recruiter/drives" }, // rec-029
   { label: "Colleges", href: "/recruiter/colleges" }, // pob-013: college placement profiles (TPO records)
   { label: "My Performance", href: "/recruiter/performance" }, // rec-034: §25, their own row
+  { label: "My Targets", href: "/recruiter/targets" }, // pob-009: monthly targets vs actual, territory, target companies
+  { label: "Daily Plan", href: "/recruiter/daily-plan" }, // pob-009: today's planned activities
+  { label: "Activity Reports", href: "/recruiter/activity-reports" }, // pob-009: daily and weekly reports to the Team Lead
   { label: "Recruitment dashboards", href: "/recruiter/recruitment-dashboards" }, // hrc-033
   { label: "Screening Bank", href: "/recruiter/screening-bank" }, // pob-020: questions and form templates
   { label: "Report library", href: "/recruiter/report-library" }, // nehn-016: students completing soon, the placement report
@@ -191,6 +194,8 @@ export const RECRUITER_MANAGER_NAV: NavItem[] = withResources([
   { label: "Performance", href: "/recruiter/manager/performance" }, // rec-033: §24 per recruiter over a period
   { label: "Recruitment dashboards", href: "/recruiter/recruitment-dashboards" }, // hrc-033
   { label: "Comparison", href: "/recruiter/performance" }, // rec-034: §25 BD + recruitment per recruiter
+  { label: "PO Targets", href: "/recruiter/manager/targets" }, // pob-009: targets, territories, target companies
+  { label: "Activity Reports", href: "/recruiter/manager/activity-reports" }, // pob-009: the team's daily and weekly reports
   { label: "Management Dashboard", href: "/recruiter/manager/business" }, // rec-035: §26 the recruiter business on one page
   { label: "Team", href: "/recruiter/manager/team" }, { label: "Companies", href: "/recruiter/companies" }, { label: "Vendors", href: "/recruiter/vendors" }/* pob-010 */, { label: "Catalogues", href: "/recruiter/manager/catalogue" }, { label: "Skills Master", href: "/recruiter/manager/skills" },
   { label: "Candidate Master", href: "/recruiter/candidates" }, // rec-009: shared with recruiters (R11)

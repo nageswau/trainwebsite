@@ -48,6 +48,7 @@ const TEXT: Record<(typeof TEXT_FIELDS)[number], Text> = {
   branches: { label: "Branches", max: 1000, multiline: true, hint: "One per line" },
   description: { label: "Company description", max: 2000, multiline: true },
   employee_count: { label: "Number of employees", max: 9 },
+  territory: { label: "Territory", max: 120, hint: "The sales territory, for target lists" }, // pob-009 T4
 };
 
 /** FastAPI's 422 list -> errors at the form's fields; null when any item is about something else (then one message shows it all). */
@@ -309,6 +310,7 @@ export default function RecruiterCompanyForm({
           {textField("state")}
           {textField("country")}
           {textField("head_office")}
+          {textField("territory")}
         </div>
         {textField("branches")}
         {textField("description")}
