@@ -20,6 +20,7 @@ from app.models import (
     CompanyDocument,
     DriveRequirement,
     InstitutionDataPermission,
+    InstitutionVacancyShare,
     RecruiterCadence,
     RecruiterCall,
     RecruiterContactCadence,
@@ -85,6 +86,11 @@ def _drive(w) -> dict:
 
 def _invoice(w) -> dict:
     return {"requirement_id": w["requirement"], "invoice_number": tag("INV-"), "invoice_date": w["today"], "due_date": w["tomorrow"], "amount": "150000"}
+
+
+def _vacancy_share(w) -> dict:
+    """pob-015 V5: one share per college, requirement, day and channel -- each cell takes its own past day."""
+    return {"requirement_id": w["requirement"], "channel": "email", "shared_on": str(now().date() - timedelta(days=1 + int(tag(), 16) % 3000))}
 
 
 ROWS = [
@@ -205,6 +211,15 @@ ROWS = [
                                                                          "expires_on": w["tomorrow"], "user_ids": [w["rec_id"]]}, **allow(201, *PERMISSION_WRITERS)),  # fmt: skip
     R("patch", "/recruiter/colleges/{college}/data-permissions/{college_permission}", {"notes": "Renewed"}, **allow(200, *PERMISSION_WRITERS)),
     R("post", "/recruiter/colleges/{college}/data-permissions/{college_permission}/revoke", {}, **allow(200, *PERMISSION_WRITERS)),
+    # pob-015 vacancy sharing and the campus calendar (§2.317, V2/V12): every college reader reads; the college's writers share a requirement
+    # of their own scope (rec_out: not theirs, 404) and record the answer; both managers and another BDM 403 after scope
+    R("get", "/recruiter/colleges/{college}/vacancies", **allow(200, *COLLEGE_READERS)),
+    R("get", "/recruiter/colleges/{college}/vacancy-options", **allow(200, *COLLEGE_WRITERS)),
+    R("post", "/recruiter/colleges/{college}/vacancy-shares", _vacancy_share, **allow(201, "rec", "super", "bdm"), rec_out=404),
+    R("patch", "/recruiter/colleges/{college}/vacancy-shares/{college_share}", {"response": "interested"}, **allow(200, *COLLEGE_WRITERS)),
+    R("get", "/recruiter/campus-calendar", **allow(200, *COLLEGE_READERS)),
+    R("get", "/recruiter/campus-calendar.ics", **allow(200, *COLLEGE_READERS)),
+    R("get", "/recruiter/campus-summary", **allow(200, *COLLEGE_READERS)),
     # pob-009 (§2.315, T1): targets, territory, target companies, the daily plan and activity reports -- a PO's own; the Team Lead's direct reports
     R("get", "/recruiter/targets", **allow(200, *POS)),
     R("get", "/recruiter/manager/targets", **allow(200, "mgr", "mgr_out", "super")),
@@ -272,6 +287,9 @@ async def build(client, db, w) -> None:
     invoice = await add(db, RecruiterInvoice(job_id=job_id, invoice_number=tag("INV-"), invoice_date=now().date() - timedelta(days=1),
                                              due_date=now().date() + timedelta(days=30), amount=Decimal("150000.00"), created_by_user_id=rec.id))  # fmt: skip
     college = await _college(db, users["bdm"])
+    share = await add(db, InstitutionVacancyShare(organization_id=UUID(college["college"]), job_id=job_id, shared_on=now().date(), channel="visit",
+                                                  shared_by_user_id=rec.id))  # fmt: skip  # pob-015
+    college["college_share"] = str(share.id)
     po_today = today_ist(now())  # pob-009: a target company and a plan item of rec's for today (IST)
     target = await add(db, RecruiterTargetCompany(recruiter_user_id=rec.id, company_id=company_id, month=po_today.replace(day=1), added_by_user_id=users["mgr"].id))
     plan_item = await add(db, RecruiterPlanItem(recruiter_user_id=rec.id, plan_date=po_today, company_id=company_id))

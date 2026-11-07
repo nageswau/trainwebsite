@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import CollegePlacement from "@/components/CollegePlacement";
+import CollegeVacancies from "@/components/CollegeVacancies";
 import InstitutionStudentPool from "@/components/InstitutionStudentPool";
 import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
@@ -56,6 +57,7 @@ export default async function RecruiterCollegePage({ params }: { params: Promise
               </div>
             </div>
             <CollegePlacement orgId={college.id} initial={college} />
+            <CollegeVacancies orgId={college.id} />
             <InstitutionStudentPool orgId={college.id} viewerId={user.id} />
           </>
         ) : (

@@ -4045,3 +4045,8 @@ A placement officer has no company scope, but answering Missing still creates th
 - **Student pool (GET):** every pob-013 college reader (placement_team, placement_manager, the college BDMs in bdm-002 scope, super_admin); others 403, out of scope 404. It lists only the students the caller may see.
 - **Data permissions (create / change / revoke):** placement_manager and super_admin; placement_team and BDMs 403 after scope.
 - **New data-scope dimension on candidates:** an institution student is visible only to the people its permission names while it is active -- whatever their role (super_admin included). Outside it: 404 on every candidate route, absent from lists, search and system reads, unnamed in duplicate panels and import reports, 422 on share and apply.
+
+### 2.317 Vacancy sharing and the campus calendar *(added 2026-11-07 — `DEC-SCOPE-426`, pob-015)*
+
+- **Read (vacancies view, campus calendar and its ICS, TPO widget):** every pob-013 college reader (placement_team, placement_manager, the college BDMs in bdm-002 scope, super_admin); others 403, out of scope 404. Outcomes never count institution students outside the caller's active pob-014 permission.
+- **Share a vacancy / record the reply / the share form's options:** the college's pob-013 writers (placement_team, super_admin, the college's assigned BDM); both managers and another BDM 403 after scope. Sharing also needs the requirement in the caller's requirement scope (404 otherwise).

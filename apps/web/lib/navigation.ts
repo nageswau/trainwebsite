@@ -98,7 +98,7 @@ export const BDM_NOTIFICATIONS_HREF = "/bdm/notifications";
 export const BDM_MANAGER_NOTIFICATIONS_HREF = "/bdm/manager/notifications";
 export const BDM_NAV: NavItem[] = [
   { label: "My Day", href: "/bdm/my-day" }, { label: "Calendar", href: "/bdm/calendar" }, { label: "Organizations", href: "/bdm/organizations" },
-  { label: "Pipeline", href: "/bdm/pipeline" },
+  { label: "Pipeline", href: "/bdm/pipeline" }, { label: "Campus calendar", href: "/bdm/campus-calendar" }, // pob-015
   { label: "MoUs", href: "/bdm/mous" }, { label: "Appointments", href: "/bdm/appointments" }, { label: "Follow-ups", href: "/bdm/follow-ups" },
   { label: "Requests", href: "/bdm/meeting-requests" }, // tel-019
   { label: "Activities", href: "/bdm/activities" }, { label: "Daily report", href: "/bdm/daily-report" }, // bdm-015
@@ -114,7 +114,8 @@ export const BDM_MANAGER_NAV: NavItem[] = [
   { label: "MoUs", href: "/bdm/manager/mous" }, { label: "Appointments", href: "/bdm/manager/appointments" },
   { label: "Requests", href: "/bdm/manager/meeting-requests" }, // tel-019
   { label: "Follow-ups", href: "/bdm/manager/follow-ups" },
-  { label: "Calendar", href: "/bdm/manager/calendar" }, { label: "Activities", href: "/bdm/manager/activities" },
+  { label: "Calendar", href: "/bdm/manager/calendar" }, { label: "Campus calendar", href: "/bdm/campus-calendar" }, // pob-015
+  { label: "Activities", href: "/bdm/manager/activities" },
   { label: "Daily reports", href: "/bdm/manager/daily-reports" }, // bdm-015
   { label: "Targets", href: "/bdm/manager/targets" }, // bdm-016
   { label: "Approvals", href: "/bdm/manager/approvals" },
@@ -178,6 +179,7 @@ export const RECRUITER_NAV: NavItem[] = withResources([ // pob-001: Receivables 
   { label: "Receivables", href: "/recruiter/receivables" }, // rec-031
   { label: "Campus Drives", href: "/recruiter/drives" }, // rec-029
   { label: "Colleges", href: "/recruiter/colleges" }, // pob-013: college placement profiles (TPO records)
+  { label: "Campus calendar", href: "/recruiter/campus-calendar" }, // pob-015: drives, placement calendars, batches; the TPO widget
   { label: "My Performance", href: "/recruiter/performance" }, // rec-034: §25, their own row
   { label: "My Targets", href: "/recruiter/targets" }, // pob-009: monthly targets vs actual, territory, target companies
   { label: "Daily Plan", href: "/recruiter/daily-plan" }, // pob-009: today's planned activities
@@ -218,6 +220,7 @@ export const RECRUITER_MANAGER_NAV: NavItem[] = withResources([
   { label: "Receivables", href: "/recruiter/receivables" }, // rec-031: the team's invoices (RV10: the manager records too)
   { label: "Campus Drives", href: "/recruiter/drives" }, // rec-029: the team's drives, read only
   { label: "Colleges", href: "/recruiter/colleges" }, // pob-013: college placement profiles, read only
+  { label: "Campus calendar", href: "/recruiter/campus-calendar" }, // pob-015: the team's colleges, read only
   { label: "Message templates", href: "/recruiter/manager/templates" }, // rec-026
   { label: "Outreach cadences", href: "/recruiter/manager/cadences" }, // pob-008: the Team Lead's cadences
   { label: "Screening Bank", href: "/recruiter/manager/screening-bank" }, // pob-020: questions and form templates
