@@ -282,7 +282,7 @@ export default function RecruiterTemplateLibrary({ approver }: { approver: boole
         <h3 id="tpl-create-heading">Add a template</h3>
         <TemplateFields key={`${formKey}-${channel}`} prefix="tpl-new" channel={channel} onChannel={setChannel} disabled={busy} approver={approver} />
         <div><button className="btn" disabled={busy}>{busy ? "Adding…" : "Add template"}</button></div>
-        <div role="status" aria-live="polite" className={feedback?.error ? "form-error" : "form-message"} style={{ overflowWrap: "anywhere" }}>{feedback?.text}</div>
+        <div role="status" aria-live="polite" className={feedback ? (feedback.error ? "form-error" : "form-message") : undefined} style={{ overflowWrap: "anywhere" }}>{feedback?.text}</div>
       </form>
 
       <section className="action-card wide" aria-labelledby="tpl-list-heading" style={{ display: "grid", gap: 8 }}>

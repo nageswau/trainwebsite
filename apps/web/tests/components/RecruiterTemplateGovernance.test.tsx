@@ -105,6 +105,8 @@ describe("pob-023 RecruiterTemplateLibrary", () => {
     const calls = serve(() => res(page([])), () => res(tpl({ status: "draft" }), 201));
     render(<RecruiterTemplateLibrary approver={false} />);
     expect(await screen.findByText("No templates yet. Add the first one above.")).toBeTruthy();
+    const createForm = screen.getByRole("form", { name: "Add a template" });
+    expect(createForm.querySelector(".form-message, .form-error")).toBeNull(); // QA-01: no empty coloured bar before any feedback
     fireEvent.change(screen.getByLabelText("Channel (required)"), { target: { value: "linkedin" } });
     expect(screen.queryByLabelText("Kind (required)")).toBeNull(); // LinkedIn has no kind
     fireEvent.change(screen.getByLabelText("Template name (required)"), { target: { value: "Connect note" } });
