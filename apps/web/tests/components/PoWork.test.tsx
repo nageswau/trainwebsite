@@ -96,6 +96,16 @@ describe("PoDailyPlan", () => {
     expect(fetchMock.mock.calls[1][0]).toBe("/api/v1/recruiter/daily-plan/items/p1");
   });
 
+  it("ticks an item at once and unticks it when the save is refused (QA-02)", async () => {
+    respond(422, { detail: "Only today's plan can be changed" });
+    render(<PoDailyPlan plan={plan} />);
+    const box = screen.getByRole("checkbox") as HTMLInputElement;
+    fireEvent.click(box);
+    expect(box.checked).toBe(true);
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Only today's plan"));
+    expect(box.checked).toBe(false);
+  });
+
   it("is read only for an earlier day", () => {
     render(<PoDailyPlan plan={{ ...plan, editable: false }} />);
     expect(screen.queryByRole("button", { name: /Add to plan|Remove/ })).toBeNull();

@@ -301,7 +301,7 @@ async def plan(db: AsyncSession, po: User, day: date, today: date) -> dict:
     return out
 
 
-async def lock_plan(db: AsyncSession, po: User, day: date) -> None:
+async def lock_plan(db: AsyncSession, po: User) -> None:
     """Serialises one PO's plan writes (the cap and the duplicate check) on their profile row."""
     await db.execute(select(RecruiterProfile.id).where(RecruiterProfile.user_id == po.id).with_for_update())
 

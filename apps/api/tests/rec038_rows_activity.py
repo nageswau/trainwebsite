@@ -25,13 +25,13 @@ from app.models import (
     RecruiterMeeting,
     RecruiterMessage,
     RecruiterMessageTemplate,
-    RecruitmentDrive,
     RecruiterPlanItem,
     RecruiterTargetCompany,
+    RecruitmentDrive,
 )
-from app.services.bdm_appointments import today_ist
 from app.services import bdm_organizations as orgs
 from app.services import recruiter_contracts as contracts
+from app.services.bdm_appointments import today_ist
 from tests.rec038_helpers import PDF, R, add, allow, now, tag
 
 IN_SCOPE = ("rec", "mgr", "super", "bdm")  # rec-003 caller_scope readers of the world's company (R10: the assigned BDM)

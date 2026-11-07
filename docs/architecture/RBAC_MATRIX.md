@@ -4028,3 +4028,7 @@ A placement officer has no company scope, but answering Missing still creates th
 - **Settings:** `placement_manager` (the Team Lead) and super_admin read and write them; everyone else gets 403. No new grant.
 - **Confirmation template:** whoever may schedule or reschedule the interview, which keeps rec-020's scope and writer rules unchanged.
 - **Sweeps:** these run in the worker. Emails go out as the interview's owner. The chase follow-up belongs to the requirement's company, so its normal follow-up scope applies.
+### 2.314 PO targets, plans and activity reports *(added 2026-11-07 — `DEC-SCOPE-423`, pob-009)*
+
+- **PO (`placement_team`):** reads their own targets, territory and target companies; manages their own daily plan (today only); reads and submits their own daily/weekly reports and the contacts drill-down (another PO's is 403).
+- **Team Lead (`placement_manager`) and super_admin:** set targets, territory and target companies and read reports of their direct reports (super_admin: everyone); a PO outside the team is 404. The PO routes are 403 to them, and every other role gets 403. No new grant.

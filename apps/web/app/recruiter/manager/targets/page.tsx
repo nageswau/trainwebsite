@@ -1,6 +1,7 @@
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
+import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { chosenMonth, currentMonth, monthLabel, monthOptions, TEAM_PAGE } from "@/lib/bdmTargets";
 import { companyShell, RECRUITER_SIGN_IN } from "@/lib/recruiterCompanies";
 import { cellText, MANAGER_TARGETS_PATH, rateText, TEAM_TARGETS_URL, type TeamTargets } from "@/lib/recruiterPoWork";
@@ -30,7 +31,7 @@ export default async function TeamTargetsPage({ searchParams }: { searchParams: 
           <div>
             <div className="eyebrow">Targets</div>
             <h2>Placement officer targets — {monthLabel(month)}</h2>
-            <p className="muted">Each cell is achieved / target (achievement). Achieved counts what the officer did this month.</p>
+            <p className="muted">Each cell is achieved / target (achievement). Achieved counts what the officer did this month. Open an officer to set targets, territory and target companies.</p>
             <form className="analytics-form" method="get" action={MANAGER_TARGETS_PATH} aria-label="Choose a month">
               <div className="field">
                 <label htmlFor="targets-month">Month</label>
@@ -54,19 +55,17 @@ export default async function TeamTargetsPage({ searchParams }: { searchParams: 
                   <th scope="col">Placement officer</th>
                   {team.kpis.map((k) => <th scope="col" key={k.key}>{k.label}</th>)}
                   <th scope="col">Response rate</th>
-                  <th scope="col"><span className="visually-hidden">Open</span></th>
                 </tr>
               </thead>
               <tbody>
                 {team.items.map((row) => (
                   <tr key={row.recruiter.id}>
-                    <th scope="row">{row.recruiter.full_name}{row.territory && <span className="kpi-note muted">{row.territory}</span>}</th>
+                    <th scope="row">
+                      <a href={`${MANAGER_TARGETS_PATH}/${row.recruiter.id}?month=${month}`} title={team.editable ? "Set targets" : "View targets"} style={LINK_STYLE}>{row.recruiter.full_name}</a>
+                      {row.territory && <span className="kpi-note muted">{row.territory}</span>}
+                    </th>
                     {row.kpis.map((k) => <td key={k.key}>{cellText(k, team.month_status)}</td>)}
                     <td>{rateText(row.response_rate)}</td>
-                    <td>
-                      <a className="btn secondary small" href={`${MANAGER_TARGETS_PATH}/${row.recruiter.id}?month=${month}`}
-                        aria-label={`${team.editable ? "Set" : "View"} targets for ${row.recruiter.full_name}`}>{team.editable ? "Set targets" : "View"}</a>
-                    </td>
                   </tr>
                 ))}
               </tbody>

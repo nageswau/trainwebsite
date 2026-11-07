@@ -2440,3 +2440,15 @@ database built by `create_all` has no `active` column.
 **`company_documents.kind`:** adds `nda`.
 
 The downgrade refuses while a vendor or an NDA exists.
+
+### pob-009 — PO targets and reports (`DEC-SCOPE-423`, migration `0304_po_targets_reports`)
+
+**`companies.territory`, `recruiter_profiles.territory`:** free text (≤ 120), nullable.
+
+**`recruiter_targets`:** (`recruiter_user_id`, `month` first day, `kpi_key` CHECK in the seven KPIs, `target` 0-100000, `set_by_user_id`, `set_at`); unique per PO/month/KPI.
+
+**`recruiter_target_companies`:** (`recruiter_user_id`, `company_id`, `month`, `added_by_user_id`, `created_at`); unique per PO/month/company.
+
+**`recruiter_plan_items`:** (`recruiter_user_id`, `plan_date`, `follow_up_id` | `company_id` -- exactly one by CHECK, `done_at`); partial unique per PO/day/subject.
+
+**`recruiter_activity_reports`:** (`recruiter_user_id`, `period` daily|weekly, `period_start` -- a Monday for weekly by CHECK, `counts` JSON snapshot, `note` ≤ 2000, `submitted_at`); unique per PO/period/start.

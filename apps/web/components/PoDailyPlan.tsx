@@ -14,21 +14,36 @@ export default function PoDailyPlan({ plan }: { plan: Plan }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ticked, setTicked] = useState<Record<string, boolean>>({}); // shown at once; dropped again if the save fails
   const inFlight = useRef(false);
 
-  async function write(url: string, init: RequestInit | { json: unknown; method: "POST" | "PATCH" }) {
-    if (inFlight.current) return;
+  async function write(url: string, init: RequestInit | { json: unknown; method: "POST" | "PATCH" }): Promise<boolean> {
+    if (inFlight.current) return false;
     inFlight.current = true;
     setBusy(true);
     setError(null);
     const outcome = "json" in init ? await sendJson(url, init.method, init.json) : await sendRequest(url, init);
     inFlight.current = false;
     setBusy(false);
-    if (!outcome.ok) return setError(outcome.message);
+    if (!outcome.ok) {
+      setError(outcome.message);
+      return false;
+    }
     router.refresh();
+    return true;
   }
 
-  const done = plan.items.filter((i) => i.done_at).length;
+  async function tick(id: string, done: boolean) {
+    setTicked((t) => ({ ...t, [id]: done }));
+    if (!(await write(`${PLAN_ITEMS_URL}/${id}`, { method: "PATCH", json: { done } }))) setTicked((t) => {
+      const next = { ...t };
+      delete next[id];
+      return next;
+    });
+  }
+
+  const isDone = (item: Plan["items"][number]) => ticked[item.id] ?? !!item.done_at;
+  const done = plan.items.filter(isDone).length;
   return (
     <div>
       {error && <p className="form-error" role="alert">{error}</p>}
@@ -41,9 +56,8 @@ export default function PoDailyPlan({ plan }: { plan: Plan }) {
             {plan.items.map((item) => (
               <li key={item.id} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 6 }}>
                 <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input type="checkbox" checked={!!item.done_at} disabled={!plan.editable || busy}
-                    onChange={(e) => void write(`${PLAN_ITEMS_URL}/${item.id}`, { method: "PATCH", json: { done: e.target.checked } })} />
-                  <span style={item.done_at ? { textDecoration: "line-through" } : undefined}>
+                  <input type="checkbox" checked={isDone(item)} disabled={!plan.editable || busy} onChange={(e) => void tick(item.id, e.target.checked)} />
+                  <span style={isDone(item) ? { textDecoration: "line-through" } : undefined}>
                     <a href={`/recruiter/companies/${item.company.id}`}>{item.company.name}</a>
                     <span className="muted"> — {item.follow_up ? due(item.follow_up) : "Target company"}</span>
                   </span>

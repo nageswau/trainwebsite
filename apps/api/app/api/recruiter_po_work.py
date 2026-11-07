@@ -113,7 +113,7 @@ async def my_plan(day: date | None = Query(None, alias="date", description="IST 
 async def add_plan_item(payload: PoPlanItemAdd, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     await recruiter_context(db, user)
     today = await _today(db)
-    await svc.lock_plan(db, user, today)
+    await svc.lock_plan(db, user)
     item = await svc.add_plan_item(db, user, today, payload.follow_up_id, payload.company_id)
     try:
         await db.flush()
