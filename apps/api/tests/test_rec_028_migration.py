@@ -35,15 +35,17 @@ def test_migration_chains_after_0118_and_there_is_a_single_head():
 def test_models_match_the_migration():
     from app.models import RECRUITER_MEETING_CHECKS, RecruiterMeeting, RecruiterMeetingEvent, RecruiterMeetingParticipant
 
-    assert _migration.CHECKS == RECRUITER_MEETING_CHECKS
+    # pob-007 (0301) revised the type check (company_visit) and added two columns; test_pob_007_migration pins those
+    revised = "ck_recruiter_meetings_type"
+    assert {k: v for k, v in _migration.CHECKS.items() if k != revised} == {k: v for k, v in RECRUITER_MEETING_CHECKS.items() if k != revised}
     tables = {"recruiter_meetings": RecruiterMeeting.__table__, "recruiter_meeting_participants": RecruiterMeetingParticipant.__table__,
               "recruiter_meeting_events": RecruiterMeetingEvent.__table__}
-    assert {c.name for c in tables["recruiter_meetings"].columns} == MEETING_COLUMNS
+    assert {c.name for c in tables["recruiter_meetings"].columns} - {"hiring_forecast", "commercial_notes"} == MEETING_COLUMNS
     names = {n for t in tables.values() for n in ({i.name for i in t.indexes} | {c.name for c in t.constraints})}
     assert set(_migration.CHECKS) | set(_migration.INDEXES) <= names
     constraints = {c.name: c for t in tables.values() for c in t.constraints}
     for name, sql in _migration.CHECKS.items():
-        assert str(constraints[name].sqltext) == sql
+        assert str(constraints[name].sqltext) == (RECRUITER_MEETING_CHECKS[name] if name == revised else sql)
 
 
 @pytest.fixture

@@ -879,7 +879,11 @@ RECRUITER_FOLLOW_UP_CHECKS = {
         "(status = 'done') = (completed_at IS NOT NULL) AND (completed_at IS NULL) = (completed_by_user_id IS NULL) "
         "AND (status = 'cancelled') = (cancelled_at IS NOT NULL) AND (cancelled_at IS NULL) = (cancel_reason IS NULL)"
     ),
+    # pob-007 (DEC-SCOPE-421 A8): a priority and an optional reminder, never after the due time; migration 0301 repeats these
+    "ck_recruiter_follow_ups_priority": "priority IN ('high', 'medium', 'low')",
+    "ck_recruiter_follow_ups_remind": "remind_at IS NULL OR remind_at <= due_at",
 }
+RECRUITER_FOLLOW_UP_PRIORITIES = ("high", "medium", "low")
 
 
 class RecruiterFollowUp(Base, TimestampMixin):
@@ -909,6 +913,8 @@ class RecruiterFollowUp(Base, TimestampMixin):
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    priority: Mapped[str] = mapped_column(String(8), default="medium", server_default=text("'medium'"))  # pob-007 A8
+    remind_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # pob-007 A8: stored; pob-008 delivers
 
 
 # rec-025 (DEC-SCOPE-133 CA1/CA8): the call outcomes (the source names none -- UNVERIFIED default) and directions; migration 0118 repeats
@@ -921,7 +927,10 @@ RECRUITER_CALL_CHECKS = {
     "ck_recruiter_calls_direction": f"direction IN ({', '.join(repr(d) for d in RECRUITER_CALL_DIRECTIONS)})",
     "ck_recruiter_calls_duration": f"duration_seconds IS NULL OR duration_seconds BETWEEN 0 AND {RECRUITER_CALL_MAX_SECONDS}",
     "ck_recruiter_calls_party": "(contact_id IS NULL) = (company_id IS NULL) AND (contact_id IS NULL) <> (candidate_id IS NULL)",
+    "ck_recruiter_calls_job": "job_id IS NULL OR contact_id IS NOT NULL",  # pob-007 A4: a requirement is discussed with a company contact
 }
+# pob-007 (DEC-SCOPE-421 A4): the objections a company raises (UNVERIFIED: the source names none), in the order the form offers them
+RECRUITER_CALL_OBJECTIONS = ("no_current_requirement", "existing_vendors", "fee_too_high", "no_budget", "timing", "not_decision_maker", "in_house", "other")
 
 
 class RecruiterCall(Base, TimestampMixin):
@@ -947,6 +956,11 @@ class RecruiterCall(Base, TimestampMixin):
     direction: Mapped[str] = mapped_column(String(16))
     outcome: Mapped[str] = mapped_column(String(32))
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # pob-007 A4: the requirement discussed, objections (catalogue keys) with notes, and the next action
+    job_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"), nullable=True)
+    objections: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    objection_notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    next_action: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 class EmployerProfile(Base, TimestampMixin):
@@ -7675,7 +7689,10 @@ class ProgramSkill(Base):
 RECRUITER_MEETING_TYPES = (
     "company_meeting", "hr_meeting", "requirement_discussion", "recruitment_presentation", "contract_discussion",
     "campus_recruitment_discussion", "placement_drive_discussion",
+    "company_visit",  # pob-007 (DEC-SCOPE-421 A9): a BD visit to the company; migration 0301 revises ck_recruiter_meetings_type
 )
+# pob-007 A5: a hiring forecast row's timeframe (UNVERIFIED: the source names roles x count x timeframe only)
+RECRUITER_FORECAST_TIMEFRAMES = ("this_month", "next_3_months", "next_6_months", "next_12_months")
 RECRUITER_MEETING_STATUSES = ("scheduled", "completed", "cancelled")
 RECRUITER_MEETING_EVENTS = ("scheduled", "rescheduled", "completed", "cancelled")
 RECRUITER_MEETING_CODE_SEQ = Sequence("recruiter_meeting_code_seq", metadata=Base.metadata)
@@ -7728,6 +7745,23 @@ class RecruiterMeeting(Base, TimestampMixin):
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    # pob-007 A5/A7: recorded with the outcome; the commercial notes are read and written only with `commercials.client.view`
+    hiring_forecast: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    commercial_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class RecruiterMeetingActionItem(Base):
+    """pob-007 (DEC-SCOPE-421 A6): an outcome's action item -- one rec-024 follow-up each, kept in the order entered."""
+
+    __tablename__ = "recruiter_meeting_action_items"
+    __table_args__ = (
+        UniqueConstraint("meeting_id", "position", name="uq_recruiter_meeting_action_items_position"),
+        UniqueConstraint("follow_up_id", name="uq_recruiter_meeting_action_items_follow_up"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    meeting_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_meetings.id", ondelete="RESTRICT"))
+    follow_up_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_follow_ups.id", ondelete="RESTRICT"))
+    position: Mapped[int] = mapped_column(Integer)
 
 
 class RecruiterMeetingParticipant(Base):
@@ -7792,10 +7826,12 @@ RECRUITER_TEMPLATE_CHECKS = {
 }
 RECRUITER_MESSAGE_CHECKS = {
     "ck_recruiter_messages_party": "(contact_id IS NULL) = (company_id IS NULL) AND (contact_id IS NULL) <> (candidate_id IS NULL)",
-    "ck_recruiter_messages_channel": "channel IN ('whatsapp', 'email')",
+    "ck_recruiter_messages_channel": "channel IN ('whatsapp', 'email', 'linkedin')",  # pob-007 A1: LinkedIn, logged by hand (0301)
     "ck_recruiter_messages_email": "(channel = 'email') = (delivery_status IS NOT NULL) AND (channel = 'email') = (subject IS NOT NULL)",
     "ck_recruiter_messages_status": "delivery_status IS NULL OR delivery_status IN ('queued', 'sending', 'retrying', 'sent', 'failed')",
+    "ck_recruiter_messages_linkedin": "(channel = 'linkedin') = (linkedin_action IS NOT NULL) AND (linkedin_action IS NULL OR linkedin_action IN ('connection_request', 'message'))",
 }
+REC_LINKEDIN_ACTIONS = ("connection_request", "message")  # pob-007 A1
 
 
 class RecruiterMessageTemplate(Base, TimestampMixin):
@@ -7886,6 +7922,10 @@ class RecruiterMessage(Base, TimestampMixin):
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     calendar_ics: Mapped[str | None] = mapped_column(Text, nullable=True)  # hrc-028 (I6): an interview invite, built when queued
     replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # pob-005 D7: a reply logged by hand
+    # pob-007 (DEC-SCOPE-421 A1/A3): what a LinkedIn row records, and an outcome with its next follow-up (set once)
+    linkedin_action: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    outcome: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    follow_up_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_follow_ups.id", ondelete="RESTRICT"), nullable=True)
 
 
 # upc-026 (DEC-SCOPE-139, spec §2): the §28 document centre. The 12 kinds in source order (DC1); the commission agreement is never

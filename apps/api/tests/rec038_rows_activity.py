@@ -106,6 +106,9 @@ ROWS = [
     R("get", "/recruiter/companies/{company}/messages", **allow(200, *IN_SCOPE), **allow(404, *OUT)),
     # pob-005 D7 (§2.304): a reply logged on a contact message -- the company's can_edit
     R("post", "/recruiter/messages/{activity_message}/reply", {}, **allow(200, *EDITORS), **allow(404, *OUT)),
+    # pob-007 A1/A3: LinkedIn logging and a message outcome -- the company's can_edit, like a send and a reply
+    R("post", "/recruiter/messages/linkedin", lambda w: {"contact_id": w["contact"], "action": "connection_request"}, **allow(201, *EDITORS), **allow(404, *OUT)),
+    R("post", "/recruiter/messages/{activity_message}/outcome", {"outcome": "Asked for a call"}, **allow(200, *EDITORS), **allow(404, *OUT)),
     R("get", "/recruiter/candidates/{candidate}/messages", **allow(200, *POOL_READERS)),
     # rec-027 timeline (§2.107): the company's by scope (hr 403), the candidate's by the pool (bdm 403)
     R("get", "/recruiter/companies/{company}/timeline", **allow(200, *IN_SCOPE), **allow(404, *OUT)),

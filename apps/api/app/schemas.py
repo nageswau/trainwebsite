@@ -62,6 +62,8 @@ from app.models import (
     CANDIDATE_STATUSES,
     CANDIDATE_TASK_TYPES,
     CAPITAL_ENTRY_KINDS,
+    COMPANY_CONTACT_SOURCES,
+    COMPANY_CONTACT_STATUSES,
     CONTACT_CHANNELS,
     CONTACT_PREFERENCES,
     COUNSELING_DECISION_MAKERS,
@@ -85,6 +87,7 @@ from app.models import (
     INTERVIEW_ROUNDS,
     INVESTMENT_STATUSES,
     INVESTMENT_VERTICALS,
+    JOB_CHECKLIST_ITEM_STATUSES,
     JOB_EMPLOYMENT_TYPES,
     JOB_FEE_BASES,
     JOB_PAYMENT_TRIGGERS,
@@ -118,15 +121,16 @@ from app.models import (
     QUAL_STUDY_LEVELS,
     QUALIFICATION_LEVELS,
     RANKING_SYSTEMS,
-    COMPANY_CONTACT_SOURCES,
-    COMPANY_CONTACT_STATUSES,
+    REC_LINKEDIN_ACTIONS,
     RECRUITER_CALL_DIRECTIONS,
     RECRUITER_CALL_MAX_SECONDS,
+    RECRUITER_CALL_OBJECTIONS,
     RECRUITER_CALL_OUTCOMES,
     RECRUITER_CONTRACT_FEE_BASES,
     RECRUITER_CONTRACT_STATUSES,
-    JOB_CHECKLIST_ITEM_STATUSES,
+    RECRUITER_FOLLOW_UP_PRIORITIES,
     RECRUITER_FOLLOW_UP_REASONS,
+    RECRUITER_FORECAST_TIMEFRAMES,
     RECRUITER_MEETING_TYPES,
     REJECTION_REASONS,
     RELATIONSHIP_STRENGTHS,
@@ -11396,6 +11400,7 @@ class RecJdCreate(BaseModel):
 # --- rec-024 (DEC-SCOPE-131, spec §3): recruiter follow-ups ----------------------------------------------------------------------
 REC_FOLLOW_UP_LABELS = {"notes": "Notes", "outcome": "Outcome"}
 RecFollowUpReason = Literal[RECRUITER_FOLLOW_UP_REASONS]
+RecFollowUpPriority = Literal[RECRUITER_FOLLOW_UP_PRIORITIES]
 RecFollowUpNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, REC_FOLLOW_UP_LABELS))]
 RecFollowUpOutcome = Annotated[Annotated[str, _trimmed(500)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, REC_FOLLOW_UP_LABELS))]
 
@@ -11411,11 +11416,13 @@ class RecFollowUpCreate(BaseModel):
     job_id: UUID | None = None
     application_id: UUID | None = None
     notes: RecFollowUpNotes = None
+    priority: RecFollowUpPriority = "medium"  # pob-007 A8
+    remind_at: AwareDatetime | None = None  # pob-007 A8: checked against now and `due_at` in the service
 
 
 class RecFollowUpUpdate(BaseModel):
-    """Reschedule (`due_at`) or edit an open follow-up: only the keys sent are considered; null clears a link or the notes, never the due
-    time or the reason."""
+    """Reschedule (`due_at`) or edit an open follow-up: only the keys sent are considered; null clears a link, the notes or the reminder,
+    never the due time, the reason or the priority."""
 
     model_config = ConfigDict(extra="forbid")
     due_at: AwareDatetime | None = None
@@ -11424,10 +11431,12 @@ class RecFollowUpUpdate(BaseModel):
     job_id: UUID | None = None
     application_id: UUID | None = None
     notes: RecFollowUpNotes = None
+    priority: RecFollowUpPriority | None = None
+    remind_at: AwareDatetime | None = None
 
     @model_validator(mode="after")
     def _required_stay_set(self):
-        for key, label in (("due_at", "Due time"), ("reason", "Reason")):
+        for key, label in (("due_at", "Due time"), ("reason", "Reason"), ("priority", "Priority")):
             if key in self.model_fields_set and getattr(self, key) is None:
                 raise ValueError(f"{label} can't be removed")
         return self
@@ -11443,6 +11452,18 @@ class RecFollowUpComplete(BaseModel):
 # --- rec-025 (DEC-SCOPE-133, spec §3): recruiter calls -----------------------------------------------------------------------------
 RecCallNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, {"notes": "Notes"}))]
 RecCallDuration = Annotated[int, Field(ge=0, le=RECRUITER_CALL_MAX_SECONDS)]
+# pob-007 (DEC-SCOPE-421 A4): the call's details -- objections from the catalogue, each once
+RecCallObjectionNotes = Annotated[Annotated[str, _trimmed(1000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, {"objection_notes": "Objection notes"}))]
+RecCallNextAction = Annotated[Annotated[str, _trimmed(500)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, {"next_action": "Next action"}))]
+
+
+def _distinct(values: list | None) -> list | None:
+    if values is not None and len(set(values)) != len(values):
+        raise ValueError("Choose each objection once")
+    return values or None
+
+
+RecCallObjections = Annotated[list[Literal[RECRUITER_CALL_OBJECTIONS]] | None, Field(max_length=len(RECRUITER_CALL_OBJECTIONS)), AfterValidator(_distinct)]
 
 
 class RecCallFollowUp(BaseModel):
@@ -11467,17 +11488,25 @@ class RecCallCreate(BaseModel):
     outcome: Literal[RECRUITER_CALL_OUTCOMES]
     notes: RecCallNotes = None
     next_follow_up: RecCallFollowUp | None = None
+    job_id: UUID | None = None  # pob-007 A4: the requirement discussed (a contact call, at the contact's company)
+    objections: RecCallObjections = None
+    objection_notes: RecCallObjectionNotes = None
+    next_action: RecCallNextAction = None
 
 
 class RecCallUpdate(BaseModel):
     """CA4: same-day details only -- the outcome and the party are locked (unknown fields here). Time and direction can't be cleared; a
-    null duration or notes clears them."""
+    null duration, notes or pob-007 detail clears it."""
 
     model_config = ConfigDict(extra="forbid")
     occurred_at: AwareDatetime | None = None
     duration_seconds: RecCallDuration | None = None
     direction: Literal[RECRUITER_CALL_DIRECTIONS] | None = None
     notes: RecCallNotes = None
+    job_id: UUID | None = None
+    objections: RecCallObjections = None
+    objection_notes: RecCallObjectionNotes = None
+    next_action: RecCallNextAction = None
 
     @model_validator(mode="after")
     def _required_stay_set(self):
@@ -11536,6 +11565,27 @@ class RecMeetingUpdate(BaseModel):
         return self
 
 
+class RecForecastRow(BaseModel):
+    """pob-007 A5: roles x count x timeframe."""
+
+    model_config = ConfigDict(extra="forbid")
+    role: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+    count: Annotated[int, Field(ge=1, le=10000)]
+    timeframe: Literal[RECRUITER_FORECAST_TIMEFRAMES]
+
+
+class RecActionItem(BaseModel):
+    """pob-007 A6: one action item -- it becomes a rec-024 follow-up (due time checked there)."""
+
+    model_config = ConfigDict(extra="forbid")
+    action: Annotated[str, _trimmed(500), AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True, {"action": "Action"}))]
+    due_at: AwareDatetime
+    reason: RecFollowUpReason
+
+
+RecCommercialNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, {"commercial_notes": "Commercial notes"}))]
+
+
 class RecMeetingOutcome(BaseModel):
     """MT7: the outcome, and optionally a next action that becomes a rec-024 follow-up (due time and reason checked in the service, so
     each missing one is placed on its own field)."""
@@ -11545,6 +11595,10 @@ class RecMeetingOutcome(BaseModel):
     next_action: RecMeetingNextAction = None
     next_action_due_at: AwareDatetime | None = None
     next_action_reason: RecFollowUpReason | None = None
+    # pob-007 (DEC-SCOPE-421 A5-A7)
+    hiring_forecast: Annotated[list[RecForecastRow], Field(max_length=10)] = []
+    commercial_notes: RecCommercialNotes = None
+    action_items: Annotated[list[RecActionItem], Field(max_length=10)] = []
 
 
 # --- rec-026 (DEC-SCOPE-135): recruiter message templates, WhatsApp and email --------------------------------------------------------
@@ -11630,6 +11684,28 @@ class RecEmailCreate(RecMessageParty):
 
 
 RecMessageCreate = Annotated[RecWhatsAppCreate | RecEmailCreate, Field(discriminator="channel")]
+
+
+class RecLinkedInCreate(BaseModel):
+    """pob-007 (DEC-SCOPE-421 A1): LinkedIn outreach the recruiter did by hand -- logged, never sent. The text is optional for a connection
+    request (checked in the service so the 422 names the field); `next_follow_up` is a contact's only."""
+
+    model_config = ConfigDict(extra="forbid")
+    contact_id: UUID | None = None
+    candidate_id: UUID | None = None
+    action: Literal[REC_LINKEDIN_ACTIONS]
+    sent_at: AwareDatetime | None = None
+    template_id: UUID | None = None
+    body: Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)] = ""
+    next_follow_up: RecCallFollowUp | None = None
+
+
+class RecMessageOutcome(BaseModel):
+    """pob-007 A3: what came of a message to a contact, and optionally the next follow-up."""
+
+    model_config = ConfigDict(extra="forbid")
+    outcome: Annotated[str, _trimmed(500), AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True, {"outcome": "Outcome"}))]
+    next_follow_up: RecCallFollowUp | None = None
 
 # --- rec-017 (DEC-SCOPE-136): a candidate on a requirement and its status (services/applications) -----------------------------------
 class RecApplicationCreate(BaseModel):

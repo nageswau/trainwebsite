@@ -35,8 +35,9 @@ def test_models_match_the_migration():
     from app.models import RECRUITER_CALL_CHECKS, RecruiterCall
 
     table = RecruiterCall.__table__
-    assert {c.name for c in table.columns} == COLUMNS
-    assert _migration.CHECKS == RECRUITER_CALL_CHECKS
+    # pob-007 (0301) added the call details and ck_recruiter_calls_job; test_pob_007_migration pins those
+    assert {c.name for c in table.columns} - {"job_id", "objections", "objection_notes", "next_action"} == COLUMNS
+    assert _migration.CHECKS == {k: v for k, v in RECRUITER_CALL_CHECKS.items() if k != "ck_recruiter_calls_job"}
     names = {i.name for i in table.indexes} | {c.name for c in table.constraints}
     assert set(_migration.CHECKS) | set(_migration.INDEXES) <= names
     for name, sql in _migration.CHECKS.items():

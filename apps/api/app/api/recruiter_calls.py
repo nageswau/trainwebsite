@@ -51,7 +51,10 @@ async def update_call(call_id: UUID, payload: RecCallUpdate, user: User = Depend
     """CA4: same IST day, by the caller; the outcome and the party are locked."""
     now = await db_now(db)
     call = await svc.load_for_write(db, user, call_id, "call_update", now)
-    changed = svc.apply_update(db, user, call, payload.model_dump(exclude_unset=True), now)
+    changes = payload.model_dump(exclude_unset=True)
+    if changes.get("job_id") is not None and changes["job_id"] != call.job_id:
+        await svc.check_job(db, call.company_id, changes["job_id"])  # pob-007 A4
+    changed = svc.apply_update(db, user, call, changes, now)
     if "occurred_at" in changed:
         await db.flush()
         await companies.refresh_last_contact(db, call.company_id)  # pob-003 D4
