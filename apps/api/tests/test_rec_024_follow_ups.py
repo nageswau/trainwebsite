@@ -80,7 +80,7 @@ async def test_the_nine_source_reasons_are_accepted_and_others_refused(client, d
     await _team(client, db_session)
     company = await _company(client)
     reasons = ["new_requirement", "jd", "profile_feedback", "interview_feedback", "offer_status", "joining_confirmation", "new_openings",
-               "contract_mou", "payment_commercial"]
+               "contract_mou", "payment_commercial", "clarification"]
     for reason in reasons:
         assert (await _create(client, company["id"], reason=reason)).status_code == 201
     response = await _create(client, company["id"], reason="fee_details")

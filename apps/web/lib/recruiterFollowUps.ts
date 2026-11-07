@@ -15,6 +15,7 @@ export const REASONS = [
   { key: "new_openings", label: "New openings" },
   { key: "contract_mou", label: "Contract/MoU" },
   { key: "payment_commercial", label: "Payment/commercial discussion" },
+  { key: "clarification", label: "Clarification from the client" }, // pob-016: not in EVID-018 §18; a checklist item the client must clarify
 ] as const;
 export type FollowUpReason = (typeof REASONS)[number]["key"];
 const REASON_LABEL: Record<string, string> = Object.fromEntries(REASONS.map((r) => [r.key, r.label]));

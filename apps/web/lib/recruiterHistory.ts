@@ -32,6 +32,8 @@ const ACTIONS: Record<string, string> = {
   "recruiter_requirement.owner_added": "Owner added", // hrc-006
   "recruiter_requirement.owner_removed": "Owner removed",
   "recruiter_requirement.backup_released": "Backup owner removed (user deactivated)", // pob-002
+  "recruiter_requirement.checklist_item": "Checklist answer changed", // pob-016
+  "recruiter_requirement.checklist_override": "Checklist overridden",
   "job_description.create": "JD version saved",
   "job_description.upload": "JD file uploaded",
   "candidate.create": "Created",

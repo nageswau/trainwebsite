@@ -42,6 +42,7 @@ from app.notifications.events import notify
 from app.schemas import REC_REQUIREMENT_TERMS
 from app.services import company_pipeline
 from app.services import recruiter_contracts as contracts
+from app.services import requirement_checklist as checklist
 from app.services import requirement_owners as owners
 from app.services import skills as skills_master
 from app.services.bdm_appointments import IST
@@ -136,6 +137,7 @@ async def change_status(db: AsyncSession, user: User | None, job: Job, target: s
     check_transition(job.status, target)
     if target in _ACTIVE and await approval_required(db, job):
         raise HTTPException(409, NEEDS_APPROVAL)
+    await checklist.guard(db, job, target)  # pob-016 (C7)
     return await _move(db, user, job, target, note)
 
 

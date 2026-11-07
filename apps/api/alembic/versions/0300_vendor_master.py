@@ -1,7 +1,7 @@
 """pob-010 -- the vendor master, onboarding and agreements (DEC-SCOPE-420 V2-V12).
 
 Revision ID: 0300_vendor_master
-Revises: 0298_template_governance
+Revises: 0299_requirement_checklist
 
 docs/superpowers/specs/2026-11-07-pob-010-vendor-master-design.md. On `companies`: the vendor status and lists, and checks on `partner_type`
 (it was an unchecked string; a value no code path writes is normalised to `recruiter`, logged with its count). New
@@ -21,7 +21,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0300_vendor_master"
-down_revision = "0298_template_governance"
+down_revision = "0299_requirement_checklist"
 branch_labels = None
 depends_on = None
 

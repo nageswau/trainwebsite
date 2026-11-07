@@ -2420,6 +2420,15 @@ and the grant rows.
 The downgrade restores `active` and refuses while LinkedIn, call or personal templates exist. 0120's seed is column-aware, because a fresh
 database built by `create_all` has no `active` column.
 
+
+### Requirement validation checklist (`pob-016`, `DEC-SCOPE-419`, migration `0299_requirement_checklist`)
+
+- `job_checklist_items`: PK `(job_id, item_key)`; `job_id` FK `jobs` CASCADE; `status` CHECK `confirmed`/`not_applicable`/`missing`; `follow_up_id` FK `recruiter_follow_ups` SET NULL; `updated_by_user_id`; timestamps. An unanswered item has no row. `item_key` has no check: the items are `services/requirement_checklist.ITEMS`.
+- `job_checklist_overrides`: PK `job_id` FK `jobs` CASCADE; `reason`; `overridden_by_user_id`; timestamps. One per requirement, kept for good.
+- `requirement_checklist_settings`: `id` (one row, 1; no row = off); `block_sourcing`; `updated_by_user_id`; timestamps.
+- `companies.checklist_blocks_sourcing` boolean NULL: null = the global rule. A company merge keeps the survivor's value.
+- `recruiter_follow_ups.reason` gains `clarification`. The downgrade turns those rows into `jd`, so none is lost.
+
 ### pob-010 — vendors (`DEC-SCOPE-420`, migration `0300_vendor_master`)
 
 **`companies`:** `partner_type` gains a CHECK (`recruiter`, `employer`, `vendor`, `vendor_client`); new `vendor_status` (NULL unless a vendor type, by CHECK), `vendor_specialisations`, `vendor_service_categories`, `vendor_locations` (JSON lists).

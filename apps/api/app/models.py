@@ -750,6 +750,8 @@ class Company(Base, TimestampMixin):
     merged_into_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"), nullable=True)
     merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     merged_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    # pob-016 (C6): whether this company's requirements need a complete checklist before sourcing; NULL = the global rule
+    checklist_blocks_sourcing: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     # pob-010 (DEC-SCOPE-420 V3): set only while `partner_type` is a vendor type (ck_companies_vendor_status). Lists are replaced whole; [] when unset.
     vendor_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
     vendor_specialisations: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
@@ -868,7 +870,7 @@ class CompanyContact(Base, TimestampMixin):
 # RECRUITER_FOLLOW_UP_CHECKS (test_rec_024_migration asserts they stay identical). Labels live in the web client.
 RECRUITER_FOLLOW_UP_REASONS = (
     "new_requirement", "jd", "profile_feedback", "interview_feedback", "offer_status", "joining_confirmation", "new_openings",
-    "contract_mou", "payment_commercial",
+    "contract_mou", "payment_commercial", "clarification",  # pob-016 (C4): a checklist item the client must clarify
 )
 RECRUITER_FOLLOW_UP_CHECKS = {
     "ck_recruiter_follow_ups_reason": f"reason IN ({', '.join(repr(r) for r in RECRUITER_FOLLOW_UP_REASONS)})",
@@ -1110,6 +1112,42 @@ class Job(Base, TimestampMixin):
     backup_owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     match_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # hrc-032 (DEC-SCOPE-413 N7): candidates told once
     company = relationship("Company")
+
+
+# pob-016 (DEC-SCOPE-419): the requirement validation checklist; migration 0299 repeats the check.
+JOB_CHECKLIST_ITEM_STATUSES = ("confirmed", "not_applicable", "missing")
+JOB_CHECKLIST_ITEM_CHECKS = {"ck_job_checklist_items_status": f"status IN ({', '.join(repr(s) for s in JOB_CHECKLIST_ITEM_STATUSES)})"}
+
+
+class JobChecklistItem(Base, TimestampMixin):
+    """pob-016 (C1/C2): one answered item of a requirement's checklist. An unanswered item has no row. `item_key` has no check: the items live in
+    `services.requirement_checklist.ITEMS`. `follow_up_id` is the clarification the item last created (C4/C5)."""
+
+    __tablename__ = "job_checklist_items"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in JOB_CHECKLIST_ITEM_CHECKS.items())
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), primary_key=True)
+    item_key: Mapped[str] = mapped_column(String(40), primary_key=True)
+    status: Mapped[str] = mapped_column(String(16))
+    follow_up_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_follow_ups.id", ondelete="SET NULL"), nullable=True)
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class JobChecklistOverride(Base, TimestampMixin):
+    """pob-016 (C11): a Team Lead let this requirement start sourcing with an incomplete checklist. One per requirement, kept for good."""
+
+    __tablename__ = "job_checklist_overrides"
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), primary_key=True)
+    reason: Mapped[str] = mapped_column(Text)
+    overridden_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class RequirementChecklistSetting(Base, TimestampMixin):
+    """pob-016 (C6): one row (`id = 1`) holding the global rule; no row means off. A company's `checklist_blocks_sourcing` wins over it."""
+
+    __tablename__ = "requirement_checklist_settings"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    block_sourcing: Mapped[bool] = mapped_column(Boolean)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
 
 
 # pob-002 (DEC-SCOPE-407 R1): an append-only snapshot of a requirement's material fields per save; migration 0285 repeats the checks.

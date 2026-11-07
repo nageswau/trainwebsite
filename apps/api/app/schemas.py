@@ -125,6 +125,7 @@ from app.models import (
     RECRUITER_CALL_OUTCOMES,
     RECRUITER_CONTRACT_FEE_BASES,
     RECRUITER_CONTRACT_STATUSES,
+    JOB_CHECKLIST_ITEM_STATUSES,
     RECRUITER_FOLLOW_UP_REASONS,
     RECRUITER_MEETING_TYPES,
     REJECTION_REASONS,
@@ -11252,6 +11253,25 @@ class RecRequirementApprovalNote(BaseModel):
 class RecRequirementReject(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reason: Annotated[_rec_requirement_text_type(500, multiline=True), AfterValidator(_required_reason)]
+
+
+class RecChecklistItemSet(BaseModel):
+    """pob-016 (C2): an item's answer. There is no note: see the spec (a note could carry commercial terms past pob-001's gate)."""
+
+    model_config = ConfigDict(extra="forbid")
+    status: Literal[JOB_CHECKLIST_ITEM_STATUSES]
+
+
+class RecChecklistGlobalRule(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    block_sourcing: StrictBool
+
+
+class RecChecklistCompanyRule(BaseModel):
+    """pob-016 (C6): must be stated -- null means "use the global rule"."""
+
+    model_config = ConfigDict(extra="forbid")
+    block_sourcing: StrictBool | None
 
 
 class RecRequirementVisibility(BaseModel):

@@ -597,3 +597,9 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 @media(max-width:640px){.candidate-facts{grid-template-columns:1fr}}
 /* pob-023 QA-04/05: the label never squeezes, and an edit form or panel row takes the row's whole width on a phone. */
 @media (max-width: 640px) { .template-library .table.stack td::before { flex: none; } .template-library .table.stack td.template-full { display: block; } }
+/* pob-016 (DEC-SCOPE-419): the requirement validation checklist -- fieldset.form-section's tokens, answers wrapping on phones. */
+.checklist-items{display:grid;gap:12px}
+fieldset.checklist-item{border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:0;min-width:0;display:grid;gap:6px}
+fieldset.checklist-item legend{font-weight:800;padding:0 6px}
+.checklist-options{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px}
+.checklist-options label{display:inline-flex;align-items:center;gap:6px;min-height:32px;cursor:pointer}

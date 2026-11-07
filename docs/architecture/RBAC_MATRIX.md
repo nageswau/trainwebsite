@@ -4002,6 +4002,21 @@ another's batch is 404. Audit: `crm.import`, `recruiter_company.merge`, `recruit
 
 Pinned by `apps/api/tests/test_pob_023_templates.py` and the rec-038 matrix rows.
 
+
+### 2.311 Requirement validation checklist *(added 2026-11-07 — `DEC-SCOPE-419`, pob-016)*
+
+Out of a requirement's or company's scope is 404. Roles without a requirement scope are 403.
+
+| Action | placement_team | placement_officer (assignee) | placement_manager | bdm (assigned) | super_admin |
+| --- | --- | --- | --- | --- | --- |
+| Read the checklist | Yes | Yes | Yes | Yes | Yes |
+| Answer an item | Yes | Yes | No (403): not a requirement writer (§2.298) | No (403) | Yes |
+| Override with a reason | No (403) | No (403) | Yes | No (403) | Yes |
+| Set a company's rule | No (403) | No (403) | Yes, in scope | No (403) | Yes |
+| Set the global rule | No (403) | No (403) | No (403) | No (403) | Yes |
+
+A placement officer has no company scope, but answering Missing still creates the follow-up: the requirement's scope is what counts. The follow-up itself is read through the company scope, as every follow-up is.
+
 ### 2.312 Vendor master and agreements *(added 2026-11-07 — `DEC-SCOPE-420`, pob-010)*
 
 - **Scope and writers:** a vendor is a company, so `recruiter_companies` scope and `can_edit` apply (BDM: read, if assigned). This supersedes pob-001's "no default holder" note for `commercials.vendor` only.
