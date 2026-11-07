@@ -84,6 +84,12 @@ ROWS = [
     R("get", "/recruiter/requirements/{requirement}", **OWN),
     R("get", "/recruiter/requirements/{requirement}/history", **OWN),  # hrc-004 B1: the record's readers
     R("get", "/recruiter/requirements/{requirement}/revisions", **OWN),  # pob-002 (DEC-SCOPE-407 R5): the record's readers
+    # pob-016 (DEC-SCOPE-419, §2.311): the record's readers read, its writers answer; a Team Lead overrides (409 here: the rule is off) and sets the company's rule; super the global rule
+    R("get", "/recruiter/requirements/{requirement}/checklist", **OWN),
+    R("put", "/recruiter/requirements/{requirement}/checklist/items/{checklist_item}", {"status": "confirmed"}, **allow(200, "rec", "super"), **OWN_OUT),
+    R("post", "/recruiter/requirements/{requirement}/checklist/override", {"reason": "Client is away"}, **allow(409, "mgr", "super"), **OWN_OUT),
+    R("put", "/recruiter/companies/{company}/checklist-rule", {"block_sourcing": None}, **allow(200, "mgr", "super"), mgr_out=404),
+    R("put", "/recruiter/requirement-checklist/settings", {"block_sourcing": False}, super=200),
     R("get", "/recruiter/requirements/{requirement}/revisions/{candidates_revision}", **OWN),
     R("patch", "/recruiter/requirements/{requirement}", {"location": "Bengaluru"}, **allow(200, "rec", "super"), **OWN_OUT),
     R("post", "/recruiter/requirements/{requirement}/assign", lambda w: {"recruiter_user_id": w["rec2_id"]}, **allow(200, "mgr", "super"), **OUT),
@@ -215,7 +221,7 @@ ROWS = [
     R("get", "/account/candidate-documents/{candidates_document}/link", student=404),
 ]
 _POOL: dict[str, UUID] = {}
-PATH_VALUES = {"candidates_version": 1, "fx_currency": "USD"}  # the candidate's first (and only) resume version; a rate's currency
+PATH_VALUES = {"checklist_item": "openings", "candidates_version": 1, "fx_currency": "USD"}  # the candidate's first (and only) resume version; a rate's currency
 
 
 async def build(client, db, w) -> None:

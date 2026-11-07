@@ -572,6 +572,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 ### Phase 3: Intake and sourcing
 
 #### pob-016: Requirement validation checklist and clarification tasks
+- **Status:** built (`DEC-SCOPE-419`, 2026-11-07); the eight items are a proposal because the source's §7.1 wording is not available, and the follow-up, rule and override rules are the builder's calls (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §7.1 (8 checks); §16 "Requirement missing key details → Create clarification checklist and block sourcing status if configured".
 - **Existing behavior:** there is no checklist; sourcing is never blocked.
 - **Expected behavior:**

@@ -8,6 +8,7 @@ describe("recruiterFollowUps (rec-024)", () => {
     expect(REASONS.map((r) => r.label)).toEqual([
       "Follow-up for new requirement", "Follow-up for JD", "Follow-up for profile feedback", "Interview feedback", "Offer status",
       "Joining confirmation", "New openings", "Contract/MoU", "Payment/commercial discussion",
+      "Clarification from the client", // pob-016: added after the source's nine
     ]);
     expect(reasonLabel("contract_mou")).toBe("Contract/MoU");
     expect(reasonLabel("unknown")).toBe("unknown");

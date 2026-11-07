@@ -1826,3 +1826,10 @@ half.
 | `pob-023-E3` | A blank language on an edit is the default, and a null message is a sentence, never a 500 (QA-06) | `::test_a_blank_language_on_an_edit_is_the_default_as_on_create`, `::test_a_null_message_on_an_edit_is_a_sentence` |
 | `pob-023-E4` | A requirement's Messages follow the company: hidden outside its scope, written on its `can_edit` (QA-07) | vitest `RecruiterTemplateGovernance` "the requirement page's messages" |
 | `pob-023-E1` | An archived template referenced in old logs still renders its name | `::test_an_archived_template_keeps_its_name_in_the_log_and_sending_bumps_last_used`; `test_pob_023_migration.py` |
+
+| `pob-016` | Requirement: `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-016` → `DEC-SCOPE-419`; migration `0299_requirement_checklist`; `API_CONTRACT.md` §12LL; `RBAC_MATRIX.md` §2.311; code `services/requirement_checklist.py`, `api/recruiter_requirement_checklist.py`, `components/RequirementChecklist.tsx` | `apps/api/tests/test_pob_016_checklist.py`; `apps/web/tests/components/pob016Checklist.test.tsx`; e2e `pob-016-checklist.spec.ts` |
+| `pob-016-AC1` | A missing item creates a follow-up | `::test_ac1_a_missing_item_creates_a_follow_up_with_the_decision_maker`, `::test_the_follow_up_appears_on_the_companys_list_with_its_reason`; e2e |
+| `pob-016-AC2` | With blocking on, moving to sourcing is a 409 listing the missing items | `::test_ac2_with_blocking_on_moving_to_sourcing_is_a_409_listing_the_missing_items`, `::test_c8_skipping_sourcing_does_not_bypass_the_guard`; e2e |
+| `pob-016-AC3` | A Team Lead override is audited | `::test_ac3_a_team_lead_override_is_audited_and_lets_the_owner_move`, `::test_only_a_team_lead_or_super_admin_overrides`; e2e |
+| `pob-016-E` | Items edited after sourcing has started only warn | `::test_c10_editing_after_sourcing_started_warns_and_still_saves`, `::test_c9_a_requirement_already_started_is_never_blocked` |
+| `pob-016-MIG` | Single chain, round trip keeps existing rows | `apps/api/tests/test_pob_016_migration.py` |

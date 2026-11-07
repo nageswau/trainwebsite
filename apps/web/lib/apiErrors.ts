@@ -4,6 +4,8 @@
 export function detailMessage(detail: unknown, fallback = "Something went wrong."): string {
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => readable(item?.msg) || "Invalid input").join("; ");
+  const message = (detail as { message?: unknown } | null | undefined)?.message; // a structured refusal (`{message, code, ...}`) says it in `message`
+  if (typeof message === "string") return message;
   return fallback;
 }
 
