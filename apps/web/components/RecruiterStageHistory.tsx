@@ -10,6 +10,9 @@ const UNABLE = "Unable to load the stage history.";
 
 function title(e: StageEvent): string {
   if (e.event === "lost") return `Marked lost at ${e.to_label}`;
+  if (e.event === "inactive") return `Marked inactive at ${e.to_label}`;
+  if (e.event === "active_client") return `Became an active client at ${e.to_label}`;
+  if (e.event === "repeat_business") return `Became repeat business at ${e.to_label}`;
   if (e.event === "reopen") return `Reopened at ${e.to_label}`;
   return `${e.from_label} → ${e.to_label}`;
 }

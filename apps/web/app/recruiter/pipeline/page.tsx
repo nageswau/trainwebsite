@@ -8,7 +8,7 @@ import { BOARD_URL, type BoardView, PIPELINE_PATH } from "@/lib/recruiterPipelin
 import type { User } from "@/lib/types";
 
 // rec-005 (P7): companies per stage in the caller's scope -- a recruiter's own, a manager's team and the unassigned queue, everything for
-// super admin. Lost companies are counted apart; archived ones are left out. Filters live in the address.
+// super admin. Lost and inactive companies are counted apart; archived ones are left out. Filters live in the address.
 export default async function RecruiterPipelinePage({ searchParams }: { searchParams: Promise<{ stage?: string; offset?: string }> }) {
   const sp = await searchParams;
   const stage = sp.stage || undefined;
@@ -43,7 +43,7 @@ export default async function RecruiterPipelinePage({ searchParams }: { searchPa
           <div>
             <div className="eyebrow">Pipeline</div>
             <h2>Company pipeline</h2>
-            <p className="muted">Companies per stage. Lost companies are counted apart; archived ones are left out.</p>
+            <p className="muted">Companies per stage. Lost and inactive companies are counted apart; archived ones are left out.</p>
           </div>
         </div>
         {view === "invalid" ? (

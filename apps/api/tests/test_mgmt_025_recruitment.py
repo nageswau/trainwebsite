@@ -57,7 +57,7 @@ async def test_the_eleven_kpis_and_the_seven_pipeline_steps_in_source_order(clie
     assert list(payload["kpis"]) == KPIS
     assert [step["key"] for step in payload["pipeline"]] == PIPELINE
     assert [step["label"] for step in payload["pipeline"]] == ["Lead", "Meeting", "Requirement", "Candidate", "Interview", "Selection", "Joining"]
-    assert set(payload) == {"date_from", "date_to", "revenue_visible", "kpis", "pipeline", "requirement_closed", "lost"}
+    assert set(payload) == {"date_from", "date_to", "revenue_visible", "kpis", "pipeline", "requirement_closed", "lost", "inactive"}  # pob-004 D10
 
 
 # --- AC: the totals are rec-035's ---------------------------------------------------------------------------------------------------------

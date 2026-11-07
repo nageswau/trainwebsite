@@ -2,15 +2,15 @@ import Link from "next/link";
 
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { COMPANIES_PATH, personName, PRIORITY_LABEL, type Priority } from "@/lib/recruiterCompanies";
-import { type BoardView, LOST } from "@/lib/recruiterPipeline";
+import type { BoardView } from "@/lib/recruiterPipeline";
 
 type Change = { stage?: string | null; offset?: number };
 const SELECTED = { display: "block", borderColor: "var(--blue)", boxShadow: "0 0 0 1px var(--blue)" } as const;
 
-// rec-005 (P7): a count tile per stage plus Lost, and one page of companies (the BdmPipelineBoard look). Server-rendered: every filter is
+// rec-005 (P7): a count tile per stage plus, pob-004, one per bucket (client status, Follow-up Due, Inactive, Lost), and one page of companies (the BdmPipelineBoard look). Server-rendered: every filter is
 // in the address, and filter links are plain <a> (a full page load, bdm-004 QA4-01) so back and shared links just work.
 export default function RecruiterPipelineBoard({ view, href, selected }: { view: BoardView; href: (change: Change) => string; selected: string | null }) {
-  const tiles = [...view.stages, { key: LOST, label: "Lost", count: view.lost_count }];
+  const tiles = [...view.stages, ...view.buckets];
   const heading = tiles.find((t) => t.key === selected)?.label ?? "All open companies";
   const last = view.offset + view.items.length;
   return (
@@ -61,6 +61,9 @@ export default function RecruiterPipelineBoard({ view, href, selected }: { view:
                     <td>
                       {r.stage_label}
                       {r.lost && <> <span className="badge">Lost</span></>}
+                      {r.inactive && <> <span className="badge">Inactive</span></>}
+                      {r.client_status !== "prospect" && <> <span className="badge">{r.client_status_label}</span></>}
+                      {r.follow_up_due && <> <span className="badge">Follow-up due</span></>}
                     </td>
                     <td>{personName(r.assigned_recruiter)}</td>
                   </tr>

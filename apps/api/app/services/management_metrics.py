@@ -101,7 +101,7 @@ def _active_students() -> ScalarSelect:
 
 def partner_companies() -> ScalarSelect:
     """S10 (MS10); mgmt-008's Partner companies KPI too."""
-    return _count(Company.archived_at.is_(None), Company.lost_at.is_(None), Company.stage.in_(PARTNER_COMPANY_STAGES))
+    return _count(Company.archived_at.is_(None), Company.lost_at.is_(None), Company.inactive_at.is_(None), Company.stage.in_(PARTNER_COMPANY_STAGES))
 
 
 def recruiters() -> ScalarSelect:

@@ -125,7 +125,7 @@ async def test_meetings_follow_ups_requirements_shares_and_contracts_appear(clie
     # Scheduling moved the company to Meeting Scheduled (rec-028 AC1): the stage entry sits above the meeting it came from (TL5).
     chain = [summary(r) for r in page["items"]]
     stage = next(r for r in page["items"] if r["kind"] == "stage" and r["to_value"] == "meeting_scheduled")
-    assert stage["to_label"] == "Meeting Scheduled" and chain.index(summary(stage)) < chain.index(("meeting", "scheduled"))
+    assert stage["to_label"] == "Meeting Booked" and chain.index(summary(stage)) < chain.index(("meeting", "scheduled"))
     assert by[("follow_up", "scheduled")]["from_value"] == "jd" and by[("follow_up", "scheduled")]["reason"] == "Chase the JD"
     cancelled = by[("follow_up", "cancelled")]
     assert cancelled["reason"] == "Sent already" and cancelled["actor"]["id"] == str(recruiter.id)

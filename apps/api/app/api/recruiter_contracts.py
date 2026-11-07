@@ -17,6 +17,7 @@ from app.api.portfolio_certificates import EXTENSION, HEADERS
 from app.core.database import get_db
 from app.models import RecruiterContract, User
 from app.schemas import RecCompanyContracts, RecContractCreate, RecContractEnvelope, RecContractEventPage, RecContractUpdate
+from app.services import company_pipeline
 from app.services import recruiter_companies as companies
 from app.services import recruiter_contracts as svc
 from app.services.agent_documents import read_upload
@@ -64,6 +65,8 @@ async def create_contract(company_id: UUID, payload: RecContractCreate, party: P
         svc.audit(db, user, "renewed", current, {"renewed_by": str(contract.id)})
     svc.record(db, user, contract, "created", None, contract.status, [])
     svc.audit(db, user, "created", contract, {"status": contract.status})
+    if side == svc.CLIENT:  # pob-004 D4: only the client side drives the client pipeline
+        await company_pipeline.contract_moved(db, company, contract.status, user)
     await db.commit()
     await db.refresh(contract)
     svc.log("recruiter_contract_created", user, contract, status=contract.status, renewed=current is not None)
@@ -103,6 +106,8 @@ async def change_contract(company_id: UUID, payload: RecContractUpdate, party: P
     kind, action = ("status", "status_changed") if status else ("updated", "updated")
     svc.record(db, user, contract, kind, before, after, changed)
     svc.audit(db, user, action, contract, {"from": before, "to": after, "changed": changed})
+    if status is not None and side == svc.CLIENT:  # pob-004 D4: only the client side drives the client pipeline
+        await company_pipeline.contract_moved(db, company, status, user)
     await db.commit()
     await db.refresh(contract)
     svc.log(f"recruiter_contract_{action}", user, contract, from_status=before, to_status=after, changed=changed)

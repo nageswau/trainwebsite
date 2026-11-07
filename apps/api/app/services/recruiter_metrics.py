@@ -40,6 +40,7 @@ from app.models import (
     User,
 )
 from app.recruiter_stages import ORDER as COMPANY_STAGES
+from app.recruiter_stages import PRE_OUTREACH
 from app.services import recruiter_companies as companies
 from app.services import recruiter_contracts, recruiter_revenue
 from app.services import recruiter_follow_ups as follow_ups
@@ -94,8 +95,8 @@ async def dashboard(db: AsyncSession, user: User, recruiter_id: UUID | None, now
     first, today, month_start = period(now)
     recent = now - timedelta(days=RECENT_DAYS)
 
-    open_company = [Company.archived_at.is_(None), Company.lost_at.is_(None), companies.CLIENT_COMPANY]  # pob-010 V10: leads are clients
-    new_lead = [*company_scope, *open_company, Company.stage == "new_lead"]
+    open_company = [Company.archived_at.is_(None), Company.lost_at.is_(None), Company.inactive_at.is_(None), companies.CLIENT_COMPANY]  # pob-010 V10: leads are clients
+    new_lead = [*company_scope, *open_company, Company.stage.in_(PRE_OUTREACH)]  # pob-004 D10
     history_job = ((JobApplication, JobApplication.id == JobApplicationStatusHistory.application_id), (Job, Job.id == JobApplication.job_id))
 
     def entered(status: str):
@@ -497,12 +498,12 @@ async def management(
     of_job = (Company, Company.id == Job.company_id)
     of_application = ((Job, Job.id == JobApplication.job_id), of_job)
     open_job = Job.status.not_in(PARKED_REQUIREMENTS)
-    active_company = and_(Company.archived_at.is_(None), exists().where(Job.company_id == Company.id, open_job))
+    active_company = and_(Company.archived_at.is_(None), Company.inactive_at.is_(None), exists().where(Job.company_id == Company.id, open_job))
     joined = and_(JobOffer.joining_status == "joined", JobOffer.actual_joining_date >= first, JobOffer.actual_joining_date <= last)
     history = JobApplicationStatusHistory
 
     figures = {
-        "companies": _count(Company, where=[company_scope, Company.archived_at.is_(None), Company.stage != "new_lead"]),  # MG4
+        "companies": _count(Company, where=[company_scope, Company.archived_at.is_(None), Company.inactive_at.is_(None), Company.stage.not_in(PRE_OUTREACH)]),  # MG4
         "active_recruiters": _count(CompanyContact, (Company, Company.id == CompanyContact.company_id),
                                     where=[company_scope, CompanyContact.active.is_(True), active_company]),  # MG5
         "open_requirements": _count(Job, of_job, where=[job_scope, open_job]),

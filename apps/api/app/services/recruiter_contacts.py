@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Company, CompanyContact, RecContactRole, User
 from app.notifications.phone import normalise_phone, wa_number
 from app.schemas import REC_CONTACT_FIELDS, REC_CONTACT_MAX, RecContactIn
-from app.services import contact_status, recruiter_calls, recruiter_messages
+from app.services import company_pipeline, contact_status, recruiter_calls, recruiter_messages
 from app.services import recruiter_companies as companies
 from app.services.recruiter_follow_ups import contact_next
 
@@ -119,6 +119,8 @@ async def add(db: AsyncSession, user: User, company: Company, payload: RecContac
     if payload.status != contact.status:  # pob-005 D5: a person added straight as e.g. Do not contact
         contact_status.record(db, user, contact, payload.status, "manual")
         await db.flush()
+    if contact.role_id is not None and contact.active:  # pob-004 D4
+        await company_pipeline.apply_event(db, company, "hr_contact_added", user)
     return contact
 
 
@@ -161,6 +163,8 @@ async def update(db: AsyncSession, user: User, company: Company, contact: Compan
     if changed:
         await db.flush()
         companies.audit(db, user, "contact_update", company.id, {"contact_id": str(contact.id), "fields": sorted(changed)})
+    if {"role_id", "active"} & set(changed) and contact.role_id is not None and contact.active:  # pob-004 D4
+        await company_pipeline.apply_event(db, company, "hr_contact_added", user)
     return sorted(changed)
 
 
