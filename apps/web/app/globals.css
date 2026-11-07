@@ -142,6 +142,8 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 @media (max-width: 640px) { .question-import .table.stack td::before { flex: none; } } /* nehn-025 QA25-02: same for long question text */
 @media (max-width: 640px) { .it-student-360 .table.stack td::before { flex: none; } } /* itc-029 QA29-02: the 360's course label never squeezes */
 @media (max-width: 640px) { .table.stack.hr-reviews td::before { flex: none; } } /* itc-027 QA27-01: same beside the reassign picker */
+@media (max-width: 640px) { .recruitment-dashboard .table.stack td::before { flex: none; } } /* hrc-033 QA-01: a long employer name must not squeeze the label */
+@media (max-width: 640px) { .table.stack.screening-comparison { min-width: 0; } .table.stack.screening-comparison td::before { flex: none; } } /* pob-020 QA-02: every score stays on a phone */
 .action-grid > .lead-import { grid-column: 1 / -1; } /* tel-006 QA-03: the import result and past-imports tables need the full width */
 /* tel-004 QA-03: below 360px the sticky Name column left too little room, so the row's stage and link forms sat partly under it. */
 @media (max-width: 359px) { .lead-management .table-scroll table th:first-child, .lead-management .table-scroll table td:first-child { position: static; } }
@@ -201,6 +203,9 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .funnel-note { margin-top: 16px; }
 /* upc-028: a partner without enough data to score -- a neutral pill, not a band colour; the health pill never wraps in the ranking. */
 .badge.health-unknown { background: #eef1f5; color: var(--muted); }
+.badge.zero-supply { background: #fdecea; color: #a12622; } /* hrc-034 */
+.recruitment-insights tbody th { text-align: left; text-transform: none; letter-spacing: normal; font-size: inherit; background: none; color: inherit; } /* hrc-034 QA-02: a row header keeps its name's case */
+@media (max-width: 640px) { .recruitment-insights .table.stack td::before { flex: none; } } /* hrc-034 QA-01: the label never squeezes */
 .table td > :is(.badge, .status) { white-space: nowrap; }
 /* QA28-01: four short columns -- no wide-table minimum, so Weight and Points stay on screen on a phone (Measure wraps instead). */
 .table.health-breakdown { min-width: 0; }

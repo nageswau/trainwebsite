@@ -14,6 +14,8 @@ type State<R> = { rows: R[]; total: number } | "loading" | "failed";
 const pageOf = <R,>(page: Page<R>): State<R> => ({ rows: page.items, total: page.total });
 // A follow-up has up to three entries with its id (scheduled / done / cancelled): the event keeps their keys apart.
 const keyOf = (row: Row) => `${row.kind}-${row.event ?? ""}-${row.id}`;
+// pob-005: a timeline url may already carry a filter (`?contact_id=`)
+const pageUrl = (url: string, offset: number) => `${url}${url.includes("?") ? "&" : "?"}limit=${TIMELINE_LIMIT}&offset=${offset}`;
 
 /** tel-015 (DEC-SCOPE-114 D8): a lead's merged timeline, newest first, as the `.jtl` timeline -- shared by the telecaller / manager
  *  detail, the counselor's lead and the admin History. `initial` is the server-rendered first page (`null`: it failed; omitted: load
@@ -34,7 +36,7 @@ export default function LeadTimeline<R extends Row = TimelineRow>({
   const load = useCallback(() => {
     const request = ++latest.current;
     setOlder("idle");
-    getPage<R>(`${url}?limit=${TIMELINE_LIMIT}&offset=0`).then(
+    getPage<R>(pageUrl(url, 0)).then(
       (page) => request === latest.current && setState(pageOf(page)),
       () => request === latest.current && setState("failed"),
     );
@@ -55,7 +57,7 @@ export default function LeadTimeline<R extends Row = TimelineRow>({
     if (typeof state !== "object") return;
     const request = latest.current;
     setOlder("loading");
-    getPage<R>(`${url}?limit=${TIMELINE_LIMIT}&offset=${state.rows.length}`).then(
+    getPage<R>(pageUrl(url, state.rows.length)).then(
       (page) => {
         if (request !== latest.current) return; // a refresh replaced the list meanwhile
         setState((current) => {

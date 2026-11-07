@@ -51,12 +51,14 @@ def test_models_match_the_migration():
     from app.models import COMPANY_CONTACT_CHECKS, CompanyContact
 
     table = CompanyContact.__table__
-    assert {c.name for c in table.columns} == COLUMNS
-    assert _migration.CHECKS == COMPANY_CONTACT_CHECKS
+    assert COLUMNS <= {c.name for c in table.columns}  # pob-005 (0290) adds five columns
+    revised = {"ck_company_contacts_channel"}  # pob-005 (0290) widened it; test_pob_005_migration checks its frozen copy
+    assert {k: v for k, v in _migration.CHECKS.items() if k not in revised} == {k: v for k, v in COMPANY_CONTACT_CHECKS.items() if k in _migration.CHECKS and k not in revised}
     names = {i.name for i in table.indexes} | {c.name for c in table.constraints}
     assert set(_migration.CHECKS) | set(_migration.INDEXES) <= names
     for name, sql in _migration.CHECKS.items():
-        assert str(next(c for c in table.constraints if c.name == name).sqltext) == sql
+        if name not in revised:
+            assert str(next(c for c in table.constraints if c.name == name).sqltext) == sql
     assert not table.c.name.nullable and not table.c.company_id.nullable
 
 

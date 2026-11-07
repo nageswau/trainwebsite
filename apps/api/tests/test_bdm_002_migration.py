@@ -90,6 +90,8 @@ def test_models_match_the_migration():
         "is_primary",
         "created_at",
         "updated_at",
+        "office_details",  # pob-013 (DEC-SCOPE-410 P10, migration 0288): the TPO's office and preferred method
+        "preferred_contact_method",
     }
     names = {i.name for i in contact.indexes} | {c.name for c in contact.constraints}
     assert {"ck_bdm_organization_contacts_role", "ix_bdm_organization_contacts_org", "uq_bdm_organization_contacts_primary"} <= names

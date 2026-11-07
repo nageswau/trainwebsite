@@ -33,7 +33,9 @@ from app.schemas import (
 )
 from app.services import application_review as review
 from app.services import applications, candidates, matching, recruitment_history
+from app.services import job_revisions as revisions
 from app.services import recruiter_companies as companies
+from app.services import recruiter_contracts as contracts
 from app.services import recruiter_requirements as svc
 from app.services import requirement_owners as owners
 from app.services.recruiter import ROLE, recruiter_context
@@ -145,9 +147,11 @@ async def create_requirement(payload: RecRequirementCreate, user: User = Depends
     values["description"] = values["description"] or ""
     values["requirement_date"] = values["requirement_date"] or svc.ist_today()  # J4: the received date, today unless given
     await svc.check_references(db, values, None)
+    await svc.require_terms_edit(db, user, payload.model_fields_set, "create")  # pob-002 R8
     assignee = user.id if user.role == ROLE else company.assigned_recruiter_user_id
     if user.role != ROLE and payload.assigned_recruiter_user_id:
         assignee = (await companies.locked_recruiter_target(db, user, payload.assigned_recruiter_user_id)).id
+    await svc.check_owner_fields(db, user, values, None, company.id, assignee)  # pob-002 R6/R9
     job = Job(
         **values,
         company_id=company.id,
@@ -158,11 +162,13 @@ async def create_requirement(payload: RecRequirementCreate, user: User = Depends
         skills=[],
     )
     svc.settle_location(job)  # hrc-005 V3
+    svc.check_terms(job)  # pob-002 R7
     overrides = await svc.check_duplicates(db, job, payload.duplicate_reason)  # V5: a 409 unless a reason is given
     db.add(job)
     await db.flush()
     await svc.set_skills(db, job, payload.required_skills or [], payload.preferred_skills or [])
     await svc.record_created(db, user, job)
+    await revisions.record_created(db, user, job)  # pob-002 R2: revision 1
     svc.audit(db, user, "create", job.id, {"code": job.requirement_code, "company_id": str(company.id), "fields": sorted(k for k, v in values.items() if v not in (None, ""))})
     _audit_override(db, user, job, overrides, payload.duplicate_reason)
     await db.commit()
@@ -185,6 +191,25 @@ async def requirement_history(requirement_id: UUID, response: Response, limit: i
     return await recruitment_history.history(db, "job", job.id, ("recruiter_requirement.", "job_description."), limit=limit, offset=offset)
 
 
+# --- pob-002 (DEC-SCOPE-407 R5/R8): the revisions ---------------------------------------------------------------------------------
+@router.get("/{requirement_id}/revisions")
+async def requirement_revisions(requirement_id: UUID, response: Response, limit: int = Query(20, ge=1, le=100), offset: int = OFFSET,
+                                user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):  # fmt: skip
+    """Newest first, for the requirement's readers (scope = 404); commercial field names only with `commercials.client.view`."""
+    job = await svc.load_scoped(db, user, requirement_id, officers=True)
+    response.headers.update(NO_STORE)
+    return await revisions.list_page(db, job, view=await contracts.sees_commercials(db, user), limit=limit, offset=offset)
+
+
+@router.get("/{requirement_id}/revisions/{revision}")
+async def requirement_revision(requirement_id: UUID, revision: int, response: Response, compare_to: int | None = Query(None, ge=1),
+                               user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):  # fmt: skip
+    """Revision n's values and its changes against `compare_to` (default n-1); an unknown revision of a readable job is 404 too."""
+    job = await svc.load_scoped(db, user, requirement_id, officers=True)
+    response.headers.update(NO_STORE)
+    return await revisions.read(db, job, revision, compare_to, view=await contracts.sees_commercials(db, user))
+
+
 @router.patch("/{requirement_id}")
 async def update_requirement(requirement_id: UUID, payload: RecRequirementUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Only the fields sent; values equal to the stored ones are not changes (no audit, no updated_at bump)."""
@@ -195,7 +220,10 @@ async def update_requirement(requirement_id: UUID, payload: RecRequirementUpdate
     changes = payload.model_dump(exclude_unset=True, include=set(REC_REQUIREMENT_FIELDS))
     if "description" in changes:
         changes["description"] = changes["description"] or ""
+    await svc.require_terms_edit(db, user, payload.model_fields_set, "update")  # pob-002 R8: 403 before any other check
     await svc.check_references(db, changes, job)
+    await svc.check_owner_fields(db, user, changes, job, job.company_id, job.assigned_recruiter_user_id)  # pob-002 R6/R9
+    snapshot_before = await revisions.snapshot(db, job)  # pob-002 R2/R3: under the row lock, before any change
     changed = sorted(k for k, v in changes.items() if getattr(job, k) != v)
     old_location, old_place = job.location, svc.place_text(job.city, job.state, job.country)
     fields = payload.model_fields_set
@@ -211,6 +239,7 @@ async def update_requirement(requirement_id: UUID, payload: RecRequirementUpdate
             changed.append("location")
     overrides = await svc.check_duplicates(db, job, payload.duplicate_reason, job.id) if svc.DUPLICATE_FIELDS & set(changed) else []
     svc.check_ranges(job)
+    svc.check_terms(job)  # pob-002 R7, on the merged values
     if "vacancies" in changed:
         await svc.check_vacancies(db, job)
     if skills_sent and await svc.set_skills(
@@ -224,7 +253,8 @@ async def update_requirement(requirement_id: UUID, payload: RecRequirementUpdate
         after = await svc.audited_values(db, job, [k for k in changed if k != "skills"], skills=skills_sent)
         svc.audit(db, user, "update", job.id, {"fields": changed, "changes": recruitment_history.diff(before, after)})
         _audit_override(db, user, job, overrides, payload.duplicate_reason)
-        await review.flag(db, user, job, eligible_before)
+        await review.notify_changed(db, user, job, eligible_before)  # hrc-009 (R7) + hrc-032 (N3)
+        await revisions.record(db, user, job, snapshot_before, payload.revision_reason)  # pob-002 R2: one revision per changing save
     await db.commit()
     if changed:
         svc.log("recruiter_requirement_updated", user, job.id, fields=changed)
@@ -239,6 +269,7 @@ async def change_requirement_status(requirement_id: UUID, payload: RecRequiremen
     previous = await svc.change_status(db, user, job, payload.status, payload.note)
     job.updated_by_user_id = user.id
     svc.audit(db, user, "status", job.id, {"from": previous, "to": payload.status, "changes": {"status": [previous, payload.status]}})
+    await review.notify_changed(db, user, job)  # hrc-032 (N3)
     await db.commit()
     svc.log("recruiter_requirement_status_changed", user, job.id, from_status=previous, to_status=payload.status)
     return {"requirement": await svc.requirement_out(db, user, job)}
@@ -262,6 +293,7 @@ async def _decide(db: AsyncSession, user: User, requirement_id: UUID, approve: b
     previous = await svc.decide(db, user, job, approve, note)
     action = "approve" if approve else "reject"
     svc.audit(db, user, action, job.id, {"from": previous, "to": job.status, "note": note, "changes": {"status": [previous, job.status]}})
+    await review.notify_changed(db, user, job)  # hrc-032 (N3): the owners hear the approver's answer
     await db.commit()
     svc.log(f"recruiter_requirement_{action}d", user, job.id)
     return {"requirement": await svc.requirement_out(db, user, job)}
@@ -390,7 +422,7 @@ async def set_skill_weights(requirement_id: UUID, payload: RecSkillWeights, user
         rows[w.id].min_level = levels.get(w.id, rows[w.id].min_level)
     if changed or changes:
         svc.audit(db, user, "weights", job.id, {"skills": changed, **({"changes": changes} if changes else {})})
-        await review.flag(db, user, job, eligible_before)
+        await review.notify_changed(db, user, job, eligible_before)
     await db.commit()
     if changed or changes:
         svc.log("recruiter_requirement_weights_changed", user, job.id, skills=len(changed), hard_filters=len(switches))
@@ -416,7 +448,7 @@ async def assign_requirement(requirement_id: UUID, payload: RecRequirementAssign
 
 # --- hrc-006 (DEC-SCOPE-384 O3-O11): co-owners and the ownership history ---------------------------------------------------------
 @router.get("/{requirement_id}/assignment-options")
-async def assignment_options(requirement_id: UUID, role: Literal[JOB_ASSIGNMENT_ROLES], q: str | None = SEARCH, limit: int = Query(20, ge=1, le=50),
+async def assignment_options(requirement_id: UUID, role: Literal[(*JOB_ASSIGNMENT_ROLES, owners.BACKUP)], q: str | None = SEARCH, limit: int = Query(20, ge=1, le=50),
                              user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):  # fmt: skip
     """The owner picker, for those who manage the owners: eligible active people not already on the requirement."""
     job = await svc.load_scoped(db, user, requirement_id, officers=True)
@@ -441,6 +473,7 @@ async def add_owner(requirement_id: UUID, payload: RecRequirementOwnerAdd, user:
     target = await owners.add(db, user, job, payload.user_id, payload.role)
     job.updated_by_user_id = user.id
     svc.audit(db, user, "owner_added", job.id, {"user_id": str(target.id), "role": payload.role, "changes": {owners.ROLE_LABELS[payload.role]: [None, target.full_name]}})
+    await owners.notify_assigned(db, user, job, target.id)  # hrc-032 (N3)
     await db.commit()
     svc.log("recruiter_requirement_owner_added", user, job.id, user_id=str(target.id), role=payload.role)
     return {"requirement": await svc.requirement_out(db, user, job)}

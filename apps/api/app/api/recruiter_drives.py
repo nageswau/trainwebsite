@@ -11,6 +11,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api import recruiter_colleges
 from app.api.bdm import LIMIT, OFFSET, SEARCH
 from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
@@ -83,3 +84,6 @@ async def drive_funnel(drive_id: UUID, user: User = Depends(get_current_user), d
 async def drive_candidates(drive_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     await svc.load(db, user, drive_id)
     return await svc.candidates_page(db, drive_id, limit, offset)
+
+
+router.include_router(recruiter_colleges.router)  # pob-013 (DEC-SCOPE-410): /recruiter/colleges

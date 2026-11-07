@@ -11,7 +11,7 @@ import secrets
 import uuid
 from datetime import timedelta
 
-from app.models import CandidateResume, Company, Interview, JobApplication, JobOffer, ProfileShare, ProfileShareItem, RecruiterMessage
+from app.models import CandidateResume, Company, Interview, InterviewResult, JobApplication, JobOffer, ProfileShare, ProfileShareItem, RecruiterMessage, ScreeningForm, ScreeningQuestion
 from app.services import candidates as candidate_svc
 from app.services import offers as offer_svc
 from app.services import profile_sharing
@@ -21,6 +21,7 @@ READ = ("rec", "mgr", "super", "bdm")  # rec-007 requirement scope: the recruite
 OUT = ("rec_out", "mgr_out", "bdm_out")  # the same roles outside the record's scope: 404, the same as an unknown id (IDOR)
 WRITE = ("rec", "super")  # rec-017 `applications.WRITERS` (rec-007's `can_edit` holders); the manager and the BDM read only (403)
 LISTS = (*READ, *OUT)  # a list is filtered by the scope, so an out-of-scope caller gets 200 with none of the world's rows
+SCREENING_MANAGERS = ("rec", "rec_out", "mgr", "mgr_out", "super")  # pob-020 S13: no requirement is involved, so no scope applies
 _FILES: dict[str, str] = {}  # one stored object per kind for the whole run (replacing a letter or proof keeps the old object)
 
 
@@ -48,6 +49,21 @@ ROWS = [
     # rec-018 -- screening (§2.75): the readers read, the writers save (the manager and BDM 403 after the scope check)
     R("get", "/recruiter/applications/{application}/screening", **allow(200, *READ), **allow(404, *OUT)),
     R("put", "/recruiter/applications/{application}/screening", {"result": "hold"}, **allow(200, *WRITE), **allow(404, *OUT)),
+    # pob-020 (§2.307): the bank and templates are global to recruiters and Team Leads; the form follows the requirement scope. The world's
+    # requirement has no form, so a form write that passes the checks stops at a stable 4xx (the rows stay independent of each other).
+    R("get", "/recruiter/screening/questions", **allow(200, *SCREENING_MANAGERS)),
+    R("post", "/recruiter/screening/questions", lambda w: {"category": "technical", "text": tag("R38 question "), "format": "text"}, **allow(201, *SCREENING_MANAGERS)),
+    R("patch", "/recruiter/screening/questions/{screening_question}", {"active": True}, **allow(200, *SCREENING_MANAGERS)),
+    R("get", "/recruiter/screening/templates", **allow(200, *SCREENING_MANAGERS)),
+    R("post", "/recruiter/screening/templates", lambda w: {"name": tag("R38 template "), "questions": [{"category": "technical", "text": "Q?", "format": "text"}]}, **allow(201, *SCREENING_MANAGERS)),
+    R("patch", "/recruiter/screening/templates/{screening_template}", {"archived": False}, **allow(200, *SCREENING_MANAGERS)),
+    R("get", "/recruiter/requirements/{requirement}/screening-form", **allow(200, *READ), **allow(404, *OUT)),
+    R("post", "/recruiter/requirements/{requirement}/screening-form", lambda w: {"template_id": str(uuid.uuid4())}, **allow(422, "rec", "mgr", "super"), bdm=403, **allow(404, *OUT)),
+    R("put", "/recruiter/requirements/{requirement}/screening-form", {"questions": [{"category": "technical", "text": "Q?", "format": "text"}]}, **allow(409, "rec", "mgr", "super"), bdm=403, **allow(404, *OUT)),
+    R("post", "/recruiter/requirements/{requirement}/screening-form/approve-knockouts", {"version": 1}, **allow(409, "mgr", "super"), rec=403, bdm=403, **allow(404, *OUT)),
+    R("get", "/recruiter/requirements/{requirement}/screening-comparison", **allow(200, *READ), **allow(404, *OUT)),
+    R("get", "/recruiter/applications/{application}/screening-sessions", **allow(200, *READ), **allow(404, *OUT)),
+    R("post", "/recruiter/applications/{application}/screening-sessions", {"form_version": 1, "answers": [], "recommendation": "hold"}, **allow(409, *WRITE), **allow(404, *OUT)),
     # rec-019 -- profile sharing (§2.86): share / respond are the writers'; the employer reads its company's Portal shares; the public
     # resume link needs no session (the token is the credential, S7), so every caller -- anonymous too -- gets the file
     R("post", "/recruiter/shares", lambda w: {"requirement_id": w["requirement"], "candidate_ids": [w["candidate"]], "channel": "other", "note": tag("R38 ")},
@@ -90,12 +106,28 @@ ROWS = [
     R("get", "/recruiter/offers/{hiring_accepted}/joining/proof", **allow(200, *READ), **allow(404, *OUT)),
     R("put", "/recruiter/offers/{hiring_accepted}/joining/proof", form=_pdf, **allow(200, *WRITE), **allow(404, *OUT)),
     R("get", "/recruiter/joinings", **allow(200, *LISTS)),
+    # hrc-030 (§2.302): the result queue and its release are `results.release`'s (hr_manager by default, super_admin); the switch is super_admin's
+    R("get", "/recruiter/interview-results", **allow(200, "hr_mgr", "super")),
+    R("get", "/recruiter/interview-results/settings", **allow(200, "hr_mgr", "super")),
+    R("put", "/recruiter/interview-results/settings", {"auto_release": False}, super=200),
+    R("post", "/recruiter/interview-results/{hiring_result}/release", {"candidate_message": "Thank you for your time."}, **allow(200, "hr_mgr", "super")),
+    # hrc-032 (§2.306): the Delivery exceptions are `notifications.retry`'s (hr_manager, placement_manager, super_admin); an id that is not a failed delivery is 404
+    R("get", "/recruiter/notification-exceptions", **allow(200, "hr_mgr", "mgr", "mgr_out", "super")),
+    R("post", "/recruiter/notification-exceptions/{exception_source}/{hiring_result}/retry", {}, **allow(404, "hr_mgr", "mgr", "mgr_out", "super")),
+    # hrc-034 (DEC-SCOPE-416 I1): `reports.recruitment_insights.view` opens the whole-pool reports
+    R("get", "/recruiter/recruitment-insights/skill-demand", **allow(200, "hr_mgr", "mgr", "mgr_out", "super")),
+    R("get", "/recruiter/recruitment-insights/skill-demand/vacancies", **allow(200, "hr_mgr", "mgr", "mgr_out", "super")),
+    R("get", "/recruiter/recruitment-insights/portal-analytics", **allow(200, "hr_mgr", "mgr", "mgr_out", "super")),
+    R("get", "/recruiter/recruitment-insights/data-quality", **allow(200, "hr_mgr", "mgr", "mgr_out", "super")),
+    R("get", "/recruiter/recruitment-insights/data-quality/{insight_figure}", **allow(200, "hr_mgr", "mgr", "mgr_out", "super")),
 ]
 # fmt: on
 PATH_VALUES = {}
 
 
 async def build(client, db, w) -> None:
+    w["exception_source"] = "delivery"  # hrc-032
+    w["insight_figure"] = "duplicates"  # hrc-034
     """On the group's own requirement (rec's, on the world's company): an application in Interview with a scheduled and a completed
     interview, a Selected one without an offer, one with an Offer Received offer and its letter, one with an Accepted offer (joining
     pending) and its proof, the student's own Selected application with an offer and its letter, and a candidate with a resume shared
@@ -103,6 +135,8 @@ async def build(client, db, w) -> None:
     rec, student = w["users"]["rec"], w["users"]["student"]
     company = await db.get(Company, uuid.UUID(w["company"]))
     job = await make_job(db, company, rec)
+    w["screening_question"] = str((await add(db, ScreeningQuestion(category="technical", question=tag("R38 bank "), format="text"))).id)
+    w["screening_template"] = str((await add(db, ScreeningForm(name=tag("R38 form ")))).id)
 
     async def application(status: str, candidate_id=None, student_id=None) -> JobApplication:
         candidate_id = candidate_id or (await make_candidate(db, rec)).id
@@ -118,6 +152,11 @@ async def build(client, db, w) -> None:
     done = await add(db, Interview(application_id=interviewing.id, scheduled_at=now() - timedelta(hours=2), mode="Online", round="hr_round",
                                    status="completed", created_by_user_id=rec.id))  # fmt: skip
     selected = await application("selected")
+    rejected = await application("rejected")  # hrc-030: a Final Round decision waiting for release
+    decided = await add(db, Interview(application_id=rejected.id, scheduled_at=now() - timedelta(hours=3), mode="Online", round="final_round",
+                                      status="rejected", created_by_user_id=rec.id))  # fmt: skip
+    result = await add(db, InterviewResult(interview_id=decided.id, application_id=rejected.id, outcome="rejected", is_final=True, state="pending_approval",
+                                           candidate_message="Thank you for interviewing.", decided_by_user_id=rec.id))  # fmt: skip
     offered = await application("selected")
     offer = await add(db, JobOffer(application_id=offered.id, status="offer_received", position="Java Developer", offered_on=today, created_by_user_id=rec.id,
                                    **letter_fields))  # fmt: skip
@@ -144,6 +183,6 @@ async def build(client, db, w) -> None:
     await db.commit()
     w |= {
         "hiring_job": str(job.id), "hiring_app": str(interviewing.id), "hiring_interview": str(scheduled.id), "hiring_done": str(done.id),
-        "hiring_selected": str(selected.id), "hiring_offer": str(offer.id), "hiring_accepted": str(accepted.id),
+        "hiring_selected": str(selected.id), "hiring_result": str(result.id), "hiring_offer": str(offer.id), "hiring_accepted": str(accepted.id),
         "hiring_student_offer": str(student_offer.id), "hiring_share": str(portal.id), "hiring_share_item": str(item.id), "hiring_token": token,
     }  # fmt: skip

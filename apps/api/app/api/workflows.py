@@ -86,7 +86,7 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.notifications.dispatch import queue_deliveries
+from app.notifications.dispatch import enqueue_recruiter_email, queue_deliveries
 from app.schemas import (
     AgentDocumentReview,
     AgentStudentCreate,
@@ -144,10 +144,12 @@ from app.services import (
     appointment_invites,
     audit_changes,
     candidate_jobs,
+    portal_events,
     counselor_students,
     course_skills,
     document_access,
     hr_reviews,
+    interview_results,
     interviews,
     it_enrollments,
     it_lifecycle,
@@ -2295,6 +2297,8 @@ async def apply_job(job_id: UUID, payload: dict, user: User = Depends(get_curren
     resume_url = payload.get("resume_url") or user.profile.get("resume_url")
     item = await applications.create(db, user, job, candidate, "sourced", "Applied from the student portal", resume_url=resume_url)
     await applications.send_receipt(db, item, job)  # hrc-026 (AC4)
+    await portal_events.record(db, user.id, portal_events.APPLY_START, [job.id])  # hrc-034 (I3)
+    await portal_events.record(db, user.id, portal_events.APPLY_SUBMIT, [job.id])
     await _audit(db, user, "job.apply", "job_application", item.id, {"job_id": job_id})
     await db.commit()
     await db.refresh(item)
@@ -2325,7 +2329,7 @@ async def update_job(job_id: UUID, payload: dict, user: User = Depends(get_curre
     if "closes_on" in payload:
         job.closes_on = date.fromisoformat(payload["closes_on"]) if payload["closes_on"] else None
     job.updated_by_user_id = user.id  # hrc-005 V6: Last Updated By
-    await review.flag(db, user, job, eligible_before)
+    await review.notify_changed(db, user, job, eligible_before)  # hrc-009 (R7) + hrc-032 (N3)
     await _audit(db, user, "job.update", "job", job.id, payload)
     await db.commit()
     return {"id": job.id, "status": job.status}
@@ -2371,11 +2375,18 @@ async def update_interview(interview_id: UUID, payload: dict, user: User = Depen
             setattr(item, key, payload[key])
     # rec-020 (IV11): a changed time is recorded as a reschedule; a known result also sets the status when the move is allowed.
     scheduled_at = datetime.fromisoformat(payload["scheduled_at"]) if payload.get("scheduled_at") else None
+    decided_before = item.status in interviews.FINAL
     await interviews.legacy_update(db, user, item, application, scheduled_at, payload.get("result"), await db_now(db))
     if application and item.result in {"selected", "rejected"}:  # rec-017 A2: a selected result now means Selected
-        applications.follow(db, user, application, item.result, f"Interview result: {item.result}")
+        note = f"Interview result: {item.result}"
+        if item.status == item.result and not decided_before:  # hrc-030 (R3): the move recorded a decision -- held until it is published
+            await interview_results.record(db, user, item, application, item.result, decides=True, note=note)
+        else:
+            applications.follow(db, user, application, item.result, note)
     await _audit(db, user, "interview.update", "interview", item.id, payload)
     await db.commit()
+    for message_id in interview_results.take_emails(db):
+        enqueue_recruiter_email(message_id)
     return {"id": item.id, "result": item.result, "status": item.status}
 
 
@@ -2441,6 +2452,7 @@ async def create_job_offer(payload: dict, user: User = Depends(get_current_user)
     if status is None:
         raise HTTPException(422, offers.UNKNOWN_STATUS)
     joining = date.fromisoformat(payload["joining_date"]) if payload.get("joining_date") else None
+    await interview_results.require_no_unreleased_final(db, application.id)  # hrc-030 (R8): an offer would reveal the selection
     applications.follow(db, user, application, "selected", "Offer recorded")
     item = await offers.insert(
         db, user, application, status,

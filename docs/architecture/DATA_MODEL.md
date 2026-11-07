@@ -2364,7 +2364,36 @@ interview-invite, profile-share and meeting-outcome writes). **`company_branches
 `storage_key` (server-generated, never returned), `meeting_id` → recruiter_meetings, `uploaded_by_user_id`, `created_at`). The legacy
 `companies.branches` text is unchanged. The downgrade drops the tables and columns (stored files stay in object storage).
 
-## Template governance (`pob-023`, `DEC-SCOPE-408`; migration `0286_template_governance`, after `0283_company_business_context`)
+## College placement profiles (`pob-013`, `DEC-SCOPE-410`; migration `0288_college_placement`, after `0285_job_revisions`)
+
+**`bdm_organization_contacts`** gains `office_details` (varchar 300) and `preferred_contact_method` (varchar 20, CHECK email / phone /
+whatsapp / in_person / linkedin). **`bdm_org_placement_profiles`** (PK `organization_id` → bdm_organizations RESTRICT, `drive_process`,
+`eligibility_rules` text, `updated_by_user_id`, timestamps). **`bdm_org_courses`** (`id`, `organization_id`, `department` 120, `course` 120,
+`course_key` = casefolded "department|course", UNIQUE (`organization_id`, `course_key`)). **`bdm_org_placement_batches`** (`id`,
+`organization_id`, `course_id` → bdm_org_courses RESTRICT, `pass_out_year` CHECK 2000–2100, `pass_out_date`, `student_count` CHECK
+0–100,000, `notes` 500, `created_by_user_id`; index (`organization_id`, `pass_out_year`)). **`bdm_org_placement_events`** (`id`,
+`organization_id`, `title` 200, `kind` CHECK, `starts_on`, `ends_on` CHECK ≥ start, `notes`, `created_by_user_id`; index (`organization_id`,
+`starts_on`)). **`bdm_org_tpo_interactions`** (append-only: `id`, `organization_id`, `contact_id` → contacts SET NULL, `contact_name`
+snapshot, `channel` CHECK, `occurred_at`, `summary` text, `next_step` 500, `logged_by_user_id`, `created_at`; index (`organization_id`,
+`occurred_at`)). The `bdm_organizations` row is never written by pob-013. Every step is guarded; the downgrade drops what it added.
+## Contact status and decision-maker (`pob-005`, `DEC-SCOPE-411`; migration `0290_contact_status`, after `0289_interview_results`)
+
+**`company_contacts`** gains `is_decision_maker` (bool, default false), `source` (varchar 32, CHECK `ck_company_contacts_source`),
+`verified_on` (date), `status` (varchar 24, not null, default `not_contacted`, CHECK `ck_company_contacts_status`) and `status_changed_at`
+(timestamptz); `ck_company_contacts_channel` adds `linkedin`; `ix_company_contacts_email` backs the duplicate check. `status` is
+backfilled from existing activity (a non-cancelled meeting → meeting_scheduled; an incoming or connected call → replied; any call, message
+or share → contacted). **`recruiter_messages`** gains `replied_at` (timestamptz). Status changes are `recruiter_company.contact_status`
+audit rows. The downgrade clears LinkedIn channels and drops the columns.
+
+## Screening forms and sessions (`pob-020`, `DEC-SCOPE-414`; migration `0292_screening_sessions`, after `0291_recruitment_notices`)
+
+**`screening_questions`** the bank (category, question, format, choices, evaluation_criteria, expected_answer, active; unique category + lower(question)).
+**`screening_forms`** `job_id` NULL = a template (name unique, case-insensitive), else the requirement's one form; version, knockout_status + approver, is_default, archived_at.
+**`screening_form_questions`** one immutable row per form + version + position, a copy of the question plus is_knockout (yes/no only). **`screening_sessions`** per application
+(kind form|legacy, form_id + form_version, screener, notes, recommendation pass|hold|reject, knock-out triggered/overridden/reason, legacy_snapshot; never edited). **`screening_answers`**
+per session + form question (answer, score 0–5). `application_screenings` is unchanged; the migration copies each row to one legacy session and seeds the default template. The downgrade
+drops the five tables.
+## Template governance (`pob-023`, `DEC-SCOPE-408`; migration `0297_template_governance`, after `0295_recruitment_report_grants`)
 
 **`recruiter_message_templates`:**
 - `channel` CHECK adds `linkedin` and `call`. `kind` is nullable: null exactly for LinkedIn and call.

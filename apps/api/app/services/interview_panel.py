@@ -119,7 +119,8 @@ async def _notify(db: AsyncSession, interview: Interview, application: JobApplic
                       f"Round: {svc.round_text(interview)}", f"Date and time: {when}"])  # fmt: skip
     for uid in user_ids:
         person = await db.get(User, uid)
-        item = Notification(user_id=uid, title="Interview assigned", body=body, read=False, action_url=DASHBOARDS[kinds[uid]])
+        item = Notification(user_id=uid, title="Interview assigned", body=body, read=False, action_url=DASHBOARDS[kinds[uid]],
+                            event_type="it.interview.assigned", entity_type="interview", entity_id=str(interview.id))  # fmt: skip
         db.add(item)
         await queue_deliveries(db, item, person)
 

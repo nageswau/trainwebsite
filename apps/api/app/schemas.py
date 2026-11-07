@@ -87,6 +87,7 @@ from app.models import (
     INVESTMENT_VERTICALS,
     JOB_EMPLOYMENT_TYPES,
     JOB_FEE_BASES,
+    JOB_PAYMENT_TRIGGERS,
     JOB_PRIORITIES,
     JOB_SHIFTS,
     JOB_STATUSES,
@@ -117,6 +118,8 @@ from app.models import (
     QUAL_STUDY_LEVELS,
     QUALIFICATION_LEVELS,
     RANKING_SYSTEMS,
+    COMPANY_CONTACT_SOURCES,
+    COMPANY_CONTACT_STATUSES,
     RECRUITER_CALL_DIRECTIONS,
     RECRUITER_CALL_MAX_SECONDS,
     RECRUITER_CALL_OUTCOMES,
@@ -128,6 +131,9 @@ from app.models import (
     RELATIONSHIP_STRENGTHS,
     SALARY_PERIODS,
     SCORE_TYPES,
+    SCREENING_CATEGORIES,
+    SCREENING_FORMATS,
+    SCREENING_RECOMMENDATIONS,
     SCREENING_RESULTS,
     STUDY_MODES,
     TASK_PRIORITIES,
@@ -173,6 +179,7 @@ class RoleAssignmentOut(BaseModel):
 class UserOut(BaseModel):
     id: UUID
     email: str
+    email_verified: bool = True  # hrc-031 (DEC-SCOPE-412 P10): the Privacy section's contact card
     full_name: str
     role: str
     division: str
@@ -5346,6 +5353,224 @@ class BdmOrganizationEnvelope(BaseModel):
     organization: BdmOrganizationOut
 
 
+# --- pob-013 (DEC-SCOPE-410): a college's placement profile, kept by the placement team beside the BDM organization -------------------
+PLACEMENT_LABELS = {
+    "drive_process": "Drive process", "eligibility_rules": "Eligibility rules", "department": "Department", "course": "Course",
+    "notes": "Notes", "title": "Title", "summary": "Summary", "next_step": "Next step", "office_details": "Office details",
+}  # fmt: skip
+PLACEMENT_MULTILINE = frozenset({"drive_process", "eligibility_rules", "notes", "summary"})
+
+
+def _placement_text(value: str | None, info: ValidationInfo) -> str | None:
+    """bdm-003's text rule: control characters refused (a line break only in a multi-line field), blank -> None."""
+    control = _BDM_CONTROL_MULTILINE if info.field_name in PLACEMENT_MULTILINE else _BDM_CONTROL
+    if value is not None and control.search(value):
+        raise ValueError(f"{PLACEMENT_LABELS[info.field_name]} contains invalid characters")
+    return value or None
+
+
+def _placement_required(value: str | None, info: ValidationInfo) -> str:
+    value = _placement_text(value, info)
+    if value is None:
+        raise ValueError(f"{PLACEMENT_LABELS[info.field_name]} is required")
+    return value
+
+
+def _placement_str(max_length: int, *, required: bool = False):
+    base = Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)]
+    text = Annotated[base, AfterValidator(_placement_required)] if required else Annotated[base | None, AfterValidator(_placement_text)]
+    return Annotated[text, BeforeValidator(_bdm_newlines)]
+
+
+PlacementEventKind = Literal["pre_placement_talk", "campus_drive", "assessment", "interview", "exam", "holiday", "other"]
+TpoChannel = Literal["meeting", "call", "email", "whatsapp", "visit", "other"]
+PlacementContactMethod = Literal["email", "phone", "whatsapp", "in_person", "linkedin"]
+PassOutYear = _bdm_whole_number("Pass-out year must be a year from 2000 to 2100", 2000, 2100)
+BatchStudents = _bdm_whole_number("Number of students must be a whole number from 0 to 100,000", 0, 100_000)
+
+
+class PlacementProfileIn(BaseModel):
+    """P5: PUT replaces both texts (an omitted one is cleared)."""
+
+    model_config = ConfigDict(extra="forbid")
+    drive_process: _placement_str(2000) = None
+    eligibility_rules: _placement_str(2000) = None
+
+
+class PlacementCourseIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    department: _placement_str(120) = None
+    course: _placement_str(120, required=True)
+
+
+class PlacementBatchIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    pass_out_year: PassOutYear
+    course_id: UUID | None = None
+    pass_out_date: date | None = None
+    student_count: BatchStudents = None
+    notes: _placement_str(500) = None
+
+    @model_validator(mode="after")
+    def _year_matches(self):
+        if self.pass_out_year is None:
+            raise PydanticCustomError("missing", "Pass-out year is required")
+        if self.pass_out_date is not None and self.pass_out_date.year != self.pass_out_year:
+            raise PydanticCustomError("value_error", "The pass-out date must fall in the pass-out year")
+        return self
+
+
+class PlacementEventIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    title: _placement_str(200, required=True)
+    kind: PlacementEventKind
+    starts_on: date
+    ends_on: date | None = None
+    notes: _placement_str(500) = None
+
+    @model_validator(mode="after")
+    def _window(self):
+        if self.ends_on is not None and self.ends_on < self.starts_on:
+            raise PydanticCustomError("value_error", "The end date can't be before the start date")
+        return self
+
+
+class TpoInteractionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    channel: TpoChannel
+    occurred_at: AwareDatetime
+    contact_id: UUID | None = None
+    summary: _placement_str(2000, required=True)
+    next_step: _placement_str(500) = None
+
+
+class TpoContactUpdate(BaseModel):
+    """P10: omitted = unchanged; null clears."""
+
+    model_config = ConfigDict(extra="forbid")
+    office_details: _placement_str(300) = None
+    preferred_contact_method: PlacementContactMethod | None = None
+
+
+class PlacementPermissions(BaseModel):
+    can_edit: bool
+
+
+class PlacementCollegeRow(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    org_type: str
+    city: str
+    state: str | None
+    assigned_bdm_name: str
+    course_count: int
+    next_pass_out_year: int | None
+    archived: bool
+
+
+class PlacementCollegePage(BaseModel):
+    items: list[PlacementCollegeRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class PlacementContactOut(BaseModel):
+    id: UUID
+    name: str
+    designation: str | None
+    role: str | None
+    phone: str | None
+    email: str | None
+    is_primary: bool
+    office_details: str | None
+    preferred_contact_method: str | None
+
+
+class PlacementCourseOut(BaseModel):
+    id: UUID
+    department: str | None
+    course: str
+
+
+class PlacementBatchOut(BaseModel):
+    id: UUID
+    course_id: UUID | None
+    course: str | None
+    pass_out_year: int
+    pass_out_date: date | None
+    student_count: int | None
+    notes: str | None
+
+
+class PlacementEventOut(BaseModel):
+    id: UUID
+    title: str
+    kind: str
+    starts_on: date
+    ends_on: date | None
+    notes: str | None
+
+
+class TpoInteractionOut(BaseModel):
+    id: UUID
+    channel: str
+    occurred_at: datetime
+    contact_id: UUID | None
+    contact_name: str | None
+    summary: str
+    next_step: str | None
+    logged_by_name: str
+
+
+class PlacementDriveOut(BaseModel):
+    id: UUID
+    drive_code: str
+    drive_date: date
+    job_role: str
+    status: str
+
+
+class PlacementProfileOut(BaseModel):
+    drive_process: str | None
+    eligibility_rules: str | None
+    updated_at: datetime | None
+    updated_by_name: str | None
+
+
+class PlacementCollegeOut(BaseModel):
+    """P13: no MoU, pipeline write, assignment or commercial data -- the BDM keeps owning those."""
+
+    id: UUID
+    code: str
+    name: str
+    org_type: str
+    city: str
+    state: str | None
+    website: str | None
+    student_count: int | None
+    affiliation: str | None
+    college_type: str | None
+    courses_note: str | None
+    relationship_stage: str  # P12: the bdm-004 stage label, read only; the §6.1 status mapping is NEEDS_CONFIRMATION
+    assigned_bdm_name: str
+    archived: bool
+    permissions: PlacementPermissions
+    profile: PlacementProfileOut
+    contacts: list[PlacementContactOut]
+    courses: list[PlacementCourseOut]
+    batches: list[PlacementBatchOut]
+    calendar: list[PlacementEventOut]
+    interactions: list[TpoInteractionOut]
+    interaction_total: int
+    drives: list[PlacementDriveOut]
+
+
+class PlacementCollegeEnvelope(BaseModel):
+    college: PlacementCollegeOut
+
+
 # --- bdm-004 (DEC-SCOPE-071, spec §6.1): stage moves, Lost / Revive, history and the pipeline view -------------------------------
 BdmStageKey = Annotated[str, StringConstraints(pattern=r"^[a-z_]{1,40}$")]
 # P14 / TripNote: trimmed, at most 500 after \r\n -> \n, line breaks and tabs allowed, other control characters refused, blank -> None.
@@ -9744,12 +9969,16 @@ RecContactMobile = _rec_contact_optional(40)
 RecContactEmail = _rec_contact_optional(255)
 RecContactLinkedIn = _rec_contact_optional(300, before=_bdm_website_prefix)
 RecContactNotes = _rec_contact_optional(2000, before=_bdm_newlines)
-RecContactChannel = Literal["call", "whatsapp", "email"]
+RecContactChannel = Literal["call", "whatsapp", "email", "linkedin"]  # pob-005 D2: LinkedIn
+RecContactSource = Literal[COMPANY_CONTACT_SOURCES]
+RecContactStatus = Literal[COMPANY_CONTACT_STATUSES]  # pob-005 D3: "follow-up due" is derived, never sent
+RecContactVerifiedOn = Annotated[date | None, AfterValidator(lambda v: _not_future(v, "verified_future", "Verified on can't be in the future"))]
 
 
 class RecContactUpdate(BaseModel):
-    """PATCH: omitted = unchanged, null = clear; a sent null on name / is_primary / active fails the non-nullable type. `is_primary: true`
-    makes this the primary (false is refused: choose another); `active` deactivates or reactivates (C2)."""
+    """PATCH: omitted = unchanged, null = clear; a sent null on name / is_primary / active / is_decision_maker / status fails the
+    non-nullable type. `is_primary: true` makes this the primary (false is refused: choose another); `active` deactivates or reactivates
+    (C2); `status` is a manual status change (pob-005 D5)."""
 
     model_config = ConfigDict(extra="forbid")
     name: BdmContactName = None
@@ -9761,6 +9990,10 @@ class RecContactUpdate(BaseModel):
     linkedin_url: RecContactLinkedIn = None
     preferred_channel: RecContactChannel | None = None
     notes: RecContactNotes = None
+    is_decision_maker: StrictBool = None
+    source: RecContactSource | None = None
+    verified_on: RecContactVerifiedOn = None
+    status: RecContactStatus = None
     is_primary: StrictBool = None
     active: StrictBool = None
 
@@ -9776,10 +10009,24 @@ class RecContactIn(BaseModel):
     linkedin_url: RecContactLinkedIn = None
     preferred_channel: RecContactChannel | None = None
     notes: RecContactNotes = None
+    is_decision_maker: StrictBool = False
+    source: RecContactSource | None = None
+    verified_on: RecContactVerifiedOn = None
+    status: RecContactStatus = "not_contacted"
     is_primary: StrictBool = False
 
 
-REC_CONTACT_FIELDS = ("name", "designation", "department", "role_id", "mobile", "email", "linkedin_url", "preferred_channel", "notes")
+REC_CONTACT_FIELDS = (
+    "name", "designation", "department", "role_id", "mobile", "email", "linkedin_url", "preferred_channel", "notes", "is_decision_maker", "source",
+    "verified_on",
+)  # fmt: skip
+
+
+class RecMessageReply(BaseModel):
+    """pob-005 D7: when the contact replied -- now when omitted; the service checks it against the message's send time."""
+
+    model_config = ConfigDict(extra="forbid")
+    replied_at: AwareDatetime | None = None
 
 
 class RecCompanyUpdate(BaseModel):
@@ -9945,7 +10192,8 @@ class RecTimelineRow(BaseModel):
 
     id: UUID
     kind: Literal["stage", "call", "message", "meeting", "follow_up", "requirement", "share", "share_response", "contract", "application", "interview", "offer",
-                  "note", "task", "assignment", "profile", "screening"]  # hrc-016 T9: the candidate timeline's new kinds
+                  "note", "task", "assignment", "profile", "screening",  # hrc-016 T9: the candidate timeline's new kinds
+                  "message_reply", "contact_status"]  # pob-005 D10: a logged reply; a contact's status change (per-contact view only)
     at: datetime
     actor: LeadStageActor | None
     event: str | None
@@ -10118,6 +10366,13 @@ class RecContactOut(BaseModel):
     last_contacted_at: datetime | None  # C6: the latest call (rec-025) or message (rec-026 MS10); meetings join with rec-028
     next_follow_up_at: datetime | None = None  # rec-024 FU9: the earliest open follow-up about this contact
     whatsapp_to: str | None = None  # rec-026 MS6: the wa.me number (E.164 digits), None when the mobile is unusable
+    # pob-005 (DEC-SCOPE-411 D1/D3): `follow_up_due` is derived (an open follow-up about this contact is due now or earlier)
+    is_decision_maker: bool = False
+    source: str | None = None
+    verified_on: date | None = None
+    status: str = "not_contacted"
+    status_changed_at: datetime | None = None
+    follow_up_due: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -10771,8 +11026,11 @@ REC_REQUIREMENT_LABELS = {
     # hrc-005 (DEC-SCOPE-381 V1)
     "requisition_reference": "Requisition reference", "certifications": "Certifications", "country": "Country", "state": "State",
     "city": "City", "travel_requirement": "Travel", "benefits": "Benefits", "duplicate_reason": "Reason",
+    # pob-002 (DEC-SCOPE-407)
+    "payment_terms": "Payment terms", "replacement_terms": "Replacement terms", "revision_reason": "Reason for this revision",
 }
-REC_REQUIREMENT_MULTILINE = frozenset({"description", "note", "skills", "responsibilities", "requirements", "remarks", "certifications", "benefits"})
+REC_REQUIREMENT_MULTILINE = frozenset({"description", "note", "skills", "responsibilities", "requirements", "remarks", "certifications", "benefits",
+                                       "payment_terms", "replacement_terms", "revision_reason"})  # fmt: skip
 REC_REQUIREMENT_FIELDS = (  # the `jobs` columns a create or edit may write; code, status, assignee and creator are server-owned
     "title", "location", "description", "department", "job_category_id", "vacancies", "qualification", "experience_min_months",
     "experience_max_months", "salary_min", "salary_max", "work_mode", "shift", "employment_type", "joining_requirement", "closes_on",
@@ -10780,7 +11038,11 @@ REC_REQUIREMENT_FIELDS = (  # the `jobs` columns a create or edit may write; cod
     # hrc-005 (V1)
     "requisition_reference", "lead_source_id", "certifications", "country", "state", "city", "relocation_required", "travel_requirement",
     "salary_currency", "salary_period", "benefits", "hiring_manager_user_id", "expected_joining_date",
+    # pob-002 (DEC-SCOPE-407 R6/R7/R9): the hiring process, the per-requirement terms and the backup owner
+    "interview_rounds", "screening_steps", "decision_maker_contact_id", "expected_tat_days", "payment_trigger", "payment_days",
+    "payment_terms", "replacement_terms", "backup_owner_user_id",
 )
+REC_REQUIREMENT_TERMS = ("payment_trigger", "payment_days", "payment_terms", "replacement_terms")  # pob-002 R8: behind commercials.client
 
 
 def _rec_requirement_text(value: str | None, info: ValidationInfo) -> str | None:
@@ -10809,6 +11071,20 @@ RecRequirementLocation = _rec_requirement_text_type(120)
 RecSkillName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
 RecMonths = Annotated[int | None, Field(ge=0, le=600)]
 RecMoney = Annotated[Decimal | None, Field(ge=0, max_digits=12, decimal_places=2)]
+RecDays = Annotated[int | None, Field(ge=1, le=365)]  # pob-002: a turnaround or payment period in days
+
+
+def _rec_steps(value: list[str] | None) -> list[str] | None:
+    """pob-002 (R6): an ordered list of names; blanks dropped, an empty list clears (null); no control characters."""
+    if value is None:
+        return None
+    if any(_BDM_CONTROL.search(item) for item in value):
+        raise ValueError("A step contains invalid characters")
+    kept = [item for item in value if item]
+    return kept or None
+
+
+RecSteps = Annotated[list[Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)]] | None, Field(max_length=10), AfterValidator(_rec_steps)]
 
 
 class RecRequirementUpdate(BaseModel):
@@ -10853,6 +11129,17 @@ class RecRequirementUpdate(BaseModel):
     hiring_manager_user_id: UUID | None = None
     expected_joining_date: date | None = None
     duplicate_reason: _rec_requirement_text_type(500, multiline=True) = None  # V5: saves despite a possible duplicate (audited)
+    # pob-002 (DEC-SCOPE-407): R6 the hiring process, R7 the terms (commercials.client edit), R9 the backup owner, R2 the revision's reason
+    interview_rounds: RecSteps = None
+    screening_steps: RecSteps = None
+    decision_maker_contact_id: UUID | None = None
+    expected_tat_days: RecDays = None
+    payment_trigger: Literal[JOB_PAYMENT_TRIGGERS] | None = None
+    payment_days: RecDays = None
+    payment_terms: _rec_requirement_text_type(2000, multiline=True) = None
+    replacement_terms: _rec_requirement_text_type(2000, multiline=True) = None
+    backup_owner_user_id: UUID | None = None
+    revision_reason: _rec_requirement_text_type(500, multiline=True) = None
 
     @model_validator(mode="after")
     def _ranges(self):
@@ -11401,6 +11688,111 @@ class RecScreeningIn(BaseModel):
         return self
 
 
+# --- pob-020 (DEC-SCOPE-414): question bank, forms and screening sessions --------------------------------------------------------------
+SCREENING_FORM_QUESTION_LIMIT = 20
+_RecScreeningChoice = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+_RecScreeningText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+
+
+class RecScreeningQuestionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    category: Literal[SCREENING_CATEGORIES]
+    text: _RecScreeningText
+    format: Literal[SCREENING_FORMATS]
+    choices: list[_RecScreeningChoice] | None = Field(default=None, max_length=20)
+    evaluation_criteria: _rec_requirement_text_type(1000, multiline=True) = None
+    expected_answer: _rec_requirement_text_type(500) = None
+
+
+class RecScreeningQuestionPatch(BaseModel):
+    """Only what is sent changes."""
+
+    model_config = ConfigDict(extra="forbid")
+    category: Literal[SCREENING_CATEGORIES] | None = None
+    text: _RecScreeningText | None = None
+    format: Literal[SCREENING_FORMATS] | None = None
+    choices: list[_RecScreeningChoice] | None = Field(default=None, max_length=20)
+    evaluation_criteria: _rec_requirement_text_type(1000, multiline=True) = None
+    expected_answer: _rec_requirement_text_type(500) = None
+    active: bool | None = None
+
+
+class RecScreeningFormQuestionIn(BaseModel):
+    """Either a bank question (`question_id`, copied) or a question written here. S6: a knock-out is a yes/no question expecting yes or no."""
+
+    model_config = ConfigDict(extra="forbid")
+    question_id: UUID | None = None
+    category: Literal[SCREENING_CATEGORIES] | None = None
+    text: _RecScreeningText | None = None
+    format: Literal[SCREENING_FORMATS] | None = None
+    choices: list[_RecScreeningChoice] | None = Field(default=None, max_length=20)
+    evaluation_criteria: _rec_requirement_text_type(1000, multiline=True) = None
+    expected_answer: _rec_requirement_text_type(500) = None
+    is_knockout: bool = False
+
+    @model_validator(mode="after")
+    def _complete(self):
+        if self.question_id is None and not (self.category and self.text and self.format):
+            raise ValueError("A question needs a category, text and format")
+        return self
+
+
+RecScreeningFormQuestions = Annotated[list[RecScreeningFormQuestionIn], Field(min_length=1, max_length=SCREENING_FORM_QUESTION_LIMIT)]
+
+
+class RecScreeningTemplateIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+    questions: RecScreeningFormQuestions
+
+
+class RecScreeningTemplatePatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)] | None = None
+    questions: RecScreeningFormQuestions | None = None
+    archived: bool | None = None
+
+
+class RecScreeningFormCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    template_id: UUID | None = None
+
+
+class RecScreeningFormVersion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    questions: RecScreeningFormQuestions
+
+
+class RecScreeningKnockoutApproval(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    version: StrictInt
+
+
+class RecScreeningAnswerIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    question_id: UUID
+    answer: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+    score: Annotated[StrictInt, Field(ge=0, le=5)] | None = None
+
+
+class RecScreeningSessionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    form_version: StrictInt
+    answers: list[RecScreeningAnswerIn] = Field(max_length=SCREENING_FORM_QUESTION_LIMIT)
+    notes: _rec_requirement_text_type(2000, multiline=True) = None
+    recommendation: Literal[SCREENING_RECOMMENDATIONS]
+    knockout_override: bool = False
+    override_reason: _rec_requirement_text_type(500) = None
+
+    @model_validator(mode="after")
+    def _override_needs_reason(self):
+        if self.knockout_override and not self.override_reason:
+            raise ValueError("Give a reason for overriding the knock-out")
+        if len({a.question_id for a in self.answers}) != len(self.answers):
+            raise ValueError("Answer each question once")
+        return self
+
+
 # --- rec-020 (DEC-SCOPE-148, spec §1/§3): interviews -------------------------------------------------------------------------------
 RecInterviewRound = Literal[INTERVIEW_ROUNDS]
 RecInterviewMove = Literal["confirmed", "completed", "no_show", "selected", "rejected", "on_hold"]  # IV3: never scheduled / rescheduled
@@ -11564,6 +11956,19 @@ class InterviewPanelFeedbackIn(BaseModel):
         if value is None and attendance == "attended":
             raise ValueError("Choose a score" if info.field_name == "score" else "Choose a recommendation")
         return value
+
+
+# --- hrc-030 (DEC-SCOPE-409 R4/R6): publishing an interview result and the release switch ----------------------------------------------
+class InterviewResultRelease(BaseModel):
+    """R6: the candidate-facing message; blank or omitted = the default text."""
+
+    model_config = ConfigDict(extra="forbid")
+    candidate_message: str | None = Field(default=None, max_length=1000)
+
+
+class InterviewResultSettingsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    auto_release: StrictBool
 
 
 # --- rec-022 (DEC-SCOPE-155, spec §1/§3): offers ------------------------------------------------------------------------------------

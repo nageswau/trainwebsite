@@ -5994,9 +5994,180 @@ PDF/JPEG/PNG by content, 429 + `Retry-After` past 20 uploads an hour. `GET /recr
 bytes as an attachment named `<kind>-<company code>.<ext>` (`no-store`, `nosniff`, sandbox CSP); an agreement needs
 `commercials.client.view` (403). Out of scope = 404 everywhere. Audit `recruiter_company_document.uploaded|downloaded`.
 
+## 12LA. Requirement revisions, hiring process and per-requirement terms (pob-002) — addendum, 2026-11-05
+
+`DEC-SCOPE-407`. **New:** `GET /api/v1/recruiter/requirements/{id}/revisions?limit&offset` → `{items: [{revision, author, reason,
+created_at, changed_fields: [{field, label}]}], total, limit, offset}`, newest first; `GET …/revisions/{n}?compare_to=m` → `{revision,
+author, reason, created_at, compared_to, values: [{field, label, value}], changes: [{field, label, before, after}] | null}` (default
+compare n-1; none for revision 1). Both: the requirement's read scope (404), an unknown revision 404, `Cache-Control: private, no-store`;
+commercial fields are left out without `commercials.client.view`. **Changed (additive):** `POST|PATCH /recruiter/requirements` accept
+`interview_rounds`, `screening_steps` (≤10 × ≤120), `decision_maker_contact_id`, `expected_tat_days` (1–365), `payment_trigger`,
+`payment_days` (1–365, with and only with `days_after_joining`), `payment_terms`, `replacement_terms` (≤2000), `backup_owner_user_id`, and
+PATCH `revision_reason` (≤500). The requirement detail gains `backup_owner`, `interview_rounds`, `screening_steps`, `decision_maker`
+`{id, name, designation, active}`, `expected_tat_days` and, with the grant, `commercial_terms` `{fee: {basis, value, inherited},
+payment_trigger, payment_trigger_label, payment_days, payment_terms: {value, inherited}, replacement_terms: {value, inherited}, can_edit}`.
+`GET …/assignment-options` accepts `role=backup`. **Errors:** a terms field without effective edit → 403 "Your role cannot view or change
+client commercial terms"; a backup change by anyone but the primary, the backup or super_admin → 403; the primary as backup → 409; an
+ineligible backup or decision-maker, or a days/trigger mismatch → 422.
+
+## 12LD. College placement profiles (pob-013) — addendum, 2026-11-05
+
+`DEC-SCOPE-410`. A college-module college or university organization (bdm-002) gains a placement profile kept by the placement team; the
+organization row, its MoU and its commercials stay the BDM's. Readers: `placement_team` (with a recruiter profile) and `placement_manager`
+see every active one; `bdm`/`bdm_manager` their bdm-002 scope; `super_admin` all; other roles 403; out of scope (or archived, for the
+placement team) 404. Writers: `placement_team`, `super_admin` and the assigned BDM; managers 403; archived 409 "Restore this organization
+first". Every write locks the organization row, writes one `bdm_organization.placement_*` audit row and returns `{college}`.
+
+| Method | Path | Body | Success |
+|---|---|---|---|
+| GET | `/recruiter/colleges?q=&city=&course=&pass_out_year=&limit=&offset=` | — | 200 `{items:[{id, code, name, org_type, city, state, assigned_bdm_name, course_count, next_pass_out_year, archived}], total, limit, offset}` |
+| GET | `/recruiter/colleges/{org_id}` | — | 200 `{college}` |
+| PUT | `/recruiter/colleges/{org_id}/profile` | `{drive_process?, eligibility_rules?}` (≤ 2000, multi-line; omitted = cleared) | 200 |
+| POST | `/recruiter/colleges/{org_id}/courses` | `{department?, course}` (≤ 120) | 201; duplicate 409 "This course is already listed"; > 100 409 |
+| DELETE | `/recruiter/colleges/{org_id}/courses/{course_id}` | — | 200; with batches 409 "Remove this course's batches first" |
+| POST | `/recruiter/colleges/{org_id}/batches` | `{pass_out_year (2000–2100), course_id?, pass_out_date? (in that year), student_count? (0–100,000), notes? (≤ 500)}` | 201; another college's course 422 |
+| DELETE | `/recruiter/colleges/{org_id}/batches/{batch_id}` | — | 200 |
+| POST | `/recruiter/colleges/{org_id}/calendar` | `{title, kind, starts_on, ends_on? (≥ start), notes?}`; kind ∈ pre_placement_talk, campus_drive, assessment, interview, exam, holiday, other | 201 |
+| DELETE | `/recruiter/colleges/{org_id}/calendar/{event_id}` | — | 200 |
+| POST | `/recruiter/colleges/{org_id}/interactions` | `{channel, occurred_at (aware, ≤ now + 5 min), contact_id?, summary (≤ 2000), next_step? (≤ 500)}`; channel ∈ meeting, call, email, whatsapp, visit, other | 201; future 422; another college's contact 422 |
+| PATCH | `/recruiter/colleges/{org_id}/contacts/{contact_id}` | `{office_details? (≤ 300), preferred_contact_method? ∈ email, phone, whatsapp, in_person, linkedin}` | 200 |
+
+`college`: `{id, code, name, org_type, city, state, website, student_count, affiliation, college_type, courses_note, relationship_stage,
+assigned_bdm_name, archived, permissions: {can_edit}, profile: {drive_process, eligibility_rules, updated_at, updated_by_name}, contacts[]
+(bdm-002 fields + office_details, preferred_contact_method), courses[], batches[] (with the course name), calendar[] (by start date),
+interactions[] (latest 50, newest first, with logged_by_name), interaction_total, drives[] (rec-029, ≤ 20: drive_code, drive_date, job_role,
+status)}`. No MoU, pipeline, assignment, phone/email of the organization or commercial field. `relationship_stage` is the bdm-004 stage
+label (the §6.1 status mapping is `NEEDS_CONFIRMATION`). The bdm-002 contact output is unchanged.
+
+## 12LC. Interview result approval and release (hrc-030) — addendum, 2026-11-05
+
+`DEC-SCOPE-409`, migration `0289`. **New:**
+- `GET /api/v1/recruiter/interview-results?state=pending_approval|released&limit&offset` — `results.release` holders (else 403). Page
+  `{items, total, limit, offset, counts: {pending_approval, released}}`; waiting oldest first, published newest first. Item: `id, outcome
+  (selected|rejected), outcome_label (Selected|Not selected), is_final, state, state_label, candidate_message, release_mode (auto|approval|
+  null), released_at, interview {id, code, round, scheduled_at}, candidate {id, code, name}, requirement {id, code, title}, company {id,
+  name}, decided_by {id, full_name}|null, decided_at, can_release` (false on the caller's own decision).
+- `POST /api/v1/recruiter/interview-results/{id}/release {candidate_message?: string ≤1000}` — holders; 404 unknown; 403 own decision; 409
+  already published (final). Blank/omitted message = the default text. 200 = the published queue item (as above). Notifies the candidate (in-app "Interview result" or a queued email).
+- `GET /api/v1/recruiter/interview-results/settings` — holders: `{auto_release, can_edit}`. `PUT` `{auto_release: bool}` — super_admin only
+  (else 403); 422 for a non-boolean.
+- `GET /api/v1/candidate/results` — a candidate or IT student (else 403; 401 signed out): `{items: [{id, round, role, company, outcome,
+  outcome_label, message, released_at}]}`, the caller's own released results only.
+
+**Changed (additive):** every recruiter interview read (`/recruiter/interviews*`, `/recruiter/applications/{id}/interviews`) gains
+`result_release` (the result object or null; the legacy `result` field is unchanged). `POST /recruiter/interviews/{id}/status` and `PUT
+…/feedback` into Selected/Rejected record the result. `POST /recruiter/applications/{id}/offer` and the legacy `POST /workflows/it/offers`
+answer 409 "Publish the interview result before making an offer" while the application's final result is unpublished. The student's
+interview schedule shows the published outcome; the student's job applications and the candidate's jobs show Selected/Rejected only after
+publishing.
+## 12LE. Contact status, decision-maker, duplicates and per-contact timeline (pob-005) — addendum, 2026-11-05
+
+`DEC-SCOPE-411`. **Changed (additive):** `POST /recruiter/companies/{id}/contacts` and `PATCH /recruiter/contacts/{id}` accept
+`is_decision_maker` (bool), `source` (`linkedin|company_website|referral|job_portal|event|inbound|other`|null), `verified_on` (date, not in
+the future) and `status` (`not_contacted|contacted|replied|meeting_scheduled|not_interested|do_not_contact`); `preferred_channel` adds
+`linkedin`. Each list item gains those fields plus `status_changed_at` and the derived `follow_up_due`. Message items gain `replied_at`.
+`GET /recruiter/companies/{id}/timeline` and `GET /recruiter/companies/{id}/follow-ups` accept `contact_id` (another company's contact →
+404); the timeline adds kinds `message_reply` (both views) and `contact_status` (per-contact view only; `event` is the cause).
+**New:** `GET /recruiter/companies/{id}/contacts/duplicates?mobile=&email=&exclude=` → `{matches: [{id, name, active, company: {id, name},
+same_company, on: ["mobile"|"email"]}], others}` (≤10 matches, in the caller's scope only; `others` counts the rest; company read scope,
+404). `POST /recruiter/messages/{id}/reply` `{replied_at?}` → the message (contact messages only, else 422; not before `sent_at`, not in
+the future → 422; set once, a repeat returns it unchanged; `can_edit` 403, out of scope 404, archived 409). **Errors:** a Do Not Contact
+contact → 409 "This contact has asked not to be contacted" on `POST /recruiter/messages`, an outgoing `POST /recruiter/calls`, a profile
+share to them, and a meeting create/edit that adds them.
+
+## 12LF. Candidate portal completion (hrc-031) — addendum, 2026-11-06
+
+`DEC-SCOPE-412`. **New:** `GET /candidate/applications` and `GET /candidate/interviews` (`candidate` or `it_student`, else 403) → a portal
+payload `{title, subtitle, columns, rows, metrics, actions, panels}` of the caller's own records; no id is taken. Application rows:
+`code, role, company, location, status` (the candidate-visible stage), `applied_on` ("06 Nov 2026", IST), `next_action`. Interview rows as
+`GET /portal/it/student/interview-schedule`. **Changed (additive):** `GET /portal/it/student/job-applications` gains the `applied_on` and
+`next_action` columns; `GET /portal/it/student/{results|documents|privacy}` are new header-only sections; `.../notifications` gains a
+"Notification preferences" action; `GET /auth/me` gains `email_verified`. **Widened to `candidate`:** `GET|POST
+/account/candidate-documents`, `GET /account/candidate-documents/{id}/link` (a candidate needs no pool consent; `available: false` when
+archived or merged; someone else's document 404) and `GET /workflows/it/student/offers[/{id}/letter]` (someone else's 404). **Changed:**
+`action_url` of a candidate's new application, result and offer notices is `/it/careers/portal/applications`, and of interview notices
+`/it/careers/portal/interviews`; a student's are unchanged. The application and interview payloads carry `stack: true` (labelled rows on a
+phone). No migration.
+
+## 12LG. Recruitment notifications and delivery exceptions (hrc-032) — addendum, 2026-11-06
+
+`DEC-SCOPE-413`. Both routes need `notifications.retry` (403 otherwise; signed out 401).
+
+- `GET /api/v1/recruiter/notification-exceptions?type=&channel=email|whatsapp|sms&limit=1..100&offset=` → `{items, total, limit, offset, types: [{key, label}]}`.
+  Newest failure first. An item is `{source: "delivery"|"email", id, type, type_label, recipient, channel, error, attempts, failed_at}`; `error` has URLs
+  masked and is null for an email. Never a body, subject or address. An unknown `channel` is 422; an unknown `type` matches nothing.
+- `POST /api/v1/recruiter/notification-exceptions/{source}/{id}/retry` → `{id, source, status: "queued"}`. Out of scope or missing 404; no longer failed
+  409 (a double click sends once). Audited as `notification.retry`.
+- Additive: notices gain event types (`GET /workflows/notifications`' `event_type`). Changed text: `it.application.updated` and
+  `it.interview.result_published` are fixed text (see `DEC-SCOPE-413` N4/N5).
+- Beat: `hrc032-feedback-overdue` and `hrc032-new-matches`, hourly.
+## 12LH. Screening forms, question bank, sessions and comparison (pob-020) — addendum, 2026-11-06
+
+`DEC-SCOPE-414`. All under `/api/v1/recruiter`; every route 401 signed out. rec-018's `GET/PUT /applications/{id}/screening` keep their contract;
+each changed PUT also appends a `legacy` session.
+
+**Bank:** `GET screening/questions?q=&category=&include_archived=&limit=&offset=` → `{items, total, categories, formats}`. `POST screening/questions`
+`{category, text, format, choices?, evaluation_criteria?, expected_answer?}` → 201 `{question}` (a choice question needs two different choices,
+others none; 422; the same text in a category 409). `PATCH screening/questions/{id}` (any of those, `active`) → `{question}`; 404 unknown. Forms
+copy a question, so an edit never changes a form.
+
+**Templates:** `GET screening/templates?include_archived=&limit=` → `{items: [{id, name, is_default, version, archived, questions}], categories, formats}`.
+`POST screening/templates` `{name, questions[1..20]}` → 201 `{template}`; `PATCH screening/templates/{id}` `{name?, questions?, archived?}` → `{template}`.
+A duplicate name 409 (case-insensitive); archiving the default template 409.
+
+**A question in a form or template:** `{question_id, is_knockout?}` (copied from the bank; must be active) or `{category, text, format, choices?,
+evaluation_criteria?, expected_answer?, is_knockout?}`. 422: a knock-out that is not yes/no, in Compensation, or expecting other than yes/no; the same
+text twice.
+
+**A requirement's form:** `GET requirements/{id}/screening-form` → `{form|null, templates, can_edit, can_approve, categories, formats}`. `POST` `{template_id?}`
+→ 201 `{form}` from that template or the default (422 archived/unknown; 409 already has one). `PUT` `{questions}` → `{form}`, a new version unless the
+questions are identical (409 no form yet). Both 409 on a closed or cancelled requirement. `POST .../approve-knockouts` `{version}` → `{form}` (403 unless
+Team Lead; 409 stale version or nothing pending). `form` = `{id, name, version, knockout_status: none|pending|approved, knockout_status_label,
+knockout_approved_by, knockout_approved_at, questions}`.
+
+**Sessions:** `GET applications/{id}/screening-sessions` → `{form|null, sessions (newest first), can_run, sees_compensation, recommendations}`. `POST` `{form_version,
+answers: [{question_id, answer, score?}], notes?, recommendation: pass|hold|reject, knockout_override?, override_reason?}` → 201 `{session}`. Session =
+`{id, kind: form|legacy, form_version, screened_by, created_at, notes, recommendation, recommendation_label, knockout_triggered, knockout_overridden, override_reason,
+answers: [{question_id, question, category, format, is_knockout, answer, answer_hidden?, score}], scorecard: {total, max, percent}|null, checklist|null}`.
+**Errors:** 409 application not open, no form, or `form_version` not current; 422 an answer outside its format or not on the form, a repeat, a score outside 0–5,
+an approved knock-out unanswered, an override without a reason or a failed knock-out; 403 a Compensation answer without the grant.
+
+**Comparison:** `GET requirements/{id}/screening-comparison?version=` → `{version, versions, questions, rows, truncated}`; each candidate's latest session on
+that version (default current), best score first, at most 50 (most recently screened when capped). 404 unknown version; no form or no sessions is an empty 200.
+
+
+## 12LI. Operational recruitment dashboards (hrc-033) — addendum, 2026-11-06
+
+`DEC-SCOPE-415`. **New**, all under `/recruiter/recruitment-dashboards`, `{board}` one of `funnel|vacancy|recruiter|officer|interview` (else 422), and
+query `from`, `to` (IST dates: at most 366 days, never future, else 422), `owner`, `employer`, `job` (UUIDs, else 422), ANDed with the caller's scope:
+
+- `GET /{board}` (`reports.recruitment.view`) → `{board, label, note, owner_label, date_from, date_to, filters, sections: [{key, label, figures: [{key, label,
+  definition, value}]}], options: {owners, employers, jobs}, can_download}`. `date_from` and `date_to` are null on the vacancy board when no date is given.
+- `GET /{board}/drill/{figure}?limit=1..100&offset` (`view`) → `{figure, total, limit, offset, columns: [{key, label, type}], items: [{id, href, ...}]}`, and
+  `total` equals the figure. An unknown figure is 404. `href` is null when the caller's role cannot open the record.
+- `GET /{board}.csv` and `.xlsx` (`reports.recruitment.download`): `Section, Figure, Count, Definition`; one `recruitment_dashboard.export` audit row,
+  committed before the file is returned.
+
+All are `no-store` and read-only. Migration `0295_recruitment_report_grants` seeds the grants.
+
+## 12LJ. Skill demand, portal analytics and data quality (hrc-034) — addendum, 2026-11-06
+
+`DEC-SCOPE-416`. All routes are `GET`, under `/api/v1/recruiter/recruitment-insights`, need `reports.recruitment_insights.view` (401 signed out, 403
+otherwise) and only read. `limit` is 1-100, default 50; `offset` is at least 0.
+
+| Route | Query | Returns |
+|---|---|---|
+| `/skill-demand` | `sort` = `demand` or `supply`; `limit`; `offset` | `figures`, `items` (`skill_id`, `name`, `category`, `required_jobs`, `preferred_jobs`, `open_jobs`, `supply`, `zero_supply`), `total`, `limit`, `offset`, `sort` |
+| `/skill-demand/vacancies` | `n` = 1-100, default 5; `limit`; `offset` | `n`, `items` (`id`, `code`, `title`, `company`, `matches`, `reason`), `total`, `limit`, `offset`, `checked` (at most 200), `open_jobs` |
+| `/portal-analytics` | `from`, `to`: default this IST month; at most 366 days; never future (422) | `from`, `to`, `registrations` (`total`, `verified`), `completion` (`label`, `count`), `funnel` (`key`, `label`, `events`, `people`, `dropped`), `first_recorded` |
+| `/data-quality` | | `figures` (`key`, `label`, `definition`, `value`, `href`: null without the action page's grant) |
+| `/data-quality/{figure}` | `limit`; `offset` | `figure`, `columns`, `items`, `total` (equals the figure), `limit`, `offset`; an unknown figure is 404 |
+
+`GET /candidate/jobs` now writes `job_view` events for the cards it returns, and `POST /candidate/jobs/{id}/apply` and `POST /workflows/it/jobs/{id}/apply`
+write `apply_start` and `apply_submit`. Their requests and responses are unchanged.
 ## 12LB. Template library governance and copy mode (pob-023) — addendum, 2026-11-05
 
-`DEC-SCOPE-408`, migration `0286`.
+`DEC-SCOPE-408`, migration `0297`.
 
 **Changed (additive):**
 - `GET /api/v1/recruiter/templates`:

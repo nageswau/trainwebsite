@@ -8,11 +8,11 @@ state, validation, change, history, side effects, audit, one commit here; then t
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.bdm import LIMIT, OFFSET
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_permission
 from app.api.portfolio_certificates import HEADERS as DOWNLOAD_HEADERS
 from app.core.database import get_db
 from app.models import User
@@ -20,6 +20,8 @@ from app.notifications.dispatch import enqueue_recruiter_email
 from app.schemas import (
     InterviewPanelFeedbackIn,
     InterviewPanelIn,
+    InterviewResultRelease,
+    InterviewResultSettingsIn,
     RecInterviewCancel,
     RecInterviewCreate,
     RecInterviewFeedbackIn,
@@ -29,7 +31,9 @@ from app.schemas import (
 )
 from app.services import applications, candidates
 from app.services import interview_panel as panel
+from app.services import interview_results as results
 from app.services import interviews as svc
+from app.services import notification_exceptions as exceptions
 from app.services import profile_sharing as sharing
 from app.services.bdm_appointments import db_now
 from app.services.stale_guard import require_fresh
@@ -135,8 +139,9 @@ async def change_interview_status(interview_id: UUID, payload: RecInterviewStatu
     """IV3 / AC2; IV8 feeds the application."""
     interview, application, _job = await svc.load_for_write(db, user, interview_id, "interview_status")
     now = await db_now(db)
-    previous = svc.change_status(db, user, interview, application, payload.status, payload.note, now)
+    previous = await svc.change_status(db, user, interview, application, payload.status, payload.note, now)
     await db.commit()
+    _publish(results.take_emails(db))  # hrc-030 (R4): an auto-released result's email
     svc.log("recruiter_interview_status_changed", user, interview_id, from_status=previous, to_status=payload.status)
     return {"interview": await svc.one(db, user, interview_id, now)}
 
@@ -150,6 +155,7 @@ async def save_interview_feedback(interview_id: UUID, payload: RecInterviewFeedb
     sent = payload.model_dump()
     previous = await svc.save_feedback(db, user, interview, application, sent, now)
     await db.commit()
+    _publish(results.take_emails(db))
     svc.log("recruiter_interview_feedback_saved", user, interview_id, final_decision=sent["final_decision"], from_status=previous)
     return {"interview": await svc.one(db, user, interview_id, now)}
 
@@ -170,6 +176,60 @@ async def assign_interviewers(interview_id: UUID, payload: InterviewPanelIn, use
     await db.commit()
     svc.log("recruiter_interview_panel_saved", user, interview_id, size=len(payload.interviewers), added=len(added))
     return {"interview": await svc.one(db, user, interview_id, await db_now(db))}
+
+
+# --- hrc-030 (DEC-SCOPE-409 R4-R7, R11): the result queue, publishing and the release switch --------------------------------------------
+results_router = APIRouter(prefix="/recruiter/interview-results", tags=["recruiter-interviews"])
+RELEASER = require_permission("results", "release", "You cannot publish interview results")
+
+
+@results_router.get("")
+async def result_queue(state: Literal["pending_approval", "released"] = "pending_approval", limit: int = LIMIT, offset: int = OFFSET,
+                       user: User = Depends(RELEASER), db: AsyncSession = Depends(get_db)):  # fmt: skip
+    return await results.queue(db, user, state, limit, offset)
+
+
+@results_router.get("/settings")
+async def result_settings(user: User = Depends(RELEASER), db: AsyncSession = Depends(get_db)):
+    return await results.settings_out(db, user)
+
+
+@results_router.put("/settings")
+async def save_result_settings(payload: InterviewResultSettingsIn, user: User = Depends(RELEASER), db: AsyncSession = Depends(get_db)):
+    await results.save_settings(db, user, payload.auto_release)
+    await db.commit()
+    svc.log("interview_result_settings_saved", user, None, auto_release=payload.auto_release)
+    return await results.settings_out(db, user)
+
+
+@results_router.post("/{result_id}/release")
+async def release_result(result_id: UUID, payload: InterviewResultRelease, user: User = Depends(RELEASER), db: AsyncSession = Depends(get_db)):
+    """R6/R7: publish once (409 after); never the approver's own decision (403). The message is never logged."""
+    row = await results.release(db, user, result_id, payload.candidate_message)
+    await db.commit()
+    _publish(results.take_emails(db))
+    svc.log("interview_result_released", user, row.interview_id, result_id=str(result_id), outcome=row.outcome)
+    return await results.one(db, user, result_id)
+
+
+# --- hrc-032 (DEC-SCOPE-413 N8-N10): the Delivery exceptions page ----------------------------------------------------------------------
+exceptions_router = APIRouter(prefix="/recruiter/notification-exceptions", tags=["recruiter-interviews"])
+RETRIER = require_permission("notifications", "retry", "You cannot handle failed notifications")
+
+
+@exceptions_router.get("")
+async def notification_exceptions(type: str | None = None, channel: Literal["email", "whatsapp", "sms"] | None = None, limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0),  # noqa: A002
+                                  user: User = Depends(RETRIER), db: AsyncSession = Depends(get_db)):  # fmt: skip
+    return await exceptions.page(db, type, channel, limit, offset)
+
+
+@exceptions_router.post("/{source}/{row_id}/retry")
+async def retry_notification(source: Literal["delivery", "email"], row_id: UUID, user: User = Depends(RETRIER), db: AsyncSession = Depends(get_db)):
+    """N9: one atomic failed -> queued (409 after, so a double click sends once), audited, published only after the commit."""
+    await exceptions.retry(db, user, source, row_id)
+    await db.commit()
+    exceptions.publish(source, row_id)
+    return {"id": str(row_id), "source": source, "status": "queued"}
 
 
 interviewer_router = APIRouter(prefix="/interviewer", tags=["interviewer"])

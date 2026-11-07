@@ -20,7 +20,7 @@ from app.api.telecaller_catalogue import NOT_AN_OBJECT
 from app.core.database import get_db
 from app.models import RecruiterMessage, RecruiterMessageTemplate, RecruiterTemplateVersion, User
 from app.notifications.dispatch import enqueue_recruiter_email
-from app.schemas import TEL_CONTENT_FIELD_LABELS, RecMessageCreate, RecTemplateChannel, RecTemplateCopy, RecTemplateCreate, RecTemplateUpdate
+from app.schemas import TEL_CONTENT_FIELD_LABELS, RecMessageCreate, RecMessageReply, RecTemplateChannel, RecTemplateCopy, RecTemplateCreate, RecTemplateUpdate
 from app.services import candidates
 from app.services import recruiter_companies as companies
 from app.services import recruiter_messages as svc
@@ -249,6 +249,15 @@ async def send_message(payload: RecMessageCreate, user: User = Depends(get_curre
         enqueue_recruiter_email(message.id)
     svc.log("recruiter_message_sent", user, message.id, channel=message.channel, template_id=str(message.template_id) if message.template_id else None)
     return await svc.one(db, message.id)
+
+
+@router.post("/messages/{message_id}/reply")
+async def log_reply(message_id: UUID, payload: RecMessageReply, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """pob-005 D7: record that the contact replied to this message (set once; a repeat returns it unchanged). Moves the contact to Replied."""
+    reply_id = await svc.log_reply(db, user, message_id, payload.replied_at, await db_now(db))
+    await db.commit()
+    svc.log("recruiter_message_reply_logged", user, reply_id)
+    return await svc.one(db, reply_id)
 
 
 @router.get("/companies/{company_id}/messages")

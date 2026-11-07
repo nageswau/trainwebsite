@@ -9,7 +9,7 @@ keys the web client labels. Free text is a 200-character excerpt."""
 from datetime import timedelta
 from uuid import UUID
 
-from sqlalchemy import String, case, cast, func, select, union_all
+from sqlalchemy import String, case, cast, func, or_, select, true, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -39,11 +39,13 @@ from app.models import (
     RecruiterFollowUp,
     RecruiterMeeting,
     RecruiterMeetingEvent,
+    RecruiterMeetingParticipant,
     RecruiterMessage,
     User,
 )
-from app.services import applications, interviews, offers, recruiter_contracts
+from app.services import applications, contact_status, interviews, offers, recruiter_contracts
 from app.services.application_screening import LABELS as SCREENING_LABELS
+from app.services.application_screening import RECOMMENDATION_LABELS
 from app.services.lead_timeline import _branch, _excerpt
 from app.services.recruiter_calls import OUTCOMES
 from app.services.recruiter_requirements import STATUS_LABELS as REQUIREMENT_LABELS
@@ -60,9 +62,10 @@ LABELS: dict[str, dict[str, str]] = {
     "offer": offers.STATUS_LABELS,
     "contract": recruiter_contracts.LABELS,
     "call": OUTCOMES,
-    "screening": SCREENING_LABELS,
+    "screening": {**SCREENING_LABELS, **RECOMMENDATION_LABELS},  # pob-020: a session's audit row carries its recommendation
+    "contact_status": contact_status.LABELS,  # pob-005 D10
 }
-STATUS_KINDS = ("stage", "requirement", "application", "interview", "offer", "contract", "screening")  # `to_label` is a status, not a person
+STATUS_KINDS = ("stage", "requirement", "application", "interview", "offer", "contract", "screening", "contact_status")  # `to_label` is a status, not a person
 # hrc-016 (T9): an ownership change names a person on both sides -- `from_label` is the previous holder, not a catalogue label
 NAME_KINDS = ("assignment",)
 # hrc-016 (T9): the candidate's own audit rows that read as profile activity (ownership has its own history table, `assignment`)
@@ -79,7 +82,9 @@ def _requirement(J):
     return J.requirement_code + " — " + J.title
 
 
-def _company_sources(company_id: UUID) -> list:
+def _company_sources(company_id: UUID, contact_id: UUID | None = None) -> list:
+    """pob-005 D10: with `contact_id`, only that person's rows (calls, messages and replies, meetings they attend, follow-ups about them,
+    shares to them and the responses) plus their status changes; the company-only kinds (stage, requirement, contract) drop out."""
     S, C, M, F, ME, MT = CompanyStageHistory, RecruiterCall, RecruiterMessage, RecruiterFollowUp, RecruiterMeetingEvent, RecruiterMeeting
     JH, J, PS, PI, CE, CT = JobStatusHistory, Job, ProfileShare, ProfileShareItem, RecruiterContractEvent, RecruiterContract
     cancelled_by = (
@@ -88,12 +93,47 @@ def _company_sources(company_id: UUID) -> list:
         .limit(1)
         .scalar_subquery()
     )
+    replied_by = (
+        select(AuditLog.user_id)
+        .where(AuditLog.entity_type == "recruiter_message", AuditLog.entity_id == cast(M.id, String), AuditLog.action == "recruiter_message.reply")
+        .limit(1)
+        .scalar_subquery()
+    )
     follow_up = dict(from_value=F.reason, rank=EFFECT)
     items = select(func.count()).where(PI.share_id == PS.id).scalar_subquery()
-    return [
+    whole = contact_id is None
+    # one person's filter per source; `true()` keeps the whole company's rows
+    on = {
+        "call": true() if whole else C.contact_id == contact_id,
+        "message": true() if whole else M.contact_id == contact_id,
+        "meeting": true() if whole else or_(MT.contact_id == contact_id, MT.id.in_(select(RecruiterMeetingParticipant.meeting_id).where(RecruiterMeetingParticipant.contact_id == contact_id))),
+        "follow_up": true() if whole else F.contact_id == contact_id,
+        "share": true() if whole else PS.contact_id == contact_id,
+    }
+    company_only = [] if not whole else [
+        _branch(JH.id, "requirement", JH.created_at, actor=JH.changed_by_user_id, from_value=JH.from_status, to_value=JH.to_status, subject=_requirement(J), reason=_excerpt(JH.note), rank=ACTIVITY)
+        .join(J, J.id == JH.job_id)
+        .where(J.company_id == company_id),
+        _branch(CE.id, "contract", CE.created_at, seq=CE.position, actor=CE.actor_user_id, event=CE.kind, from_value=CE.from_status, to_value=CE.to_status, subject=CT.agreement_type, rank=ACTIVITY)
+        .join(CT, CT.id == CE.contract_id)
+        .where(CT.company_id == company_id),
         _branch(S.id, "stage", S.created_at, seq=S.position, actor=S.actor_user_id, event=S.event, from_value=S.from_stage, to_value=S.to_stage, reason=S.reason, rank=STAGE).where(
             S.company_id == company_id
         ),
+    ]  # fmt: skip
+    meta = AuditLog.metadata_json
+    contact_only = [] if whole else [
+        _branch(AuditLog.id, "contact_status", AuditLog.created_at, actor=AuditLog.user_id, event=meta["cause"].as_string(), from_value=meta["from"].as_string(),
+                to_value=meta["to"].as_string(), rank=EFFECT)
+        .where(AuditLog.entity_type == "company", AuditLog.entity_id == str(company_id), AuditLog.action == "recruiter_company.contact_status",
+               meta["contact_id"].as_string() == str(contact_id)),
+    ]  # fmt: skip
+    return [
+        *company_only,
+        *contact_only,
+        _branch(M.id, "message_reply", M.replied_at, actor=replied_by, event=M.channel, to_name=CompanyContact.name, subject=M.subject, rank=ACTIVITY)
+        .outerjoin(CompanyContact, CompanyContact.id == M.contact_id)
+        .where(M.company_id == company_id, M.replied_at.is_not(None), on["message"]),
         _branch(
             C.id,
             "call",
@@ -107,7 +147,7 @@ def _company_sources(company_id: UUID) -> list:
             rank=ACTIVITY,
         )
         .outerjoin(CompanyContact, CompanyContact.id == C.contact_id)
-        .where(C.company_id == company_id),
+        .where(C.company_id == company_id, on["call"]),
         _branch(
             M.id,
             "message",
@@ -122,7 +162,7 @@ def _company_sources(company_id: UUID) -> list:
             rank=ACTIVITY,
         )
         .outerjoin(CompanyContact, CompanyContact.id == M.contact_id)
-        .where(M.company_id == company_id),
+        .where(M.company_id == company_id, on["message"]),
         _branch(
             ME.id,
             "meeting",
@@ -137,27 +177,21 @@ def _company_sources(company_id: UUID) -> list:
             rank=ACTIVITY,
         )
         .join(MT, MT.id == ME.meeting_id)
-        .where(MT.company_id == company_id),
-        _branch(F.id, "follow_up", F.created_at, actor=F.created_by_user_id, event="scheduled", reason=_excerpt(F.notes), scheduled_for=F.due_at, **follow_up).where(F.company_id == company_id),
-        _branch(F.id, "follow_up", F.completed_at, actor=F.completed_by_user_id, event="done", reason=_excerpt(F.outcome), **follow_up).where(F.company_id == company_id, F.completed_at.is_not(None)),
-        _branch(F.id, "follow_up", F.cancelled_at, actor=cancelled_by, event="cancelled", reason=_excerpt(F.cancel_reason), **follow_up).where(F.company_id == company_id, F.cancelled_at.is_not(None)),
-        _branch(JH.id, "requirement", JH.created_at, actor=JH.changed_by_user_id, from_value=JH.from_status, to_value=JH.to_status, subject=_requirement(J), reason=_excerpt(JH.note), rank=ACTIVITY)
-        .join(J, J.id == JH.job_id)
-        .where(J.company_id == company_id),
+        .where(MT.company_id == company_id, on["meeting"]),
+        _branch(F.id, "follow_up", F.created_at, actor=F.created_by_user_id, event="scheduled", reason=_excerpt(F.notes), scheduled_for=F.due_at, **follow_up).where(F.company_id == company_id, on["follow_up"]),
+        _branch(F.id, "follow_up", F.completed_at, actor=F.completed_by_user_id, event="done", reason=_excerpt(F.outcome), **follow_up).where(F.company_id == company_id, F.completed_at.is_not(None), on["follow_up"]),
+        _branch(F.id, "follow_up", F.cancelled_at, actor=cancelled_by, event="cancelled", reason=_excerpt(F.cancel_reason), **follow_up).where(F.company_id == company_id, F.cancelled_at.is_not(None), on["follow_up"]),
         _branch(PS.id, "share", PS.created_at, actor=PS.shared_by_user_id, event=PS.channel, to_value=items, to_name=CompanyContact.name, subject=_requirement(J), rank=ACTIVITY)
         .join(J, J.id == PS.job_id)
         .outerjoin(CompanyContact, CompanyContact.id == PS.contact_id)
-        .where(PS.company_id == company_id),
+        .where(PS.company_id == company_id, on["share"]),
         _branch(
             PI.id, "share_response", PI.responded_at, actor=PI.responded_by_user_id, event=PI.response, to_name=Candidate.name, subject=_requirement(J), reason=_excerpt(PI.feedback), rank=ACTIVITY
         )
         .join(PS, PS.id == PI.share_id)
         .join(J, J.id == PS.job_id)
         .join(Candidate, Candidate.id == PI.candidate_id)
-        .where(PS.company_id == company_id, PI.responded_at.is_not(None)),
-        _branch(CE.id, "contract", CE.created_at, seq=CE.position, actor=CE.actor_user_id, event=CE.kind, from_value=CE.from_status, to_value=CE.to_status, subject=CT.agreement_type, rank=ACTIVITY)
-        .join(CT, CT.id == CE.contract_id)
-        .where(CT.company_id == company_id),
+        .where(PS.company_id == company_id, PI.responded_at.is_not(None), on["share"]),
     ]
 
 
@@ -302,8 +336,8 @@ async def _page(db: AsyncSession, sources: list, limit: int, offset: int) -> dic
     return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
 
 
-async def company_page(db: AsyncSession, company_id: UUID, limit: int, offset: int) -> dict:
-    return await _page(db, _company_sources(company_id), limit, offset)
+async def company_page(db: AsyncSession, company_id: UUID, limit: int, offset: int, contact_id: UUID | None = None) -> dict:
+    return await _page(db, _company_sources(company_id, contact_id), limit, offset)
 
 
 async def candidate_page(db: AsyncSession, candidate_id: UUID, limit: int, offset: int) -> dict:

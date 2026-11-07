@@ -11996,6 +11996,226 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0283_company_business_context`; API §12KZ; RBAC §2.299.
 - **Feature ID authorized:** `pob-003`. **Status:** built on `worktree-pob-003`.
 
+### DEC-SCOPE-407 — Requirement versioning, hiring process and per-requirement commercials (`pob-002`)
+
+- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-002` (§7 "Revisions should be versioned rather than silently
+  replacing the original details"; field groups Hiring process, Commercial terms, Ownership "backup owner"; source classified
+  `UNVERIFIED`). The owner assigned pob-002 for build on 2026-11-05 and said to proceed with the recommended answers, so R1–R12 (including
+  Q-02) are **the builder's calls (`NEEDS_CONFIRMATION`)**. Dependencies hrc-004 (`DEC-SCOPE-376`), hrc-005 (`DEC-SCOPE-381`), hrc-006
+  (`DEC-SCOPE-384`) and pob-001 (`DEC-SCOPE-403`) merged. Design `docs/superpowers/specs/2026-11-05-pob-002-requirement-revisions-design.md`.
+- **Behaviour:** every recruiter create and every save that changes a material field (an edit, or a manager's fee override) writes one
+  append-only `job_revisions` snapshot (author, optional reason, the changed fields); a save with no change writes none. The requirement
+  page lists the revisions, opens any one with its values and its diff against an earlier revision. A requirement gains interview rounds,
+  screening steps, a decision-maker (an active contact of its company), an expected turnaround, a payment trigger (on joining / N days
+  after joining / on invoice), its own payment and replacement terms (empty = the current contract's, shown "From the contract"), and a
+  backup owner.
+- **Builder's calls:** R3 a requirement created before pob-002 gets a baseline revision 1 (no author) at its first changing save. R4 status,
+  owners, visibility and weights are not material (they have their own history). R8 the terms and their revision values follow pob-001:
+  absent without `commercials.client.view`, a terms PATCH needs effective edit (403); the hrc-004 History records them as "changed". R9
+  (Q-02 = always co-access): the backup owner, an active recruiter, reads, edits and manages the owners like the primary; it is set by
+  the primary, the backup or super_admin through the edit (placement managers keep not editing requirement fields, rec-007), cleared when
+  promoted to primary or deactivated (one audit row).
+- **Not built:** the vendor link (`vendor_id`) waits for pob-010; reverting to a revision; revisions from the employer and
+  `/workflows/it/jobs` paths.
+- **Numbering:** migration `0285_job_revisions` (rechained after hrc-029's `0284_interview_panel`); API §12LA; RBAC §2.300 — renumbered
+  from 405/12KX/2.298 at merge, which hrc-029 took.
+- **Feature ID authorized:** `pob-002`. **Status:** built on `worktree-pob-002`.
+
+### DEC-SCOPE-410 — College/TPO placement profile on the BDM organisation and placement-team access (`pob-013`)
+
+- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-013` (§6.1 institution profile, TPO contacts, placement profile,
+  status; §6.2 research/identify; §18 AC "Placement Officer can create and track TPO records for colleges and universities"; source
+  classified `UNVERIFIED`). The owner assigned pob-013 on 2026-11-05 and said to proceed with the recommended answers, so P1–P15 (answering
+  Q-10) are **the builder's calls (`NEEDS_CONFIRMATION`)**. Dependency pob-001 (`DEC-SCOPE-403`) merged. Design
+  `docs/superpowers/specs/2026-11-05-pob-013-college-placement-profile-design.md`.
+- **Behaviour:** the placement team opens "Colleges" from the recruiter menu, searches college-module colleges and universities by name,
+  course, graduating year and location, and keeps on each a placement profile — structured courses, graduating batches, a placement
+  calendar, the drive process and eligibility rules, TPO office details and preferred contact method, and an append-only TPO interaction
+  log — beside the BDM-owned record. The same section appears on the BDM organization page (the assigned BDM edits; managers read).
+- **Builder's calls:** P1 side tables, the organization row never written. P2 `bdm_type = college` and org_type college/university. P3
+  readers. P4 writers (`placement_team`, `super_admin`, assigned BDM; both managers read only). P5 profile PUT. P6 courses (unique, ≤ 100).
+  P7 batches (year 2000–2100, date in that year, ≤ 200). P8 calendar (seven kinds, ≤ 500). P9 interactions separate from `bdm_activities`
+  (BDM metrics unchanged). P10 two contact columns written only through the placement route. P11 search. P12 relationship stage shown read
+  only. P13 no MoU/commercial data; BDM routes unchanged. P14 drives listed read only. P15 `placement_officer` not granted.
+- **Not built / `NEEDS_CONFIRMATION`:** the §6.1 status-label mapping (the labels are not in the repository); `placement_officer` access;
+  editing a batch or calendar entry in place (remove and re-add); student data (pob-014); vacancy sharing and outcomes (pob-015).
+- **Numbering:** migration `0288_college_placement`; API §12LD; RBAC §2.303.
+- **Feature ID authorized:** `pob-013`. **Status:** built on `worktree-pob-013`.
+
+### DEC-SCOPE-409 — Result approval and release (`hrc-030`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-030` (PDF §9 "publish only after release conditions"; §10.2 "Release
+  results automatically only if configured; otherwise require approval and a Publish Result action"; §13 "Feedback submitted → approval
+  queue; Result approved → publish + notify"; §17 QA; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00);
+  the owner said to proceed with the recommended answers, so R1–R13 are **the builder's calls (`NEEDS_CONFIRMATION`)**, answering Q-30.
+  Dependencies hrc-002 (`DEC-SCOPE-374`), hrc-028 (`DEC-SCOPE-400`) and hrc-029 (`DEC-SCOPE-405`) merged. Design
+  `docs/superpowers/specs/2026-11-05-hrc-030-result-release-design.md`.
+- **Behaviour:** a Selected or Rejected interview decision (rec-020 status, rec-021 feedback, the legacy `/workflows/it/interviews` PATCH)
+  is recorded as an interview result. The application still moves for staff exactly as before, but the candidate's view of it
+  (`candidate_status`) is held until a `results.release` holder (the HR Manager by default) publishes the result from "Result approvals"
+  (`/it/hr-manager/results`) with a candidate-facing message — or at once when the global auto-release switch is on. Publishing moves the
+  candidate's view, shows the result in the candidate's "My results" card and interview schedule, and notifies the candidate once (the
+  message only, never feedback). Offers wait for the final result's release.
+- **Builder's calls:** R1 table `interview_results` (one per decided interview; `is_final` marks the decision that decides the application).
+  R2 no stored draft — recording the decision is the submission. R3 `applications.follow(..., visible=False)` holds the candidate's view;
+  On Hold is not a result. R4 one global switch `result_release_settings.auto_release` (default off = approval; super_admin changes it); a
+  per-job override is `NEEDS_CONFIRMATION`. R5 `results.release` default `hr_manager`; queue division-wide; never your own decision (403).
+  R6 release stores the message (default text when blank), audits without it, notifies once (in-app + deliveries, or a queued email for a
+  candidate without a login). R7 (Q-30) a released result cannot be withdrawn (409 on a second release). R8 an offer is 409 while the
+  final result is unreleased. R9 `GET /candidate/results` (candidate and IT student) — own released results only; the schedule shows the
+  released outcome. R10 recruiter interview reads gain `result_release` (the legacy `result` field is unchanged). R11 queue + settings
+  routes. R12 no backfill. R13 web.
+- **Not built:** withdrawing a released result (Q-30); a per-job release setting; showing decisions on the employer list or the
+  interviewer workspace (hrc-001 H3 still applies there); the full candidate-portal results section (hrc-031).
+- **QA fixes:** QA-01 the super admin (the only setting editor) gets an "Interview Result Approvals" menu link; QA-02 the queue page pages
+  through `?offset=` (Previous / Next page) instead of stopping at the first 50.
+- **Numbering:** migration `0289_interview_results` (after pob-013's `0288_college_placement`); API §12LC; RBAC §2.302.
+- **Feature ID authorized:** `hrc-030`. **Status:** built on `worktree-hrc-030`.
+### DEC-SCOPE-411 — Contact status, decision-maker, source/verification and per-contact timeline (`pob-005`)
+
+- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-005` (§3.2 "Record the contact's role, professional email, phone,
+  LinkedIn URL, source and verification date"; §3.3 decision-maker, preferred contact method, contact status set, "timeline against both
+  the contact and the company", duplicate prevention; source classified `UNVERIFIED`). The owner assigned pob-005 for build on 2026-11-05
+  and said to proceed with the recommended answers, so D1–D11 (including Q-05) are **the builder's calls (`NEEDS_CONFIRMATION`)**. No
+  dependencies. Design `docs/superpowers/specs/2026-11-05-pob-005-contact-status-design.md`.
+- **Behaviour:** a company contact gains a decision-maker flag, a source (LinkedIn, company website, referral, job portal, event, they
+  contacted us, other), a verified-on date (not in the future) and LinkedIn as a preferred channel. Its status (Not contacted, Contacted,
+  Replied, Meeting scheduled, Not interested, Do not contact) moves forward automatically: a message, a profile share, an interview invite
+  or an outgoing unanswered call → Contacted; a connected or incoming call or a reply logged on a message → Replied; a meeting with them →
+  Meeting scheduled. It never moves backwards or out of Not interested / Do not contact; any status can be set by hand (`can_edit`).
+  "Follow-up due" is derived from an open follow-up due now. Each change is an audit row shown on the contact's own timeline.
+- **Do Not Contact** is enforced server-side (409 "This contact has asked not to be contacted"): message sends, outgoing call logging,
+  profile shares and meeting invitations; an incoming call and a reply are still recorded; an interview invite skips their email.
+- **Builder's calls:** D7 a reply is logged on a message (`POST /recruiter/messages/{id}/reply`, contact messages only, set once). D8
+  duplicates (same normalised mobile or email, any company) **warn, never refuse** — the editor asks "Save anyway?"; contacts outside the
+  caller's scope are counted, never named. D9 (Q-05) a person who moves company is added again at the new company (the duplicate warning
+  links the old record) and the old one deactivated; nothing moves. D10 the per-contact timeline and D11 follow-ups take `?contact_id=`.
+- **Not built:** a manager-only reopen of Do Not Contact (`NEEDS_CONFIRMATION`); inbound message capture; contact merge (pob-006).
+- **Numbering:** migration `0290_contact_status` (after hrc-030's `0289_interview_results`); API §12LE; RBAC §2.304 — renumbered from
+  410/12LD/2.303/0288 at merge, which pob-013 took (hrc-030 took 0289).
+- **Feature ID authorized:** `pob-005`. **Status:** built on `worktree-pob-005`.
+
+### DEC-SCOPE-412 — Candidate portal completion: every §11 section in both portals (`hrc-031`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-031` (§11 portal table, §15 own records only; source classified `UNVERIFIED`).
+  The owner assigned hrc-031 for build on 2026-11-06 and said to proceed with the recommended answers, so P1–P10 are **the builder's calls
+  (`NEEDS_CONFIRMATION`)**. Dependencies hrc-015, 022, 026, 027, 028, 030 are built. Design
+  `docs/superpowers/specs/2026-11-06-hrc-031-candidate-portal-completion-design.md`.
+- **Behaviour:** an external candidate's portal gains My applications (with My offers), Interviews, My results, Documents and Notifications,
+  and Privacy gains contact details. A student's portal gains Results, Documents and Privacy sections; Job Applications gains Applied on and
+  Next action columns and My offers. Notifications filter by type in both. Everything read is the caller's own; someone else's id answers 404.
+- **Builder's calls:** P1 both portals share the payload builders and `PortalSection`. P2 next action is derived from what the candidate may
+  already see (an upcoming interview, then an open offer, then waiting; none once rejected, withdrawn or joined), so an unreleased decision
+  only ever reads "Wait for the next update on your interview". P3 the applied date is `created_at` in IST. P4 documents reuse
+  `/account/candidate-documents`, widened to candidates, who need no pool consent (leaving the pool keeps applications); students still do.
+  P5 completion counts received out of requested, ignoring cancelled. P6 the student offer routes are widened to candidates. P7 a candidate's
+  application, result and offer notices open My applications and interview notices open Interviews (replaces hrc-027 J10's Jobs link, written
+  before the page existed). P8 an untyped notice's fixed title serves as its type in these two portals only. P9 the new student sections are
+  header-only and never fee-locked; existing cards stay where they were. P10 contact details are read-only; `UserOut` gains `email_verified`.
+- **Not built:** recruitment notification rules and a document-request notice (hrc-032); phone OTP (no SMS provider); accepting an offer in the
+  portal; one account holding both roles (Q-23 stays hrc-022's separate `candidate` role, so a person sees one portal per account).
+- **QA fixes:** QA-01 the contact change is a button-styled link; QA-02 the portal cards have a gap between them; QA-03 a candidate's interviews
+  page does not speak of mock interviews; QA-04 the applications and interviews tables read as labelled lines on a phone (a server-declared
+  `stack` on the payload), since Next action otherwise sat off the screen.
+- **Numbering:** no migration; API §12LF; RBAC §2.305.
+- **Feature ID authorized:** `hrc-031`. **Status:** built on `worktree-hrc-031`.
+
+### DEC-SCOPE-413 — Recruitment notification rules and delivery exceptions (`hrc-032`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-032` (PDF §10.2, §12, §13, §16, §17 QA; PDF classified `UNVERIFIED`). Scope
+  approved by the owner 2026-11-01 (backlog Q-00); the owner said to proceed with the recommended answers, so N1–N12 are **the builder's calls
+  (`NEEDS_CONFIRMATION`)**. Dependencies itc-002 (`DEC-SCOPE-336`), hrc-009 (`DEC-SCOPE-390`), hrc-026 and hrc-030 (`DEC-SCOPE-409`) merged. Design
+  `docs/superpowers/specs/2026-11-06-hrc-032-recruitment-notifications-design.md`.
+- **Behaviour:** the §13 triggers that notified nobody now do, through the itc-002 catalogue: a candidate's own application tells the owners, a
+  vacancy change tells the other owners, a new owner and the HR Managers (on a submit for approval) are told, overdue interview feedback and a new
+  matching vacancy are told by two hourly beat jobs. A failed recruitment delivery is listed on **Delivery exceptions**
+  (`/recruiter/notification-exceptions`) with a Retry; recruitment staff read their own notices at `/recruiter/notifications`.
+- **Changes earlier behaviour:** (N4) a published result's notice no longer carries the candidate-facing message, and (N5) a stage notice no longer
+  names the stage: both are fixed text, so `Rejected` or `Congratulations` never sits in a WhatsApp, SMS or email preview. The message and stage are
+  in the portal. This revises `DEC-SCOPE-409` R6 for portal users; a candidate with no login keeps the direct email.
+- **Builder's calls:** N6 `FEEDBACK_GRACE_HOURS` = 24, no source says how soon feedback is due. N7 a job notifies once, at most 200 best candidates in
+  the opted-in pool at hrc-027's score of 50 or more; a re-opened job does not notify again. N8 the page covers recruitment events and rec-026 failed
+  emails, not the platform's other notices. N9 a retry starts a fresh automatic cycle and sends the message as first written. N10 `notifications.retry`
+  (`hr_manager`, `placement_manager`; super_admin holds all) covers reading too.
+- **Security:** a stored webhook error can quote a URL with a token, so every URL is masked on read; a row never returns a body or a subject; an
+  anonymised candidate or do-not-contact contact is neither listed nor retried.
+- **Numbering:** migration `0291_recruitment_notices`; API §12LG; RBAC §2.306.
+- **Feature ID authorized:** `hrc-032`. **Status:** built on `worktree-hrc-032`.
+### DEC-SCOPE-414 — Role-specific screening forms, question bank, sessions and scorecard (`pob-020`)
+
+- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-020` (§10 "5 categories + 6 rules"; §18 AC "Screening forms support five
+  role-specific questions and recorded answers/scores"; source classified `UNVERIFIED`). The owner assigned pob-020 for build on 2026-11-06
+  and said to proceed with the recommended answers, so S1–S14 (including Q-15) are **the builder's calls (`NEEDS_CONFIRMATION`)**.
+  Dependencies pob-002 (`DEC-SCOPE-407`) and hrc-001 (`DEC-SCOPE-371`) are built. Design
+  `docs/superpowers/specs/2026-11-06-pob-020-screening-forms-design.md`.
+- **Evidence gap (`NEEDS_CONFIRMATION`):** the source docx is not on file and the backlog does not list §10's category names or its six rules,
+  so the five seeded categories (Experience and qualification, Technical skills, Communication, Availability and location, Compensation)
+  are a proposal to check against §10.
+- **Behaviour:** a question bank (category, text, format text/yes-no/numeric/choice/rating, evaluation criteria, expected answer) and form
+  templates, with a seeded 5-category default. A requirement has one form, created from a template and tailored; each edit is a new version
+  and a session keeps the version it answered. A session records the screener, date, answers, a 0–5 score per answer, internal notes and a
+  recommendation (pass/hold/reject) and is never edited. A scorecard (total, maximum, percent) and a side-by-side comparison of each
+  candidate's latest session on one form version (at most 50).
+- **Knock-outs:** yes/no questions only, never Compensation, and only once a Team Lead (`placement_manager`, super_admin) approves them on the
+  requirement. A failed one forces the recommendation to Reject unless the screener overrides with a reason. An approval survives an edit
+  that leaves the knock-outs unchanged.
+- **Builder's calls:** S2 additive — the rec-018 checklist, its route, the board's `screening_result` and its status moves are unchanged, and each
+  changed checklist save also appends a `legacy` session. S3 (Q-15 yes) existing checklist rows are copied to `legacy` sessions. S9 a session
+  never moves the application's status or notifies the candidate. S12 Compensation answers and the checklist's salary need
+  `candidates.compensation.view` (hrc-001 H2). S14 a session counts as Screened for engagement and shows on the candidate timeline.
+- **Not built:** weighted scoring, candidate self-completion, screening tasks from a task template (pob-027), sharing a scorecard with a client
+  (pob-021).
+- **Numbering:** migration `0292_screening_sessions` (after `0291_recruitment_notices`); API §12LH; RBAC §2.307.
+- **Feature ID authorized:** `pob-020`. **Status:** built on `worktree-pob-020`.
+
+
+### DEC-SCOPE-415 — Operational recruitment dashboards: five boards, every figure ties to its records (`hrc-033`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-033` and Appendix B (§14; source classified `UNVERIFIED`). The owner assigned
+  hrc-033 for build on 2026-11-06 and said to proceed with the recommended answers, so D1–D10 are **the builder's calls (`NEEDS_CONFIRMATION`)**.
+  Dependencies hrc-021, 024, 026, 028, 030 are built. Design `docs/superpowers/specs/2026-11-06-hrc-033-operational-recruitment-dashboards-design.md`.
+- **Behaviour:** five boards at `/recruiter/recruitment-dashboards/<board>`: funnel, vacancy, recruiter, placement officer and interview. Filters are
+  date range, owner, employer and job. Each figure shows its definition and opens the records it counted, with paging and a link to the record
+  where the role can open it. A board downloads as CSV or Excel, audited.
+- **Builder's calls:** D1 a figure is declared once as a record kind and predicate; its count and its records are built from that predicate.
+  D3 the figures per board. D4 definitions: a funnel stage counts its status and every later one, current or in history, so a skipped stage
+  counts and stages are monotonic by construction; "opened on" is the requirement date, else the created IST date; vacancy buckets partition
+  all 13 statuses. D5 flow boards default to this IST month; the vacancy board is a snapshot unless dates are given. D6 filters are ANDed with
+  scope, so an out-of-scope value reads as zero. **Branch is shown disabled: nothing records one (Q-04 open).** D7 a new `reports.recruitment`
+  resource (`view`, `download`) for recruiters, placement managers, HR Manager, placement officers, IT admin and partner; a role granted the key
+  with no defined record scope is still refused. D9 records carry no contact details, money or result outcome; IT admin and partner see candidate
+  codes without names.
+- **Not built:** pob-028's nine-widget dashboard and hrc-034's three boards. Existing recruiter tiles, performance and management recruitment
+  keep their numbers.
+- **Numbering:** migration `0295_recruitment_report_grants` (a seed only); API §12LI; RBAC §2.308.
+- **Review and QA fixes:** a chosen employer or job is ANDed with the caller's requirement scope on candidate figures too (D6). A placement officer's
+  application and interview records are their own candidates only, even on a requirement they co-own (D7). An interview row shows a decided interview
+  as Held, never Selected or Rejected (D4, D9). A chosen owner or employer sorts first, so it survives the 500-option cap. QA-01: a stacked table label
+  no longer wraps mid-word on a phone. **Open:** application and interview rows follow the requirement's scope and are not restricted to the candidate
+  pool, as on the recruiter pipeline (`NEEDS_CONFIRMATION`).
+- **Feature ID authorized:** `hrc-033`. **Status:** built on `worktree-hrc-033`.
+
+### DEC-SCOPE-416 — Skill demand, portal analytics and data-quality dashboards (`hrc-034`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-034`, Appendix B (PDF §14, §16, §17 QA; PDF classified `UNVERIFIED`). Scope approved by the
+  owner 2026-11-01 (backlog Q-00); the owner said to proceed with the recommended answers, so I1–I6 are **the builder's calls (`NEEDS_CONFIRMATION`)**.
+  Dependencies hrc-013, hrc-014, hrc-018, hrc-027 and hrc-032 merged. Design `docs/superpowers/specs/2026-11-06-hrc-034-recruitment-insights-design.md`.
+- **I1 Access:** new catalogue resource `reports.recruitment_insights` (`view`): `hr_manager`, `placement_manager`, `partner`; `super_admin` implicitly. The
+  backlog names "HR Manager, management"; `placement_manager` is added because it already handles the duplicates, imports and failed deliveries these
+  pages report. Separate from hrc-033's scoped `reports.recruitment`, because these figures count the whole pool.
+- **I2 Skill demand:** demand = distinct open jobs per Skills-Master skill; supply = distinct active pool candidates holding it directly (related skills do
+  not count); zero supply is flagged in text. Vacancies short of candidates = `matching.matches` total below N (default 5), newest 200 open jobs, and the
+  answer says when more exist.
+- **I3 Portal analytics:** `portal_events` holds ids only, one row per person, job, kind and IST day. A `job_view` is a card returned on the Jobs page, which
+  has no detail view. `apply_start` commits before the eligibility gates, so a refused attempt stays as a drop-off. Anonymous careers visitors are not
+  counted. Period rules as `telecaller_performance.date_range`.
+- **I4 Retention (Q-31):** a daily job deletes events older than 400 days; no rollup.
+- **I5 Data quality:** the duplicate and failed-notification figures reuse the pages they equal. "Incomplete" is under 60%; "required fields" are a required
+  skill, description, on-site location, qualification, minimum experience, employment type and vacancies (no source defines them). Failed-notification
+  rows omit the recipient and error. A failed import is retried by correcting and re-uploading the row (hrc-013).
+- **I6 Frontend:** three server-rendered pages under `/recruiter/insights`, one nav entry per affected role.
+- **Numbering:** migration `0294_portal_events`; API §12LJ; RBAC §2.309.
+- **Feature ID authorized:** `hrc-034`. **Status:** built on `worktree-hrc-034`.
 ### DEC-SCOPE-408 — Template library governance and the composer everywhere (`pob-023`)
 
 - **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-023`:
@@ -12033,5 +12253,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - Merging the UPC/overseas libraries.
   - Automated sends (pob-022/027).
   - Deletion.
-- **Numbering:** migration `0286_template_governance`; API §12LB; RBAC §2.301.
+- **Numbering:** migration `0297_template_governance`; API §12LB; RBAC §2.301.
 - **Feature ID authorized:** `pob-023`. **Status:** built on `worktree-pob-023`.

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 
 import CopyComposer from "@/components/CopyComposer";
 import EmailComposer from "@/components/EmailComposer";
@@ -15,11 +15,12 @@ export type MessageLine = {
   id: string; contact?: { name: string } | null; candidate?: { name: string } | null; channel: Channel; template: { name: string } | null;
   subject: string | null; body: string; delivery_status: DeliveryStatus | null; sent_at: string; sender: { full_name: string };
   direction?: "outbound" | "inbound"; application?: { label: string } | null;
+  replied_at?: string | null; // pob-005 D7: a reply the recruiter logged on this message
 };
 const TEXT = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
 const POLL_MS = 5000; // a queued email is usually sent within seconds
 
-function MessageItem({ message, showTo }: { message: MessageLine; showTo: boolean }) {
+function MessageItem({ message, showTo, action }: { message: MessageLine; showTo: boolean; action?: ReactNode }) {
   const id = useId();
   const to = message.contact?.name ?? message.candidate?.name;
   const reply = message.direction === "inbound";
@@ -38,6 +39,8 @@ function MessageItem({ message, showTo }: { message: MessageLine; showTo: boolea
       {message.delivery_status === "retrying" && (
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>The mail server didn&apos;t accept it yet. It will be retried automatically.</p>
       )}
+      {message.replied_at && <p className="form-message" style={{ margin: 0, fontSize: 13 }}>{sentLabel(message.replied_at, "Reply received")}</p>}
+      {action}
     </li>
   );
 }
@@ -47,9 +50,11 @@ function MessageItem({ message, showTo }: { message: MessageLine; showTo: boolea
  *  address. WhatsApp is recorded only on the composer's confirm; an email is queued and its status refreshes. `parties` is null while the
  *  owner is still loading them. pob-023 (G10/G12): `copy` (recruiter sections only) adds LinkedIn and calling-script copy mode, with the
  *  record the messages are about. */
-export default function MessagesSection({ listUrl, parties, picker, targetFor, canWrite, onChanged, noParties, wide = false, copy }: {
+export default function MessagesSection({ listUrl, parties, picker, targetFor, canWrite, onChanged, noParties, wide = false, copy, itemAction }: {
   listUrl: string; parties: Party[] | null; picker: boolean; targetFor: (party: Party) => ComposerTarget; canWrite: boolean; onChanged?: () => void;
   noParties: string; wide?: boolean; copy?: { context?: MessageContext };
+  /** pob-005: an extra control under a message line (the recruiter's "Log reply"); `done` re-reads the list and tells the page. */
+  itemAction?: (message: MessageLine, done: (text: string) => void) => ReactNode;
 }) {
   const [data, setData] = useState<Page<MessageLine> | null>(null);
   const [failed, setFailed] = useState(false);
@@ -151,7 +156,7 @@ export default function MessagesSection({ listUrl, parties, picker, targetFor, c
         <p className="muted" style={{ fontSize: 13, margin: 0 }}>No messages sent yet.</p>
       ) : (
         <ul aria-label="Messages" style={{ padding: 0, margin: 0, display: "grid", gap: 8 }}>
-          {data.items.map((message) => <MessageItem key={message.id} message={message} showTo={picker} />)}
+          {data.items.map((message) => <MessageItem key={message.id} message={message} showTo={picker} action={itemAction?.(message, done)} />)}
         </ul>
       )}
       {data && data.total > data.items.length && <p className="muted" style={{ fontSize: 13 }}>Showing the latest {data.items.length} of {data.total} messages.</p>}

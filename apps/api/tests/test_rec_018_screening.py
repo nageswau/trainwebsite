@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import select
 
 from app.models import ApplicationScreening, AuditLog, Company, JobApplicationStatusHistory, Notification
+from app.notifications.events import EVENTS
 from app.services import application_screening as screening_svc
 from tests.rec001_helpers import as_role, login, make_recruiter, make_user
 from tests.test_rec_017_tracking import APPS, REQ, _add, _candidate, _move, _requirement, _team
@@ -175,7 +176,7 @@ async def test_a_student_is_notified_when_screening_moves_the_status(client, db_
     app_id = (await _add(client, job, candidate)).json()["application"]["id"]
     assert (await _screen(client, app_id, result="shortlisted")).status_code == 200
     note = await db_session.scalar(select(Notification).where(Notification.user_id == student.id).order_by(Notification.created_at.desc()))
-    assert note.body == "Your application status is now Shortlisted."
+    assert note.body == EVENTS["it.application.updated"].body  # hrc-032 (N5): the stage word stays in the portal
 
 
 # --- RBAC (SC8) ---------------------------------------------------------------------------------------------------------------------

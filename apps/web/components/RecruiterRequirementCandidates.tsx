@@ -6,6 +6,7 @@ import LocalTime from "@/components/LocalTime";
 import RecruiterApplicationInterviews from "@/components/RecruiterApplicationInterviews";
 import RecruiterApplicationOffer from "@/components/RecruiterApplicationOffer";
 import RecruiterApplicationScreening from "@/components/RecruiterApplicationScreening";
+import RecruiterScreeningSessions from "@/components/RecruiterScreeningSessions";
 import type { ContactOption } from "@/components/RecruiterInterviewForm";
 import RecruiterShareDialog, { type ShareCandidate } from "@/components/RecruiterShareDialog";
 import SearchableSelect from "@/components/SearchableSelect";
@@ -250,8 +251,12 @@ function ApplicationItem({ application, reasons, contacts, selected, onSelect, o
         <RecruiterApplicationInterviews applicationId={application.id} candidateName={application.candidate.name} contacts={contacts} onChanged={onInterview} />
       )}
       {open === "screening" && (
-        <RecruiterApplicationScreening applicationId={application.id} candidateName={application.candidate.name} onCancel={() => setOpen("none")}
-          onSaved={(next) => { setOpen("none"); onScreened(next); }} />
+        <>
+          <RecruiterScreeningSessions applicationId={application.id} candidateName={application.candidate.name} />
+          <h4 style={{ margin: 0 }}>Screening checklist</h4>
+          <RecruiterApplicationScreening applicationId={application.id} candidateName={application.candidate.name} onCancel={() => setOpen("none")}
+            onSaved={(next) => { setOpen("none"); onScreened(next); }} />
+        </>
       )}
       {open === "offer" && <RecruiterApplicationOffer applicationId={application.id} candidateName={application.candidate.name} onChanged={onInterview} />}
     </li>

@@ -771,11 +771,17 @@ class CompanyAssignmentHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# rec-004 (DEC-SCOPE-125): migration 0110 repeats COMPANY_CONTACT_CHECKS (test_rec_004_migration asserts they stay identical).
-COMPANY_CONTACT_CHANNELS = ("call", "whatsapp", "email")
+# rec-004 (DEC-SCOPE-125): migration 0110 repeats COMPANY_CONTACT_CHECKS. pob-005 (DEC-SCOPE-411 D1-D3) adds LinkedIn, the source and
+# status catalogues; migration 0290 keeps the frozen copy of the checks it changed (test_pob_005_migration asserts they stay identical).
+COMPANY_CONTACT_CHANNELS = ("call", "whatsapp", "email", "linkedin")
+COMPANY_CONTACT_SOURCES = ("linkedin", "company_website", "referral", "job_portal", "event", "inbound", "other")
+# Stored statuses; "Follow-up due" is derived (an open follow-up due now). The first four are the automatic progression (D4).
+COMPANY_CONTACT_STATUSES = ("not_contacted", "contacted", "replied", "meeting_scheduled", "not_interested", "do_not_contact")
 COMPANY_CONTACT_CHECKS = {
     "ck_company_contacts_channel": f"preferred_channel IS NULL OR preferred_channel IN ({', '.join(repr(c) for c in COMPANY_CONTACT_CHANNELS)})",
     "ck_company_contacts_primary_active": "NOT is_primary OR active",
+    "ck_company_contacts_source": f"source IS NULL OR source IN ({', '.join(repr(s) for s in COMPANY_CONTACT_SOURCES)})",
+    "ck_company_contacts_status": f"status IN ({', '.join(repr(s) for s in COMPANY_CONTACT_STATUSES)})",
 }
 
 
@@ -790,6 +796,7 @@ class CompanyContact(Base, TimestampMixin):
         Index("ix_company_contacts_company", "company_id"),
         Index("uq_company_contacts_primary", "company_id", unique=True, postgresql_where=text("is_primary")),
         Index("ix_company_contacts_mobile", "mobile_normalized"),
+        Index("ix_company_contacts_email", "email"),  # pob-005 D8: the duplicate check (emails are stored lower-cased)
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
@@ -807,6 +814,12 @@ class CompanyContact(Base, TimestampMixin):
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
     created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    # pob-005 (DEC-SCOPE-411 D1): decision-maker, where we found them and when that was checked, and the outreach status
+    is_decision_maker: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    source: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    verified_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(24), default="not_contacted", server_default=text("'not_contacted'"))
+    status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     @validates("mobile")
     def _derive_mobile_normalized(self, _key: str, mobile: str | None) -> str | None:
@@ -960,6 +973,14 @@ JOB_PAY_CHECKS = {  # hrc-005 (DEC-SCOPE-381 V1): migration 0258 repeats these s
     "ck_jobs_salary_currency": "salary_currency IS NULL OR salary_currency ~ '^[A-Z]{3}$'",
     "ck_jobs_salary_period": "salary_period IS NULL OR salary_period IN ('year', 'month')",
 }
+# pob-002 (DEC-SCOPE-407 R6/R7): the hiring-process and per-requirement commercial columns; migration 0285 repeats these strings
+# (test_pob_002_migration asserts they stay identical).
+JOB_PAYMENT_TRIGGERS = ("on_joining", "days_after_joining", "on_invoice")
+JOB_TERMS_CHECKS = {
+    "ck_jobs_payment_trigger": "payment_trigger IS NULL OR payment_trigger IN ('on_joining', 'days_after_joining', 'on_invoice')",
+    "ck_jobs_payment_days": "(payment_trigger IS NOT DISTINCT FROM 'days_after_joining') = (payment_days IS NOT NULL) AND (payment_days IS NULL OR payment_days BETWEEN 1 AND 365)",
+    "ck_jobs_expected_tat_days": "expected_tat_days IS NULL OR expected_tat_days BETWEEN 1 AND 365",
+}
 # hrc-005 V4: the duplicate check's keys, spelled exactly as ix_jobs_company_title_key so the planner can use it.
 JOB_TITLE_KEY_SQL = r"lower(regexp_replace(btrim(title), '\s+', ' ', 'g'))"
 JOB_PLACE_KEY_SQL = r"lower(regexp_replace(btrim(coalesce(city, location)), '\s+', ' ', 'g'))"
@@ -973,7 +994,7 @@ class Job(Base, TimestampMixin):
     __tablename__ = "jobs"
     __table_args__ = (
         UniqueConstraint("requirement_code", name="uq_jobs_requirement_code"),
-        *(CheckConstraint(sql, name=name) for name, sql in {**JOB_CHECKS, **JOB_FEE_CHECKS, **JOB_PAY_CHECKS}.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in {**JOB_CHECKS, **JOB_FEE_CHECKS, **JOB_PAY_CHECKS, **JOB_TERMS_CHECKS}.items()),
         CheckConstraint(JOB_SOURCE_CHECK, name="ck_jobs_source"),
         CheckConstraint(JOB_VISIBILITY_CHECK, name="ck_jobs_visibility"),
         CheckConstraint(JOB_SEGMENT_POOL_CHECK, name="ck_jobs_segment_pool"),
@@ -1038,7 +1059,43 @@ class Job(Base, TimestampMixin):
     match_hard_qualification: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     match_hard_location: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     match_hard_salary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    # pob-002 (DEC-SCOPE-407 R6): the client's hiring process
+    interview_rounds: Mapped[list | None] = mapped_column(JSON, nullable=True)  # ordered names, at most 10
+    screening_steps: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    decision_maker_contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    expected_tat_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # pob-002 R7: per-requirement terms; null payment/replacement terms inherit the current contract's (the fee stays rec-031's override)
+    payment_trigger: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    payment_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    payment_terms: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    replacement_terms: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    # pob-002 R9: an active recruiter with the primary's owner rights (Q-02: always, not only while the primary is away)
+    backup_owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    match_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # hrc-032 (DEC-SCOPE-413 N7): candidates told once
     company = relationship("Company")
+
+
+# pob-002 (DEC-SCOPE-407 R1): an append-only snapshot of a requirement's material fields per save; migration 0285 repeats the checks.
+JOB_REVISION_CHECKS = {"ck_job_revisions_revision": "revision >= 1"}
+
+
+class JobRevision(Base):
+    """pob-002 (R1-R3): revision n of a job requirement -- every material field by display value (`snapshot`), the fields that changed,
+    an optional reason and the author (NULL = the system's baseline for a job created before revisions were kept). Never updated."""
+
+    __tablename__ = "job_revisions"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in JOB_REVISION_CHECKS.items()),
+        UniqueConstraint("job_id", "revision", name="uq_job_revisions_revision"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"))
+    revision: Mapped[int] = mapped_column(Integer)
+    snapshot: Mapped[dict] = mapped_column(JSON)
+    changed_fields: Mapped[list] = mapped_column(JSON, default=list)
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    author_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 # hrc-018 (DEC-SCOPE-392 E1/E2): the six match factors in display order and the source's default weights; migration 0269 repeats them
@@ -1358,6 +1415,132 @@ class ApplicationScreening(Base, TimestampMixin):
     screened_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
+# pob-020 (DEC-SCOPE-414): the question bank, versioned forms and kept sessions. Migration 0292 repeats these (test_pob_020_migration).
+SCREENING_CATEGORIES = ("experience", "technical", "communication", "availability", "compensation")
+SCREENING_FORMATS = ("text", "yes_no", "numeric", "choice", "rating")
+SCREENING_RECOMMENDATIONS = ("pass", "hold", "reject")
+SCREENING_SESSION_KINDS = ("form", "legacy")
+SCREENING_KNOCKOUT_STATUSES = ("none", "pending", "approved")
+_SCREENING_QUESTION_CHECKS = {
+    "category": "category IN (" + ", ".join(f"'{c}'" for c in SCREENING_CATEGORIES) + ")",
+    "format": "format IN (" + ", ".join(f"'{f}'" for f in SCREENING_FORMATS) + ")",
+}
+SCREENING_BANK_CHECKS = {f"ck_screening_questions_{name}": sql for name, sql in _SCREENING_QUESTION_CHECKS.items()}
+SCREENING_FORM_QUESTION_CHECKS = {
+    **{f"ck_screening_form_questions_{name}": sql for name, sql in _SCREENING_QUESTION_CHECKS.items()},
+    "ck_screening_form_questions_knockout": "NOT is_knockout OR format = 'yes_no'",
+}
+SCREENING_FORM_CHECKS = {"ck_screening_forms_knockout": "knockout_status IN (" + ", ".join(f"'{s}'" for s in SCREENING_KNOCKOUT_STATUSES) + ")"}
+SCREENING_SESSION_CHECKS = {
+    "ck_screening_sessions_kind": "kind IN (" + ", ".join(f"'{k}'" for k in SCREENING_SESSION_KINDS) + ")",
+    "ck_screening_sessions_recommendation": "recommendation IN (" + ", ".join(f"'{r}'" for r in SCREENING_RECOMMENDATIONS) + ")",
+    "ck_screening_sessions_form": "(kind = 'form') = (form_id IS NOT NULL AND form_version IS NOT NULL)",
+    "ck_screening_sessions_override": "NOT knockout_overridden OR override_reason IS NOT NULL",
+}
+SCREENING_ANSWER_CHECKS = {"ck_screening_answers_score": "score IS NULL OR score BETWEEN 0 AND 5"}
+
+
+class ScreeningQuestion(Base, TimestampMixin):
+    """pob-020: the bank. A form copies what it uses, so an edit here never changes a form; rows are archived (`active`), never deleted."""
+
+    __tablename__ = "screening_questions"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in SCREENING_BANK_CHECKS.items()),
+        Index("uq_screening_questions_question", "category", text("lower(question)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    category: Mapped[str] = mapped_column(String(20))
+    question: Mapped[str] = mapped_column(String(500))
+    format: Mapped[str] = mapped_column(String(10))
+    choices: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    evaluation_criteria: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    expected_answer: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+
+class ScreeningForm(Base, TimestampMixin):
+    """pob-020 (S4, S7): `job_id` NULL is a reusable template, otherwise the requirement's one form. `version` is the current version of
+    its question rows; the knock-out approval belongs to that version."""
+
+    __tablename__ = "screening_forms"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in SCREENING_FORM_CHECKS.items()),
+        Index("uq_screening_forms_template_name", text("lower(name)"), unique=True, postgresql_where=text("job_id IS NULL")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    job_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"), nullable=True, unique=True)
+    name: Mapped[str] = mapped_column(String(120))
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    knockout_status: Mapped[str] = mapped_column(String(10), default="none", server_default=text("'none'"))
+    knockout_approved_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    knockout_approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+
+class ScreeningFormQuestion(Base):
+    """pob-020 (S4): one question of one form version, immutable once written."""
+
+    __tablename__ = "screening_form_questions"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in SCREENING_FORM_QUESTION_CHECKS.items()),
+        UniqueConstraint("form_id", "version", "position", name="uq_screening_form_questions_position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    form_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("screening_forms.id", ondelete="CASCADE"))
+    version: Mapped[int] = mapped_column(Integer)
+    position: Mapped[int] = mapped_column(SmallInteger)
+    question_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("screening_questions.id", ondelete="SET NULL"), nullable=True)
+    category: Mapped[str] = mapped_column(String(20))
+    question: Mapped[str] = mapped_column(String(500))
+    format: Mapped[str] = mapped_column(String(10))
+    choices: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    evaluation_criteria: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    expected_answer: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_knockout: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+
+
+class ScreeningSession(Base, TimestampMixin):
+    """pob-020 (S2, S4, S11): one screening of one application, never edited. `legacy` rows are snapshots of the rec-018 checklist. Answers,
+    notes and the snapshot are internal: no employer, student or hr_team route reads this table, and the audit keeps ids only."""
+
+    __tablename__ = "screening_sessions"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in SCREENING_SESSION_CHECKS.items()),
+        Index("ix_screening_sessions_application", "application_id", "created_at"),
+        Index("ix_screening_sessions_form", "form_id", "form_version"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(10))
+    form_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("screening_forms.id", ondelete="RESTRICT"), nullable=True)
+    form_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    screened_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    recommendation: Mapped[str] = mapped_column(String(10))
+    knockout_triggered: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    knockout_overridden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    override_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    legacy_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class ScreeningAnswer(Base):
+    """pob-020: one answer of one session, with its optional score."""
+
+    __tablename__ = "screening_answers"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in SCREENING_ANSWER_CHECKS.items()),
+        UniqueConstraint("session_id", "form_question_id", name="uq_screening_answers_question"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    session_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("screening_sessions.id", ondelete="CASCADE"))
+    form_question_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("screening_form_questions.id", ondelete="RESTRICT"))
+    answer: Mapped[str] = mapped_column(String(2000))
+    score: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+
+
 class Interview(Base, TimestampMixin):
     """rec-020 (IV1-IV7): one interview round of one application. services/interviews.py is the status writer for the recruiter routes;
     `result` is the legacy free-text outcome the /workflows and employer screens still read. `round` and `created_by_user_id` are NULL on
@@ -1391,6 +1574,7 @@ class Interview(Base, TimestampMixin):
     documents_required: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     calendar_sequence: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    overdue_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # hrc-032 (DEC-SCOPE-413 N6): told once
 
 
 class InterviewFeedback(Base, TimestampMixin):
@@ -1485,6 +1669,52 @@ class InterviewPanelFeedback(Base, TimestampMixin):
     score: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     recommendation: Mapped[str | None] = mapped_column(String(10), nullable=True)
     notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+
+
+# hrc-030 (DEC-SCOPE-409 R1/R4): an interview decision as a result waiting for release, and the global release switch. Migration 0289
+# repeats INTERVIEW_RESULT_CHECKS (test_hrc_030_migration asserts they stay identical).
+RESULT_OUTCOMES = ("selected", "rejected")
+RESULT_STATES = ("pending_approval", "released")
+RESULT_RELEASE_MODES = ("auto", "approval")
+INTERVIEW_RESULT_CHECKS = {
+    "ck_interview_results_outcome": "outcome IN ('selected', 'rejected')",
+    "ck_interview_results_state": "state IN ('pending_approval', 'released')",
+    "ck_interview_results_release_mode": "release_mode IS NULL OR release_mode IN ('auto', 'approval')",
+    "ck_interview_results_message": "char_length(candidate_message) <= 1000",
+    "ck_interview_results_released": "(state = 'released') = (released_at IS NOT NULL AND released_by_user_id IS NOT NULL AND release_mode IS NOT NULL AND candidate_message IS NOT NULL)",
+}
+
+
+class InterviewResult(Base, TimestampMixin):
+    """hrc-030 (R1-R3): one decided interview's result. `is_final` marks the decision that decides the application. Until `released`, no
+    candidate or student surface shows it, and the application's `candidate_status` is held where it was."""
+
+    __tablename__ = "interview_results"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in INTERVIEW_RESULT_CHECKS.items()),
+        Index("ix_interview_results_state", "state", "created_at"),
+        Index("ix_interview_results_application", "application_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    interview_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("interviews.id", ondelete="RESTRICT"), unique=True)
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id", ondelete="RESTRICT"))
+    outcome: Mapped[str] = mapped_column(String(10))
+    is_final: Mapped[bool] = mapped_column(Boolean)
+    state: Mapped[str] = mapped_column(String(20), default="pending_approval")
+    candidate_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    release_mode: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    decided_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    released_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ResultReleaseSetting(Base, TimestampMixin):
+    """hrc-030 (R4): the one global row (id 1, seeded by migration 0289) -- release automatically, or wait for a `results.release` holder."""
+
+    __tablename__ = "result_release_settings"
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    auto_release: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 class PlacementProfile(Base, TimestampMixin):
@@ -4598,6 +4828,8 @@ class BdmTripExpense(Base, TimestampMixin):
 
 BDM_ORG_TYPES = ("college", "university", "agent", "school", "corporate", "training_institute", "other")
 BDM_CONTACT_ROLES = ("principal", "dean", "hod", "placement_officer", "counselor", "management", "owner", "other")
+PLACEMENT_CONTACT_METHODS = ("email", "phone", "whatsapp", "in_person", "linkedin")  # pob-013 P10
+PLACEMENT_CONTACT_METHOD_CHECK = "preferred_contact_method IS NULL OR preferred_contact_method IN ('email', 'phone', 'whatsapp', 'in_person', 'linkedin')"
 # bdm-003 (DEC-SCOPE-065, spec §4): the type-specific profile. `board` keeps ENH-009's exact values so bdm-018 can copy it onto
 # `schools.board`; the other enums are lower snake case like `org_type`. Grades: -2 Nursery, -1 LKG, 0 UKG, then 1-12.
 BDM_ORG_SOURCES = ("referral", "website", "event", "cold_call", "walk_in", "other")
@@ -4727,6 +4959,7 @@ class BdmOrganizationContact(Base, TimestampMixin):
         CheckConstraint(f"role IS NULL OR {_in_list('role', BDM_CONTACT_ROLES)}", name="ck_bdm_organization_contacts_role"),
         Index("ix_bdm_organization_contacts_org", "organization_id"),
         Index("uq_bdm_organization_contacts_primary", "organization_id", unique=True, postgresql_where=text("is_primary")),
+        CheckConstraint(PLACEMENT_CONTACT_METHOD_CHECK, name="ck_bdm_organization_contacts_preferred_method"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
@@ -4737,6 +4970,104 @@ class BdmOrganizationContact(Base, TimestampMixin):
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    # pob-013 (DEC-SCOPE-410 P10): the TPO's office and preferred contact method, set from the placement profile only.
+    office_details: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    preferred_contact_method: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+
+# pob-013 (DEC-SCOPE-410 P5-P9): a college's placement profile, kept by the placement team beside the BDM-owned organization (P1: the
+# organization row itself is never written). Migration 0288 repeats the CHECK strings; test_pob_013_migration asserts they stay identical.
+PLACEMENT_EVENT_KINDS = ("pre_placement_talk", "campus_drive", "assessment", "interview", "exam", "holiday", "other")
+TPO_INTERACTION_CHANNELS = ("meeting", "call", "email", "whatsapp", "visit", "other")
+PLACEMENT_CHECKS = {
+    "ck_bdm_org_placement_batches_year": "pass_out_year BETWEEN 2000 AND 2100",
+    "ck_bdm_org_placement_batches_students": "student_count IS NULL OR student_count BETWEEN 0 AND 100000",
+    "ck_bdm_org_placement_events_kind": _in_list("kind", PLACEMENT_EVENT_KINDS),
+    "ck_bdm_org_placement_events_window": "ends_on IS NULL OR ends_on >= starts_on",
+    "ck_bdm_org_tpo_interactions_channel": _in_list("channel", TPO_INTERACTION_CHANNELS),
+}
+
+
+class BdmOrgPlacementProfile(Base, TimestampMixin):
+    """pob-013 P5: one row per organization, created at the first save."""
+
+    __tablename__ = "bdm_org_placement_profiles"
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"), primary_key=True)
+    drive_process: Mapped[str | None] = mapped_column(Text, nullable=True)
+    eligibility_rules: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class BdmOrgCourse(Base, TimestampMixin):
+    """pob-013 P6: a structured department + course. `course_key` is the normalized "department|course" (unique per organization)."""
+
+    __tablename__ = "bdm_org_courses"
+    __table_args__ = (UniqueConstraint("organization_id", "course_key", name="uq_bdm_org_courses_key"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    department: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    course: Mapped[str] = mapped_column(String(120))
+    course_key: Mapped[str] = mapped_column(String(250))
+
+
+class BdmOrgPlacementBatch(Base, TimestampMixin):
+    """pob-013 P7: a graduating batch. A course with batches cannot be deleted (RESTRICT)."""
+
+    __tablename__ = "bdm_org_placement_batches"
+    __table_args__ = (
+        CheckConstraint(PLACEMENT_CHECKS["ck_bdm_org_placement_batches_year"], name="ck_bdm_org_placement_batches_year"),
+        CheckConstraint(PLACEMENT_CHECKS["ck_bdm_org_placement_batches_students"], name="ck_bdm_org_placement_batches_students"),
+        Index("ix_bdm_org_placement_batches_org_year", "organization_id", "pass_out_year"),
+        Index("ix_bdm_org_placement_batches_course", "course_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    course_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_org_courses.id", ondelete="RESTRICT"), nullable=True)
+    pass_out_year: Mapped[int] = mapped_column(SmallInteger)
+    pass_out_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    student_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class BdmOrgPlacementEvent(Base, TimestampMixin):
+    """pob-013 P8: a placement calendar entry (dates only)."""
+
+    __tablename__ = "bdm_org_placement_events"
+    __table_args__ = (
+        CheckConstraint(PLACEMENT_CHECKS["ck_bdm_org_placement_events_kind"], name="ck_bdm_org_placement_events_kind"),
+        CheckConstraint(PLACEMENT_CHECKS["ck_bdm_org_placement_events_window"], name="ck_bdm_org_placement_events_window"),
+        Index("ix_bdm_org_placement_events_org_start", "organization_id", "starts_on"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    title: Mapped[str] = mapped_column(String(200))
+    kind: Mapped[str] = mapped_column(String(30))
+    starts_on: Mapped[date] = mapped_column(Date)
+    ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class BdmOrgTpoInteraction(Base):
+    """pob-013 P9: an append-only TPO interaction, separate from bdm_activities (BDM metrics stay unchanged). `contact_name` is the
+    contact's name at save, kept when bdm-002 hard-deletes the contact (`contact_id` -> NULL)."""
+
+    __tablename__ = "bdm_org_tpo_interactions"
+    __table_args__ = (
+        CheckConstraint(PLACEMENT_CHECKS["ck_bdm_org_tpo_interactions_channel"], name="ck_bdm_org_tpo_interactions_channel"),
+        Index("ix_bdm_org_tpo_interactions_org_occurred", "organization_id", "occurred_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organization_contacts.id", ondelete="SET NULL"), nullable=True)
+    contact_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    channel: Mapped[str] = mapped_column(String(20))
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    summary: Mapped[str] = mapped_column(Text)
+    next_step: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    logged_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class BdmPipelineEvent(Base):
@@ -6997,6 +7328,24 @@ class CandidateImportRow(Base):
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class PortalEvent(Base):
+    """hrc-034 (DEC-SCOPE-416 I3): one step a student or portal candidate took on a job -- ids only, no PII. One row per person, job, kind and IST day,
+    so a refresh or a double click cannot inflate a figure. Deleted after portal_events.RETENTION_DAYS (I4)."""
+
+    __tablename__ = "portal_events"
+    __table_args__ = (
+        CheckConstraint("kind IN ('job_view', 'apply_start', 'apply_submit')", name="ck_portal_events_kind"),
+        UniqueConstraint("user_id", "job_id", "kind", "day", name="uq_portal_events_once"),
+        Index("ix_portal_events_day", "day", "kind"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    kind: Mapped[str] = mapped_column(String(12))
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    job_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True)
+    day: Mapped[date] = mapped_column(Date)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class RecFxRate(Base):
     """hrc-011 (DEC-SCOPE-375 C1, Q-10): the placement manager's manual exchange rate, rupees per one unit of the currency. INR is
     implicit (1) and never stored; no rate is seeded. Never deleted: a currency in use keeps its rate."""
@@ -7296,7 +7645,7 @@ REC_EMAIL_KINDS = (
     "joining_confirmation",
 )
 # pob-023 (DEC-SCOPE-408 G1-G5): LinkedIn and calling-script channels (no kind), the §14 categories, Draft -> Approved -> Archived and
-# personal (owner set) vs shared; migration 0286 repeats these (test_pob_023_migration keeps them identical).
+# personal (owner set) vs shared; migration 0297 repeats these (test_pob_023_migration keeps them identical).
 REC_TEMPLATE_CHANNELS = ("whatsapp", "email", "linkedin", "call")
 REC_TEMPLATE_CATEGORIES = ("company", "linkedin", "whatsapp", "calling", "college_tpo", "candidate")
 REC_TEMPLATE_STATUSES = ("draft", "approved", "archived")
@@ -7408,6 +7757,7 @@ class RecruiterMessage(Base, TimestampMixin):
     attempt_count: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     calendar_ics: Mapped[str | None] = mapped_column(Text, nullable=True)  # hrc-028 (I6): an interview invite, built when queued
+    replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # pob-005 D7: a reply logged by hand
 
 
 # upc-026 (DEC-SCOPE-139, spec §2): the §28 document centre. The 12 kinds in source order (DC1); the commission agreement is never

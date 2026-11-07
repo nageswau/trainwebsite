@@ -144,7 +144,7 @@ async def test_an_external_candidate_reads_and_applies(client, db_session):
     out = applied.json()
     assert out["code"].startswith("JA-") and out["status_label"] == "Received"
     notice = await db_session.scalar(select(Notification).where(Notification.user_id == user.id, Notification.title == "Application received"))
-    assert notice.action_url == "/it/careers/portal/jobs"  # J10
+    assert notice.action_url == "/it/careers/portal/applications"  # hrc-031 P7 (J10 opened Jobs before that page existed)
     card = (await _list(client, w.tag, view="recommended"))["items"][0]
     assert card["application"] == {"code": out["code"], "status_label": "Received"} and card["can_apply"] is False
     assert (await client.post(f"{JOBS}/{match.id}/apply")).status_code == 409

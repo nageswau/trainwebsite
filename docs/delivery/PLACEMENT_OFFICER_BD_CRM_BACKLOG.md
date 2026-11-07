@@ -113,6 +113,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** medium.
 
 #### pob-002: Requirement versioning, hiring process and per-requirement commercials
+- **Status:** built (`DEC-SCOPE-407`, 2026-11-05); Q-02 answered "always co-access" by the builder's call R9 (`NEEDS_CONFIRMATION`); the vendor link waits for pob-010.
 - **Business requirement:** §7 "Revisions should be versioned rather than silently replacing the original details"; field groups "Hiring process", "Commercial terms", "Ownership: … backup owner and approval status", "vendor if applicable".
 - **Existing behavior:**
   - The `Job` PATCH overwrites columns in place, and the audit keeps field names only. Only the JD is versioned.
@@ -210,6 +211,8 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** medium.
 
 #### pob-005: Contact status, decision-maker, source/verification and per-contact timeline
+- **Status:** built (`DEC-SCOPE-411`, 2026-11-05); D1–D11 are the builder's calls (`NEEDS_CONFIRMATION`); Q-05 answered as "add at the new
+  company, deactivate the old" (builder's call); duplicates warn and never refuse.
 - **Business requirement:** §3.2 "Record the contact's role, professional email, phone, LinkedIn URL, source and verification date"; §3.3 decision-maker, preferred contact method, contact status set, "timeline against both the contact and the company", "reminders and tasks for each contact", duplicate prevention.
 - **Existing behavior:** multiple contacts with a primary flag, designation, department, role catalogue, LinkedIn and notes. Preferred channel covers call, WhatsApp and email only. There is no decision-maker flag, source, verification date, status or per-contact timeline. There is no contact duplicate check (the index exists but is unused). Follow-ups optionally carry a contact.
 - **Expected behavior:**
@@ -468,6 +471,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** medium.
 
 #### pob-013: College/TPO profile on the BDM organisation and placement-officer access
+- **Status:** built (`DEC-SCOPE-410`, 2026-11-05); Q-10 answered by the builder's calls P1–P15 (`NEEDS_CONFIRMATION`); the §6.1 status-label mapping and `placement_officer` access remain open.
 - **Business requirement:** §6.1 institution profile, TPO contacts, placement profile, relationship, status; §6.2 research/identify; §18 AC "Placement Officer can create and track TPO records for colleges and universities".
 - **Existing behavior:**
   - Colleges are `BdmOrganization` (bdm_type college) with contacts (`placement_officer` role), MoUs, appointments, activities and trips.
@@ -676,6 +680,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 ### Phase 4: Screening, submission and interviews
 
 #### pob-020: Role-specific screening forms (five questions), question bank and scorecard
+- **Status:** built (`DEC-SCOPE-414`, 2026-11-06); Q-15 answered "yes" and S1–S14 are the builder's calls (`NEEDS_CONFIRMATION`); §10's category names need checking against the source.
 - **Business requirement:** §10 (5 categories + 6 rules); §18 AC "Screening forms support five role-specific questions and recorded answers/scores".
 - **Existing behavior:** one fixed `ApplicationScreening` per application: flags, two ratings, result shortlisted/hold/rejected/need_more_info. It is overwritten on each save. There is no bank, formats, knock-outs or comparison.
 - **Expected behavior:**

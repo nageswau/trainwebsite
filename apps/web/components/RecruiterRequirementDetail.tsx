@@ -13,8 +13,10 @@ import RecruiterMessages from "@/components/RecruiterMessages";
 import RecruiterRecordHistory from "@/components/RecruiterRecordHistory";
 import RecruiterRequirementRevenue from "@/components/RecruiterRequirementRevenue";
 import RecruiterShares from "@/components/RecruiterShares";
+import RecruiterScreeningForm from "@/components/RecruiterScreeningForm";
 import { ApprovalDecision, SubmitForApproval, SubmittedLine } from "@/components/RequirementApproval";
 import { OwnersCard, OwnershipHistory } from "@/components/RequirementOwners";
+import RequirementRevisions from "@/components/RequirementRevisions";
 import RequirementVisibility from "@/components/RequirementVisibility";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
@@ -25,6 +27,7 @@ import { COMPANIES_PATH, personName, recruiterSearch } from "@/lib/recruiterComp
 import type { Jd } from "@/lib/recruiterJd";
 import { minLevelText } from "@/lib/recruiterMatching";
 import {
+  type CommercialTerms,
   DEADLINE_LABEL,
   experienceText,
   isRequirementBody,
@@ -177,6 +180,38 @@ function skillItems(requirement: Requirement, kind: "required" | "preferred"): R
   );
 }
 
+/** pob-002 R6: an ordered list (rounds, steps), or a dash. */
+function stepItems(steps: string[] | undefined): ReactNode {
+  if (!steps?.length) return "—";
+  return (
+    <ol style={{ margin: 0, paddingLeft: 18 }}>
+      {steps.map((s, i) => <li key={`${i}-${s}`}>{s}</li>)}
+    </ol>
+  );
+}
+
+const FROM_CONTRACT = <span className="status pending">From the contract</span>;
+
+/** pob-002 R7: the requirement's own terms, or the contract's (marked). Rendered only when the API sent them (commercials.client.view). */
+function CommercialTermsCard({ terms, id }: { terms: CommercialTerms; id: string }) {
+  const fee = terms.fee.basis == null ? "—" : terms.fee.basis === "percent_of_ctc" ? `${Number(terms.fee.value)}% of CTC` : `₹${Number(terms.fee.value).toLocaleString("en-IN")} per hire`;
+  const term = (t: CommercialTerms["payment_terms"]) => (t.value ? <>{multiline(t.value)} {t.inherited && FROM_CONTRACT}</> : "—");
+  const trigger = terms.payment_trigger_label
+    ? `${terms.payment_trigger_label}${terms.payment_trigger === "days_after_joining" && terms.payment_days ? ` (${terms.payment_days} days)` : ""}`
+    : "—";
+  return (
+    <section className="action-card wide" aria-labelledby={id}>
+      <h3 id={id}>Commercial terms</h3>
+      <DetailList rows={[
+        ["Fee", <>{fee} {terms.fee.inherited && FROM_CONTRACT}</>],
+        ["Payment trigger", trigger],
+        ["Payment terms", term(terms.payment_terms)],
+        ["Replacement terms", term(terms.replacement_terms)],
+      ]} />
+    </section>
+  );
+}
+
 export default function RecruiterRequirementDetail({ initial, initialJd, created = false, showRevenue = false }: {
   initial: Requirement; initialJd: Jd | null; created?: boolean; showRevenue?: boolean;
 }) {
@@ -233,6 +268,12 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
     ["Requirement date", date(r.requirement_date)],
     ["Priority", label(r.priority)],
     ["Assigned recruiter", personName(r.assigned_recruiter)],
+    ["Backup owner", personName(r.backup_owner ?? null, "—")], // pob-002 R9
+    // pob-002 R6: the client's hiring process
+    ["Interview rounds", stepItems(r.interview_rounds)],
+    ["Screening steps", stepItems(r.screening_steps)],
+    ["Decision-maker", r.decision_maker ? `${r.decision_maker.name}${r.decision_maker.designation ? `, ${r.decision_maker.designation}` : ""}${r.decision_maker.active ? "" : " (inactive)"}` : "—"],
+    ["Expected turnaround", r.expected_tat_days == null ? "—" : `${r.expected_tat_days} day${r.expected_tat_days === 1 ? "" : "s"}`],
     ["Required skills", skillItems(r, "required")],
     ["Preferred skills", skillItems(r, "preferred")],
     ["Job description", multiline(r.description || null)],
@@ -287,6 +328,7 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
           <DetailList rows={rows} />
         </section>
       )}
+      {r.commercial_terms && !showEditor && <CommercialTermsCard terms={r.commercial_terms} id={`requirement-${r.id}-terms`} />}
       <RecruiterRequirementJd requirement={r} initial={initialJd} onRequirementChanged={changed} />
       {/* hrc-007: send for approval, or (an approver) decide; the pending state is shown to every reader */}
       {r.approval.can_submit && !showEditor && <SubmitForApproval requirement={r} onDone={changed} />}
@@ -325,6 +367,7 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
         <>
           <RecruiterRequirementCandidates requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} refreshKey={shortlists + shares} version={r.updated_at}
             onShared={() => setShares((n) => n + 1)} />
+          <RecruiterScreeningForm requirementId={r.id} />
           {p.can_view_matches && (
             <RecruiterRequirementMatches requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} version={r.updated_at}
               onRequirementChanged={setRequirement} onShortlisted={() => setShortlists((n) => n + 1)} onShared={() => setShares((n) => n + 1)} />
@@ -337,6 +380,8 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
         </>
       )}
       {/* hrc-004: who changed what, old → new; re-read after every save (the requirement's updated_at moves). */}
+      {/* pob-002 (R5): each saved version, viewable and comparable; re-read after a save like the History */}
+      <RequirementRevisions key={`revisions-${r.updated_at}`} requirementId={r.id} />
       <RecruiterRecordHistory key={r.updated_at} url={`${REQUIREMENTS_URL}/${encodeURIComponent(r.id)}/history`} />
     </>
   );

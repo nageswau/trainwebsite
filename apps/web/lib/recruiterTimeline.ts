@@ -11,7 +11,8 @@ import { meetingTypeLabel } from "@/lib/recruiterMeetings";
 import { CHANNELS, RESPONSES } from "@/lib/recruiterShares";
 
 type Kind = "stage" | "call" | "message" | "meeting" | "follow_up" | "requirement" | "share" | "share_response" | "contract" | "application" | "interview" | "offer"
-  | "note" | "task" | "assignment" | "profile" | "screening"; // hrc-016 (T9): the candidate timeline's new kinds
+  | "note" | "task" | "assignment" | "profile" | "screening" // hrc-016 (T9): the candidate timeline's new kinds
+  | "message_reply" | "contact_status"; // pob-005 (D10): a logged reply; a contact's status change (the per-contact view only)
 export type RecTimelineRow = {
   id: string; kind: Kind; at: string; actor: { id: string; full_name: string } | null; event: string | null; from_value: string; from_label: string;
   to_value: string; to_label: string; subject: string | null; status: string | null; reason: string | null; context: string | null;
@@ -36,6 +37,11 @@ const OFFER_TITLE: Record<string, (row: RecTimelineRow) => string> = {
 };
 
 const TASK_VERB: Record<string, string> = { scheduled: "assigned", done: "done", cancelled: "cancelled" };
+// pob-005 (D4/D5): what moved a contact's status
+const STATUS_CAUSE: Record<string, string> = {
+  call: "After a call", message: "After a message", share: "After a profile share", interview: "After an interview invite", reply: "After a reply",
+  meeting: "After a meeting was scheduled", manual: "Changed by hand",
+};
 const ASSIGNMENT_REASON: Record<string, string> = { create: "When the candidate was added", reassign: "Team reassignment", route: "Automatic routing" }; // hrc-024
 
 /** hrc-016: an ownership change (hrc-012's history) -- who held it before and who holds it now. */
@@ -99,6 +105,12 @@ export function timelineEntry(row: RecTimelineRow): TimelineEntry {
         title: email ? EMAIL_TITLE[row.status ?? "queued"] ?? "Email" : "WhatsApp sent",
         meta: compact([row.to_label && `To ${row.to_label}`, row.from_value || "Custom message", email && row.subject && `Subject: ${row.subject}`]) };
     }
+    case "message_reply":
+      return { ...base, badge: "Reply", tone: TONE.contact, title: `${row.event === "email" ? "Email" : "WhatsApp"} reply received`,
+        meta: compact([row.to_label && `From ${row.to_label}`, row.subject && `Subject: ${row.subject}`]) };
+    case "contact_status":
+      return { ...base, badge: "Status", tone: row.to_value === "do_not_contact" || row.to_value === "not_interested" ? TONE.stop : TONE.stage,
+        title: `Status: ${move(row)}`, meta: compact([STATUS_CAUSE[row.event ?? ""]]) };
     case "meeting": {
       const open = row.event === "scheduled" || row.event === "rescheduled";
       return { ...base, badge: "Meeting", tone: row.event === "cancelled" ? TONE.stop : TONE.plan,

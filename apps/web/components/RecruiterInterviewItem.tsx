@@ -374,6 +374,14 @@ export default function RecruiterInterviewItem({ interview: given, card = false,
         <span className="badge">{i.status_label}</span>
       </div>
       {cancelled && i.cancel_reason && <p style={{ margin: 0, ...TEXT }}><strong>Cancelled — {i.cancel_reason}</strong></p>}
+      {/* hrc-030 (DEC-SCOPE-409 R10): whether the candidate has been told the decision */}
+      {i.result_release && (
+        <p style={{ margin: 0, ...TEXT }}>
+          Result for the candidate: <strong>{i.result_release.outcome_label}</strong> — {i.result_release.state === "released"
+            ? `published${i.result_release.release_mode === "auto" ? " automatically" : ""}${i.result_release.released_at ? ` on ${formatSchoolDateTime(i.result_release.released_at)}` : ""}`
+            : "waiting for approval before the candidate sees it"}
+        </p>
+      )}
       <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: "4px 16px", margin: 0 }}>
         {facts.map(([term, value]) => (
           <div key={term}>

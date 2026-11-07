@@ -1029,6 +1029,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** large. **Risk:** high.
 
 #### hrc-030: Result approval and release
+- **Status:** built as `DEC-SCOPE-409` (migration `0289_interview_results`, API §12LC, RBAC §2.302; R1–R13 are the builder's calls
+  answering Q-30, `NEEDS_CONFIRMATION`: a global auto-release switch, no withdrawal after release); design
+  `docs/superpowers/specs/2026-11-05-hrc-030-result-release-design.md`.
 - **Business requirement:** §9 "publish only after release conditions"; §10.2 "Release results automatically only if configured; otherwise require approval and a Publish Result action"; §13 "Feedback submitted → approval queue; Result approved → publish + notify"; §17 QA "results remain hidden until … release … appear only in the correct candidate account".
 - **Existing behavior:** a feedback decision moves the application immediately (`interviews.py:269`), and the legacy `result` is visible (hrc-001 hides it).
 - **Expected behavior:**
@@ -1058,6 +1061,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** high.
 
 #### hrc-031: Candidate portal completion (My Results, Documents, Notifications, Privacy)
+- **Status:** built as `DEC-SCOPE-412` (no migration, API §12LF, RBAC §2.305; P1–P10 are the builder's calls, `NEEDS_CONFIRMATION`); design
+  `docs/superpowers/specs/2026-11-06-hrc-031-candidate-portal-completion-design.md`.
 - **Business requirement:** §11 portal table; §15 own records only.
 - **Existing behavior:** the IT student portal has profile, jobs, applications, interviews, offers and notifications. Results, requested documents and privacy are missing. External candidates have no portal.
 - **Expected behavior:**
@@ -1087,6 +1092,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 ### Phase 5: Automation and reporting (PDF Phase 5)
 
 #### hrc-032: Recruitment notification rules and delivery exceptions
+- **Status:** built as `DEC-SCOPE-413` (migration `0291_recruitment_notices`, API §12LG, RBAC §2.306); design
+  `docs/superpowers/specs/2026-11-06-hrc-032-recruitment-notifications-design.md`. N1–N12 are the builder's calls (`NEEDS_CONFIRMATION`), notably a
+  24-hour feedback grace period and fixed-text stage and result notices.
 - **Business requirement:** §12 notify owners; §13 trigger table; §10.2 "Record notification delivery status and provide a retry mechanism"; §16 "integration logs and retry queues"; §17 QA "Failed … notifications are visible and retryable".
 - **Existing behavior:**
   - **Built:** interview booked/rescheduled notices, offer notices, delivery rows with automatic retry (4 attempts, 5-minute sweeps).
@@ -1117,6 +1125,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** low.
 
 #### hrc-033: Operational recruitment dashboards
+- **Status:** built as `DEC-SCOPE-415` (migration `0295_recruitment_report_grants`, a seed only; API §12LI; RBAC §2.308; D1–D10 are the builder's calls,
+  `NEEDS_CONFIRMATION`; branch is not a working filter, Q-04); design `docs/superpowers/specs/2026-11-06-hrc-033-operational-recruitment-dashboards-design.md`.
 - **Business requirement:** §14 recruitment funnel, vacancy dashboard, recruiter dashboard, placement officer dashboard, interview dashboard.
 - **Existing behavior:**
   - **Built:** recruiter tiles and performance (with export), the management recruitment pipeline, and interview views (upcoming, awaiting update, on hold, closed).
@@ -1139,6 +1149,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** low.
 
 #### hrc-034: Skill demand, portal analytics and data-quality dashboards
+- **Status:** built as `DEC-SCOPE-416` (migration `0294_portal_events`, API §12LJ, RBAC §2.309; I1–I6 are the builder's calls, `NEEDS_CONFIRMATION`); design
+  `docs/superpowers/specs/2026-11-06-hrc-034-recruitment-insights-design.md`.
 - **Business requirement:** §14 skill demand, candidate portal analytics, data-quality dashboard; §16 "integration logs"; §17 QA "Failed imports, synchronisation events and notifications are visible and retryable".
 - **Existing behavior:** none of the three exist. There is only the candidate `/duplicate-check`.
 - **Expected behavior:**
@@ -1411,7 +1423,7 @@ That is about 29 migrations. With the 24 in the IT Counselor backlog, about 53 r
 | Q-28 | Stage catalogue: which stages are stored and which derived from interviews/offers; receipt for recruiter-created applications? | 026 |
 | Q-29 | Auto-create Google/Zoho meetings for interviews, or paste links? | 028 |
 | Q-30 | Can a released result be withdrawn? | 030 |
-| Q-31 | Retention periods (DPDP), anonymisation rules, portal-event rollup; shared with itc-033 | 034, 035 |
+| Q-31 | Retention periods (DPDP), anonymisation rules, portal-event rollup; shared with itc-033. hrc-034 deletes events after 400 days with no rollup (`NEEDS_CONFIRMATION`) | 034, 035 |
 
 ---
 
@@ -1459,4 +1471,10 @@ Field-level coverage:
 | Ageing vacancy (hrc-033) | An open job with `today − opened_on` > N days, banded 0–15/16–30/31–60/60+ |
 | Funnel stage counts (hrc-033) | Distinct candidates per cohort (registration month) who reached each stage, from history tables |
 | Vacancies with insufficient candidates (hrc-034) | Open jobs with fewer than N candidates passing the hard filters |
+| Skill demand and supply (hrc-034) | Demand: distinct open jobs listing a Skills-Master skill. Supply: distinct active pool candidates holding it directly |
+| Portal funnel (hrc-034) | Distinct people per `portal_events` kind in the period; drop-off is the previous step minus this one |
+| Incomplete profile (hrc-034) | An active pool candidate under 60% profile completeness |
+| Job missing fields (hrc-034) | An open job without a required skill, description, on-site location, qualification, minimum experience, employment type or vacancies |
 | Results awaiting approval (hrc-033) | Result records in `pending_approval` |
+| Vacancy opened on (hrc-033, as built) | `requirement_date`, else the IST date of `created_at`; `Job` has no `opened_on` |
+| Funnel stage reached (hrc-033, as built) | An application now in, or ever moved into, that stage or a later one, so stages are monotonic |

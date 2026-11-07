@@ -47,7 +47,7 @@ def test_models_match_the_migration():
     from app.models import REC_EMAIL_KINDS, REC_WHATSAPP_KINDS, RECRUITER_MESSAGE_CHECKS, RECRUITER_TEMPLATE_CHECKS, RecruiterMessage, RecruiterMessageTemplate
 
     assert (_migration.WHATSAPP_KINDS, _migration.EMAIL_KINDS) == (REC_WHATSAPP_KINDS, REC_EMAIL_KINDS)
-    # pob-023's 0286 revised the template checks (G1-G5); test_pob_023_migration pins those, 0120's stay as they were
+    # pob-023's 0297 revised the template checks (G1-G5); test_pob_023_migration pins those, 0120's stay as they were
     assert {k: v for k, v in _migration.TEMPLATE_CHECKS.items() if k == "ck_recruiter_message_templates_subject"} == {
         "ck_recruiter_message_templates_subject": RECRUITER_TEMPLATE_CHECKS["ck_recruiter_message_templates_subject"]
     }

@@ -21,6 +21,10 @@ from app.models import (
     Job,
     JobApplication,
     JobOffer,
+    ScreeningAnswer,
+    ScreeningForm,
+    ScreeningFormQuestion,
+    ScreeningSession,
     Skill,
     SkillCategory,
     UserPermissionOverride,
@@ -212,11 +216,16 @@ async def _student_world(client, db):
     interview = await add(db, Interview(application_id=application.id, scheduled_at=datetime.now(UTC) - timedelta(days=1), mode="Online", result=SENTINEL_RESULT, status="selected", round="final_round"))
     await add(db, InterviewFeedback(interview_id=interview.id, recorded_by_user_id=rec.id, overall_rating=4, recruiter_comments=SENTINEL_TEXT, strengths=SENTINEL_TEXT, final_decision="selected"))
     await add(db, ApplicationScreening(application_id=application.id, screened_by_user_id=rec.id, expected_salary=SALARY, remarks=SENTINEL_TEXT, result="shortlisted"))
+    # pob-020: a screening session's notes, answer and salary answer must stay as private as the checklist
+    form = await add(db, ScreeningForm(job_id=application.job_id, name=SENTINEL_TEXT))
+    question = await add(db, ScreeningFormQuestion(form_id=form.id, version=1, position=1, category="compensation", question=SENTINEL_TEXT, format="text"))
+    session = await add(db, ScreeningSession(application_id=application.id, kind="form", form_id=form.id, form_version=1, screened_by_user_id=rec.id, notes=SENTINEL_TEXT, recommendation="pass"))
+    await add(db, ScreeningAnswer(session_id=session.id, form_question_id=question.id, answer=SENTINEL_TEXT, score=5))
     await db.commit()
     return world, application, interview
 
 
-FORBIDDEN_KEYS = {"result", "feedback", "feedbacks", "screening", "remarks", "recruiter_comments", "strengths", "weaknesses", "final_decision", "current_salary", "expected_salary", "notes"}
+FORBIDDEN_KEYS = {"result", "feedback", "feedbacks", "screening", "remarks", "recruiter_comments", "strengths", "weaknesses", "final_decision", "current_salary", "expected_salary", "notes", "scorecard", "recommendation", "sessions", "answers"}
 
 
 def _keys(value) -> set[str]:

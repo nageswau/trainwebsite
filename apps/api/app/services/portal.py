@@ -71,6 +71,7 @@ from app.services import (
     document_access,
     fee_accounts,
     hr_students,
+    interview_results,
     it_student_counselors,
     job_visibility,
     permissions,
@@ -120,8 +121,9 @@ _Reviewer = aliased(User)  # ccrm-021 S5: the document queue names who reviewed 
 _SETUP_LABEL = {"active": "Password set", "pending_setup": "Awaiting setup", "link_expired": "Link expired"}
 
 
-def _student_interview(i: Interview, job: Job, company: Company) -> dict:
-    """hrc-028 (DEC-SCOPE-400 I7): one row of the student's interview schedule. `details` never carries a link."""
+def _student_interview(i: Interview, job: Job, company: Company, released: str | None) -> dict:
+    """hrc-028 (DEC-SCOPE-400 I7): one row of the student's interview schedule. `details` never carries a link. hrc-030 (R9): a decision
+    reads Completed until its result is published (`released` = the published outcome label)."""
     cancelled = i.status == "cancelled"
     facts = (("Platform", interview_svc.PLATFORM_LABELS.get(i.platform or "")), ("Location", i.location), ("Phone", i.phone_details),
              ("Instructions", i.instructions), ("Documents to bring", i.documents_required))  # fmt: skip
@@ -130,8 +132,85 @@ def _student_interview(i: Interview, job: Job, company: Company) -> dict:
         "id": i.id, "title": f"meeting link for {job.title}",  # the link cell's accessible name ("Open meeting link for ...")
         "round": interview_svc.round_text(i), "role": job.title, "company": company.name, "when": interview_svc.local_when(i), "mode": i.mode,
         "link": None if cancelled else i.meeting_url, "details": " · ".join(f"{label}: {value}" for label, value in facts if value) or None,
-        "status": f"Cancelled — {i.cancel_reason}" if cancelled else interview_svc.status_label(status),
+        "status": f"Cancelled — {i.cancel_reason}" if cancelled else (released or interview_svc.status_label(status)),
     }
+
+
+# hrc-031 (DEC-SCOPE-412 P1-P3): the applications table both portals show, in the candidate's words.
+APPLICATION_COLUMNS = (("code", "Application ID"), ("role", "Role"), ("company", "Company"), ("location", "Location"), ("status", "Status"),
+                       ("applied_on", "Applied on"), ("next_action", "Next action"))  # fmt: skip
+NO_ACTION = "No action needed"
+AWAIT_INTERVIEW = "Wait for the next update on your interview"
+AWAIT_OFFER = "Wait for your offer"
+REVIEW_OFFER = "Review your offer under My offers"
+OPEN_OFFERS = ("offer_pending", "offer_received")
+NOTIFICATION_PREFERENCES = {"label": "Notification preferences", "href": "/account/profile"}
+STACKED = {"stack": True}  # QA-04: on a phone each row is labelled lines, so Next action and Status never sit off the screen
+
+
+def next_action(stage: str, upcoming: str | None, has_offer: bool) -> str:
+    """P2: derived only from what the candidate may already see -- `stage` is `candidate_status`, which an unreleased decision never moves."""
+    if stage in ("rejected", "withdrawn", "joined"):
+        return NO_ACTION
+    if upcoming:
+        return f"Attend your interview: {upcoming}"
+    if has_offer:
+        return REVIEW_OFFER
+    return {"interview": AWAIT_INTERVIEW, "selected": AWAIT_OFFER}.get(stage, NO_ACTION)
+
+
+async def _application_rows(db: AsyncSession, user: User) -> list[dict]:
+    """The caller's own applications, newest first, in three queries however many there are."""
+    rows = (
+        await db.execute(
+            select(JobApplication, Job, Company)
+            .join(Job, Job.id == JobApplication.job_id)
+            .join(Company, Company.id == Job.company_id)
+            .where(JobApplication.student_id == user.id)
+            .order_by(JobApplication.created_at.desc())
+        )
+    ).all()
+    mine = select(JobApplication.id).where(JobApplication.student_id == user.id)
+    latest_first = select(Interview).where(Interview.application_id.in_(mine), Interview.status.in_(interview_svc.OPEN), Interview.scheduled_at >= datetime.now(UTC)).order_by(Interview.scheduled_at.desc())
+    upcoming = {i.application_id: i for i in await db.scalars(latest_first)}  # the last one kept per application is its soonest
+    offered = set(await db.scalars(select(JobOffer.application_id).where(JobOffer.application_id.in_(mine), JobOffer.status.in_(OPEN_OFFERS))))
+    return [
+        {
+            # hrc-026 (A4): the stage the candidate sees, in the candidate's words -- never an internal stage or a rejection reason
+            "code": a.application_code, "role": j.title, "company": c.name, "location": j.location, "status": job_applications.candidate_label(a.candidate_status),
+            "applied_on": f"{today_ist(a.created_at):%d %b %Y}",
+            "next_action": next_action(a.candidate_status, interview_svc.local_when(upcoming[a.id]) if a.id in upcoming else None, a.id in offered),
+        }
+        for a, j, c in rows
+    ]  # fmt: skip
+
+
+async def my_applications(db: AsyncSession, user: User) -> dict:
+    return _payload("My Applications", "Where each of your applications stands and what happens next.", APPLICATION_COLUMNS, await _application_rows(db, user)) | STACKED
+
+
+async def my_interviews(db: AsyncSession, user: User, subtitle: str = "Your interview appointments.") -> dict:
+    """The caller's own interviews (both portals; hrc-028 I7 / hrc-030 R9 apply through `_student_interview`)."""
+    rows = (
+        await db.execute(
+            select(Interview, Job, Company)
+            .join(JobApplication, JobApplication.id == Interview.application_id)
+            .join(Job, Job.id == JobApplication.job_id)
+            .join(Company, Company.id == Job.company_id)
+            .where(JobApplication.student_id == user.id)
+            .order_by(Interview.scheduled_at)
+        )
+    ).all()
+    released = await interview_results.released_outcomes(db, [i.id for i, _j, _c in rows])
+    return _payload(
+        "Interview Schedule",
+        subtitle,
+        # hrc-001 (DEC-SCOPE-371 H3) / hrc-030 (R9): a decision reads Completed until its result is published. hrc-028 (DEC-SCOPE-400 I7):
+        # the time in the interview's zone, only the current link (none once cancelled -- old links live on staff-only events), the reason.
+        (("round", "Round"), ("role", "Role"), ("company", "Company"), ("when", "When"), ("mode", "Mode"), ("link", "Meeting", "link"),
+         ("details", "Details"), ("status", "Status")),
+        (_student_interview(i, j, c, released.get(i.id)) for i, j, c in rows),
+    ) | STACKED  # fmt: skip
 
 
 def _payload(title, subtitle, columns=(), rows=(), metrics=(), actions=(), panels=()):
@@ -444,7 +523,14 @@ async def _it_student(db: AsyncSession, user: User, section: str):
     if section == "notifications":
         # itc-002 (DEC-SCOPE-336): header only -- PortalPage mounts the shared notification list (GET /workflows/notifications). Not a
         # SECTION_FEATURES entry, so it is never fee-locked.
-        return _payload("Notifications", "Your own notifications. Open one to go to the record it is about.")
+        return _payload("Notifications", "Your own notifications. Open one to go to the record it is about.", actions=(NOTIFICATION_PREFERENCES,))
+    # hrc-031 (DEC-SCOPE-412 P9): header only -- PortalPage mounts the shared cards. Not SECTION_FEATURES entries, so never fee-locked.
+    if section == "results":
+        return _payload("My Results", "Your interview results, once the company has published them.")
+    if section == "documents":
+        return _payload("Documents", "What the placement team asked you for, and the documents you shared.")
+    if section == "privacy":
+        return _payload("Privacy", "Your contact details, what you agreed to, and requests about your data.")
     if section == "fees":
         rows = (await db.scalars(select(Payment).where(Payment.user_id == user.id, Payment.division == "it").order_by(Payment.created_at.desc()))).all()
         return _payload(
@@ -454,25 +540,7 @@ async def _it_student(db: AsyncSession, user: User, section: str):
             ({"id": p.id, "type": p.reference_type, "amount": f"{p.currency} {float(p.amount):,.2f}", "provider": p.provider, "due": p.due_date, "status": p.status} for p in rows),
         )
     if section == "interview-schedule":
-        rows = (
-            await db.execute(
-                select(Interview, Job, Company)
-                .join(JobApplication, JobApplication.id == Interview.application_id)
-                .join(Job, Job.id == JobApplication.job_id)
-                .join(Company, Company.id == Job.company_id)
-                .where(JobApplication.student_id == user.id)
-                .order_by(Interview.scheduled_at)
-            )
-        ).all()
-        return _payload(
-            "Interview Schedule",
-            "Mock and employer interview appointments.",
-            # hrc-001 (DEC-SCOPE-371 H3): a decision reads Completed until hrc-030's release step. hrc-028 (DEC-SCOPE-400 I7): the time in the
-            # interview's zone, only the current link (none once cancelled -- old links live on staff-only events), the reason of a cancel.
-            (("round", "Round"), ("role", "Role"), ("company", "Company"), ("when", "When"), ("mode", "Mode"), ("link", "Meeting", "link"),
-             ("details", "Details"), ("status", "Status")),
-            (_student_interview(i, j, c) for i, j, c in rows),
-        )
+        return await my_interviews(db, user, "Mock and employer interview appointments.")
     if section == "placement-status":
         # rec-022 QA-04: the offers are the "My offers" card (GET /workflows/it/student/offers), with the letter; no text panel here.
         profile = await db.scalar(select(PlacementProfile).where(PlacementProfile.student_id == user.id))
@@ -494,25 +562,15 @@ async def _it_student(db: AsyncSession, user: User, section: str):
             rows,
         )
     if section == "job-applications":
-        rows = (
-            await db.execute(
-                select(JobApplication, Job, Company)
-                .join(Job, Job.id == JobApplication.job_id)
-                .join(Company, Company.id == Job.company_id)
-                .where(JobApplication.student_id == user.id)
-                .order_by(JobApplication.created_at.desc())
-            )
-        ).all()
         seen = await job_visibility.student_filter(db, user)  # hrc-008 (V5); the student's own application rows above are never filtered (V6)
         open_jobs = (await db.execute(select(Job, Company).join(Company, Company.id == Job.company_id).where(Job.status.in_(JOB_OPEN_STATUSES), seen).order_by(Job.created_at.desc()).limit(100))).all()
         return _payload(
             "Job Applications",
             "Applications, interviews, offers, and joining status.",
-            (("code", "Application ID"), ("role", "Role"), ("company", "Company"), ("location", "Location"), ("status", "Status")),
-            # hrc-026 (A4): the stage the candidate sees, in the candidate's words -- never an internal stage or a rejection reason
-            ({"code": a.application_code, "role": j.title, "company": c.name, "location": j.location, "status": job_applications.candidate_label(a.candidate_status)} for a, j, c in rows),
+            APPLICATION_COLUMNS,
+            await _application_rows(db, user),
             panels=({"title": "Open jobs", "items": [f"Job reference {j.id}: {c.name} / {j.title} / {j.location}" for j, c in open_jobs]},),
-        )
+        ) | STACKED
     if section == "downloads":
         resources = (await db.scalars(select(LearningResource).where(LearningResource.batch_id.in_(batch_ids), LearningResource.deleted_at.is_(None)).order_by(LearningResource.sort_order, LearningResource.created_at.desc()))).all() if batch_ids else []
         return _payload(
