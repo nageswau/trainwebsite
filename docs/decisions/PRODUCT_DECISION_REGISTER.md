@@ -12217,6 +12217,20 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0294_portal_events`; API §12LJ; RBAC §2.309.
 - **Feature ID authorized:** `hrc-034`. **Status:** built on `worktree-hrc-034`.
 
+### DEC-SCOPE-417 — BD pipeline stages, client status and loss/inactive reasons (`pob-004`)
+
+- **Date:** 2026-11-07. **Classification:** builder's calls D1-D11 and the Q-04 answer (`NEEDS_CONFIRMATION`); the source is the `UNVERIFIED` requirements draft.
+- **Spec:** `docs/superpowers/specs/2026-11-06-pob-004-bd-pipeline-stages-design.md`. **Migration:** `0303_company_bd_stages`.
+- **Decided (D1-D11):**
+  - D1: three new stored stages (`research_completed`, `hr_contact_identified`, `vendor_registration`) and the spec's display labels (Target Identified, Outreach Sent, Meeting Booked, Vendor Registration / Agreement); no existing key changes.
+  - D2: Active Client and Repeat Business are `companies.client_status`, forward-only, beside the stage, so rec-005's requirement-driven moves keep firing.
+  - D3/D7/D9: Inactive is a flag like Lost (stage kept); marked with a catalogue reason by `can_edit` holders; reopened only by a placement manager or super_admin.
+  - D4: automatic moves fire once: a contact with a role -> HR Contact Identified; a **client-side** contract at Contract Sent/Signed/Active -> Vendor Registration (pob-010 vendor agreements do not drive it); first requirement received or a signed client contract -> Active Client; a requirement received after a joining on another -> Repeat Business.
+  - D5/D6: two rec-002 managed lists (lost, inactive reasons); `POST .../lost` now takes `{reason_id, note?}` and the reason text is snapshotted.
+  - D8: a daily sweep flags client companies with no activity for 182 days and no live work, idempotently.
+  - D10/D11: Inactive is out of every active count (board, rec-032, rec-035, management); Follow-up Due stays a derived badge and board filter.
+- **Not built:** pob-010's registration trigger beyond the contract status, and reports/targets (pob-009).
+
 ### DEC-SCOPE-418 — Company and contact import, and authorised merge (`pob-006`)
 
 - **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-006` (§3.2 "through an approved data import"; §3.3 "Prevent duplicate companies and contacts where

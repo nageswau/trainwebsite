@@ -175,6 +175,25 @@ async def test_a_contract_created_as_sent_moves_too(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_a_vendor_side_agreement_never_moves_the_client_pipeline(client, db_session):
+    """pob-010 V10: a `vendor_client` company's vendor agreement is not the client journey; its client contract still is."""
+    await _team(client, db_session)
+    response = await client.post(BASE, json={"name": f"BD {uuid.uuid4().hex[:10]} Ltd", "partner_type": "vendor_client", "vendor_locations": ["Goa"]})
+    assert response.status_code == 201, response.text
+    company = response.json()["company"]
+    vendor = await client.post(f"{BASE}/{company['id']}/contracts?party=vendor", json={"status": "discussion"})
+    assert vendor.status_code == 201, vendor.text
+    for before, status in (("discussion", "proposal_sent"), ("proposal_sent", "contract_sent")):
+        changed = await client.patch(f"{BASE}/{company['id']}/contracts?party=vendor", json={"from_status": before, "status": status})
+        assert changed.status_code == 200, changed.text
+    detail = await _detail(client, company["id"])
+    assert detail["stage"] == "new_lead" and detail["client_status"] == "prospect"
+    assert await _history(db_session, company["id"]) == []
+    assert (await client.post(f"{BASE}/{company['id']}/contracts?party=client", json={"status": "contract_sent"})).status_code == 201
+    assert (await _detail(client, company["id"]))["stage"] == "vendor_registration"
+
+
+@pytest.mark.asyncio
 async def test_a_signed_contract_makes_an_active_client(client, db_session):
     await _team(client, db_session)
     company = await _company(client)

@@ -80,7 +80,7 @@ async def test_recruiter_moves_forward_and_history_records_it(client, db_session
     response = await _move(client, company["id"], "new_lead", "contacted")
     assert response.status_code == 200, response.text
     p = response.json()["company"]["pipeline"]
-    assert p["stage"] == "contacted" and [s["state"] for s in p["steps"][:3]] == ["done", "current", "upcoming"]
+    assert p["stage"] == "contacted" and [s["state"] for s in p["steps"][:5]] == ["done", "done", "done", "current", "upcoming"]  # pob-004: research and HR contact sit before
     [row] = await _history(db_session, company["id"])
     assert (row.from_stage, row.to_stage, row.event, row.actor_user_id, row.reason) == ("new_lead", "contacted", "manual", recruiter.id, None)
     audit = await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == company["id"], AuditLog.action == "recruiter_company.stage_changed"))

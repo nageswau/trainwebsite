@@ -37,7 +37,7 @@ as filter tiles beside the stages.
   sets one). The contact-role catalogue is the HR-contact list by origin (its seeds are HR Manager, HR Head, Talent Acquisition, Recruiter, Hiring
   Manager), so any role counts; matching names would break on a manager's own wording.
 - `call_logged` now fires from every stage before `contacted`, so the new stages cannot strand a company.
-- `contract_registration` → `vendor_registration`, from any earlier stage, when the contract reaches `contract_sent`, `signed` or `active`. The
+- `contract_registration` → `vendor_registration`, from any earlier stage, when the **client-side** contract (pob-010 V8: a vendor agreement never counts) reaches `contract_sent`, `signed` or `active`. The
   contract has no "registration" status: `contract_sent` is the closest (pob-010 can add a trigger later).
 - `active_client`: the first requirement reaching Requirement Received, or a contract reaching `signed`/`active`.
 - `repeat_business`: a requirement reaching Requirement Received when **another** requirement of the company has a joined offer.

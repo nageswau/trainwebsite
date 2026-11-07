@@ -21,21 +21,22 @@ test("a recruiter moves and loses a company; the manager reopens it", async ({ p
   await page.waitForURL(/\/recruiter\/companies\/[0-9a-f-]{36}$/);
   const detailUrl = page.url();
   const pipeline = page.getByRole("region", { name: "Pipeline" });
-  await expect(pipeline.locator("li[aria-current='step']")).toContainText("New Lead");
+  await expect(pipeline.locator("li[aria-current='step']")).toContainText("Target Identified");
 
-  await pipeline.getByLabel("Move to").selectOption({ label: "Meeting Scheduled" });
+  await pipeline.getByLabel("Move to").selectOption({ label: "Meeting Booked" });
   await pipeline.getByRole("button", { name: "Move" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Moved to Meeting Scheduled." })).toBeVisible();
-  await pipeline.getByLabel("Move to").selectOption({ label: "Contacted" });
+  await expect(page.getByRole("status").filter({ hasText: "Moved to Meeting Booked." })).toBeVisible();
+  await pipeline.getByLabel("Move to").selectOption({ label: "Outreach Sent" });
   await pipeline.getByLabel("Reason (required when moving back)").fill("Wrong contact");
   await pipeline.getByRole("button", { name: "Move" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Moved to Contacted." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Moved to Outreach Sent." })).toBeVisible();
   const history = page.getByRole("region", { name: "Stage history" });
-  await expect(history).toContainText("Meeting Scheduled → Contacted");
+  await expect(history).toContainText("Meeting Booked → Outreach Sent");
   await expect(history).toContainText("Note: Wrong contact");
 
   await page.getByRole("button", { name: "Mark lost" }).click();
-  await pipeline.getByLabel("Reason").fill("Hiring freeze");
+  await pipeline.getByLabel("Reason", { exact: true }).selectOption({ index: 1 }); // pob-004 D6: a catalogue reason
+  await pipeline.getByLabel("Note (optional)").fill("Hiring freeze");
   await page.getByRole("button", { name: "Yes, mark lost" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Marked lost." })).toBeVisible();
   await expect(page.getByRole("button", { name: "Reopen" })).toHaveCount(0);
@@ -49,7 +50,7 @@ test("a recruiter moves and loses a company; the manager reopens it", async ({ p
   await page.getByRole("region", { name: "Pipeline" }).getByLabel("Reason").fill("Freeze lifted");
   await page.getByRole("button", { name: "Yes, reopen" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Reopened." })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Stage history" })).toContainText("Reopened at Contacted");
+  await expect(page.getByRole("region", { name: "Stage history" })).toContainText("Reopened at Outreach Sent");
   await page.goto("/recruiter/pipeline?stage=contacted");
   await expect(page.getByRole("link", { name })).toBeVisible();
 });
