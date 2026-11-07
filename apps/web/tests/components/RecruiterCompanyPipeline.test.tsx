@@ -16,7 +16,8 @@ const STAGES: [string, string, "start" | "manual" | "driven"][] = [
 function pipeline(stage: string, extra: Partial<Pipeline> = {}): Pipeline {
   const at = STAGES.findIndex(([k]) => k === stage);
   return {
-    stage, stage_label: STAGES[at][1], stage_changed_at: "2026-10-08T10:00:00Z", lost: null, can_move: true, can_reopen: false,
+    stage, stage_label: STAGES[at][1], stage_changed_at: "2026-10-08T10:00:00Z", lost: null, inactive: null, client_status: "prospect", client_status_label: "Prospect", follow_up_due: false,
+    can_move: true, can_reopen: false,
     steps: STAGES.map(([key, label, kind], i) => ({ key, label, kind, state: i < at ? "done" : i === at ? "current" : "upcoming" })),
     ...extra,
   };
@@ -109,8 +110,8 @@ describe("RecruiterStageHistory", () => {
 
 describe("RecruiterPipelineBoard", () => {
   const view: BoardView = {
-    stages: STAGES.map(([key, label, kind]) => ({ key, label, kind, count: key === "contacted" ? 2 : 0 })), lost_count: 1,
-    items: [{ id: "c1", code: "CMP-000007", name: "ABC", city: "Pune", priority: "hot", assigned_recruiter: null, stage: "contacted", stage_label: "Contacted", lost: false }],
+    stages: STAGES.map(([key, label, kind]) => ({ key, label, kind, count: key === "contacted" ? 2 : 0 })), buckets: [{ key: "lost", label: "Lost", count: 1 }], lost_count: 1,
+    items: [{ id: "c1", code: "CMP-000007", name: "ABC", city: "Pune", priority: "hot", assigned_recruiter: null, stage: "contacted", stage_label: "Contacted", lost: false, inactive: false, client_status: "prospect", client_status_label: "Prospect", follow_up_due: false }],
     total: 1, limit: 50, offset: 0,
   };
   it("renders a tile per stage plus Lost, and the companies as links", () => {

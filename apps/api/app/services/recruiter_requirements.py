@@ -266,6 +266,8 @@ async def drive_company_stage(db: AsyncSession, user: User | None, job: Job) -> 
         if live:
             return
     await company_pipeline.apply_event(db, company, event, user)
+    if event == "requirement_received":  # pob-004 D4
+        await company_pipeline.requirement_received(db, company, job, user)
 
 
 # --- skills (J7) --------------------------------------------------------------------------------------------------------------------

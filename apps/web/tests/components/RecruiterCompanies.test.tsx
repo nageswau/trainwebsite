@@ -22,7 +22,7 @@ const company: Company = {
   ...(row as Company), website: "https://abc.example.com", linkedin_url: "javascript:alert(1)", company_size: null, employee_count: 250, state: "MH",
   country: "India", head_office: null, branches: "Mumbai\nDelhi", description: null, campaign: null, assigned_bdm: null, owner_type: "internal",
   created_by: priya, assignment_history: [], archived_at: null,
-  pipeline: { stage: "new_lead", stage_label: "New Lead", stage_changed_at: "2026-10-08T10:00:00Z", lost: null, can_move: false, can_reopen: false, steps: [{ key: "new_lead", label: "New Lead", kind: "start", state: "current" }] }, created_at: "2026-10-08T10:00:00Z", updated_at: "2026-10-08T10:00:00Z",
+  pipeline: { stage: "new_lead", stage_label: "New Lead", stage_changed_at: "2026-10-08T10:00:00Z", lost: null, inactive: null, client_status: "prospect", client_status_label: "Prospect", follow_up_due: false, can_move: false, can_reopen: false, steps: [{ key: "new_lead", label: "New Lead", kind: "start", state: "current" }] }, created_at: "2026-10-08T10:00:00Z", updated_at: "2026-10-08T10:00:00Z",
 };
 
 type Call = { url: string; init?: RequestInit };

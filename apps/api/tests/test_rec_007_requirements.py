@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import select
 
 from app.models import AuditLog, Company, CompanyStageHistory, Job, JobSkill, JobStatusHistory, RecJobCategory, Skill, SkillAlias, SkillCategory
+from app.recruiter_stages import CLIENT_ORDER
 from app.services.recruiter_requirements import ist_today
 from tests.hrc007_helpers import employer_self_publish  # noqa: F401 -- a fixture
 from tests.rec001_helpers import as_role, login, make_pm, make_recruiter, make_user
@@ -270,7 +271,8 @@ async def test_the_workflows_patch_validates_statuses(client, db_session):
 # --- the company stage (AC2; rec-005's EVENTS: rec-007 fires requirement_received / requirement_closed) -------------------------
 async def _stage(db, company_id):
     company = await db.scalar(select(Company).where(Company.id == company_id).execution_options(populate_existing=True))
-    events = (await db.scalars(select(CompanyStageHistory.event).where(CompanyStageHistory.company_id == company_id).order_by(CompanyStageHistory.created_at))).all()
+    stage_rows = [CompanyStageHistory.company_id == company_id, CompanyStageHistory.event.not_in(CLIENT_ORDER)]  # pob-004 D2: client-status rows sit beside
+    events = (await db.scalars(select(CompanyStageHistory.event).where(*stage_rows).order_by(CompanyStageHistory.created_at))).all()
     return company.stage, list(events)
 
 

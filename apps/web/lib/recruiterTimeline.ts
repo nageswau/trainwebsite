@@ -69,6 +69,9 @@ function profileTitle(row: RecTimelineRow): string {
 
 function stageTitle(row: RecTimelineRow): string {
   if (row.event === "lost") return "Marked Lost";
+  if (row.event === "inactive") return "Marked Inactive";
+  if (row.event === "active_client") return "Became an Active Client";
+  if (row.event === "repeat_business") return "Became Repeat Business";
   if (row.event === "reopen") return `Reopened at ${row.to_label}`;
   return `Stage: ${move(row)}`;
 }

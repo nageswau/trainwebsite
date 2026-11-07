@@ -13,6 +13,7 @@ export type CompanyRow = {
   id: string; code: string; name: string; city: string | null; priority: Priority | null; industry: Ref | null; lead_source: Ref | null;
   assigned_recruiter: Person | null; archived: boolean; permissions: CompanyPermissions;
   stage: string; stage_label: string; lost: boolean; // rec-005: the lead's Status
+  inactive?: boolean; // pob-004 D3
   next_follow_up_at?: string | null; // rec-024 FU9: the earliest open follow-up (derived)
   last_contacted_at?: string | null; // pob-003 D4: the latest call, message or completed meeting
   partner_type?: PartnerType | "employer"; vendor_status?: string | null; vendor_status_label?: string | null; // pob-010

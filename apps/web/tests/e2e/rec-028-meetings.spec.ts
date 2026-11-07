@@ -37,7 +37,7 @@ test("meetings on a company: schedule with two contacts moves the stage, Upcomin
   await page.reload();
 
   const pipeline = page.getByRole("region", { name: /pipeline/i }).first();
-  await expect(pipeline).toContainText("New Lead");
+  await expect(pipeline).toContainText("Target Identified");
   const section = page.getByRole("region", { name: "Meetings" });
   await expect(section.getByText("No meetings yet.")).toBeVisible();
 
@@ -58,8 +58,8 @@ test("meetings on a company: schedule with two contacts moves the stage, Upcomin
   await expect(item).toContainText("Priya Sharma, Ravi Kumar");
   await expect(item.getByRole("link", { name: /Meeting link/ })).toHaveAttribute("href", "https://meet.example.com/rec028");
 
-  // AC1: the company moved to Meeting Scheduled.
-  await expect(page.locator("body")).toContainText("Meeting Scheduled");
+  // AC1: the company moved to Meeting Booked.
+  await expect(page.locator("body")).toContainText("Meeting Booked");
   await expect.poll(async () => (await (await page.request.get(`/api/v1/recruiter/companies/${companyId}`)).json()).company.stage).toBe("meeting_scheduled");
 
   // Edge case: rescheduling keeps the history.

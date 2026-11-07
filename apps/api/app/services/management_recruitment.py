@@ -16,10 +16,10 @@ from app.services.bdm_appointments import IST
 from app.services.management_access import OPERATIONAL_ROLES, can_view_finance
 
 ROLES = tuple(OPERATIONAL_ROLES)  # RC2: rec-033/035 read for the Command Center's operational tier
-# RC9: the §21 steps over the rec-005 stages. Requirement Closed is listed apart; Lost is a flag, not a stage.
+# RC9: the §21 steps over the rec-005 stages. Requirement Closed is listed apart; Lost and Inactive are flags, not stages.
 PIPELINE = (
-    ("lead", "Lead", ("new_lead", "contacted", "interested")),
-    ("meeting", "Meeting", ("meeting_scheduled", "requirement_discussion")),
+    ("lead", "Lead", ("new_lead", "research_completed", "hr_contact_identified", "contacted", "interested")),
+    ("meeting", "Meeting", ("meeting_scheduled", "requirement_discussion", "vendor_registration")),
     ("requirement", "Requirement", ("requirement_received", "jd_received")),
     ("candidate", "Candidate", ("candidates_sourcing", "profiles_shared")),
     ("interview", "Interview", ("interview",)),
@@ -33,7 +33,7 @@ async def _counts(db: AsyncSession, start: datetime, end: datetime) -> dict:
     crossed = recruiter_metrics.first_past_interested()
     open_job = Job.status.not_in(recruiter_metrics.PARKED_REQUIREMENTS)
     internship = Job.employment_type == "internship"
-    live = [Company.archived_at.is_(None), Company.lost_at.is_(None)]
+    live = [Company.archived_at.is_(None), Company.lost_at.is_(None), Company.inactive_at.is_(None)]
 
     def count(*where):
         return select(func.count()).where(*where).scalar_subquery()
@@ -45,6 +45,7 @@ async def _counts(db: AsyncSession, start: datetime, end: datetime) -> dict:
         "internship_openings": count(open_job, internship),
         "requirement_closed": count(*live, Company.stage == "requirement_closed"),
         "lost": count(Company.archived_at.is_(None), Company.lost_at.is_not(None)),
+        "inactive": count(Company.archived_at.is_(None), Company.inactive_at.is_not(None)),
         **{key: count(*live, Company.stage.in_(stages)) for key, _, stages in PIPELINE},
     }
     row = (await db.execute(select(*(value.label(key) for key, value in figures.items())))).one()
@@ -82,4 +83,5 @@ async def dashboard(db: AsyncSession, user: User, date_from: date | None, date_t
         "pipeline": [{"key": key, "label": label, "value": counts[key]} for key, label, _ in PIPELINE],
         "requirement_closed": counts["requirement_closed"],
         "lost": counts["lost"],
+        "inactive": counts["inactive"],
     }

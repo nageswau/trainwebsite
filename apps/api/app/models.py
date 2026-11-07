@@ -63,6 +63,8 @@ from app.partnership_task_rules import KINDS as PARTNERSHIP_TASK_KINDS
 from app.partnership_task_rules import PRIORITIES as PARTNERSHIP_TASK_PRIORITIES
 from app.partnership_task_rules import SOURCES as PARTNERSHIP_TASK_SOURCES
 from app.partnership_task_rules import STATUSES as PARTNERSHIP_TASK_STATUSES
+from app.recruiter_stages import CLIENT_ORDER as COMPANY_CLIENT_STATUSES
+from app.recruiter_stages import FIRST_CLIENT_STATUS as COMPANY_FIRST_CLIENT_STATUS
 from app.recruiter_stages import FIRST_STAGE as COMPANY_FIRST_STAGE
 from app.recruiter_stages import ORDER as COMPANY_STAGES
 from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
@@ -683,6 +685,8 @@ COMPANY_VENDOR_CHECKS = {
 COMPANY_PIPELINE_CHECKS = {
     "ck_companies_stage": "stage IN (" + ", ".join(f"'{s}'" for s in COMPANY_STAGES) + ")",
     "ck_companies_lost": "(lost_at IS NULL) = (lost_reason IS NULL)",
+    "ck_companies_inactive": "(inactive_at IS NULL) = (inactive_reason IS NULL)",  # pob-004 D3
+    "ck_companies_client_status": "client_status IN (" + ", ".join(f"'{s}'" for s in COMPANY_CLIENT_STATUSES) + ")",  # pob-004 D2
 }
 
 
@@ -739,6 +743,13 @@ class Company(Base, TimestampMixin):
     stage_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     lost_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     lost_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # pob-004 (DEC-SCOPE-417 D2/D3/D6): written only by company_pipeline. `*_reason` is the text as recorded; the id is NULL on a pre-pob-004 Lost
+    # and on the automatic Inactive.
+    lost_reason_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_company_lost_reasons.id", ondelete="RESTRICT"), nullable=True)
+    inactive_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    inactive_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    inactive_reason_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_company_inactive_reasons.id", ondelete="RESTRICT"), nullable=True)
+    client_status: Mapped[str] = mapped_column(String(20), default=COMPANY_FIRST_CLIENT_STATUS, server_default=COMPANY_FIRST_CLIENT_STATUS)
     # pob-003 (DEC-SCOPE-406 D2): business context. The lists are replaced whole by the PATCH; [] when unset.
     products_services: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     departments_hiring: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
@@ -6856,6 +6867,14 @@ class RecCompanySize(_RecCatalogueValue, Base):
     __tablename__ = "rec_company_sizes"  # §3 Company Size; the owner's bands (C2)
 
 
+class RecCompanyLostReason(_RecCatalogueValue, Base):
+    __tablename__ = "rec_company_lost_reasons"  # pob-004 D5
+
+
+class RecCompanyInactiveReason(_RecCatalogueValue, Base):
+    __tablename__ = "rec_company_inactive_reasons"  # pob-004 D5
+
+
 # The URL slug of each simple list (api/recruiter_catalogue.py).
 REC_CATALOGUE_MODELS = {
     "lead-sources": RecLeadSource,
@@ -6864,6 +6883,8 @@ REC_CATALOGUE_MODELS = {
     "job-categories": RecJobCategory,
     "contact-roles": RecContactRole,
     "company-sizes": RecCompanySize,
+    "lost-reasons": RecCompanyLostReason,
+    "inactive-reasons": RecCompanyInactiveReason,
 }
 
 

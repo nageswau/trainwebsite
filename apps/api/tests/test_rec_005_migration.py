@@ -31,7 +31,8 @@ def test_migration_chains_after_0111_and_is_the_single_head():
 
 
 def test_migration_keeps_a_frozen_copy_of_the_catalogue():
-    assert _migration.STAGES == tuple(key for key, _, _ in STAGES)
+    # pob-004's 0296 widened the catalogue and keeps its own copy; this revision's copy is the catalogue less those.
+    assert _migration.STAGES == tuple(key for key, _, _ in STAGES if key not in ("research_completed", "hr_contact_identified", "vendor_registration"))
 
 
 def test_models_match_the_migration():
@@ -44,7 +45,8 @@ def test_models_match_the_migration():
     names = {i.name for i in table.indexes} | {c.name for c in table.constraints}
     assert set(_migration.CHECKS) | {_migration.INDEX} <= names
     for name, sql in _migration.CHECKS.items():
-        assert str(next(c for c in table.constraints if c.name == name).sqltext) == sql
+        if name != "ck_companies_stage":  # pob-004: revised by 0296, which test_pob_004_migration checks
+            assert str(next(c for c in table.constraints if c.name == name).sqltext) == sql
     history = CompanyStageHistory.__table__
     assert {c.name for c in history.columns} == {"id", "company_id", "from_stage", "to_stage", "event", "actor_user_id", "reason", "position", "created_at"}
     assert history.c.actor_user_id.nullable and history.c.reason.nullable

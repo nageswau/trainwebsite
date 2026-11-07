@@ -5,7 +5,7 @@ import uuid
 import pytest
 from sqlalchemy import select
 
-from app.models import AuditLog, Company, CompanyStageHistory
+from app.models import AuditLog, Company, CompanyStageHistory, RecCompanyLostReason
 from app.recruiter_stages import EVENTS, MANUAL, ORDER, STAGES
 from app.services import company_pipeline
 from tests.rec001_helpers import login, make_pm, make_recruiter, make_user
@@ -32,6 +32,12 @@ async def _move(client, company_id, from_stage, to_stage, reason=None):
     return await client.post(f"{BASE}/{company_id}/stage", json=body)
 
 
+async def _reason(db) -> dict:
+    """pob-004: Lost takes a reason from the catalogue."""
+    reason_id = await db.scalar(select(RecCompanyLostReason.id).where(RecCompanyLostReason.active.is_(True)).order_by(RecCompanyLostReason.sort_order).limit(1))
+    return {"reason_id": str(reason_id)}
+
+
 async def _history(db, company_id):
     stmt = select(CompanyStageHistory).where(CompanyStageHistory.company_id == uuid.UUID(company_id)).order_by(CompanyStageHistory.position)
     return (await db.scalars(stmt.execution_options(populate_existing=True))).all()
@@ -42,12 +48,13 @@ async def _locked(db, company_id) -> Company:
 
 
 # --- catalogue (P1) -------------------------------------------------------------------------------------------------------------
-def test_catalogue_is_the_13_source_stages_in_order():
+def test_catalogue_is_the_stages_in_order():
     assert [label for _, label, _ in STAGES] == [
-        "New Lead", "Contacted", "Interested", "Meeting Scheduled", "Requirement Discussion", "Requirement Received", "JD Received",
-        "Candidates Sourcing", "Profiles Shared", "Interview", "Selected", "Joined", "Requirement Closed",
+        "Target Identified", "Research Completed", "HR Contact Identified", "Outreach Sent", "Interested", "Meeting Booked", "Requirement Discussion",
+        "Vendor Registration / Agreement", "Requirement Received", "JD Received", "Candidates Sourcing", "Profiles Shared", "Interview", "Selected", "Joined",
+        "Requirement Closed",
     ]
-    assert MANUAL == ("contacted", "interested", "meeting_scheduled", "requirement_discussion")
+    assert MANUAL == ("research_completed", "hr_contact_identified", "contacted", "interested", "meeting_scheduled", "requirement_discussion", "vendor_registration")
     assert all(to in ORDER and sources <= set(ORDER) for sources, to in EVENTS.values())
 
 
@@ -57,7 +64,7 @@ async def test_new_company_starts_at_new_lead_with_the_stepper(client, db_sessio
     await _team(client, db_session)
     company = await _company(client)
     p = company["pipeline"]
-    assert p["stage"] == "new_lead" and p["stage_label"] == "New Lead" and p["lost"] is None
+    assert p["stage"] == "new_lead" and p["stage_label"] == "Target Identified" and p["lost"] is None
     assert p["can_move"] is True and p["can_reopen"] is False
     assert [s["state"] for s in p["steps"][:3]] == ["current", "upcoming", "upcoming"]
     assert {s["kind"] for s in p["steps"]} == {"start", "manual", "driven"}
@@ -73,7 +80,7 @@ async def test_recruiter_moves_forward_and_history_records_it(client, db_session
     response = await _move(client, company["id"], "new_lead", "contacted")
     assert response.status_code == 200, response.text
     p = response.json()["company"]["pipeline"]
-    assert p["stage"] == "contacted" and [s["state"] for s in p["steps"][:3]] == ["done", "current", "upcoming"]
+    assert p["stage"] == "contacted" and [s["state"] for s in p["steps"][:5]] == ["done", "done", "done", "current", "upcoming"]  # pob-004: research and HR contact sit before
     [row] = await _history(db_session, company["id"])
     assert (row.from_stage, row.to_stage, row.event, row.actor_user_id, row.reason) == ("new_lead", "contacted", "manual", recruiter.id, None)
     audit = await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == company["id"], AuditLog.action == "recruiter_company.stage_changed"))
@@ -97,7 +104,7 @@ async def test_moving_back_needs_a_reason(client, db_session):
 @pytest.mark.parametrize("to_stage, message", [
     ("joined", "This stage moves with the company's requirements"),
     ("requirement_received", "This stage moves with the company's requirements"),
-    ("new_lead", "New Lead is the starting stage"),
+    ("new_lead", "Target Identified is the starting stage"),
     ("won", "Choose a stage of the company pipeline"),
 ])
 async def test_only_manual_stages_can_be_chosen(client, db_session, to_stage, message):
@@ -162,7 +169,7 @@ async def test_out_of_scope_company_is_404(client, db_session):
     await _team(client, db_session)  # another team's recruiter
     assert (await _move(client, company["id"], "new_lead", "contacted")).status_code == 404
     assert (await client.get(f"{BASE}/{company['id']}/stage-history")).status_code == 404
-    assert (await client.post(f"{BASE}/{company['id']}/lost", json={"reason": "x"})).status_code == 404
+    assert (await client.post(f"{BASE}/{company['id']}/lost", json=await _reason(db_session))).status_code == 404
 
 
 @pytest.mark.asyncio
@@ -187,14 +194,14 @@ async def test_lost_needs_a_reason_and_keeps_the_stage(client, db_session):
     manager, recruiter = await _team(client, db_session)
     company = await _company(client)
     await _move(client, company["id"], "new_lead", "interested")
-    for body in ({}, {"reason": "   "}):
+    for body in ({}, {"reason": "Typed"}):
         assert (await client.post(f"{BASE}/{company['id']}/lost", json=body)).status_code == 422
-    response = await client.post(f"{BASE}/{company['id']}/lost", json={"reason": "Chose a competitor"})
+    response = await client.post(f"{BASE}/{company['id']}/lost", json={**await _reason(db_session), "note": "Chose a competitor"})
     assert response.status_code == 200, response.text
     p = response.json()["company"]["pipeline"]
-    assert p["stage"] == "interested" and p["lost"]["reason"] == "Chose a competitor" and p["can_move"] is False
+    assert p["stage"] == "interested" and p["lost"]["reason"].endswith(": Chose a competitor") and p["can_move"] is False
     assert response.json()["company"]["lost"] is True
-    assert (await client.post(f"{BASE}/{company['id']}/lost", json={"reason": "again"})).json()["detail"]["code"] == "company_lost"
+    assert (await client.post(f"{BASE}/{company['id']}/lost", json=await _reason(db_session))).json()["detail"]["code"] == "company_lost"
     moved = await _move(client, company["id"], "interested", "contacted", "r")
     assert moved.status_code == 409 and moved.json()["detail"]["code"] == "company_lost"
     rows = await _history(db_session, company["id"])
@@ -205,7 +212,7 @@ async def test_lost_needs_a_reason_and_keeps_the_stage(client, db_session):
 async def test_only_a_manager_reopens(client, db_session):
     manager, recruiter = await _team(client, db_session)
     company = await _company(client)
-    await client.post(f"{BASE}/{company['id']}/lost", json={"reason": "No budget"})
+    await client.post(f"{BASE}/{company['id']}/lost", json=await _reason(db_session))
     refused = await client.post(f"{BASE}/{company['id']}/reopen", json={"reason": "Budget approved"})
     assert refused.status_code == 403
     await login(client, manager)
@@ -227,7 +234,7 @@ async def test_super_admin_moves_and_reopens(client, db_session):
     company = await _company(client)
     await login(client, await make_user(db_session, "super_admin", "global"))
     assert (await _move(client, company["id"], "new_lead", "contacted")).status_code == 200
-    assert (await client.post(f"{BASE}/{company['id']}/lost", json={"reason": "x"})).status_code == 200
+    assert (await client.post(f"{BASE}/{company['id']}/lost", json=await _reason(db_session))).status_code == 200
     assert (await client.post(f"{BASE}/{company['id']}/reopen", json={"reason": "y"})).status_code == 200
 
 
@@ -274,7 +281,7 @@ async def test_first_call_moves_a_new_lead_to_contacted_only_once(client, db_ses
 async def test_events_leave_a_lost_company_alone(client, db_session):
     await _team(client, db_session)
     company = await _company(client)
-    await client.post(f"{BASE}/{company['id']}/lost", json={"reason": "gone"})
+    await client.post(f"{BASE}/{company['id']}/lost", json=await _reason(db_session))
     locked = await _locked(db_session, company["id"])
     assert await company_pipeline.apply_event(db_session, locked, "requirement_received") is False
     await db_session.commit()
@@ -304,7 +311,7 @@ async def test_stage_history_is_newest_first_with_labels_and_actor(client, db_se
     [newest] = page["items"]
     assert newest["event"] == "requirement_received" and newest["actor"] is None and newest["to_label"] == "Requirement Received"
     older = (await client.get(f"{BASE}/{company['id']}/stage-history?offset=1")).json()["items"][0]
-    assert older["actor"]["id"] == str(recruiter.id) and older["from_label"] == "New Lead"
+    assert older["actor"]["id"] == str(recruiter.id) and older["from_label"] == "Target Identified"
 
 
 # --- board (P7) -----------------------------------------------------------------------------------------------------------------
@@ -313,14 +320,14 @@ async def test_board_counts_and_lists_by_stage_within_scope(client, db_session):
     manager, _ = await _team(client, db_session)
     first, second, lost, archived = [await _company(client) for _ in range(4)]
     await _move(client, first["id"], "new_lead", "contacted")
-    await client.post(f"{BASE}/{lost['id']}/lost", json={"reason": "x"})
+    await client.post(f"{BASE}/{lost['id']}/lost", json=await _reason(db_session))
     await client.post(f"{BASE}/{archived['id']}/archive")
     board = (await client.get(BOARD)).json()
     counts = {s["key"]: s["count"] for s in board["stages"]}
     assert counts["new_lead"] == 1 and counts["contacted"] == 1 and board["lost_count"] == 1
-    assert len(board["stages"]) == 13 and board["total"] == 2
+    assert len(board["stages"]) == 16 and board["total"] == 2
     contacted = (await client.get(f"{BOARD}?stage=contacted")).json()
-    assert [i["id"] for i in contacted["items"]] == [first["id"]] and contacted["items"][0]["stage_label"] == "Contacted"
+    assert [i["id"] for i in contacted["items"]] == [first["id"]] and contacted["items"][0]["stage_label"] == "Outreach Sent"
     assert [i["id"] for i in (await client.get(f"{BOARD}?stage=lost")).json()["items"]] == [lost["id"]]
     assert (await client.get(f"{BOARD}?stage=won")).status_code == 422
     await login(client, manager)
