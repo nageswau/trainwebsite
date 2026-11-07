@@ -10279,6 +10279,12 @@ class RecCompanyContractRef(BaseModel):
     status_label: str
 
 
+class RecCompanyMergedInto(BaseModel):
+    id: UUID
+    code: str
+    name: str
+
+
 class RecCompanyOut(RecCompanyRow):
     website: str | None
     linkedin_url: str | None
@@ -10303,6 +10309,7 @@ class RecCompanyOut(RecCompanyRow):
     target_roles: list[str] = []
     branch_locations: list[RecBranchOut] = []
     skill_demand: list[RecCatalogueRef] = []
+    merged_into: RecCompanyMergedInto | None = None  # pob-006 M6
     archived_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -10985,6 +10992,27 @@ class CandidateMergeBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
     victim_code: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20)]
     use_victim: list[CandidateMergeField] = []
+    reason: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=500)] = None
+
+
+# pob-006 (DEC-SCOPE-418 M5, C3): what a merge may take from the duplicate; services/company_merge keeps the same tuples.
+RecCompanyMergeField = Literal[
+    "website", "linkedin_url", "industry_id", "company_size_id", "employee_count", "city", "state", "country", "head_office", "description", "lead_source_id", "priority", "products_services",
+]  # fmt: skip
+RecContactMergeField = Literal["name", "designation", "department", "role_id", "mobile", "email", "linkedin_url", "preferred_channel", "notes", "source", "verified_on"]
+
+
+class RecCompanyMergeBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    victim_code: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20)]
+    use_victim: list[RecCompanyMergeField] = []
+    reason: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=500)] = None
+
+
+class RecContactMergeBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    victim_id: UUID
+    use_victim: list[RecContactMergeField] = []
     reason: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=500)] = None
 
 

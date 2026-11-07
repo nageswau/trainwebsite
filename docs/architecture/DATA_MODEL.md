@@ -2393,3 +2393,10 @@ audit rows. The downgrade clears LinkedIn channels and drops the columns.
 (kind form|legacy, form_id + form_version, screener, notes, recommendation pass|hold|reject, knock-out triggered/overridden/reason, legacy_snapshot; never edited). **`screening_answers`**
 per session + form question (answer, score 0–5). `application_screenings` is unchanged; the migration copies each row to one legacy session and seeds the default template. The downgrade
 drops the five tables.
+
+## Company import and merge (`pob-006`, `DEC-SCOPE-418`; migration `0297_crm_import_merge`)
+
+`companies` and `company_contacts` gain `merged_into_id` (self FK, RESTRICT, never itself), `merged_at`, `merged_by_user_id`. A merged row stays, archived or inactive, one hop from its
+survivor. `crm_import_batches` (uploader, idempotency key unique per uploader, `file_sha256`, file name, counts) and `crm_import_rows` (batch, row number, status, reason, company and contact
+ids, created flags) hold no cell value. The migration seeds the `placement_manager` `crm.import` and `crm.merge` grants and changes no existing row; the downgrade drops the tables, the columns
+and the grant rows.

@@ -242,6 +242,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** low.
 
 #### pob-006: Company and contact import, and authorised merge
+- **Status:** built (`DEC-SCOPE-418`, 2026-11-07); the grants, matching and merge rules are the builder's calls (`NEEDS_CONFIRMATION`); Q-06 answered "block" per this item.
 - **Business requirement:** §3.2 "through an approved data import"; §3.3 "Prevent duplicate companies and contacts where possible; allow authorised merging"; §17 "duplicate detection, validation reports".
 - **Existing behavior:** manual add only. There is a company name-key duplicate check; merge is not built.
 - **Expected behavior:**

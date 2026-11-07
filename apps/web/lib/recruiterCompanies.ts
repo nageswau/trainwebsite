@@ -23,6 +23,7 @@ export type Company = CompanyRow & {
   assigned_bdm: Person | null; owner_type: string; created_by: Person | null; assignment_history: Assignment[]; pipeline: Pipeline; archived_at: string | null;
   created_at: string; updated_at: string;
   contract?: { status: string; status_label: string } | null; // rec-030 CT10: the current contract's status
+  merged_into?: { id: string; code: string; name: string } | null; // pob-006 M6
 } & Partial<BusinessContext>;
 // pob-003 (DEC-SCOPE-406 D1-D3): the company's business context, as the API returns it.
 export type Branch = { city: string; state: string | null; country: string | null };

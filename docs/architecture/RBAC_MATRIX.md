@@ -3977,3 +3977,15 @@ names. Pinned by `apps/api/tests/test_hrc_033_dashboards.py` and `apps/web/tests
 so there is no per-record scope, and no row carries a candidate's name, contact details or pay. A figure links to its action page only with that page's own
 grant (`candidates.merge`, `candidates.import`, `notifications.retry`). Pinned by `apps/api/tests/test_hrc_034_insights.py` and
 `apps/web/tests/e2e/hrc-034-insights.spec.ts`.
+
+### 2.310 Company import and merge *(added 2026-11-07 — `DEC-SCOPE-418`, pob-006)*
+
+| Action | `placement_manager` | `placement_team` | `super_admin` | Every other role |
+|---|---|---|---|---|
+| `crm.import`: template, preview, commit, history, report | Yes (default grant) | Only with a per-user allow | Yes | 403, whatever the override |
+| `crm.merge`: compare and merge companies and contacts | Yes (default grant) | Only with a per-user allow | Yes | 403, whatever the override |
+
+A grant does not widen company scope: every company resolves through `caller_scope`, and one outside it reads as 404 on merge routes. An import row naming an out-of-scope company shows
+its code and name only, no link, and adds nothing. A deny override removes a manager's grant. History is the caller's own, a manager's also their direct reports', super_admin's everyone's;
+another's batch is 404. Audit: `crm.import`, `recruiter_company.merge`, `recruiter_company.merged_into`, `recruiter_company.contact_merge`, with ids, counts and field names only. Pinned by
+`apps/api/tests/test_pob_006_import.py`, `apps/api/tests/test_pob_006_merge.py` and `apps/web/tests/e2e/pob-006-import-merge.spec.ts`.

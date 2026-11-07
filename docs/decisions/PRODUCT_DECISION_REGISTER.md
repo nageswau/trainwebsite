@@ -12216,3 +12216,27 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **I6 Frontend:** three server-rendered pages under `/recruiter/insights`, one nav entry per affected role.
 - **Numbering:** migration `0294_portal_events`; API §12LJ; RBAC §2.309.
 - **Feature ID authorized:** `hrc-034`. **Status:** built on `worktree-hrc-034`.
+
+### DEC-SCOPE-418 — Company and contact import, and authorised merge (`pob-006`)
+
+- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-006` (§3.2 "through an approved data import"; §3.3 "Prevent duplicate companies and contacts where
+  possible; allow authorised merging"; §17 "duplicate detection, validation reports"; source classified `UNVERIFIED`). The owner assigned pob-006 for build and said to proceed
+  with the recommended answers, so the grants, the matching rules and the merge rules are **the builder's calls (`NEEDS_CONFIRMATION`)**. Depends on hrc-013, hrc-014 and pob-005
+  (all merged). Design `docs/superpowers/specs/2026-11-06-pob-006-company-import-merge-design.md`.
+- **Grants:** new catalogue resource `crm` with `import` and `merge`, held by `placement_manager` (the Team Lead) by default; an authorised Placement Officer is a `placement_team`
+  user given a per-user allow; `super_admin` always holds them. The grant is additive to the role gate and never widens company scope.
+- **Import:** a CSV or XLSX of companies and contacts (one row is a company and optionally one contact), up to 1 MB and 1,000 rows, each row checked by the same schemas as the
+  forms. A read-only preview, then a commit in one transaction with one savepoint per row. A known company (the normalised name, archived included, a merged one answering as its
+  survivor) and a known contact (mobile or email within that company, the name when the row has neither) are matched and never changed. A row writing to an out-of-scope or archived
+  company is that row's error. A new company is the recruiter's own, or a manager's goes to the unassigned queue. The same key replays the stored report; another key with the same
+  file replays only when that file imported without errors, so a file with row errors can run again once they are fixed (a catalogue value added, a company restored). The report's
+  CSV escapes formulas. No cell value is stored: names come from the linked records.
+- **Company merge:** both companies in the caller's scope, locked in id order, every rule re-checked once locked. Refused: self; an archived survivor; an archived or merged victim;
+  an employer's own account as the victim; **both with a contract in effect (Q-06: block)**. Contacts, requirements, follow-ups, calls, messages, meetings, contracts, documents,
+  shares, drives and the stage and assignment history move; branches only to a survivor with none; skill demand where the survivor lacks it. The user chooses each differing field;
+  an empty survivor field is filled. The victim is archived for good with `merged_into_id` and keeps its name and code. Both sides are audited.
+- **Contact merge:** within one company. A Do Not Contact victim makes the survivor Do Not Contact (cause `merge`); decision-maker is OR-ed; a primary victim makes the survivor
+  primary. The victim is inactive, hidden from the list and the duplicate warning, refused by edits (404); its status changes stay on the survivor's timeline.
+- **Not built:** un-merge, moving a contact between companies, a company duplicate-review queue, updating existing records from a file, a shared rewrite of the hrc-013 engine.
+- **Numbering:** migration `0297_crm_import_merge`; API §12LK; RBAC §2.310.
+- **Feature ID authorized:** `pob-006`. **Status:** built on `worktree-pob-006`.

@@ -30,6 +30,7 @@ from app.models import (
     User,
 )
 from app.recruiter_stages import label as stage_label
+from app.services.permissions import user_has_grant
 from app.services.recruiter import MANAGER_ROLE, ROLE, recruiter_context
 
 logger = logging.getLogger("app.recruiter")
@@ -47,6 +48,7 @@ REFUSALS = {
     "can_restore": "Only a placement manager can restore this company",
     "can_reassign": "Only a placement manager can reassign this company",
 }
+MERGED = "This company was merged into another one"  # pob-006 M6
 STATE_REFUSALS = {"can_edit": "Restore this company first", "can_archive": "Already archived", "can_restore": "Already active", "can_reassign": "Restore this company first"}
 # rec-024 FU9: a company's next follow-up is its earliest open one -- derived, never stored (correlated, so the list stays one query).
 NEXT_FOLLOW_UP = (
@@ -107,6 +109,8 @@ def _allowed(user: User, company: Company, action: str) -> bool:
 
 def permissions(user: User, company: Company) -> dict[str, bool]:
     archived = company.archived_at is not None
+    if company.merged_into_id is not None:  # pob-006 M6: final, a merged record is never restored
+        return dict.fromkeys(REFUSALS, False)
     return {a: _allowed(user, company, a) and (archived if a == "can_restore" else not archived) for a in REFUSALS}
 
 
@@ -115,8 +119,23 @@ def require(user: User, company: Company, action: str, route: str) -> None:
     if not _allowed(user, company, action):
         logger.warning("recruiter_company_write_refused", extra={"extra_fields": {"actor_id": str(user.id), "company_id": str(company.id), "route": route}})
         raise HTTPException(403, REFUSALS[action])
+    if company.merged_into_id is not None:
+        raise HTTPException(409, MERGED)
     if not permissions(user, company)[action]:
         raise HTTPException(409, STATE_REFUSALS[action])
+
+
+async def require_crm(db: AsyncSession, user: User, action: str, refusal: str) -> None:
+    """pob-006 (G2): a company writer role holding `crm.import` / `crm.merge`; a grant never lets another role in. Scope still comes from `load_scoped`."""
+    if user.role not in (ROLE, MANAGER_ROLE, "super_admin") or not await user_has_grant(db, user, "crm", action):
+        raise HTTPException(403, refusal)
+    if user.role == ROLE:
+        await recruiter_context(db, user)  # a recruiter without a profile is 403
+
+
+def team_ids(user: User):
+    """The manager's direct reports, as a sub-select."""
+    return select(RecruiterProfile.user_id).where(RecruiterProfile.reporting_manager_user_id == user.id)
 
 
 def require_creator(user: User) -> None:
@@ -303,10 +322,16 @@ async def company_out(db: AsyncSession, user: User, company: Company, *, refresh
         "pipeline": pipeline_out(user, company),
         "contract": await company_contract_ref(db, company),  # rec-030 CT10
         **await context_out(db, company),  # pob-003
+        "merged_into": await merged_into_out(db, company),  # pob-006 M6
         "archived_at": company.archived_at,
         "created_at": company.created_at,
         "updated_at": company.updated_at,
     }
+
+
+async def merged_into_out(db: AsyncSession, company: Company) -> dict | None:
+    survivor = await db.get(Company, company.merged_into_id) if company.merged_into_id else None
+    return {"id": survivor.id, "code": survivor.company_code, "name": survivor.name} if survivor else None
 
 
 async def context_out(db: AsyncSession, company: Company) -> dict:

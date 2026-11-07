@@ -126,7 +126,8 @@ def _company_sources(company_id: UUID, contact_id: UUID | None = None) -> list:
         _branch(AuditLog.id, "contact_status", AuditLog.created_at, actor=AuditLog.user_id, event=meta["cause"].as_string(), from_value=meta["from"].as_string(),
                 to_value=meta["to"].as_string(), rank=EFFECT)
         .where(AuditLog.entity_type == "company", AuditLog.entity_id == str(company_id), AuditLog.action == "recruiter_company.contact_status",
-               meta["contact_id"].as_string() == str(contact_id)),
+               # pob-006 C5: a merged-away contact's status changes stay on the survivor's timeline
+               meta["contact_id"].as_string().in_(select(cast(CompanyContact.id, String)).where(or_(CompanyContact.id == contact_id, CompanyContact.merged_into_id == contact_id)))),
     ]  # fmt: skip
     return [
         *company_only,
