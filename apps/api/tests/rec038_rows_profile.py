@@ -5,7 +5,9 @@ Company rows use the core `company` (rec's, BDM `bdm`) or this group's companies
 out of the company scope, so they read it as missing (404, rec-003 `load_scoped`, RBAC_MATRIX §2.47). In scope with the wrong role is 403
 (rec-003 `require`: role first, then state)."""
 
-from app.models import Company, RecCampaign, RecIndustry, RecLeadSource, Skill, SkillAlias, SkillCategory, SkillRelated
+from sqlalchemy import select
+
+from app.models import Company, RecCampaign, RecCompanyInactiveReason, RecCompanyLostReason, RecIndustry, RecLeadSource, Skill, SkillAlias, SkillCategory, SkillRelated
 from tests.rec038_helpers import R, add, allow, now, tag
 
 PATH_VALUES = {"profile_kind": "industries"}
@@ -62,7 +64,8 @@ ROWS = [
     R("post", "/recruiter/companies/{company}/assign", lambda w: {"recruiter_user_id": w["rec2_id"]}, **allow(200, "mgr", "super"), **MANAGE),
     # rec-005 company pipeline (§2.53): rec-003's can_edit moves and marks lost; the manager reopens; the board is the caller's scope
     R("post", "/recruiter/companies/{pf_company}/stage", {"from_stage": "new_lead", "to_stage": "contacted"}, **allow(200, "rec", "super"), **EDIT),
-    R("post", "/recruiter/companies/{pf_company}/lost", {"reason": "Hiring freeze this year"}, **allow(200, "rec", "super"), **EDIT),
+    R("post", "/recruiter/companies/{pf_company}/lost", lambda w: {"reason_id": w["pf_lost_reason"]}, **allow(200, "rec", "super"), **EDIT),
+    R("post", "/recruiter/companies/{pf_dormant}/inactive", lambda w: {"reason_id": w["pf_inactive_reason"]}, **allow(200, "rec", "super"), **EDIT),
     R("post", "/recruiter/companies/{pf_lost}/reopen", {"reason": "Hiring again"}, **allow(200, "mgr", "super"), **MANAGE),
     R("get", "/recruiter/companies/{company}/stage-history", **READ_ONE),
     # rec-004 company contacts (§2.51): the company's scope and can_edit
@@ -93,9 +96,13 @@ async def build(client, db, w) -> None:
 
     active, archived = await add(db, company()), await add(db, company(archived_at=now()))
     lost = await add(db, company(lost_at=now(), lost_reason="Budget cut"))
+    dormant = await add(db, company())
+    lost_reason = await db.scalar(select(RecCompanyLostReason.id).where(RecCompanyLostReason.active.is_(True)).limit(1))
+    inactive_reason = await db.scalar(select(RecCompanyInactiveReason.id).where(RecCompanyInactiveReason.active.is_(True)).limit(1))
     await db.commit()
     w.update({
         "pf_lead_source": str(source.id), "pf_campaign": str(campaign.id), "pf_industry": str(industry.id), "pf_category": str(category.id),
         "pf_skill": str(skill.id), "pf_related": str(related.id), "pf_unrelated": str(unrelated.id), "pf_merge_source": str(merge_source.id),
         "pf_alias": str(alias.id), "pf_company": str(active.id), "pf_archived": str(archived.id), "pf_lost": str(lost.id),
+        "pf_dormant": str(dormant.id), "pf_lost_reason": str(lost_reason), "pf_inactive_reason": str(inactive_reason),
     })  # fmt: skip

@@ -268,6 +268,7 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false }
                     <td data-label="Stage">
                       {r.stage_label}
                       {r.lost && <> <span className="badge">Lost</span></>}
+                      {r.inactive && <> <span className="badge">Inactive</span></>}
                     </td>
                     <td data-label="Lead source">{display(r.lead_source?.name)}</td>
                     <td data-label="Industry">{display(r.industry?.name)}</td>

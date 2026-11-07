@@ -10101,6 +10101,9 @@ class RecCompanyRow(BaseModel):
     stage: str
     stage_label: str
     lost: bool
+    inactive: bool = False  # pob-004 D3
+    client_status: str = "prospect"  # pob-004 D2
+    client_status_label: str = "Prospect"
     next_follow_up_at: datetime | None = None  # rec-024 FU9: the earliest open follow-up (derived)
     last_contacted_at: datetime | None = None  # pob-003 D4: the latest call, message or completed meeting
 
@@ -10140,6 +10143,10 @@ class RecPipelineOut(BaseModel):
     stage_label: str
     stage_changed_at: datetime
     lost: RecLostOut | None
+    inactive: RecLostOut | None  # pob-004 D3
+    client_status: str  # pob-004 D2
+    client_status_label: str
+    follow_up_due: bool  # pob-004 D11: derived
     can_move: bool
     can_reopen: bool
     steps: list[RecPipelineStep]
@@ -10157,6 +10164,23 @@ class RecStageMove(BaseModel):
 class RecStageReason(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reason: BdmPipelineReason
+
+
+REC_CLOSE_NOTE_MAX = 300  # with a 120-character reason name, this fits the 500-character `lost_reason` / `inactive_reason`
+
+
+def _rec_close_note(value: str | None) -> str | None:
+    if value is not None and len(value) > REC_CLOSE_NOTE_MAX:
+        raise ValueError(f"Keep the note to {REC_CLOSE_NOTE_MAX} characters")
+    return value
+
+
+class RecCompanyClose(BaseModel):
+    """pob-004 D6/D7: Mark lost / Mark inactive -- a reason from that list, and an optional note."""
+
+    model_config = ConfigDict(extra="forbid")
+    reason_id: UUID
+    note: Annotated[BdmPipelineNote, AfterValidator(_rec_close_note)] = None
 
 
 class RecActorRef(BaseModel):
@@ -10253,6 +10277,14 @@ class RecBoardStage(BaseModel):
     count: int
 
 
+class RecBoardBucket(BaseModel):
+    """pob-004 D3/D11: a filter beside the stages -- a client status, a flag, or derived."""
+
+    key: str
+    label: str
+    count: int
+
+
 class RecBoardItem(BaseModel):
     id: UUID
     code: str
@@ -10263,10 +10295,15 @@ class RecBoardItem(BaseModel):
     stage: str
     stage_label: str
     lost: bool
+    inactive: bool
+    client_status: str
+    client_status_label: str
+    follow_up_due: bool
 
 
 class RecBoardOut(BaseModel):
     stages: list[RecBoardStage]
+    buckets: list[RecBoardBucket]
     lost_count: int
     items: list[RecBoardItem]
     total: int
@@ -15696,6 +15733,7 @@ class RecruitmentDashboardOut(BaseModel):
     pipeline: list[RecruitmentPipelineStep]
     requirement_closed: int
     lost: int
+    inactive: int  # pob-004 D10
 
 
 # mgmt-012 (spec MK1-MK14): marketing budget, spend and ROI. A channel is one of the 13 lead sources (an unknown one is 422 on its field);

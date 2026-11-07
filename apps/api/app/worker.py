@@ -318,6 +318,15 @@ def new_matches_task():
 
 
 @celery.task
+def company_inactive_sweep_task():
+    """pob-004 (DEC-SCOPE-417 D8): daily via beat. Idempotent."""
+    import app.main  # noqa: F401 -- mgmt-032: load the app's services first (circular imports under the worker)
+    from app.services.company_pipeline import run_inactive_sweep
+
+    return _run_with_fresh_pool(run_inactive_sweep)
+
+
+@celery.task
 def portal_events_retention_task():
     """hrc-034 (DEC-SCOPE-416 I4): daily via beat. Idempotent."""
     from app.services.portal_events import run_retention
@@ -329,6 +338,7 @@ celery.conf.beat_schedule = {
     "enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0},
     "hrc032-feedback-overdue": {"task": "app.worker.feedback_overdue_task", "schedule": crontab(minute=10)},
     "hrc032-new-matches": {"task": "app.worker.new_matches_task", "schedule": crontab(minute=40)},
+    "pob004-company-inactive-sweep": {"task": "app.worker.company_inactive_sweep_task", "schedule": crontab(hour=19, minute=30)},  # UTC = 01:00 IST
     "hrc034-portal-events-retention": {"task": "app.worker.portal_events_retention_task", "schedule": crontab(hour=19, minute=15)},  # UTC = 00:45 IST
     "agn017-daily-reminders": {"task": "app.worker.send_daily_reminders_task", "schedule": crontab(hour=2, minute=30)},  # UTC = 08:00 IST
     "ccrm030-counselor-reminders": {"task": "app.worker.send_counselor_reminders_task", "schedule": crontab(hour=2, minute=45)},  # UTC = 08:15 IST

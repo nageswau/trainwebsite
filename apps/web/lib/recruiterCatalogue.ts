@@ -11,8 +11,8 @@ export const CAMPAIGNS_URL = `${CATALOGUE_URL}/campaigns`;
 export const CATALOGUE_PATH = "/recruiter/manager/catalogue";
 
 type Tab = { label: string; noun: string; intro: string };
-// The six simple lists, in the order EVID-018 introduces them (§2, §9, §3, §3, §4, §6/§26); campaigns last (they hang off a lead
-// source). The intros speak to the manager, so they carry no section references (QA-01).
+// The simple lists, in the order EVID-018 introduces them (§2, §9, §3, §3, §4, §6/§26), then pob-004's reasons; campaigns last (they hang off a
+// lead source). The intros speak to the manager, so they carry no section references (QA-01).
 export const VALUE_TABS = {
   "lead-sources": { label: "Lead sources", noun: "lead source", intro: "Where a company lead came from." },
   "candidate-sources": { label: "Candidate sources", noun: "candidate source", intro: "Where a candidate came from." },
@@ -20,6 +20,8 @@ export const VALUE_TABS = {
   "company-sizes": { label: "Company sizes", noun: "company size", intro: "A company's size band, by number of employees." },
   "contact-roles": { label: "Contact roles", noun: "contact role", intro: "The role of a contact at a company." },
   "job-categories": { label: "Job categories", noun: "job category", intro: "A requirement's job category, also used in reports." },
+  "lost-reasons": { label: "Lost reasons", noun: "lost reason", intro: "Why a company was marked lost. Recruiters pick one." },
+  "inactive-reasons": { label: "Inactive reasons", noun: "inactive reason", intro: "Why a company was marked inactive. Recruiters pick one." },
 } satisfies Record<string, Tab>;
 export type ValueKind = keyof typeof VALUE_TABS;
 export const TABS: Record<ValueKind | "campaigns" | "exchange-rates", Tab> = {

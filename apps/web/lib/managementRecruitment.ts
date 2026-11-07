@@ -14,6 +14,7 @@ export type RecruitmentStep = { key: string; label: string; value: number };
 export type Recruitment = {
   date_from: string; date_to: string; revenue_visible: boolean; kpis: RecruitmentKpis; pipeline: RecruitmentStep[]; requirement_closed: number;
   lost: number;
+  inactive: number;
 }; // prettier-ignore
 
 // The source's eleven KPIs (§21), in its order and words.

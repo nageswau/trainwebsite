@@ -31,6 +31,7 @@ const data: Recruitment = {
   ], // prettier-ignore
   requirement_closed: 3,
   lost: 7,
+  inactive: 2,
 };
 const hidden: Recruitment = { ...data, revenue_visible: false, kpis: { ...data.kpis, revenue: null } };
 const EMPTY = { date_from: "", date_to: "" };
