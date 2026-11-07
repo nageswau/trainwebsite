@@ -4001,3 +4001,9 @@ another's batch is 404. Audit: `crm.import`, `recruiter_company.merge`, `recruit
   application scopes. `{package_range}` needs `commercials.client.view` (§2.296).
 
 Pinned by `apps/api/tests/test_pob_023_templates.py` and the rec-038 matrix rows.
+
+### 2.312 Vendor master and agreements *(added 2026-11-07 — `DEC-SCOPE-420`, pob-010)*
+
+- **Scope and writers:** a vendor is a company, so `recruiter_companies` scope and `can_edit` apply (BDM: read, if assigned). This supersedes pob-001's "no default holder" note for `commercials.vendor` only.
+- **`commercials.vendor.view` / `.edit`:** a vendor agreement's fee, terms, direction, confidentiality and documents. Default holders: `placement_team`, `placement_manager` (migration 0300); super_admin implicitly. `NEEDS_CONFIRMATION`.
+- **Onboarding:** the assigned recruiter, a manager in scope or super_admin submit a registration and activate an approved vendor. Only a manager or super_admin approve, return, suspend or reinstate.

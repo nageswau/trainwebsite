@@ -8,6 +8,7 @@ import LocalTime from "@/components/LocalTime";
 import RecruiterCalls from "@/components/RecruiterCalls";
 import RecruiterCompanyBusiness from "@/components/RecruiterCompanyBusiness";
 import RecruiterCompanyDocuments from "@/components/RecruiterCompanyDocuments";
+import RecruiterCompanyVendor from "@/components/RecruiterCompanyVendor";
 import RecruiterCompanyContacts from "@/components/RecruiterCompanyContacts";
 import RecruiterCompanyContract from "@/components/RecruiterCompanyContract";
 import RecruiterCompanyRevenue from "@/components/RecruiterCompanyRevenue";
@@ -25,7 +26,7 @@ import { type Page, sendJson, sendRequest } from "@/lib/apiErrors";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import type { PickOption } from "@/lib/lookups";
-import { type Company, COMPANIES_PATH, COMPANIES_URL, isCompanyBody, personName, PRIORITY_LABEL, recruiterSearch, safeLink } from "@/lib/recruiterCompanies";
+import { type Company, COMPANIES_PATH, COMPANIES_URL, isCompanyBody, PARTNER_TYPES, personName, PRIORITY_LABEL, recruiterSearch, safeLink, VENDORS_PATH } from "@/lib/recruiterCompanies";
 import { companyMergePath } from "@/lib/recruiterCompanyImport";
 import type { StageEvent } from "@/lib/recruiterPipeline";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -183,6 +184,8 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
     } else setFailure(outcome.ok ? "Unable to update this company." : outcome.message);
   }
 
+  // pob-010 V10: a vendor-only company has no client side -- no pipeline, client contract, revenue, requirements or shares.
+  const vendorOnly = company.partner_type === "vendor";
   const rows: [string, ReactNode][] = [
     ["Industry", display(company.industry?.name)],
     ["Website", linkOrText(company.website)],
@@ -200,7 +203,8 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
     ["Priority", company.priority ? PRIORITY_LABEL[company.priority] : "—"],
     ["Last contact", company.last_contacted_at ? formatSchoolDateTime(company.last_contacted_at, true) : "—"], // pob-003 D4
     ["Next follow-up", company.next_follow_up_at ? formatSchoolDateTime(company.next_follow_up_at, true) : "None scheduled"], // rec-024 FU9
-    ["Contract status", company.contract ? company.contract.status_label : "No contract yet"], // rec-030 CT10
+    ...(vendorOnly ? [] : [["Contract status", company.contract ? company.contract.status_label : "No contract yet"] as [string, ReactNode]]), // rec-030 CT10
+    ["Relationship", PARTNER_TYPES.find((t) => t.id === company.partner_type)?.name ?? "Client"], // pob-010
     ["Recruiter (account manager)", personName(company.assigned_recruiter)],
     ["Assigned BDM", personName(company.assigned_bdm, "—")],
     ["Registered by", company.owner_type === "employer_self_service" ? "The employer (self-registration)" : company.created_by ? <>{company.created_by.full_name} on <LocalTime value={company.created_at} /></> : "—"],
@@ -215,8 +219,8 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
             {company.name} {company.archived && <span className="badge">Archived</span>}
           </h2>
           <p style={{ margin: 0 }}>
-            <Link href={COMPANIES_PATH} style={LINK_STYLE}>
-              Back to companies
+            <Link href={company.partner_type === "vendor" ? VENDORS_PATH : COMPANIES_PATH} style={LINK_STYLE}>
+              {company.partner_type === "vendor" ? "Back to vendors" : "Back to companies"}
             </Link>
           </p>
         </div>
@@ -283,6 +287,7 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
       )}
       {/* Re-keyed on archive/restore (the list's `can_edit` follows the company's state) and on a follow-up, call, meeting or message change
           (each contact's next follow-up and Last contacted). */}
+      {company.vendor && <RecruiterCompanyVendor company={company} onChanged={(c, text) => changed(c, text)} />}
       <RecruiterCompanyBusiness company={company} onSaved={(c, saved) => changed(c, saved ? "Business context saved." : "No changes to save.")} />
       <RecruiterCompanyContacts key={`${company.id}-${company.archived}-${followUpChanges}-${meetingChanges}-${messageChanges}`} companyId={company.id} canMerge={canMerge && !company.archived} />
       <RecruiterCalls key={`calls-${company.id}-${company.archived}`} party={{ kind: "contact", companyId: company.id }} canWrite={p.can_edit}
@@ -292,24 +297,30 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
         }} />
       <RecruiterCompanyFollowUps key={`follow-ups-${company.id}-${company.archived}-${callFollowUps}-${meetingChanges}`} companyId={company.id} canWrite={p.can_edit} onChanged={() => void followUpChanged()} />
       <RecruiterCompanyMeetings key={`meetings-${company.id}-${company.archived}`} companyId={company.id} canWrite={p.can_edit} onChanged={() => void meetingChanged()} />
-      <RecruiterCompanyContract key={`contract-${company.id}-${company.archived}`} companyId={company.id} onChanged={(text) => void contractChanged(text)} />
-      {showRevenue && <RecruiterCompanyRevenue companyId={company.id} />}
-      <RecruiterCompanyDocuments key={`documents-${company.id}-${company.archived}`} companyId={company.id} />
+      {!vendorOnly && <RecruiterCompanyContract key={`contract-${company.id}-${company.archived}`} companyId={company.id} onChanged={(text) => void contractChanged(text)} />}
+      {company.vendor && <RecruiterCompanyContract key={`vendor-agreement-${company.id}-${company.archived}`} party="vendor" companyId={company.id} onChanged={(text) => void contractChanged(text)} />}
+      {showRevenue && !vendorOnly && <RecruiterCompanyRevenue companyId={company.id} />}
+      <RecruiterCompanyDocuments key={`documents-${company.id}-${company.archived}`} companyId={company.id}
+        onUploaded={company.vendor ? () => void sendRequest(`${COMPANIES_URL}/${company.id}`, { method: "GET" }).then((o) => { if (o.ok && isCompanyBody(o.data)) setCompany(o.data.company); }) : undefined} />
       <RecruiterMessages key={`messages-${company.id}-${company.archived}`} source={{ kind: "company", companyId: company.id }} canWrite={p.can_edit}
         onChanged={() => { setMessageChanges((n) => n + 1); void followUpChanged(); }} />
-      <RecruiterCompanyPipeline
-        company={company}
-        onChanged={(c, text) => {
-          changed(c, text);
-          stageChanged(c);
-          focus(statusId);
-        }}
-        onRefreshed={stageChanged}
-      />
-      <RecruiterStageHistory companyId={company.id} initial={history} version={version} />
+      {!vendorOnly && (
+        <>
+          <RecruiterCompanyPipeline
+            company={company}
+            onChanged={(c, text) => {
+              changed(c, text);
+              stageChanged(c);
+              focus(statusId);
+            }}
+            onRefreshed={stageChanged}
+          />
+          <RecruiterStageHistory companyId={company.id} initial={history} version={version} />
+        </>
+      )}
       {/* rec-007: the recruiter who owns the company, a manager or super admin may add a requirement while it is active. */}
-      <RecruiterCompanyRequirements companyId={company.id} canAdd={!company.archived && (p.can_edit || p.can_reassign)} />
-      <RecruiterShares source={{ kind: "company", companyId: company.id }} />
+      {!vendorOnly && <RecruiterCompanyRequirements companyId={company.id} canAdd={!company.archived && (p.can_edit || p.can_reassign)} />}
+      {!vendorOnly && <RecruiterShares source={{ kind: "company", companyId: company.id }} />}
       <RecruiterTimeline party={{ kind: "company", id: company.id }} version={activity} />
       {p.can_reassign && (
         <Reassign

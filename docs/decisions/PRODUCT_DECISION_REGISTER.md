@@ -12279,3 +12279,17 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - Deletion.
 - **Numbering:** migration `0298_template_governance`; API §12LB; RBAC §2.301.
 - **Feature ID authorized:** `pob-023`. **Status:** built on `worktree-pob-023`.
+
+## DEC-SCOPE-420 — Vendor and staffing-partner master, onboarding and agreements (pob-010)
+
+- **Date:** 2026-11-07. **Classification:** builder's calls on Q-08 (`NEEDS_CONFIRMATION`); the source is the `UNVERIFIED` requirements draft.
+- **Spec:** `docs/superpowers/specs/2026-11-07-pob-010-vendor-master-design.md`.
+- **Decided (V1-V12):**
+  - V1: a vendor is a `Company`. V2: `partner_type` gains `vendor` and `vendor_client` (one company in both relationships) and a CHECK.
+  - V3-V4: vendor lists and status; a change of relationship is refused where the company's records would no longer fit.
+  - V5-V6: onboarding prospect → registration submitted → approved → active ⇄ suspended, with its needs (form, NDA, signed agreement), manager steps and history.
+  - V7: an `nda` document kind. V8: a vendor agreement is a `recruiter_contracts` row with `party='vendor'`, `direction` and `confidentiality_terms`; one current row per party.
+  - V9: `commercials.vendor.*` gates its terms; default holders `placement_team` and `placement_manager`.
+  - V10: a vendor-only company is left out of client-only views and refused as a requirement or drive's company.
+  - V11: merging a vendor is refused. V12: migration 0300 normalises unknown `partner_type` values, with a logged count.
+- **Not built:** requirements via a vendor and the NDA gate on sharing (pob-011); payables and performance (pob-012); the `vendor_registration` stage (pob-004); vendor merge; `jobs.vendor_id` (pob-002's link, which pob-011 owns as `via_vendor_id`).

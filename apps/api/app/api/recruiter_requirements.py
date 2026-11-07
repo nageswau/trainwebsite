@@ -143,6 +143,7 @@ async def create_requirement(payload: RecRequirementCreate, user: User = Depends
     company = await companies.load_scoped(db, user, payload.company_id)  # out of the caller's company scope = 404
     if company.archived_at is not None:
         raise HTTPException(409, "Restore this company before adding a requirement")
+    companies.require_client(company)  # pob-010 V10
     values = payload.model_dump(include=set(REC_REQUIREMENT_FIELDS))
     values["description"] = values["description"] or ""
     values["requirement_date"] = values["requirement_date"] or svc.ist_today()  # J4: the received date, today unless given

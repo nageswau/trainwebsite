@@ -7,14 +7,14 @@ import { isPage, type Page } from "@/lib/apiErrors";
 import { CHECKBOX_ROW, display, LINK_STYLE } from "@/lib/bdmOrganizations";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
-import { COMPANIES_PATH, COMPANIES_URL, type CompanyRow, personName, PRIORITIES, PRIORITY_LABEL } from "@/lib/recruiterCompanies";
+import { COMPANIES_PATH, COMPANIES_URL, type CompanyRow, personName, PRIORITIES, PRIORITY_LABEL, VENDOR_STATUSES } from "@/lib/recruiterCompanies";
 import { PAGE_SIZE } from "@/lib/telecaller";
 
 // rec-003 (spec §6): the company list for a recruiter (their own), a manager (their team's plus the unassigned queue) or super admin.
 // The API scopes the rows. Filters and the page live in the URL (BdmOrganizationsPanel's pattern), so refresh keeps the place and Back
 // returns to the previous view; the current rows stay on screen while the next page loads. Below 980px each row is a card of labelled
 // lines (the house `.telecaller-list` layout, QA-02).
-type Filters = { offset: number; q: string; city: string; priority: string; leadSource: string; industry: string; assigned: string; archived: boolean; sort: string };
+type Filters = { offset: number; q: string; city: string; priority: string; leadSource: string; industry: string; assigned: string; archived: boolean; sort: string; vendorStatus: string };
 const SORTS = [{ id: "last_contacted", name: "Last contacted" }]; // pob-003 D5; "" = by name (the API default)
 type Team = { id: string; full_name: string; active: boolean }[];
 
@@ -31,6 +31,7 @@ function readFilters(params: URLSearchParams): Filters {
     assigned: params.get("assigned") ?? "",
     archived: params.get("archived") === "1",
     sort: SORTS.some((s) => s.id === params.get("sort")) ? (params.get("sort") as string) : "",
+    vendorStatus: VENDOR_STATUSES.some((s) => s.key === params.get("vendor_status")) ? (params.get("vendor_status") as string) : "",
   };
 }
 
@@ -45,11 +46,12 @@ function toUrl(f: Filters): URLSearchParams {
   if (f.assigned) next.set("assigned", f.assigned);
   if (f.archived) next.set("archived", "1");
   if (f.sort) next.set("sort", f.sort);
+  if (f.vendorStatus) next.set("vendor_status", f.vendorStatus);
   return next;
 }
 
-function toApi(f: Filters): string {
-  const query = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(f.offset) });
+function toApi(f: Filters, vendors: boolean): string {
+  const query = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(f.offset), ...(vendors ? { relationship: "vendor" } : {}) });
   for (const [name, value] of toUrl({ ...f, offset: 0 })) query.set(name === "archived" ? "include_archived" : name, name === "archived" ? "true" : value);
   return `${COMPANIES_URL}?${query}`;
 }
@@ -70,7 +72,8 @@ function Picker({ id, label, value, all, options, onChange }: { id: string; labe
   );
 }
 
-export default function RecruiterCompaniesPanel({ canCreate, isManager = false, canImport = false }: { canCreate: boolean; isManager?: boolean; canImport?: boolean }) {
+// pob-010 (V1/V10): `vendors` is the same list with `relationship=vendor`, the onboarding status in place of the client pipeline's stage and lead source.
+export default function RecruiterCompaniesPanel({ canCreate, isManager = false, canImport = false, vendors = false }: { canCreate: boolean; isManager?: boolean; canImport?: boolean; vendors?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -111,7 +114,7 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false, 
     setLoadFailed(false);
     setFetching(true);
     setTarget(null);
-    fetch(toApi(readFilters(new URLSearchParams(key))))
+    fetch(toApi(readFilters(new URLSearchParams(key)), vendors))
       .then(async (response) => {
         const body = await response.json().catch(() => null);
         if (!response.ok || !isPage<CompanyRow>(body)) throw new Error("not a page");
@@ -126,20 +129,26 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false, 
     return () => {
       live = false;
     };
-  }, [key, version]);
+  }, [key, version, vendors]);
 
   function go(next: Partial<Filters>) {
     const url = toUrl({ ...filters, offset: 0, ...next });
     setTarget(url.toString());
     router.push(url.size ? `${pathname}?${url}` : pathname, { scroll: false });
   }
-  const filtered = Boolean(filters.q || filters.city || filters.priority || filters.leadSource || filters.industry || filters.assigned || filters.archived);
+  const filtered = Boolean(filters.q || filters.city || filters.priority || filters.leadSource || filters.industry || filters.assigned || filters.archived || filters.vendorStatus);
+  const nouns = vendors ? "vendors" : "companies";
+  const Nouns = vendors ? "Vendors" : "Companies";
   const submit = (event: FormEvent) => {
     event.preventDefault();
     go({ q: draftQ.trim(), city: draftCity.trim() });
   };
   // EVID-018 quick actions: "+ Add Recruiter" (a company and its first contact, rec-004) and "+ Add Company" (rec-003).
-  const addLink = canCreate && (
+  const addLink = canCreate && (vendors ? (
+    <div className="actions">
+      <Link className="btn small" href={`${COMPANIES_PATH}/new?vendor=1`}>Add vendor</Link>
+    </div>
+  ) : (
     <div className="actions">
       <Link className="btn small" href={`${COMPANIES_PATH}/new?with=contact`}>
         Add recruiter
@@ -149,15 +158,15 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false, 
       </Link>
       {canImport && <Link className="btn secondary small" href={`${COMPANIES_PATH}/import`}>Import companies</Link>/* pob-006 */}
     </div>
-  );
+  ));
 
   return (
     <div className="action-card wide telecaller-list" aria-busy={loading && !loadFailed}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
-        <h3>Companies</h3>
+        <h3>{Nouns}</h3>
         {addLink}
       </div>
-      <form role="search" aria-label="Filter companies" onSubmit={submit} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
+      <form role="search" aria-label={`Filter ${nouns}`} onSubmit={submit} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
         <div className="field" style={{ flex: "1 1 200px", margin: 0 }}>
           <label htmlFor="company-filter-q">Name or code</label>
           <input id="company-filter-q" type="search" value={draftQ} maxLength={200} onChange={(e) => setDraftQ(e.target.value)} />
@@ -167,7 +176,11 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false, 
           <input id="company-filter-city" type="search" value={draftCity} maxLength={120} onChange={(e) => setDraftCity(e.target.value)} />
         </div>
         <Picker id="company-filter-priority" label="Priority" value={filters.priority} all="All priorities" options={PRIORITIES.map((p) => ({ id: p, name: PRIORITY_LABEL[p] }))} onChange={(v) => go({ priority: v })} />
-        <Picker id="company-filter-source" label="Lead source" value={filters.leadSource} all="All sources" options={sources} onChange={(v) => go({ leadSource: v })} />
+        {vendors ? (
+          <Picker id="company-filter-vendor-status" label="Onboarding" value={filters.vendorStatus} all="All statuses" options={VENDOR_STATUSES.map((s) => ({ id: s.key, name: s.label }))} onChange={(v) => go({ vendorStatus: v })} />
+        ) : (
+          <Picker id="company-filter-source" label="Lead source" value={filters.leadSource} all="All sources" options={sources} onChange={(v) => go({ leadSource: v })} />
+        )}
         <Picker id="company-filter-industry" label="Industry" value={filters.industry} all="All industries" options={industries} onChange={(v) => go({ industry: v })} />
         {isManager && (
           <Picker
@@ -188,7 +201,7 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false, 
           Search
         </button>
         {filtered && (
-          <button type="button" className="btn secondary small" onClick={() => go({ q: "", city: "", priority: "", leadSource: "", industry: "", assigned: "", archived: false, sort: filters.sort })}>
+          <button type="button" className="btn secondary small" onClick={() => go({ q: "", city: "", priority: "", leadSource: "", industry: "", assigned: "", vendorStatus: "", archived: false, sort: filters.sort })}>
             Clear filters
           </button>
         )}
@@ -196,7 +209,7 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false, 
       {loadFailed ? (
         <>
           <p className="form-error" role="alert">
-            Unable to load companies.
+            Unable to load {nouns}.
           </p>
           <button type="button" className="btn secondary small" onClick={() => setVersion((v) => v + 1)}>
             Retry
@@ -204,16 +217,16 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false, 
         </>
       ) : data === null ? (
         <p className="muted" role="status">
-          Loading companies…
+          Loading {nouns}…
         </p>
       ) : data.total === 0 ? (
         filtered ? (
           <p className="empty" role="status">
-            No companies match these filters.
+            No {nouns} match these filters.
           </p>
         ) : (
           <div role="status">
-            <p className="empty">No companies yet.</p>
+            <p className="empty">No {nouns} yet.</p>
             {addLink}
           </div>
         )
@@ -230,19 +243,19 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false, 
         <>
           {loading && (
             <p className="muted" role="status" style={{ margin: 0 }}>
-              Updating companies…
+              Updating {nouns}…
             </p>
           )}
-          <div className="table-wrap" role="region" aria-label="Companies" tabIndex={0} style={loading ? { opacity: 0.6 } : undefined}>
+          <div className="table-wrap" role="region" aria-label={Nouns} tabIndex={0} style={loading ? { opacity: 0.6 } : undefined}>
             <table style={{ width: "100%", overflowWrap: "anywhere" }}>
               <thead>
                 <tr>
                   <th scope="col">Code</th>
-                  <th scope="col">Company</th>
+                  <th scope="col">{vendors ? "Vendor" : "Company"}</th>
                   <th scope="col">City</th>
                   <th scope="col">Priority</th>
-                  <th scope="col">Stage</th>
-                  <th scope="col">Lead source</th>
+                  <th scope="col">{vendors ? "Onboarding" : "Stage"}</th>
+                  {!vendors && <th scope="col">Lead source</th>}
                   <th scope="col">Industry</th>
                   <th scope="col">Recruiter</th>
                   <th scope="col">Last contact</th>
@@ -263,14 +276,21 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false, 
                           <span className="badge">Archived</span>
                         </>
                       )}
+                      {r.partner_type === "vendor_client" && <> <span className="badge">{vendors ? "Also a client" : "Also a vendor"}</span></>}
                     </td>
                     <td data-label="City">{display(r.city)}</td>
                     <td data-label="Priority">{r.priority ? PRIORITY_LABEL[r.priority] : "—"}</td>
-                    <td data-label="Stage">
-                      {r.stage_label}
-                      {r.lost && <> <span className="badge">Lost</span></>}
-                    </td>
-                    <td data-label="Lead source">{display(r.lead_source?.name)}</td>
+                    {vendors ? (
+                      <td data-label="Onboarding">{r.vendor_status_label}</td>
+                    ) : (
+                      <>
+                        <td data-label="Stage">
+                          {r.stage_label}
+                          {r.lost && <> <span className="badge">Lost</span></>}
+                        </td>
+                        <td data-label="Lead source">{display(r.lead_source?.name)}</td>
+                      </>
+                    )}
                     <td data-label="Industry">{display(r.industry?.name)}</td>
                     <td data-label="Recruiter">{personName(r.assigned_recruiter)}</td>
                     <td data-label="Last contact" style={{ whiteSpace: "nowrap" }}>{r.last_contacted_at ? formatSchoolDateTime(r.last_contacted_at) : "—"}</td>
@@ -281,7 +301,7 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false, 
             </table>
           </div>
           {data.total > PAGE_SIZE && (
-            <nav aria-label="Company pages" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
+            <nav aria-label={vendors ? "Vendor pages" : "Company pages"} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
               <span className="muted" style={{ fontSize: 13 }}>
                 Showing {data.offset + 1}–{data.offset + data.items.length} of {data.total}
               </span>

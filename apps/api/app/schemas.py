@@ -9832,6 +9832,7 @@ REC_COMPANY_FIELDS = (  # the columns a create or edit may write; everything els
     "name", "website", "linkedin_url", "industry_id", "company_size_id", "employee_count", "city", "state", "country", "head_office",
     "branches", "description", "lead_source_id", "campaign_id", "priority", "assigned_bdm_user_id",
     "products_services", "departments_hiring", "hiring_locations", "target_roles",  # pob-003 D2
+    "partner_type", "vendor_specialisations", "vendor_service_categories", "vendor_locations",  # pob-010 V2/V3
 )
 REC_COMPANY_RELATIONS = ("branch_locations", "skill_demand_ids")  # pob-003 D1/D3: rows in their own tables, replaced as a set
 
@@ -9877,7 +9878,12 @@ RecCompanyPriority = Literal["hot", "warm", "cold"]
 REC_CONTEXT_LIST_MAX = 20
 REC_BRANCHES_MAX = 50
 REC_SKILL_DEMAND_MAX = 30
-REC_CONTEXT_LIST_LABELS = {"departments_hiring": "Departments hiring", "hiring_locations": "Hiring locations", "target_roles": "Target roles"}
+REC_CONTEXT_LIST_LABELS = {
+    "departments_hiring": "Departments hiring", "hiring_locations": "Hiring locations", "target_roles": "Target roles",
+    "vendor_specialisations": "Specialisations", "vendor_service_categories": "Service categories", "vendor_locations": "Vendor locations",  # pob-010 V3
+}  # fmt: skip
+RecPartnerType = Literal["recruiter", "vendor", "vendor_client"]  # pob-010 V2: `employer` is set by employer registration alone
+RecVendorStatus = Literal["prospect", "registration_submitted", "approved", "active", "suspended"]  # pob-010 V5
 
 
 def _rec_context_list(value: list[str], info: ValidationInfo) -> list[str]:
@@ -10058,6 +10064,20 @@ class RecCompanyUpdate(BaseModel):
     target_roles: RecContextList = None
     branch_locations: Annotated[list[RecBranchIn], Field(max_length=REC_BRANCHES_MAX)] = None
     skill_demand_ids: Annotated[list[UUID], Field(max_length=REC_SKILL_DEMAND_MAX), AfterValidator(_rec_unique_ids)] = None
+    # pob-010 (DEC-SCOPE-420 V2/V3): null is refused (a type is never cleared; send [] to clear a list)
+    partner_type: RecPartnerType = None
+    vendor_specialisations: RecContextList = None
+    vendor_service_categories: RecContextList = None
+    vendor_locations: RecContextList = None
+
+
+class RecVendorStatusMove(BaseModel):
+    """pob-010 V5: `from_status` is what the card showed; a different stored status is a 409."""
+
+    model_config = ConfigDict(extra="forbid")
+    status: RecVendorStatus
+    from_status: RecVendorStatus
+    reason: BdmPipelineNote = None
 
 
 class RecCompanyCreate(RecCompanyUpdate):
@@ -10106,6 +10126,9 @@ class RecCompanyRow(BaseModel):
     lost: bool
     next_follow_up_at: datetime | None = None  # rec-024 FU9: the earliest open follow-up (derived)
     last_contacted_at: datetime | None = None  # pob-003 D4: the latest call, message or completed meeting
+    partner_type: str = "recruiter"  # pob-010 V2
+    vendor_status: str | None = None  # pob-010 V5
+    vendor_status_label: str | None = None
 
 
 class RecCompanyPage(BaseModel):
@@ -10288,7 +10311,30 @@ class RecCompanyMergedInto(BaseModel):
     name: str
 
 
+class RecVendorEventOut(BaseModel):
+    from_status: str
+    to_status: str
+    to_label: str
+    reason: str | None
+    actor: RecPersonRef
+    created_at: datetime
+
+
+class RecVendorOut(BaseModel):
+    """pob-010 V3/V5: a vendor's block of the company detail; null for a company that is not a vendor."""
+
+    specialisations: list[str]
+    service_categories: list[str]
+    locations: list[str]
+    onboarding_form_on_file: bool
+    nda_on_file: bool
+    agreement: RecCompanyContractRef | None
+    next_statuses: list[dict]
+    history: list[RecVendorEventOut]
+
+
 class RecCompanyOut(RecCompanyRow):
+    vendor: RecVendorOut | None = None  # pob-010
     website: str | None
     linkedin_url: str | None
     company_size: RecCatalogueRef | None
@@ -10323,7 +10369,7 @@ class RecCompanyEnvelope(BaseModel):
 
 
 # --- pob-003 (DEC-SCOPE-406 D6): the company document store -------------------------------------------------------------------------
-RecCompanyDocumentKind = Literal["company_profile", "vendor_onboarding_form", "recruitment_agreement", "job_description", "meeting_notes"]
+RecCompanyDocumentKind = Literal["company_profile", "vendor_onboarding_form", "recruitment_agreement", "job_description", "meeting_notes", "nda"]
 
 
 class RecDocumentMeetingRef(BaseModel):
@@ -12930,6 +12976,8 @@ class RecContractCreate(BaseModel):
     fee_value: RecContractFee = None
     payment_terms: RecContractTerms = None
     replacement_policy: RecContractTerms = None
+    direction: Literal["vendor_pays_us", "we_pay_vendor"] | None = None  # pob-010 V8: a vendor agreement's alone
+    confidentiality_terms: RecContractTerms = None
 
 
 class RecContractUpdate(RecContractCreate):
@@ -12965,6 +13013,7 @@ class RecContractPermissions(BaseModel):
 
 class RecContractOut(BaseModel):
     id: UUID
+    party: Literal["client", "vendor"] = "client"  # pob-010 V8
     status: RecContractStatus
     status_label: str
     status_changed_at: datetime
@@ -12977,6 +13026,8 @@ class RecContractOut(BaseModel):
     fee_value: Decimal | None = None
     payment_terms: str | None = None
     replacement_policy: str | None = None
+    direction: str | None = None  # pob-010 V9: absent without `commercials.vendor.view`, as the terms above
+    confidentiality_terms: str | None = None
     contract_document: RecContractDocumentOut | None
     mou_document: RecContractDocumentOut | None
     is_current: bool

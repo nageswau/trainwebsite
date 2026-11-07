@@ -30,6 +30,8 @@ from app.schemas import (
     RecCompanyPage,
     RecCompanyPriority,
     RecCompanyUpdate,
+    RecVendorStatus,
+    RecVendorStatusMove,
 )
 from app.services import recruiter_companies as svc
 from app.services import recruiter_contacts
@@ -77,6 +79,8 @@ async def list_companies(
     assigned: str | None = Query(None, max_length=36),
     include_archived: bool = False,
     sort: Literal["name", "last_contacted"] = "name",  # pob-003 D5
+    relationship: Literal["client", "vendor", "all"] = "client",  # pob-010 V10: the default list is the client CRM
+    vendor_status: RecVendorStatus | None = None,
     limit: int = LIMIT,
     offset: int = OFFSET,
     user: User = Depends(get_current_user),
@@ -95,6 +99,10 @@ async def list_companies(
     if industry_id:
         filters.append(Company.industry_id == industry_id)
     filters += _assigned(user, assigned)
+    if relationship != "all":
+        filters.append(svc.CLIENT_COMPANY if relationship == "client" else svc.VENDOR_COMPANY)
+    if vendor_status:
+        filters.append(Company.vendor_status == vendor_status)
     total = await db.scalar(select(func.count()).select_from(Company).where(*filters))
     stmt = (
         select(Company, RecIndustry, RecLeadSource, Recruiter, svc.NEXT_FOLLOW_UP)
@@ -131,6 +139,7 @@ async def create_company(payload: RecCompanyCreate, user: User = Depends(get_cur
             raise HTTPException(403, "Only a placement manager can choose the recruiter")
     values = payload.model_dump(include=set(REC_COMPANY_FIELDS))
     values.update({k: [] for k in REC_CONTEXT_LIST_LABELS if values[k] is None})  # pob-003: an unsent list is empty, never NULL
+    await svc.apply_partner_type(db, None, values)  # pob-010 V3/V4
     await svc.check_references(db, values, None)
     target = None
     if user.role != ROLE and payload.assigned_recruiter_user_id:
@@ -168,6 +177,7 @@ async def update_company(company_id: UUID, payload: RecCompanyUpdate, user: User
     company = await svc.load_scoped(db, user, company_id, lock=True)
     svc.require(user, company, "can_edit", "update")
     changes = payload.model_dump(exclude_unset=True, exclude={"confirm_duplicate", *REC_COMPANY_RELATIONS})
+    await svc.apply_partner_type(db, company, changes)  # pob-010 V3/V4
     await svc.check_references(db, changes, company)
     changed = sorted(k for k, v in changes.items() if getattr(company, k) != v)
     overrides = await svc.check_name(db, changes["name"], payload.confirm_duplicate, company.id) if "name" in changed else 0
@@ -220,6 +230,16 @@ async def assign_company(company_id: UUID, payload: RecCompanyAssign, user: User
     svc.audit(db, user, "assign", company.id, {"from_user_id": str(previous) if previous else None, "to_user_id": str(target.id)})
     await db.commit()
     svc.log("recruiter_company_assigned", user, company.id, to_user_id=str(target.id))
+    return {"company": await svc.company_out(db, user, company)}
+
+
+@router.post("/{company_id}/vendor-status", response_model=RecCompanyEnvelope)
+async def move_vendor_status(company_id: UUID, payload: RecVendorStatusMove, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """pob-010 (DEC-SCOPE-420 V5/V6): one onboarding step; the row, its history and the audit share the transaction."""
+    company = await svc.load_scoped(db, user, company_id, lock=True)
+    await svc.move_vendor_status(db, user, company, payload.status, payload.from_status, payload.reason)
+    await db.commit()
+    svc.log("recruiter_vendor_status_changed", user, company.id, to_status=payload.status)
     return {"company": await svc.company_out(db, user, company)}
 
 

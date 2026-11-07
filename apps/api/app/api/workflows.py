@@ -2254,6 +2254,9 @@ async def create_job(payload: dict, user: User = Depends(get_current_user), db: 
     company_id = uuid_reference(company_id, "company reference")
     if user.role != "it_admin":
         await recruiter_companies.load_scoped(db, user, company_id)  # out of the caller's company scope = 404
+    target = await db.get(Company, company_id)
+    if target is not None:
+        recruiter_companies.require_client(target)  # pob-010 V10
     job = Job(
         company_id=company_id,
         assigned_recruiter_user_id=owner,

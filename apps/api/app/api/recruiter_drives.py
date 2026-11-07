@@ -50,6 +50,7 @@ async def create_drive(payload: RecDriveCreate, user: User = Depends(get_current
     """Not idempotent (a retry creates a second drive)."""
     company = await companies.load_scoped(db, user, payload.company_id, lock=True)
     companies.require(user, company, "can_edit", "drive_create")
+    companies.require_client(company)  # pob-010 V10
     drive = await svc.create(db, user, company, payload)
     await db.commit()
     svc.log("recruitment_drive_created", user, drive.id, company_id=str(company.id))

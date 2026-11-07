@@ -16,16 +16,21 @@ from app.models import (
     Company,
     CompanyAssignmentHistory,
     CompanyBranch,
+    CompanyDocument,
     CompanySkillDemand,
+    CompanyVendorStatusHistory,
+    Job,
     RecCampaign,
     RecCompanySize,
     RecIndustry,
     RecLeadSource,
     RecruiterCall,
+    RecruiterContract,
     RecruiterFollowUp,
     RecruiterMeeting,
     RecruiterMessage,
     RecruiterProfile,
+    RecruitmentDrive,
     Skill,
     User,
 )
@@ -67,6 +72,141 @@ LOOKUPS = {  # field -> (model, the word in its 422)
 
 SKILL_INACTIVE = "Choose an active skill"
 BRANCH_FIELDS = ("city", "state", "country")
+
+
+# --- pob-010 (DEC-SCOPE-420 V2-V5): the vendor relationship -----------------------------------------------------------------------------
+VENDOR_ONLY = "vendor"
+VENDOR_TYPES = (VENDOR_ONLY, "vendor_client")
+CLIENT_COMPANY = Company.partner_type != VENDOR_ONLY  # V10: the filter of every client-only view; a `vendor_client` company stays in
+VENDOR_COMPANY = Company.partner_type.in_(VENDOR_TYPES)
+VENDOR_LISTS = {"vendor_specialisations": "specialisations", "vendor_service_categories": "service_categories", "vendor_locations": "locations"}
+VENDOR_STATUS_LABELS = {"prospect": "Prospect", "registration_submitted": "Registration submitted", "approved": "Approved", "active": "Active", "suspended": "Suspended"}
+# V5: from -> to -> what the step needs. `manager`: a placement manager or super_admin only.
+VENDOR_MOVES = {
+    "prospect": {"registration_submitted": {"form": True}},
+    "registration_submitted": {"approved": {"manager": True, "nda": True}, "prospect": {"manager": True, "reason": True}},
+    "approved": {"active": {"agreement": True}, "suspended": {"manager": True, "reason": True}},
+    "active": {"suspended": {"manager": True, "reason": True}},
+    "suspended": {"active": {"manager": True, "agreement": True}},
+}
+NOT_A_CLIENT = "This company is a vendor only. Mark it as both a client and a vendor first"
+NOT_A_VENDOR = "This company is not a vendor"
+VENDOR_FIELDS_INVALID = "Only a vendor has vendor details"
+TYPE_EMPLOYER = "An employer's own account cannot change its relationship"
+TYPE_HAS_CLIENT_WORK = "This company has requirements, drives or a client contract. Mark it as both a client and a vendor instead"
+TYPE_HAS_AGREEMENT = "This company has a vendor agreement, so it stays a vendor"
+
+
+def is_vendor(company: Company) -> bool:
+    return company.partner_type in VENDOR_TYPES
+
+
+def require_client(company: Company) -> None:
+    """V10: a vendor-only company never becomes the end client of a requirement or a drive."""
+    if company.partner_type == VENDOR_ONLY:
+        raise HTTPException(422, NOT_A_CLIENT)
+
+
+async def _exists(db: AsyncSession, model, *where) -> bool:
+    return await db.scalar(select(model.id).where(*where).limit(1)) is not None
+
+
+async def apply_partner_type(db: AsyncSession, company: Company | None, changes: dict) -> None:
+    """V3/V4: under the company lock, on the merged state. Mutates `changes`: becoming a vendor starts at prospect, leaving clears the status."""
+    stored = company.partner_type if company else "recruiter"
+    target = changes.get("partner_type") or stored
+    sent_lists = any(changes.get(k) for k in VENDOR_LISTS)
+    if target not in VENDOR_TYPES and sent_lists:
+        raise HTTPException(422, VENDOR_FIELDS_INVALID)
+    if target == stored:
+        changes.pop("partner_type", None)  # the column default on a create; no change on an edit
+        return
+    if stored == "employer":
+        raise HTTPException(409, TYPE_EMPLOYER)
+    if company is not None and target == VENDOR_ONLY and (
+        await _exists(db, Job, Job.company_id == company.id)
+        or await _exists(db, RecruitmentDrive, RecruitmentDrive.company_id == company.id)
+        or await _exists(db, RecruiterContract, RecruiterContract.company_id == company.id, RecruiterContract.party == "client")
+    ):
+        raise HTTPException(409, TYPE_HAS_CLIENT_WORK)
+    if company is not None and target not in VENDOR_TYPES and await _exists(db, RecruiterContract, RecruiterContract.company_id == company.id, RecruiterContract.party == "vendor"):
+        raise HTTPException(409, TYPE_HAS_AGREEMENT)
+    if target in VENDOR_TYPES and stored not in VENDOR_TYPES:
+        changes["vendor_status"] = "prospect"
+    elif target not in VENDOR_TYPES:
+        changes.update(vendor_status=None, **{k: [] for k in VENDOR_LISTS})
+
+
+async def _has_document(db: AsyncSession, company: Company, kind: str) -> bool:
+    return await _exists(db, CompanyDocument, CompanyDocument.company_id == company.id, CompanyDocument.kind == kind)
+
+
+async def move_vendor_status(db: AsyncSession, user: User, company: Company, status: str, from_status: str, reason: str | None) -> None:
+    """V5: state (not a vendor, stale) first, then the step, the role, the reason and what the step needs. The route has locked the company."""
+    from app.services.recruiter_contracts import VENDOR, company_contract_ref  # local: recruiter_contracts imports this module
+
+    if not is_vendor(company):
+        raise HTTPException(409, NOT_A_VENDOR)
+    if company.archived_at is not None or company.merged_into_id is not None:
+        raise HTTPException(409, STATE_REFUSALS["can_edit"])
+    before = company.vendor_status
+    if before != from_status:
+        raise HTTPException(409, {"message": f"This vendor moved to {VENDOR_STATUS_LABELS[before]} meanwhile", "code": "vendor_status_changed", "current_status": before})
+    needs = VENDOR_MOVES[before].get(status)
+    if needs is None:
+        raise HTTPException(422, f"A vendor cannot move from {VENDOR_STATUS_LABELS[before]} to {VENDOR_STATUS_LABELS[status]}")
+    manager = user.role in (MANAGER_ROLE, "super_admin")
+    if not manager and (needs.get("manager") or not _allowed(user, company, "can_edit")):
+        logger.warning("recruiter_company_write_refused", extra={"extra_fields": {"actor_id": str(user.id), "company_id": str(company.id), "route": "vendor_status"}})
+        raise HTTPException(403, "Only a placement manager can make this change")
+    if needs.get("reason") and not reason:
+        raise HTTPException(422, "Give a reason")
+    if needs.get("form") and not await _has_document(db, company, "vendor_onboarding_form"):
+        raise HTTPException(409, "Upload the vendor onboarding form first")
+    if needs.get("nda") and not await _has_document(db, company, "nda"):
+        raise HTTPException(409, "Upload the signed NDA first")
+    if needs.get("agreement"):
+        agreement = await company_contract_ref(db, company, VENDOR)
+        if agreement is None or agreement["status"] not in ("signed", "active"):
+            raise HTTPException(409, "The vendor agreement must be signed first")
+    company.vendor_status = status
+    db.add(CompanyVendorStatusHistory(company_id=company.id, from_status=before, to_status=status, reason=reason, actor_user_id=user.id))
+    audit(db, user, "vendor_status", company.id, {"from": before, "to": status})
+
+
+async def vendor_out(db: AsyncSession, user: User, company: Company) -> dict | None:
+    """V3/V5: the vendor block of the detail. `next_statuses` is what this caller may try; the server still checks each step's needs."""
+    from app.services.recruiter_contracts import VENDOR, company_contract_ref  # local: recruiter_contracts imports this module
+
+    if not is_vendor(company):
+        return None
+    rows = (
+        await db.execute(
+            select(CompanyVendorStatusHistory, User)
+            .join(User, User.id == CompanyVendorStatusHistory.actor_user_id)
+            .where(CompanyVendorStatusHistory.company_id == company.id)
+            .order_by(CompanyVendorStatusHistory.position.desc())
+        )
+    ).all()
+    open_record = company.archived_at is None and company.merged_into_id is None
+    manager = user.role in (MANAGER_ROLE, "super_admin")
+    editor = manager or _allowed(user, company, "can_edit")
+    steps = VENDOR_MOVES[company.vendor_status].items() if open_record and editor else ()
+    return {
+        "specialisations": company.vendor_specialisations or [],
+        "service_categories": company.vendor_service_categories or [],
+        "locations": company.vendor_locations or [],
+        "onboarding_form_on_file": await _has_document(db, company, "vendor_onboarding_form"),
+        "nda_on_file": await _has_document(db, company, "nda"),
+        "agreement": await company_contract_ref(db, company, VENDOR),
+        "next_statuses": [
+            {"status": to, "label": VENDOR_STATUS_LABELS[to], "needs_reason": bool(needs.get("reason"))} for to, needs in steps if manager or not needs.get("manager")
+        ],
+        "history": [
+            {"from_status": h.from_status, "to_status": h.to_status, "to_label": VENDOR_STATUS_LABELS[h.to_status], "reason": h.reason, "actor": person(actor), "created_at": h.created_at}
+            for h, actor in rows
+        ],
+    }
 
 
 def name_key(name: str) -> str:
@@ -278,6 +418,9 @@ def row_out(user: User, company: Company, industry, source, recruiter: User | No
         "lost": company.lost_at is not None,
         "next_follow_up_at": next_follow_up_at,
         "last_contacted_at": company.last_contacted_at,  # pob-003 D4
+        "partner_type": company.partner_type,  # pob-010
+        "vendor_status": company.vendor_status,
+        "vendor_status_label": VENDOR_STATUS_LABELS.get(company.vendor_status),
     }
 
 
@@ -323,6 +466,7 @@ async def company_out(db: AsyncSession, user: User, company: Company, *, refresh
         "contract": await company_contract_ref(db, company),  # rec-030 CT10
         **await context_out(db, company),  # pob-003
         "merged_into": await merged_into_out(db, company),  # pob-006 M6
+        "vendor": await vendor_out(db, user, company),  # pob-010
         "archived_at": company.archived_at,
         "created_at": company.created_at,
         "updated_at": company.updated_at,

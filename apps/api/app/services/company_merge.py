@@ -20,6 +20,7 @@ from app.models import (
     CompanyDocument,
     CompanySkillDemand,
     CompanyStageHistory,
+    CompanyVendorStatusHistory,
     CrmImportRow,
     EmployerProfile,
     Interview,
@@ -50,6 +51,7 @@ VICTIM_ARCHIVED = "{code} is archived. Restore it first"
 VICTIM_MERGED = "{code} was already merged into another company"
 VICTIM_EMPLOYER = "{code} is an employer's own account. Merge the other company into it instead"
 BOTH_EMPLOYERS = "Both companies are employers' own accounts, so they cannot be merged"
+VENDOR_REFUSED = "{code} is a vendor. Vendors cannot be merged yet"  # pob-010 V11
 BOTH_CONTRACTS = "Both companies have a contract in effect ({a} and {b}). End one before merging"
 CONTACT_SELF = "A contact cannot be merged into itself"
 CONTACT_MERGED = "This contact was already merged into another one"
@@ -65,7 +67,7 @@ MOVED = {
     "contracts": RecruiterContract, "documents": CompanyDocument, "shares": ProfileShare, "drives": RecruitmentDrive, "stage_history": CompanyStageHistory,
     "assignment_history": CompanyAssignmentHistory, "import_rows": CrmImportRow,
 }  # fmt: skip
-HANDLED = (CompanyBranch, CompanySkillDemand, EmployerProfile)  # M4's two rules; an employer's company is refused as the victim (M2)
+HANDLED = (CompanyBranch, CompanySkillDemand, EmployerProfile, CompanyVendorStatusHistory)  # M4's two rules; an employer's company is refused as the victim (M2); a vendor is refused (pob-010 V11)
 
 CONTACT_FIELDS = ("name", "designation", "department", "role_id", "mobile", "email", "linkedin_url", "preferred_channel", "notes", "source", "verified_on")  # C3
 CONTACT_MOVED = {
@@ -129,6 +131,9 @@ async def _check(db: AsyncSession, survivor: Company, victim: Company) -> None:
         raise HTTPException(409, VICTIM_MERGED.format(code=victim.company_code))
     if victim.archived_at is not None:
         raise HTTPException(409, VICTIM_ARCHIVED.format(code=victim.company_code))
+    for company in (survivor, victim):
+        if companies.is_vendor(company):
+            raise HTTPException(409, VENDOR_REFUSED.format(code=company.company_code))
     if await _is_employers(db, victim):
         raise HTTPException(409, BOTH_EMPLOYERS if await _is_employers(db, survivor) else VICTIM_EMPLOYER.format(code=victim.company_code))
 

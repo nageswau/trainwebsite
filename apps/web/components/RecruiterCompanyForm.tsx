@@ -15,6 +15,8 @@ import {
   duplicateOf,
   type FormField,
   isCompanyBody,
+  PARTNER_TYPES,
+  type PartnerType,
   PICK_FIELDS,
   PRIORITIES,
   PRIORITY_LABEL,
@@ -70,6 +72,7 @@ export default function RecruiterCompanyForm({
   company,
   canChooseRecruiter,
   withContact = false,
+  initialPartnerType,
   onSaved,
   onCancel,
 }: {
@@ -77,13 +80,15 @@ export default function RecruiterCompanyForm({
   company?: Company;
   /** rec-004 "+ Add Recruiter" (create only): ask for the first contact too. */
   withContact?: boolean;
+  /** pob-010: opened from the vendor list. */
+  initialPartnerType?: PartnerType;
   /** Managers and super admin may hand a new company to a recruiter (else it is unassigned); a recruiter's is always their own. */
   canChooseRecruiter: boolean;
   /** `saved` is false when there was nothing to change. */
   onSaved: (c: Company, saved: boolean) => void;
   onCancel: () => void;
 }) {
-  const original = useRef(valuesOf(company));
+  const original = useRef({ ...valuesOf(company), ...(initialPartnerType ? { partner_type: initialPartnerType } : {}) });
   const [values, setValues] = useState(original.current);
   const [recruiter, setRecruiter] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<Record<FormField, string>>>({});
@@ -314,6 +319,14 @@ export default function RecruiterCompanyForm({
           {selectField("lead_source_id", "Lead source", withCurrent(sources, company?.lead_source), pickSource)}
           {selectField("campaign_id", "Campaign", withCurrent(campaignOptions.map((c) => ({ id: c.id, name: c.name })), company?.campaign), pickCampaign)}
           {selectField("priority", "Priority", PRIORITIES.map((p) => ({ id: p, name: PRIORITY_LABEL[p] })))}
+          {company?.partner_type !== "employer" && (
+            <div className="field">{/* pob-010 V2/V4: the server refuses a change the company's records don't allow */}
+              <label htmlFor={`${idPrefix}-partner_type`}>Relationship</label>
+              <select id={`${idPrefix}-partner_type`} value={values.partner_type} onChange={(e) => setValues((v) => ({ ...v, partner_type: e.target.value }))}>
+                {PARTNER_TYPES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </div>
+          )}
           <div className="field">
             <SearchableSelect
               id={`${idPrefix}-assigned_bdm_user_id`}

@@ -6235,3 +6235,15 @@ Import routes need `crm.import`, merge routes `crm.merge` (403). A row outcome i
   - It writes an audit row `recruiter_template.copy` (ids only) and is not a message: no last-contacted change, no cap.
 
 Audit actions `recruiter_template.approve|archive|restore|copy`.
+
+## 12LM. Vendor master, onboarding and agreements (pob-010) — addendum, 2026-11-07
+
+`DEC-SCOPE-420`. All routes keep the company scope (out of scope 404).
+
+- `GET /recruiter/companies`: new `relationship=client|vendor|all` (default `client`) and `vendor_status`. Rows add `partner_type`, `vendor_status`, `vendor_status_label`.
+- `POST`/`PATCH /recruiter/companies[/{id}]`: new `partner_type` (`recruiter|vendor|vendor_client`), `vendor_specialisations`, `vendor_service_categories`, `vendor_locations`. Vendor lists on a non-vendor 422; a change of relationship the records don't allow 409.
+- `GET /recruiter/companies/{id}`: adds `vendor` (null for a non-vendor): lists, `onboarding_form_on_file`, `nda_on_file`, `agreement`, `next_statuses`, `history`.
+- `POST /recruiter/companies/{id}/vendor-status` `{status, from_status, reason?}`: 200 the company. 403 a manager's step; 409 not a vendor, archived, stale (`vendor_status_changed`) or a missing form, NDA or signed agreement; 422 no such step or no reason.
+- `GET|POST|PATCH /recruiter/companies/{id}/contracts` and `PUT .../contracts/document`: new `?party=client|vendor`; unsent = the client side, or the vendor side of a vendor-only company; a side the company lacks is 422. Bodies add `direction`, `confidentiality_terms` (vendor side only, else 422; `direction` required from Signed). Output adds `party`. Vendor terms and documents need `commercials.vendor.*`.
+- `POST /recruiter/requirements`, `POST /recruiter/drives`, `POST /workflows/it/jobs`: a vendor-only company is 422. `GET /recruiter/pipeline` and `GET /public/home` partners leave it out. Merging a vendor is 409.
+- Company documents: new kind `nda`.
