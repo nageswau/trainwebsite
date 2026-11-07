@@ -871,6 +871,7 @@ class CompanyContact(Base, TimestampMixin):
 RECRUITER_FOLLOW_UP_REASONS = (
     "new_requirement", "jd", "profile_feedback", "interview_feedback", "offer_status", "joining_confirmation", "new_openings",
     "contract_mou", "payment_commercial", "clarification",  # pob-016 (C4): a checklist item the client must clarify
+    "first_outreach", "cadence_step",  # pob-008 (DEC-SCOPE-423 B10/B11): a new company or contact; an outreach cadence's next step
 )
 RECRUITER_FOLLOW_UP_CHECKS = {
     "ck_recruiter_follow_ups_reason": f"reason IN ({', '.join(repr(r) for r in RECRUITER_FOLLOW_UP_REASONS)})",
@@ -897,6 +898,7 @@ class RecruiterFollowUp(Base, TimestampMixin):
         Index("ix_recruiter_follow_ups_company", "company_id", "status", "due_at"),
         Index("ix_recruiter_follow_ups_open_due", "due_at", postgresql_where=text("status = 'open'")),
         Index("ix_recruiter_follow_ups_contact", "contact_id"),
+        Index("ix_recruiter_follow_ups_unreminded", "due_at", postgresql_where=text("status = 'open' AND reminded_at IS NULL")),  # pob-008 B1
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
@@ -915,6 +917,64 @@ class RecruiterFollowUp(Base, TimestampMixin):
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     priority: Mapped[str] = mapped_column(String(8), default="medium", server_default=text("'medium'"))  # pob-007 A8
     remind_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # pob-007 A8: stored; pob-008 delivers
+    reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # pob-008 B1: the one reminder; B4 re-arms
+
+
+# pob-008 (DEC-SCOPE-423 B5-B7): outreach cadences and each contact's run of one. Migration 0303 repeats the run checks
+# (test_pob_008_migration keeps them identical).
+RECRUITER_CADENCE_CHANNELS = ("email", "whatsapp", "linkedin", "call")
+RECRUITER_CADENCE_STATUSES = ("active", "replied", "stopped", "completed")
+RECRUITER_CADENCE_END_REASONS = ("reply", "do_not_contact", "not_interested", "inactive", "archived", "manual", "last_step")
+RECRUITER_CONTACT_CADENCE_CHECKS = {
+    "ck_recruiter_contact_cadences_status": f"status IN ({', '.join(repr(s) for s in RECRUITER_CADENCE_STATUSES)})",
+    "ck_recruiter_contact_cadences_end_reason": f"end_reason IS NULL OR end_reason IN ({', '.join(repr(r) for r in RECRUITER_CADENCE_END_REASONS)})",
+    "ck_recruiter_contact_cadences_state": (
+        "(status = 'active') = (ended_at IS NULL) AND (ended_at IS NULL) = (end_reason IS NULL) AND (status = 'active') = (next_step_at IS NOT NULL)"
+    ),
+}
+
+
+class RecruiterCadence(Base, TimestampMixin):
+    """pob-008 B5: the Team Lead's outreach cadence -- 2-10 ordered steps `{day, channel, template_id}` (day 0 first, strictly increasing).
+    Never deleted, only deactivated; a run keeps a snapshot, so an edit never changes a run in progress."""
+
+    __tablename__ = "recruiter_cadences"
+    __table_args__ = (Index("uq_recruiter_cadences_name", text("lower(name)"), unique=True),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    steps: Mapped[list] = mapped_column(JSON)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+class RecruiterContactCadence(Base, TimestampMixin):
+    """pob-008 B6/B7: one contact's run of a cadence, started on an outreach message (step 1). `step` counts the steps done; the sweep
+    creates the next step's follow-up at `next_step_at`. At most one active run per contact."""
+
+    __tablename__ = "recruiter_contact_cadences"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_CONTACT_CADENCE_CHECKS.items()),
+        Index("uq_recruiter_contact_cadences_active", "contact_id", unique=True, postgresql_where=text("status = 'active'")),
+        Index("ix_recruiter_contact_cadences_due", "next_step_at", postgresql_where=text("status = 'active'")),
+        Index("ix_recruiter_contact_cadences_message", "message_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    cadence_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_cadences.id", ondelete="RESTRICT"))
+    contact_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"))
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    message_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_messages.id", ondelete="RESTRICT"))
+    name: Mapped[str] = mapped_column(String(120))
+    steps: Mapped[list] = mapped_column(JSON)
+    step: Mapped[int] = mapped_column(SmallInteger, default=1, server_default=text("1"))
+    status: Mapped[str] = mapped_column(String(12), default="active", server_default=text("'active'"))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    started_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    next_step_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    end_reason: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    last_follow_up_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_follow_ups.id", ondelete="RESTRICT"), nullable=True)
 
 
 # rec-025 (DEC-SCOPE-133 CA1/CA8): the call outcomes (the source names none -- UNVERIFIED default) and directions; migration 0118 repeats

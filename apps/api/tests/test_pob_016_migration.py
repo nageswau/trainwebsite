@@ -31,7 +31,11 @@ def test_migration_is_in_the_single_chain():
 
 def test_the_checks_are_frozen_copies():
     assert _migration.ITEM_CHECKS == JOB_CHECKLIST_ITEM_CHECKS
-    assert _migration.REASON_CHECK == RECRUITER_FOLLOW_UP_CHECKS[REASON]
+    # pob-008 (0303) added two reasons since, so 0299's copy is now 0303's "old" one; test_pob_008_migration pins the model's
+    later = importlib.util.spec_from_file_location("_pob_008_migration_for_016", VERSIONS / "0303_outreach_cadences.py")
+    module = importlib.util.module_from_spec(later)
+    later.loader.exec_module(module)
+    assert _migration.REASON_CHECK == module.OLD_REASON_CHECK != RECRUITER_FOLLOW_UP_CHECKS[REASON]
 
 
 @pytest.fixture

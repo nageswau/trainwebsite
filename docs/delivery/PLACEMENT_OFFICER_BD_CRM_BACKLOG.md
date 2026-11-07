@@ -304,6 +304,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** low.
 
 #### pob-008: Recruiter follow-up reminders and outreach cadence
+- **Status:** built (`DEC-SCOPE-423`, 2026-11-07); B1–B12 are the builder's calls (`NEEDS_CONFIRMATION`): N = 30 minutes (or the follow-up's own `remind_at`); a cadence starts on an outreach message; imports get no first-outreach task.
 - **Business requirement:** §3.3 "Allow follow-up reminders"; §4 "Set reminders for overdue follow-ups and unanswered outreach"; §16 "No reply after configured period → Create reminder using the chosen communication cadence"; "New company/contact created → Check duplicates and create a follow-up task".
 - **Existing behavior:** follow-ups have today and overdue views, but **no reminder fires** (`bdm_reminders` covers BDMs only). No cadence; creating a company makes no task.
 - **Expected behavior:**

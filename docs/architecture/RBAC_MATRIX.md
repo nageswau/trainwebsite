@@ -4028,3 +4028,9 @@ A placement officer has no company scope, but answering Missing still creates th
 - **Settings:** `placement_manager` (the Team Lead) and super_admin read and write them; everyone else gets 403. No new grant.
 - **Confirmation template:** whoever may schedule or reschedule the interview, which keeps rec-020's scope and writer rules unchanged.
 - **Sweeps:** these run in the worker. Emails go out as the interview's owner. The chase follow-up belongs to the requirement's company, so its normal follow-up scope applies.
+
+### 2.314 Follow-up reminders and outreach cadences *(added 2026-11-07 — `DEC-SCOPE-423`, pob-008)*
+
+- **Cadence library:** every recruiter-CRM role reads it (rec-003 `caller_scope`, others 403); `placement_manager` (the Team Lead) and super_admin create and edit (403 otherwise). No new grant.
+- **Start / stop on a message:** the contact's company scope (404) and `can_edit` (403), as a reply or outcome on the message (pob-005 / pob-007).
+- **Sweeps:** run in the worker. A reminder goes only to the company's current assigned recruiter (else the follow-up's creator); a step's follow-up is created for that owner and belongs to the company, so rec-024's scope applies.

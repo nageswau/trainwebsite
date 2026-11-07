@@ -70,6 +70,8 @@ EVENTS: dict[str, Event] = {
     "it.job.new_match": Event("job", "New job for your profile", "A new job fits your profile. Open EduSphere to see it. A match does not guarantee selection."),
     # pob-022 (DEC-SCOPE-421 A6): the Team Lead, when a feedback chase follow-up is still open -- never a name or the feedback
     "it.interview.feedback_escalated": Event("interview", "Interview feedback escalated", "Interview feedback is still overdue after a follow-up. Open EduSphere to review it."),
+    # pob-008 (DEC-SCOPE-423 B3): the owner of a recruiter follow-up that is due soon or overdue -- never the reason, a note or a company
+    "it.recruiter.follow_up_due": Event("recruiter_follow_up", "Follow-up due", "A follow-up is due soon or overdue. Open EduSphere to act on it."),
 }
 COUNT = "{count}"
 
@@ -79,7 +81,7 @@ RECRUITMENT_EVENTS: dict[str, str] = {
     **{key: EVENTS[key].title for key in (
         "it.candidate.assigned", "it.candidate.unassigned", "it.candidate.task_assigned", "it.requirement.review_needed", "it.application.new", "it.application.updated",
         "it.requirement.changed", "it.requirement.assigned", "it.requirement.approval_needed", "it.interview.feedback_overdue", "it.interview.result_published", "it.job.new_match",
-        "it.interview.feedback_escalated",
+        "it.interview.feedback_escalated", "it.recruiter.follow_up_due",
     )},
     "it.application.received": "Application received",
     "it.interview.scheduled": "Interview scheduled",

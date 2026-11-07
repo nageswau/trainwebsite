@@ -33,8 +33,9 @@ from app.schemas import (
     RecVendorStatus,
     RecVendorStatusMove,
 )
+from app.services import recruiter_cadences, recruiter_contacts
 from app.services import recruiter_companies as svc
-from app.services import recruiter_contacts
+from app.services.bdm_appointments import db_now
 from app.services.recruiter import ROLE, recruiter_context
 
 router = APIRouter(prefix="/recruiter/companies", tags=["recruiter-companies"])
@@ -157,8 +158,10 @@ async def create_company(payload: RecCompanyCreate, user: User = Depends(get_cur
     svc.audit(db, user, "create", company.id, {"code": company.company_code, "fields": sorted(filled)})
     if overrides:
         svc.audit(db, user, "duplicate_override", company.id, {"match_count": overrides})
+    contact = None
     if payload.contact:  # rec-004 C7 "+ Add Recruiter": the first contact (primary) in the same transaction
-        await recruiter_contacts.add(db, user, company, payload.contact)
+        contact = await recruiter_contacts.add(db, user, company, payload.contact)
+    await recruiter_cadences.first_outreach(db, user, company, contact, await db_now(db))  # pob-008 B10
     await db.commit()
     svc.log("recruiter_company_created", user, company.id, duplicate_override=bool(overrides), with_contact=payload.contact is not None)
     return {"company": await svc.company_out(db, user, company)}

@@ -6287,3 +6287,15 @@ Audit actions `recruiter_template.approve|archive|restore|copy`.
 - `POST /recruiter/calls`, `PATCH /recruiter/calls/{id}`: new `job_id` (a requirement of the contact's company; contact calls only; 422 on `job_id`), `objections` (catalogue keys, each once), `objection_notes` (≤ 1000), `next_action` (≤ 500). Output adds them plus `requirement {id, code, title}`.
 - `POST /recruiter/meetings/{id}/outcome`: new `hiring_forecast` (≤ 10 `{role, count, timeframe}`), `action_items` (≤ 10 `{action, due_at, reason}`, each a follow-up; 422 on `action_items.N.due_at`), `commercial_notes` (needs `commercials.client.view`, else 403). Meeting output adds `hiring_forecast`, `action_items`, `commercial_notes` (null without the grant) and `commercial_notes_visible`. Meeting type `company_visit` (BD visit).
 - Follow-ups: create/PATCH add `priority` (high|medium|low, default medium) and `remind_at` (future when set; not after `due_at`, 422 on `remind_at`). Output adds both.
+
+## 12LP. Follow-up reminders and outreach cadences (pob-008) — addendum, 2026-11-07
+
+`DEC-SCOPE-423`. Migration `0303_outreach_cadences`.
+
+- `GET /recruiter/cadences?include_inactive=false` (200): `{items: [{id, name, description, active, steps: [{day, channel, template {id, name} | null}], updated_at, can_edit}], can_edit}`. Recruiter-CRM roles (rec-003 `caller_scope`), else 403.
+- `POST /recruiter/cadences` (201) / `PATCH /recruiter/cadences/{id}` (200): `{name (1-120), description? (≤ 500), steps: [{day, channel, template_id?}] (2-10), active? (PATCH)}`. `placement_manager` / super_admin, else 403. 422 on `steps` (day 0 first, strictly increasing, ≤ 90; template approved, shared, of the step's channel); duplicate name (case-insensitive) 409; unknown id 404. Audit `recruiter_cadence.create` / `.update`.
+- `POST /recruiter/messages/{id}/cadence` (201): `{cadence_id}` on a contact message. Scope 404, `can_edit` 403, archived 409, candidate message 422, inactive/unknown cadence 422 on `cadence_id`, Do Not Contact / Not interested / inactive contact / already replied / already running 409. Returns the message with `cadence`. Audit `recruiter_cadence.start`.
+- `POST /recruiter/messages/{id}/cadence/stop` (200): the active run on that message ends `manual`; none running 409. Audit `recruiter_cadence.stop`.
+- Message output (company messages, start/stop) adds `cadence {id, cadence_id, name, status, step, steps, next_step_at, end_reason, ended_at, can_stop} | null`. Follow-up output adds `reminded_at`. Follow-up reasons add `first_outreach`, `cadence_step`.
+- Notification event `it.recruiter.follow_up_due` (entity `recruiter_follow_up`, fixed text, action `/recruiter/follow-ups`); in `RECRUITMENT_EVENTS`.
+- `POST /recruiter/companies` and `POST /recruiter/companies/{id}/contacts` also create one open `first_outreach` follow-up (due in 24 hours) in the same transaction.

@@ -5,6 +5,7 @@ import CopyComposer from "@/components/CopyComposer";
 import EmailComposer from "@/components/EmailComposer";
 import WhatsAppComposer from "@/components/WhatsAppComposer";
 import type { Page } from "@/lib/apiErrors";
+import type { CadenceRun } from "@/lib/recruiterCadences";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import { CHANNEL_LABEL, isPending, linkedinTitle, messageTitle, type Channel, type CopyChannel, type MessageContext, type Party } from "@/lib/recruiterMessages";
 import { getPage } from "@/lib/telecallerCatalogue";
@@ -19,6 +20,7 @@ export type MessageLine = {
   replied_at?: string | null; // pob-005 D7: a reply the recruiter logged on this message
   // pob-007 (A1/A3): a LinkedIn row's action; an outcome and its next follow-up
   linkedin_action?: string | null; outcome?: string | null; follow_up?: { id: string; due_at: string } | null;
+  cadence?: CadenceRun | null; // pob-008 B6: the outreach cadence started on this message (type only; rendered by the recruiter's itemAction)
 };
 const TEXT = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
 const POLL_MS = 5000; // a queued email is usually sent within seconds

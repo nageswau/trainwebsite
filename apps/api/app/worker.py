@@ -326,6 +326,24 @@ def interview_feedback_chase_task():
 
 
 @celery.task
+def recruiter_follow_up_reminders_task():
+    """pob-008 (DEC-SCOPE-423 B1): every 5 minutes via beat. Once per follow-up (`recruiter_follow_ups.reminded_at`)."""
+    import app.services.telecaller_alerts  # noqa: F401 -- enters main's telecaller import cycle at the end that resolves (test_pob_008)
+    from app.services.recruiter_cadences import run_follow_up_reminders
+
+    return _run_with_fresh_pool(run_follow_up_reminders)
+
+
+@celery.task
+def recruiter_cadences_task():
+    """pob-008 (B8): every 15 minutes via beat. Once per step (`recruiter_contact_cadences.step` / `next_step_at`)."""
+    import app.services.telecaller_alerts  # noqa: F401 -- as above
+    from app.services.recruiter_cadences import run_cadences
+
+    return _run_with_fresh_pool(run_cadences)
+
+
+@celery.task
 def new_matches_task():
     """hrc-032 (DEC-SCOPE-413 N7): hourly via beat. Idempotent (`jobs.match_notified_at`)."""
     from app.services.recruitment_notices import run_new_matches
@@ -346,7 +364,9 @@ celery.conf.beat_schedule = {
     "hrc032-feedback-overdue": {"task": "app.worker.feedback_overdue_task", "schedule": crontab(minute=10)},
     "hrc032-new-matches": {"task": "app.worker.new_matches_task", "schedule": crontab(minute=40)},
     "pob022-interview-reminders": {"task": "app.worker.interview_reminders_task", "schedule": crontab(minute="*/15")},
-    "pob022-feedback-chase": {"task": "app.worker.interview_feedback_chase_task", "schedule": crontab(minute=20)},
+    "pob008-follow-up-reminders": {"task": "app.worker.recruiter_follow_up_reminders_task", "schedule": 300.0},
+    "pob008-cadences": {"task": "app.worker.recruiter_cadences_task", "schedule": crontab(minute="*/15")},
+    "pob022-feedback-chase":{"task": "app.worker.interview_feedback_chase_task", "schedule": crontab(minute=20)},
     "hrc034-portal-events-retention": {"task": "app.worker.portal_events_retention_task", "schedule": crontab(hour=19, minute=15)},  # UTC = 00:45 IST
     "agn017-daily-reminders": {"task": "app.worker.send_daily_reminders_task", "schedule": crontab(hour=2, minute=30)},  # UTC = 08:00 IST
     "ccrm030-counselor-reminders": {"task": "app.worker.send_counselor_reminders_task", "schedule": crontab(hour=2, minute=45)},  # UTC = 08:15 IST

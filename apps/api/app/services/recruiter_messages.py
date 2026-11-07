@@ -474,6 +474,7 @@ async def log_reply(db: AsyncSession, user: User, message_id: UUID, replied_at: 
     message.replied_at = at
     await db.flush()
     await contact_status.advance(db, user, [contact.id], "replied", "reply")
+    await contact_status.end_cadences(db, [contact.id], "replied", "reply")  # pob-008 B9 (AC3), also when the status had already moved
     db.add(AuditLog(user_id=user.id, action="recruiter_message.reply", entity_type="recruiter_message", entity_id=str(message.id), metadata_json={"contact_id": str(contact.id)}))
     return message.id
 

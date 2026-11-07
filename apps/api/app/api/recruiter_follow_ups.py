@@ -79,6 +79,8 @@ async def update_follow_up(fu_id: UUID, payload: RecFollowUpUpdate, user: User =
     await svc.check_links(db, company.id, {k: changes[k] for k in changed}, fu)
     for key in changed:
         setattr(fu, key, changes[key])
+    if "due_at" in changed or "remind_at" in changed:  # pob-008 B4: a rescheduled follow-up is reminded again
+        fu.reminded_at = None
     if changed:
         svc.audit(db, user, "update", fu.id, {"fields": changed})
     await db.commit()

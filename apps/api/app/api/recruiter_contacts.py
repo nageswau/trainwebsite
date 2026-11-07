@@ -11,8 +11,10 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import User
 from app.schemas import RecContactIn, RecContactList, RecContactUpdate
+from app.services import recruiter_cadences
 from app.services import recruiter_companies as companies
 from app.services import recruiter_contacts as svc
+from app.services.bdm_appointments import db_now
 
 router = APIRouter(prefix="/recruiter", tags=["recruiter-contacts"])
 
@@ -42,6 +44,7 @@ async def add_contact(company_id: UUID, payload: RecContactIn, user: User = Depe
     company = await companies.load_scoped(db, user, company_id, lock=True)
     companies.require(user, company, "can_edit", "contact_create")
     contact = await svc.add(db, user, company, payload)
+    await recruiter_cadences.first_outreach(db, user, company, contact, await db_now(db))  # pob-008 B10
     await db.commit()
     companies.log("recruiter_contact_created", user, company.id, contact_id=str(contact.id))
     return await svc.list_out(db, user, company)

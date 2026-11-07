@@ -8,10 +8,10 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import CompanyContact, User
+from app.models import CompanyContact, RecruiterContactCadence, User
 from app.services import recruiter_companies as companies
 
 LABELS = {
@@ -42,7 +42,26 @@ async def advance(db: AsyncSession, user: User, contact_ids: Iterable[UUID | Non
     ids = {i for i in contact_ids if i is not None}
     if not ids:
         return
+    moved = []
     for contact in await db.scalars(select(CompanyContact).where(CompanyContact.id.in_(ids)).execution_options(populate_existing=True)):
         if contact.active and contact.status in PROGRESSION and PROGRESSION.index(to) > PROGRESSION.index(contact.status):
             record(db, user, contact, to, cause)
+            moved.append(contact.id)
     await db.flush()
+    if to in CADENCE_ENDS:
+        await end_cadences(db, moved, *CADENCE_ENDS[to])
+
+
+# pob-008 (DEC-SCOPE-423 B9): a status that ends a contact's running outreach cadence, and how
+CADENCE_ENDS = {"replied": ("replied", "reply"), "meeting_scheduled": ("replied", "reply"), "do_not_contact": ("stopped", "do_not_contact"),
+                "not_interested": ("stopped", "not_interested")}  # fmt: skip
+
+
+async def end_cadences(db: AsyncSession, contact_ids: Iterable[UUID | None], status: str, reason: str) -> None:
+    """B9: end each contact's active cadence run in the caller's transaction, so a stopped cadence never shows as running."""
+    ids = {i for i in contact_ids if i is not None}
+    if ids:
+        await db.execute(
+            update(RecruiterContactCadence).where(RecruiterContactCadence.contact_id.in_(ids), RecruiterContactCadence.status == "active")
+            .values(status=status, end_reason=reason, ended_at=func.now(), next_step_at=None).execution_options(synchronize_session=False)
+        )  # fmt: skip
