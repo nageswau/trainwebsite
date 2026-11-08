@@ -44,6 +44,7 @@ from app.schemas import (
     CandidatePage,
     CandidateSearch,
     CandidateStatus,
+    CandidateTagsIn,
     CandidateUpdate,
     ResumeApply,
     SavedSearchIn,
@@ -53,7 +54,7 @@ from app.schemas import (
 )
 from app.services import candidate_documents as documents
 from app.services import candidate_duplicates as duplicates
-from app.services import candidate_engagement, candidate_merge, candidate_search, candidate_skills, compensation, course_skills, recruitment_history, saved_searches
+from app.services import candidate_engagement, candidate_merge, candidate_search, candidate_skills, candidate_tags, compensation, course_skills, recruitment_history, saved_searches
 from app.services import candidate_ownership as ownership
 from app.services import candidate_previews as previews
 from app.services import candidate_privacy as privacy
@@ -437,6 +438,32 @@ async def set_outreach(candidate_id: UUID, payload: dict = Body(...), user: User
         await db.commit()
         svc.log("candidate_outreach_changed", user, candidate, status=body.status)
     return await svc.detail_out(db, user, candidate)
+
+
+async def _tags_out(db: AsyncSession, user: User, candidate: Candidate) -> dict:
+    items = (await candidate_tags.read(db, [candidate.id]))[candidate.id]
+    return {"items": items, "can_edit": user.role in svc.WRITERS and candidate.archived_at is None}
+
+
+@router.get("/{candidate_id}/tags")
+async def read_tags(candidate_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """pob-019 (DEC-SCOPE-437 T2): the candidate's free tags -- every candidate reader."""
+    svc.require_reader(user)
+    return await _tags_out(db, user, await svc.load(db, candidate_id, viewer_id=user.id))
+
+
+@router.put("/{candidate_id}/tags")
+async def replace_tags(candidate_id: UUID, payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """pob-019 (T2): replace the whole set (up to 20). One transaction: role, candidate lock (archived 409), the tag check, audit, commit."""
+    svc.require_writer(user)
+    body = _parse(CandidateTagsIn, payload, NOT_AN_OBJECT, {"tag_ids": "Tags"})
+    candidate = await svc.load(db, candidate_id, lock=True, viewer_id=user.id)
+    if candidate.archived_at is not None:
+        raise HTTPException(409, svc.ARCHIVED)
+    await candidate_tags.replace(db, user, candidate, body.tag_ids)
+    await db.commit()
+    svc.log("candidate_tags_replaced", user, candidate, count=len(body.tag_ids))
+    return await _tags_out(db, user, candidate)
 
 
 async def _set_archived(db: AsyncSession, user: User, candidate_id: UUID, archive: bool) -> dict:

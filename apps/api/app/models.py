@@ -7161,6 +7161,10 @@ class RecCompanyInactiveReason(_RecCatalogueValue, Base):
     __tablename__ = "rec_company_inactive_reasons"  # pob-004 D5
 
 
+class RecCandidateTag(_RecCatalogueValue, Base):
+    __tablename__ = "rec_candidate_tags"  # pob-019 (DEC-SCOPE-437 T1): the free candidate tags (Q-14 "from an admin list")
+
+
 # The URL slug of each simple list (api/recruiter_catalogue.py).
 REC_CATALOGUE_MODELS = {
     "lead-sources": RecLeadSource,
@@ -7171,6 +7175,7 @@ REC_CATALOGUE_MODELS = {
     "company-sizes": RecCompanySize,
     "lost-reasons": RecCompanyLostReason,
     "inactive-reasons": RecCompanyInactiveReason,
+    "candidate-tags": RecCandidateTag,
 }
 
 
@@ -7757,6 +7762,18 @@ class CandidateNote(Base):
     candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"))
     author_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CandidateTagLink(Base):
+    """pob-019 (DEC-SCOPE-437 T2, migration 0319): a free tag on a candidate -- who put it there and when. The set is replaced as a whole
+    (services/candidate_tags); a tag is deactivated, never deleted, so a link keeps its tag."""
+
+    __tablename__ = "candidate_tag_links"
+    __table_args__ = (Index("ix_candidate_tag_links_tag", "tag_id"),)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"), primary_key=True)
+    tag_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_candidate_tags.id", ondelete="RESTRICT"), primary_key=True)
+    added_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

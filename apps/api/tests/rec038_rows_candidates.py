@@ -128,6 +128,8 @@ ROWS = [
     # rec-017 a requirement's candidates (§2.62): its readers list, the requirement's editors add
     R("get", "/recruiter/requirements/{requirement}/candidates", **REQ_READ),
     R("post", "/recruiter/requirements/{requirement}/candidates", lambda w: {"candidate_id": w["candidates_spare"]}, **allow(201, "rec", "super"), **OUT),
+    # pob-019 (§2.328): bulk shortlist follows the single add (a repeat reports `already_added`, still 200)
+    R("post", "/recruiter/requirements/{requirement}/candidates/bulk", lambda w: {"candidate_ids": [w["candidates_spare"]]}, **allow(200, "rec", "super"), **OUT),
     # rec-008 JD (§2.58): the requirement's scope; writes follow `can_edit`
     R("get", "/recruiter/requirements/{requirement}/jd", **OWN),
     R("post", "/recruiter/requirements/{requirement}/jd", {"role": "Backend developer"}, **allow(201, "rec", "super"), **OWN_OUT),
@@ -156,6 +158,9 @@ ROWS = [
     # pob-018 (§2.319): verify and the outreach status are the writers'; readers see them on the candidate
     R("post", "/recruiter/candidates/{candidate}/verify", **allow(200, *WRITERS)),
     R("put", "/recruiter/candidates/{candidate}/outreach", {"status": "contacted"}, **allow(200, *WRITERS)),
+    # pob-019 (§2.328): tags -- readers read, writers replace the set
+    R("get", "/recruiter/candidates/{candidate}/tags", **allow(200, *READERS)),
+    R("put", "/recruiter/candidates/{candidate}/tags", {"tag_ids": []}, **allow(200, *WRITERS)),
     R("get", "/recruiter/candidates/{candidate}/applications", **allow(200, *READERS)),  # rec-017: every candidate reader sees every row
     R("post", "/recruiter/candidates/{candidates_spare}/archive", **allow(200, *WRITERS)),
     R("post", "/recruiter/candidates/{candidates_archived}/restore", **allow(200, *WRITERS)),
@@ -194,6 +199,8 @@ ROWS = [
                                                           "assignee_user_id": w["rec_id"]}, **allow(201, *WRITERS)),  # fmt: skip
     R("get", "/recruiter/candidate-tasks", **allow(200, *WRITERS)),
     R("get", "/recruiter/candidate-tasks/assignees", **allow(200, *WRITERS)),
+    R("post", "/recruiter/candidate-tasks/bulk", lambda w: {"task_type": "follow_up", "title": "Call", "due_at": (now() + timedelta(days=1)).isoformat(),
+                                                          "assignee_user_id": w["rec_id"], "candidate_ids": [w["candidate"]]}, **allow(201, *WRITERS)),  # fmt: skip  # pob-019
     R("patch", "/recruiter/candidate-tasks/{candidates_task}", {"title": "Call again"}, **allow(200, *WRITERS)),
     R("post", "/recruiter/candidate-tasks/{candidates_task}/complete", **allow(200, *WRITERS)),
     R("post", "/recruiter/candidate-tasks/{candidates_task}/cancel", **allow(200, *WRITERS)),

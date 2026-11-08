@@ -10361,6 +10361,10 @@ class CandidateNoteIn(BaseModel):
     body: CandidateNoteBody
 
 
+BULK_MAX = 50  # pob-019 (DEC-SCOPE-437 T7/T9): candidates per bulk action
+BulkCandidateIds = Annotated[list[UUID], Field(min_length=1, max_length=BULK_MAX), AfterValidator(lambda v: list(dict.fromkeys(v)))]
+
+
 class CandidateTaskCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     task_type: Literal[CANDIDATE_TASK_TYPES]
@@ -10370,6 +10374,19 @@ class CandidateTaskCreate(BaseModel):
     assignee_user_id: UUID
     application_id: UUID | None = None
     job_id: UUID | None = None
+
+
+class CandidateBulkTaskCreate(BaseModel):
+    """pob-019 (T9): one hrc-016 task per candidate -- the same fields, without an application (each candidate has its own)."""
+
+    model_config = ConfigDict(extra="forbid")
+    task_type: Literal[CANDIDATE_TASK_TYPES]
+    title: CandidateTaskTitle
+    notes: CandidateTaskNotes = None
+    due_at: AwareDatetime
+    assignee_user_id: UUID
+    job_id: UUID | None = None
+    candidate_ids: BulkCandidateIds
 
 
 class CandidateTaskUpdate(BaseModel):
@@ -11996,6 +12013,21 @@ class RecApplicationCreate(BaseModel):
     drive_id: UUID | None = None  # rec-029 (DR9): added through this campus drive (checked by services/recruitment_drives)
 
 
+class RecBulkShortlistIn(BaseModel):
+    """pob-019 (T7): shortlist each candidate into the requirement; repeats are ignored."""
+
+    model_config = ConfigDict(extra="forbid")
+    candidate_ids: BulkCandidateIds
+    note: _rec_requirement_text_type(500, multiline=True) = None
+
+
+class CandidateTagsIn(BaseModel):
+    """pob-019 (T2): a candidate's whole set of free tags; repeats are ignored."""
+
+    model_config = ConfigDict(extra="forbid")
+    tag_ids: Annotated[list[UUID], Field(max_length=20), AfterValidator(lambda v: list(dict.fromkeys(v)))]
+
+
 class RecApplicationStatusChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: Literal[APPLICATION_STATUSES]
@@ -13084,7 +13116,7 @@ CANDIDATE_SEARCH_LABELS = {
     "salary_min": "Minimum salary", "salary_max": "Maximum salary", "source_id": "Candidate source", "status": "Status",
     "engagement": "Engagement", "text": "Resume search",
     # hrc-019 (DEC-SCOPE-399 S3-S10)
-    "preferred": "Nice-to-have skills", "category_ids": "Skill categories", "min_level": "Minimum skill level",
+    "preferred": "Nice-to-have skills", "category_ids": "Skill categories", "tag_ids": "Candidate tags", "min_level": "Minimum skill level",
     "skill_min_months": "Experience on each skill", "degree": "Degree", "specialisation": "Specialisation", "institution": "Institution",
     "passing_year_min": "Passing year from", "passing_year_max": "Passing year to", "cgpa_min": "Minimum CGPA", "cgpa_max": "Maximum CGPA",
     "fresher": "Fresher", "relevant_min_months": "Minimum relevant experience", "relevant_max_months": "Maximum relevant experience",
@@ -13162,6 +13194,8 @@ class CandidateSearch(BaseModel):
     # hrc-019 (DEC-SCOPE-399): S3 skills
     preferred: Annotated[list[SearchTerm], Field(max_length=CANDIDATE_SEARCH_LIST_MAX)] = []
     category_ids: Annotated[list[UUID], Field(max_length=CANDIDATE_SEARCH_LIST_MAX), AfterValidator(lambda v: list(dict.fromkeys(v)))] = []
+    # pob-019 (DEC-SCOPE-437 T4): any of these free tags; like `category_ids` it may stand alone
+    tag_ids: Annotated[list[UUID], Field(max_length=CANDIDATE_SEARCH_LIST_MAX), AfterValidator(lambda v: list(dict.fromkeys(v)))] = []
     min_level: Literal[CANDIDATE_SKILL_LEVELS] | None = None
     skill_min_months: RecMonths = None
     # S4 education (one row satisfies them all)
@@ -13209,7 +13243,7 @@ class CandidateSearch(BaseModel):
         terms = expression_terms(self.all, self.any) + len(self.preferred)
         if terms > CANDIDATE_SEARCH_MAX_TERMS:
             raise ValueError(f"Search for at most {CANDIDATE_SEARCH_MAX_TERMS} skills at once")
-        if terms == 0 and self.text is None and not self.category_ids:
+        if terms == 0 and self.text is None and not self.category_ids and not self.tag_ids:
             raise ValueError("Add at least one skill or some resume search text")
         _experience_order(self.experience_min_months, self.experience_max_months)
         for low, high, message in (

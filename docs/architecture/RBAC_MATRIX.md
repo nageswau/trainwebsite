@@ -4121,3 +4121,16 @@ The replacement requirement must be in the caller's requirement scope and the sa
 | Close a requirement by hand (with a reason) | as rec-007 `can_change_status` | as rec-007 | ✓ | — | 403 |
 
 The token is not a session (`type` = `placement_survey`; `get_current_user` refuses it) and names only the survey id. Refused lookups are audited with the IP and throttled (429). Audit `placement_survey.responded`: ids and the rating, never the comment.
+
+### 2.328 Candidate tags and bulk candidate actions *(added 2026-11-08 — `DEC-SCOPE-437`, pob-019)*
+
+| Action | placement_team | placement_manager | super_admin | hr_team | everyone else |
+|---|---|---|---|---|---|
+| Maintain the "Candidate tags" list | 403 (reads active tags) | ✓ | ✓ | 403 | 403 |
+| Read a candidate's tags; see tags and enrichment on result cards | ✓ (pool) | ✓ | ✓ | ✓ | 403 |
+| Replace a candidate's tags | ✓ (pool) | ✓ | ✓ | 403 | 403 |
+| Bulk shortlist into a requirement | ✓ in requirement scope (`applications.WRITERS`) | 403 | ✓ | 403 | 403 / 404 |
+| Bulk assign candidate tasks | ✓ (`candidates.WRITERS`) | ✓ | ✓ | 403 | 403 |
+| Export the search | `candidates.export` (hrc-020, unchanged) | | | | |
+
+Bulk actions only touch the caller's pool: a candidate outside it, archived or unknown is skipped as `unavailable` (no probing which). Audit rows carry ids only.

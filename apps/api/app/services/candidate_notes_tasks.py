@@ -16,7 +16,7 @@ from sqlalchemy.orm import aliased
 
 from app.models import AuditLog, Candidate, CandidateNote, CandidateTask, Job, JobApplication, RecruiterProfile, User
 from app.notifications.events import notify
-from app.schemas import CandidateTaskCreate
+from app.schemas import CandidateBulkTaskCreate, CandidateTaskCreate
 from app.services import candidates
 from app.services.bdm_activities import day_range
 from app.services.bdm_appointments import today_ist
@@ -195,6 +195,36 @@ async def create(db: AsyncSession, user: User, candidate: Candidate, payload: Ca
     _audit(db, user, "candidate_task", "create", task.id, {"candidate_id": str(candidate.id), "task_type": task.task_type, "assignee_id": str(assignee.id)})
     await _notify(db, user, assignee, task.id)
     return task
+
+
+UNAVAILABLE = "This candidate is not an active candidate in the pool"
+
+
+async def create_many(db: AsyncSession, user: User, payload: CandidateBulkTaskCreate, now: datetime) -> dict:
+    """pob-019 (DEC-SCOPE-437 T9): one task per open pool candidate, with the single create's checks run once (due time, requirement,
+    assignee); archived, merged or unknown candidates are skipped with a reason. The assignee gets one notification for the batch."""
+    check_due(payload.due_at, now)
+    if payload.job_id is not None and await db.scalar(select(Job.id).where(Job.id == payload.job_id)) is None:
+        raise HTTPException(422, JOB_INVALID)
+    assignee = await _locked_assignee(db, payload.assignee_user_id)
+    found = {c.id: c for c in await db.scalars(
+        select(Candidate).where(Candidate.id.in_(payload.candidate_ids), *candidates.pool_filter(user.id)).order_by(Candidate.id).with_for_update()
+    )}  # fmt: skip
+    created, skipped = [], []
+    for candidate_id in payload.candidate_ids:
+        candidate = found.get(candidate_id)
+        if candidate is None or candidate.archived_at is not None:
+            skipped.append({"candidate_id": candidate_id, "reason": "unavailable", "message": UNAVAILABLE})
+            continue
+        task = CandidateTask(candidate_id=candidate.id, job_id=payload.job_id, task_type=payload.task_type, title=payload.title, notes=payload.notes,
+                             due_at=payload.due_at, assignee_user_id=assignee.id, created_by_user_id=user.id)  # fmt: skip
+        db.add(task)
+        await db.flush()
+        _audit(db, user, "candidate_task", "create", task.id, {"candidate_id": str(candidate.id), "task_type": task.task_type, "assignee_id": str(assignee.id), "bulk": True})
+        created.append({"candidate_id": candidate.id, "task_id": task.id})
+    if created:
+        await _notify(db, user, assignee, created[0]["task_id"])
+    return {"created": created, "skipped": skipped}
 
 
 async def load_for_write(db: AsyncSession, user: User, task_id: UUID) -> CandidateTask:
