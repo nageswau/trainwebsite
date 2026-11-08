@@ -17328,3 +17328,33 @@ class VendorSubmissionRow(BaseModel):
 class VendorPerformanceDetail(VendorPerformanceRow):
     requirements: list[VendorRequirementRow]
     submissions: list[VendorSubmissionRow]
+
+
+# --- pob-027 (DEC-SCOPE-434 I3/I7): the task template and the escalation rules ---------------------------------------------------------
+AutomationHours = Annotated[int, Field(ge=1, le=720)]
+
+
+class IntakeTaskTemplateItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["sourcing", "screening"]
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    due_in_hours: AutomationHours
+
+
+class IntakeAutomationSettingsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    task_template: list[IntakeTaskTemplateItem] = Field(max_length=10)
+
+
+class EscalationRuleCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    event_type: Literal["requirement_unowned", "requirement_task_overdue", "follow_up_overdue"]
+    after_hours: AutomationHours
+    notify: Literal["reporting_manager", "all_team_leads"]
+
+
+class EscalationRuleUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    after_hours: AutomationHours | None = None
+    notify: Literal["reporting_manager", "all_team_leads"] | None = None
+    active: bool | None = None

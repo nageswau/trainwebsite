@@ -1967,6 +1967,78 @@ class InterviewAutomationSetting(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
+# pob-027 (DEC-SCOPE-434 I3-I8): intake automation -- the task template, the requirement tasks it creates, and the escalation rules with the
+# record of each one fired. Migration 0315 repeats these checks (test_pob_027_migration keeps them identical).
+REQUIREMENT_TASK_KINDS = ("sourcing", "screening")
+REQUIREMENT_TASK_STATUSES = ("open", "done", "cancelled")
+ESCALATION_EVENT_TYPES = ("requirement_unowned", "requirement_task_overdue", "follow_up_overdue")
+ESCALATION_NOTIFY = ("reporting_manager", "all_team_leads")
+REQUIREMENT_TASK_CHECKS = {
+    "ck_requirement_tasks_kind": f"kind IN ({', '.join(repr(k) for k in REQUIREMENT_TASK_KINDS)})",
+    "ck_requirement_tasks_status": f"status IN ({', '.join(repr(s) for s in REQUIREMENT_TASK_STATUSES)})",
+    "ck_requirement_tasks_done": "(status = 'done') = (completed_at IS NOT NULL) AND (completed_at IS NULL) = (completed_by_user_id IS NULL)",
+}
+ESCALATION_RULE_CHECKS = {
+    "ck_escalation_rules_event_type": f"event_type IN ({', '.join(repr(e) for e in ESCALATION_EVENT_TYPES)})",
+    "ck_escalation_rules_notify": f"notify IN ({', '.join(repr(n) for n in ESCALATION_NOTIFY)})",
+    "ck_escalation_rules_hours": "after_hours BETWEEN 1 AND 720",
+}
+
+
+class RequirementAutomationSetting(Base, TimestampMixin):
+    """pob-027 (I3): the one global row (id 1, seeded by migration 0315) -- the tasks a requirement's first owner starts with."""
+
+    __tablename__ = "requirement_automation_settings"
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    task_template: Mapped[list] = mapped_column(JSON, default=list)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+class RequirementTask(Base, TimestampMixin):
+    """pob-027 (I4/I5): a task on a requirement for its primary owner, copied once from the template; a reassignment moves the open ones."""
+
+    __tablename__ = "requirement_tasks"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in REQUIREMENT_TASK_CHECKS.items()),
+        Index("ix_requirement_tasks_job", "job_id", "status", "due_at"),
+        Index("ix_requirement_tasks_open_due", "due_at", postgresql_where=text("status = 'open'")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(16))
+    title: Mapped[str] = mapped_column(String(200))
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    assignee_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    status: Mapped[str] = mapped_column(String(16), default="open", server_default=text("'open'"))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+class EscalationRule(Base, TimestampMixin):
+    """pob-027 (I7): after `after_hours`, an item of `event_type` is escalated to the Team Lead(s); switched off, never deleted."""
+
+    __tablename__ = "escalation_rules"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in ESCALATION_RULE_CHECKS.items())
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    event_type: Mapped[str] = mapped_column(String(40))
+    after_hours: Mapped[int] = mapped_column(SmallInteger)
+    notify: Mapped[str] = mapped_column(String(24))
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+class EscalationEvent(Base):
+    """pob-027 (I8): one row per (rule, item) escalated -- the unique key makes every escalation fire once, also under concurrent runs."""
+
+    __tablename__ = "escalation_events"
+    __table_args__ = (UniqueConstraint("rule_id", "entity_id", name="uq_escalation_events_rule_entity"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    rule_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("escalation_rules.id", ondelete="CASCADE"))
+    entity_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True))
+    fired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class PlacementProfile(Base, TimestampMixin):
     __tablename__ = "placement_profiles"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)

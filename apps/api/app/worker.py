@@ -318,6 +318,14 @@ def interview_reminders_task():
 
 
 @celery.task
+def escalations_task():
+    """pob-027 (DEC-SCOPE-434 I8): every 15 minutes via beat. Idempotent (`escalation_events` unique per rule and item)."""
+    from app.services.escalations import run_escalations
+
+    return _run_with_fresh_pool(run_escalations)
+
+
+@celery.task
 def interview_feedback_chase_task():
     """pob-022 (A5/A6): hourly via beat. Idempotent (`interviews.chase_follow_up_id` / `chase_escalated_at`)."""
     from app.services.interview_automation import run_feedback_chase
@@ -386,6 +394,7 @@ celery.conf.beat_schedule = {
     "pob008-follow-up-reminders": {"task": "app.worker.recruiter_follow_up_reminders_task", "schedule": 300.0},
     "pob024-invoice-notices": {"task": "app.worker.placement_invoice_notices_task", "schedule": crontab(hour=3, minute=15)},  # UTC 03:15 = 08:45 IST
     "pob008-cadences": {"task": "app.worker.recruiter_cadences_task", "schedule": crontab(minute="*/15")},
+    "pob027-escalations": {"task": "app.worker.escalations_task", "schedule": crontab(minute="5-59/15")},
     "pob022-feedback-chase":{"task": "app.worker.interview_feedback_chase_task", "schedule": crontab(minute=20)},
     "hrc034-portal-events-retention": {"task": "app.worker.portal_events_retention_task", "schedule": crontab(hour=19, minute=15)},  # UTC = 00:45 IST
     "agn017-daily-reminders": {"task": "app.worker.send_daily_reminders_task", "schedule": crontab(hour=2, minute=30)},  # UTC = 08:00 IST
