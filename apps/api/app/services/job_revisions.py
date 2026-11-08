@@ -70,8 +70,9 @@ LABELS = {
     "payment_days": "Payment due (days after joining)",
     "payment_terms": "Payment terms",
     "replacement_terms": "Replacement terms",
+    "guarantee_days": "Guarantee (days)",  # pob-025 G1
 }
-COMMERCIAL_KEYS = frozenset({"fee_basis", "fee_value", "payment_trigger", "payment_days", "payment_terms", "replacement_terms"})
+COMMERCIAL_KEYS = frozenset({"fee_basis", "fee_value", "payment_trigger", "payment_days", "payment_terms", "replacement_terms", "guarantee_days"})
 _COLUMNS = (*REC_REQUIREMENT_FIELDS, "fee_basis", "fee_value")  # R4: every column a create or edit writes, and the rec-031 fee
 
 

@@ -4101,6 +4101,17 @@ Grant first (403, logged with actor/role/route only), then the company scope (40
 
 Role first (403), then the requirement scope (404, the same as an unknown id; another requirement's task is 404). Audit `requirement_automation.settings` (item counts), `escalation_rule.create|update` (values) and `requirement_task.complete` (job id, kind) — never a title. rec-038 matrix rows cover all seven routes.
 
+### 2.327 Replacement guarantee and early dropouts *(added 2026-11-08 — `DEC-SCOPE-436`, pob-025)*
+
+| Action | placement_team | placement_manager | super_admin | bdm (assigned) | everyone else |
+|---|---|---|---|---|---|
+| Read the guarantee, dropout and replacement on a placement | placement scope (§2.323) | placement scope | ✓ | placement scope | 403 / 404 |
+| Record a dropout; link the replacement requirement | ✓ in scope (`applications.WRITERS`) | 403 | ✓ | 403 | 403 / 404 |
+| Set `guarantee_days` on a contract or requirement | `commercials.client.edit` | `commercials.client.edit` | ✓ | — | 403 |
+| Receive the expiry alert | recruiter / PO owner | their Team Lead (every active Team Lead when none) | — | — | — |
+
+The replacement requirement must be in the caller's requirement scope and the same client's (422 otherwise: no cross-client or out-of-scope link). Audit `placement.dropout` / `replacement_requested` / `replacement_filled` / `replacement_cleared`: ids, dates and flags, never the reason.
+
 ### 2.326 Client and candidate satisfaction surveys *(added 2026-11-08 — `DEC-SCOPE-435`, pob-026)*
 
 | Action | placement_team | placement_manager | super_admin | anyone with the link | everyone else |

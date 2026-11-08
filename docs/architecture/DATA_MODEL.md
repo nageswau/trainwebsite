@@ -2501,6 +2501,11 @@ The downgrade refuses while a vendor or an NDA exists.
 - `vendor_bill_payments`: `bill_id` → vendor_bills RESTRICT, `paid_on`, `amount` > 0, `reference` ≤100, `created_by_user_id`, `created_at`. Append-only; the sum never exceeds the bill amount (enforced under the bill row lock).
 - Ledger: both feed `ledger.lines()` on read (`vendor_payment` expense / `vendor_receipt` income); nothing is copied.
 
+### pob-025 — replacement guarantee (`DEC-SCOPE-436`, migration `0318_placement_guarantee`)
+
+- `recruiter_contracts.guarantee_days`, `jobs.guarantee_days`: int, null, CHECK 1-365.
+- `placements`: `guarantee_days` (1-365), `guarantee_end_date` (set once on joining; CHECK days ⇔ end date; index), `guarantee_alerted_at`, `dropout_on` / `dropout_reason` (≤500; CHECK both or neither), `replacement_job_id` → jobs RESTRICT (index), `replaced_by_placement_id` → placements RESTRICT (unique `uq_placements_replaced_by`; never itself). CHECK a requirement or a fill only after a dropout. The guarded migration adds the columns only when missing; no backfill (existing placements have no structured guarantee).
+
 ### pob-026 — placement surveys (`DEC-SCOPE-435`, migration `0316_placement_surveys`)
 
 - `placement_surveys`: `placement_id` → placements RESTRICT, `respondent` client|candidate (CHECK; unique with the placement), `contact_id` → company_contacts RESTRICT (the client recipient), `message_id` / `resend_message_id` → recruiter_messages RESTRICT, `sent_at`, `resent_at`, `skip_reason` no_contact|no_email|no_sender, `rating` 1-5, `comment` ≤1000, `responded_at`, timestamps. CHECKs: sent ⇔ a message and no skip reason; resent ⇔ a resend message; rating ⇔ responded_at; a response only after a send. Written once by the sweep; never deleted. The guarded migration adds the table only when missing; no backfill.

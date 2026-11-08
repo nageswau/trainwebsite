@@ -72,8 +72,9 @@ const TEXT: Partial<Record<FormField, Text>> = {
   payment_days: { label: "Payment due (days after joining)", max: 3 },
   payment_terms: { label: "Payment terms", max: 2000, multiline: true },
   replacement_terms: { label: "Replacement terms", max: 2000, multiline: true },
+  guarantee_days: { label: "Guarantee (days)", max: 3 }, // pob-025 G1
 };
-const NUMERIC = new Set<string>(["vacancies", "expected_tat_days", "payment_days"]);
+const NUMERIC = new Set<string>(["vacancies", "expected_tat_days", "payment_days", "guarantee_days"]);
 const SELECTS: Partial<Record<FormField, { label: string; vocabulary: string }>> = {
   work_mode: { label: "Work mode", vocabulary: "work_mode" },
   shift: { label: "Shift", vocabulary: "shift" },
@@ -219,7 +220,7 @@ export default function RecruiterRequirementForm({
     const [min, max] = [monthsFromYears(values.experience_min_months), monthsFromYears(values.experience_max_months)];
     if (min != null && max != null && !Number.isNaN(min + max) && min > max) found.experience_max_months = "Must be at least the minimum experience";
     if (values.salary_min.trim() && values.salary_max.trim() && Number(values.salary_min) > Number(values.salary_max)) found.salary_max = "Must be at least the minimum salary";
-    for (const key of ["vacancies", "expected_tat_days", "payment_days"] as const) {
+    for (const key of ["vacancies", "expected_tat_days", "payment_days", "guarantee_days"] as const) {
       if (values[key].trim() && !/^\d+$/.test(values[key].trim())) found[key] = "Enter a whole number";
     }
     // pob-002 R7: the days go with (and only with) "Days after joining"
@@ -487,6 +488,7 @@ export default function RecruiterRequirementForm({
           <div className="form-grid">
             {choiceField("payment_trigger")}
             {values.payment_trigger === "days_after_joining" && textField("payment_days")}
+            {textField("guarantee_days", terms?.guarantee_days?.inherited ? `Leave empty to use the contract's ${terms.guarantee_days.value} days` : "Leave empty to use the contract's guarantee")}
           </div>
           {textField("payment_terms", inheritedHint(terms?.payment_terms))}
           {textField("replacement_terms", inheritedHint(terms?.replacement_terms))}

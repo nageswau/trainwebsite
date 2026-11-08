@@ -34,7 +34,10 @@ export type Contract = {
   is_current: boolean; created_by: ContractPerson; permissions: ContractPermissions; created_at: string; updated_at: string; party?: ContractParty;
 } & Partial<ContractTerms>;
 // pob-001 (DEC-SCOPE-403 C5): the terms are absent without `commercials.client.view`; `can_view_terms` / `can_edit_terms` say which.
-export type ContractTerms = { fee_basis: FeeBasis | null; fee_value: string | null; payment_terms: string | null; replacement_policy: string | null; direction?: string | null; confidentiality_terms?: string | null };
+export type ContractTerms = {
+  fee_basis: FeeBasis | null; fee_value: string | null; payment_terms: string | null; replacement_policy: string | null; direction?: string | null; confidentiality_terms?: string | null;
+  guarantee_days?: number | null; // pob-025 (DEC-SCOPE-436 G1)
+};
 export type ContractPermissions = { can_edit: boolean; can_upload: boolean; can_renew: boolean; can_view_terms: boolean; can_edit_terms: boolean };
 export type CompanyContracts = { current: Contract | null; previous: Contract[]; can_start: boolean; can_view_terms: boolean; can_edit_terms: boolean };
 export type ContractEvent = {
@@ -43,7 +46,7 @@ export type ContractEvent = {
 };
 export type ContractFields = {
   agreement_type: string; start_date: string; end_date: string; fee_basis: string; fee_value: string; payment_terms: string; replacement_policy: string;
-  direction: string; confidentiality_terms: string;
+  direction: string; confidentiality_terms: string; guarantee_days: string;
 };
 
 export const CONTRACTS_URL = "/api/v1/recruiter/contracts";
@@ -52,6 +55,7 @@ export const FIELD_LABEL: Record<string, string> = {
   status: "Status", agreement_type: "Agreement type", start_date: "Contract start date", end_date: "Contract end date",
   fee_basis: "Fee basis", fee_value: "Recruitment fee", payment_terms: "Payment terms", replacement_policy: "Replacement policy",
   contract_document: "Contract document", mou_document: "MoU", direction: "Who pays whom", confidentiality_terms: "Confidentiality terms",
+  guarantee_days: "Guarantee (days)",
 };
 
 export const companyContractsUrl = (companyId: string, party: ContractParty = "client") => `${COMPANIES_URL}/${companyId}/contracts${party === "vendor" ? "?party=vendor" : ""}`;

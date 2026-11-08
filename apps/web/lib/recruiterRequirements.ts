@@ -67,6 +67,7 @@ export type InheritedTerm = { value: string | null; inherited: boolean };
 export type CommercialTerms = {
   fee: { basis: string | null; value: string | null; inherited: boolean }; payment_trigger: PaymentTrigger | null; payment_trigger_label: string | null;
   payment_days: number | null; payment_terms: InheritedTerm; replacement_terms: InheritedTerm; can_edit: boolean;
+  guarantee_days?: { value: number | null; inherited: boolean }; // pob-025 (DEC-SCOPE-436 G1)
 };
 /** pob-002 R5: one revision in the list, and one revision read (its values and its changes against `compared_to`). */
 export type RevisionField = { field: string; label: string };
@@ -214,11 +215,12 @@ export const FORM_FIELDS = [
   // pob-002 (R6/R7/R9)
   "interview_rounds", "screening_steps", "decision_maker_contact_id", "expected_tat_days", "payment_trigger", "payment_days", "payment_terms",
   "replacement_terms", "backup_owner_user_id",
+  "guarantee_days", // pob-025 (G1)
   // pob-011 (V2/V3)
   "via_vendor_id", "end_client_disclosure",
 ] as const;
 const LIST_FIELDS = new Set<string>(["interview_rounds", "screening_steps"]);
-const NUMBER_FIELDS = new Set<string>(["vacancies", "expected_tat_days", "payment_days"]);
+const NUMBER_FIELDS = new Set<string>(["vacancies", "expected_tat_days", "payment_days", "guarantee_days"]);
 export type FormField = (typeof FORM_FIELDS)[number];
 export type FormValues = Record<FormField, string>;
 
@@ -246,6 +248,7 @@ export function valuesOf(r?: Requirement): FormValues {
     payment_trigger: text(terms?.payment_trigger), payment_days: text(terms?.payment_days),
     payment_terms: terms && !terms.payment_terms.inherited ? text(terms.payment_terms.value) : "",
     replacement_terms: terms && !terms.replacement_terms.inherited ? text(terms.replacement_terms.value) : "",
+    guarantee_days: terms?.guarantee_days && !terms.guarantee_days.inherited ? text(terms.guarantee_days.value) : "",
     backup_owner_user_id: text(r?.backup_owner?.id),
     via_vendor_id: text(r?.via_vendor?.id), end_client_disclosure: r?.end_client_disclosure ?? "external", // pob-011
   };

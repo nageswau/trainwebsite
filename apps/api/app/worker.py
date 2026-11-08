@@ -343,6 +343,15 @@ def placement_invoice_notices_task():
 
 
 @celery.task
+def placement_guarantee_alerts_task():
+    """pob-025 (DEC-SCOPE-436 G10): daily via beat. Once per placement (`placements.guarantee_alerted_at`)."""
+    import app.services.telecaller_alerts  # noqa: F401 -- enters main's telecaller import cycle at the end that resolves (pob-008)
+    from app.services.placements import run_guarantee_alerts
+
+    return _run_with_fresh_pool(run_guarantee_alerts)
+
+
+@celery.task
 def placement_surveys_task():
     """pob-026 (DEC-SCOPE-435 S1/S7): daily via beat. Once per placement and respondent (a unique row); one reminder (`resent_at`)."""
     import app.services.telecaller_alerts  # noqa: F401 -- enters main's telecaller import cycle at the end that resolves (pob-008)
@@ -403,6 +412,7 @@ celery.conf.beat_schedule = {
     "pob008-follow-up-reminders": {"task": "app.worker.recruiter_follow_up_reminders_task", "schedule": 300.0},
     "pob024-invoice-notices": {"task": "app.worker.placement_invoice_notices_task", "schedule": crontab(hour=3, minute=15)},  # UTC 03:15 = 08:45 IST
     "pob026-placement-surveys": {"task": "app.worker.placement_surveys_task", "schedule": crontab(hour=3, minute=30)},  # UTC 03:30 = 09:00 IST
+    "pob025-guarantee-alerts": {"task": "app.worker.placement_guarantee_alerts_task", "schedule": crontab(hour=3, minute=45)},  # UTC 03:45 = 09:15 IST
     "pob008-cadences": {"task": "app.worker.recruiter_cadences_task", "schedule": crontab(minute="*/15")},
     "pob027-escalations": {"task": "app.worker.escalations_task", "schedule": crontab(minute="5-59/15")},
     "pob022-feedback-chase":{"task": "app.worker.interview_feedback_chase_task", "schedule": crontab(minute=20)},

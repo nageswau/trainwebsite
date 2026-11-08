@@ -27,7 +27,8 @@ const day = (value: string | null) => (value ? formatCalendarDate(value) : displ
 function details(c: Contract): [string, ReactNode][] {
   // pob-001 (DEC-SCOPE-403 C5): without `commercials.client.view` the API leaves the terms out; so do the rows
   const terms: [string, ReactNode][] = c.permissions.can_view_terms
-    ? [["Recruitment fee", feeText(c)], ["Payment terms", multiline(c.payment_terms ?? null)], ["Replacement policy", multiline(c.replacement_policy ?? null)]]
+    ? [["Recruitment fee", feeText(c)], ["Payment terms", multiline(c.payment_terms ?? null)], ["Replacement policy", multiline(c.replacement_policy ?? null)],
+      ["Guarantee", c.guarantee_days ? `${c.guarantee_days} days` : "Not set"]] // pob-025 G1
     : [];
   if (c.party === "vendor" && c.permissions.can_view_terms) terms.unshift(["Who pays whom", directionText(c.direction)], ["Confidentiality terms", multiline(c.confidentiality_terms ?? null)]); // pob-010 V8
   return [

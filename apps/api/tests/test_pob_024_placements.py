@@ -238,7 +238,9 @@ async def test_scope_and_the_commercial_gate(client, db_session):
     await db_session.commit()
     await login(client, bdm)
     p = await _placement(client, placement_id)
-    assert p["commercials"] is None and p["package"] is None and p["permissions"] == {"can_edit": False, "can_change_owner": False, "can_invoice": False}
+    assert p["commercials"] is None and p["package"] is None and p["permissions"] == {
+        "can_edit": False, "can_change_owner": False, "can_invoice": False, "can_record_dropout": False, "can_request_replacement": False,  # + pob-025
+    }  # fmt: skip
     assert (await client.post(f"{PLACEMENTS}/{placement_id}/invoice-draft/issue", json=_issue_body())).status_code == 403
     assert (await client.patch(f"{PLACEMENTS}/{placement_id}", json={"candidate_confirmation": None})).status_code == 403
     await login(client, await make_user(db_session, "it_student", "it"))

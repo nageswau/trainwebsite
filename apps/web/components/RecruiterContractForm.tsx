@@ -17,6 +17,7 @@ const fieldsOf = (c: Contract | null): ContractFields => ({
   agreement_type: c?.agreement_type ?? "", start_date: c?.start_date ?? "", end_date: c?.end_date ?? "", fee_basis: c?.fee_basis ?? "",
   fee_value: c?.fee_value ?? "", payment_terms: c?.payment_terms ?? "", replacement_policy: c?.replacement_policy ?? "",
   direction: c?.direction ?? "", confidentiality_terms: c?.confidentiality_terms ?? "",
+  guarantee_days: c?.guarantee_days != null ? String(c.guarantee_days) : "",
 });
 
 // rec-030 (spec §4): start (contract = null, a first contract or a renewal) or edit the current contract. Required markers follow the
@@ -137,6 +138,11 @@ export default function RecruiterContractForm({ companyId, contract, terms, onSa
             <label htmlFor={id("fee_value")}>{FIELD_LABEL.fee_value}{fields.fee_basis === "percent_of_ctc" ? " (%)" : fields.fee_basis === "fixed" ? " (₹)" : ""}</label>
             <input id={id("fee_value")} inputMode="decimal" value={fields.fee_value} onChange={(e) => set("fee_value", e.target.value)} aria-describedby={describedBy("fee_value")} />
             {error("fee_value")}
+          </div>
+          <div className="field">
+            <label htmlFor={id("guarantee_days")}>{FIELD_LABEL.guarantee_days}</label>
+            <input id={id("guarantee_days")} inputMode="numeric" maxLength={3} value={fields.guarantee_days} onChange={(e) => set("guarantee_days", e.target.value)} aria-describedby={describedBy("guarantee_days")} />
+            {error("guarantee_days")}
           </div>
           {TERMS.map((f) => (
             <div className="field" key={f}>
