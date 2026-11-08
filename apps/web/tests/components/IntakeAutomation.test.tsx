@@ -62,6 +62,13 @@ describe("IntakeTaskTemplate", () => {
     expect(screen.getByText("No tasks: a new owner starts with none.")).toBeTruthy();
   });
 
+  it("hides the per-task legend visually (QA-01): the field labels already name the task", async () => {
+    reply = () => res(TEMPLATE);
+    const { container } = render(<IntakeTaskTemplate />);
+    await screen.findByLabelText("Task 1 title");
+    expect(container.querySelector("legend")!.className).toBe("visually-hidden");
+  });
+
   it("says when the template cannot be loaded", async () => {
     reply = () => res({ detail: "boom" }, 500);
     render(<IntakeTaskTemplate />);
@@ -92,6 +99,15 @@ describe("EscalationRules", () => {
     render(<EscalationRules />);
     expect(await screen.findByText("No escalation rules yet.")).toBeTruthy();
   });
+
+  it("explains that a requirement without an owner goes to every Team Lead (QA-03)", async () => {
+    reply = () => res({ items: [RULE] });
+    const { container } = render(<EscalationRules />);
+    expect(await screen.findByText("hours after it was received; with no owner, every Team Lead is told")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("When"), { target: { value: "follow_up_overdue" } });
+    expect(screen.getByText("hours past its due time")).toBeTruthy();
+    expect(container.querySelector("th span")!.className).toBe("visually-hidden");
+  });
 });
 
 describe("RequirementTasks", () => {
@@ -113,7 +129,7 @@ describe("RequirementTasks", () => {
     cleanup();
     reply = () => res({ detail: "boom" }, 500);
     render(<RequirementTasks requirementId="J1" version="v1" />);
-    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect((await screen.findByRole("alert")).textContent).toBe("Tasks could not be loaded. Refresh the page to try again."); // QA-02
   });
 
   it("shows the server's refusal when completing fails", async () => {

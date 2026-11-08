@@ -5,6 +5,7 @@ import LocalTime from "@/components/LocalTime";
 import { sendJson, sendRequest } from "@/lib/apiErrors";
 import { completeUrl, kindLabel, type RequirementTask, tasksUrl } from "@/lib/recruiterAutomation";
 
+const LOAD_FAILED = "Tasks could not be loaded. Refresh the page to try again.";
 const STATUS_LABEL: Record<RequirementTask["status"], string> = { open: "Open", done: "Done", cancelled: "Cancelled" };
 
 /** pob-027 (DEC-SCOPE-434 I5/I6): the tasks a requirement's owner started with. `version` re-reads them when the requirement changes (an
@@ -24,7 +25,7 @@ export default function RequirementTasks({ requirementId, version }: { requireme
       if (outcome.ok) {
         setTasks((outcome.data as { items: RequirementTask[] }).items);
         setLoadError(null);
-      } else setLoadError(outcome.message);
+      } else setLoadError(LOAD_FAILED);
     });
     return () => {
       live = false;

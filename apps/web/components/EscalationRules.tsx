@@ -78,7 +78,7 @@ export default function EscalationRules() {
       {rules && rules.length > 0 && (
         <table className="table compact stack">
           <thead>
-            <tr><th scope="col">When</th><th scope="col">After</th><th scope="col">Tell</th><th scope="col">Added</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Action</span></th></tr>
+            <tr><th scope="col">When</th><th scope="col">After</th><th scope="col">Tell</th><th scope="col">Added</th><th scope="col">Status</th><th scope="col"><span className="visually-hidden">Action</span></th></tr>
           </thead>
           <tbody>
             {rules.map((rule) => (

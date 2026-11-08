@@ -67,9 +67,9 @@ export default function IntakeTaskTemplate() {
             const n = i + 1;
             const base = `${id}-${i}`;
             return (
-              <fieldset key={i} className="form-grid" style={{ border: 0, padding: 0, margin: "0 0 8px", display: "grid", gap: 8, alignItems: "end",
-                gridTemplateColumns: "repeat(auto-fit, minmax(min(11rem, 100%), 1fr))" }}>
-                <legend className="sr-only">Task {n}</legend>
+              <fieldset key={i} className="form-grid" style={{ border: 0, borderTop: i ? "1px solid var(--line)" : 0, padding: i ? "12px 0 0" : 0, margin: "0 0 12px",
+                display: "grid", gap: 8, alignItems: "end", gridTemplateColumns: "repeat(auto-fit, minmax(min(11rem, 100%), 1fr))" }}>
+                <legend className="visually-hidden">Task {n}</legend>
                 <div className="field">
                   <label htmlFor={`${base}-kind`}>Task {n} type</label>
                   <select id={`${base}-kind`} value={row.kind} onChange={(e) => change(i, { kind: e.target.value as TaskKind })}>

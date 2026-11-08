@@ -20,7 +20,7 @@ export type IntakeSettings = { task_template: TemplateItem[] };
 
 export type EventType = "requirement_unowned" | "requirement_task_overdue" | "follow_up_overdue";
 export const EVENT_TYPES: { value: EventType; label: string; hint: string }[] = [
-  { value: "requirement_unowned", label: "Requirement without an owner", hint: "hours after it was received" },
+  { value: "requirement_unowned", label: "Requirement without an owner", hint: "hours after it was received; with no owner, every Team Lead is told" },
   { value: "requirement_task_overdue", label: "Requirement task overdue", hint: "hours past its due time" },
   { value: "follow_up_overdue", label: "Follow-up overdue", hint: "hours past its due time" },
 ];
