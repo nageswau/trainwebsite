@@ -786,6 +786,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 ### Phase 5: Closure, automation and reports
 
 #### pob-024: Placement closure record and invoice trigger
+- **Status:** built (`DEC-SCOPE-432`, 2026-11-08; migration `0312_placements`, API §12LY, RBAC §2.323); Q-17 answered "a draft only; a person issues it" and P1-P14 are the builder's calls (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §13.1 bullets 1–6; §16 "Offer accepted / joining confirmed → Start placement closure and commercial tracking"; "Invoice/payment due → Notify finance/owner"; §18 AC "Placement closure tracks offer, joining, invoice/commission, payment …".
 - **Existing behavior:**
   - Offers and joining exist, and joining auto-closes the job when its vacancies are filled.

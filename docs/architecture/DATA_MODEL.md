@@ -2485,3 +2485,7 @@ The downgrade refuses while a vendor or an NDA exists.
 - `job_sourcing_channels` (PK `job_id`, `source_id` → rec_candidate_sources RESTRICT).
 - `job_sourcing_searches` (PK `job_id`, `saved_search_id` → saved_candidate_searches CASCADE; index on `saved_search_id`).
 - `job_applications.submitted_source_id` (nullable → rec_candidate_sources RESTRICT): the candidate's source at the first submission, set once by `services/applications`; backfilled for applications already submitted.
+
+### pob-024 — placement closure record (`DEC-SCOPE-432`, migration `0312_placements`)
+
+- `placements`: one row per accepted offer (`offer_id` unique) with application, requirement, candidate, client and vendor company, role, recruiter and PO owner, `expected_fee`, the candidate and client confirmations (`*_confirmed_by/on/via`), `invoice_status` (none/draft/issued/discarded), `draft_amount`, `draft_due_date`, `draft_created_at`, `draft_discard_reason`, `invoice_id` (→ `recruiter_invoices`), the notice markers `due_notified_at` / `overdue_notified_at`, `created_by_user_id`. CHECKs in `PLACEMENT_RECORD_CHECKS` (frozen in 0312). No backfill.

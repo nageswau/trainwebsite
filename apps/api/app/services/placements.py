@@ -270,9 +270,9 @@ async def update(db: AsyncSession, user: User, placement: Placement, offer: JobO
             continue
         value = getattr(payload, key)
         if value is not None and value.by is None:
-            raise field_error(f"{key}.by", "Enter who confirmed")
+            raise field_error("by", "Enter who confirmed")
         if value is not None and value.on > today:
-            raise field_error(f"{key}.on", "The confirmation date cannot be in the future", value.on.isoformat())
+            raise field_error("on", "The confirmation date cannot be in the future", value.on.isoformat())
         new = (value.by, value.on, value.via) if value else (None, None, None)
         if new != tuple(getattr(placement, f"{side}_confirmed_{k}") for k in ("by", "on", "via")):
             for k, v in zip(("by", "on", "via"), new, strict=True):

@@ -176,6 +176,7 @@ export const RECRUITER_NAV: NavItem[] = withResources([ // pob-001: Receivables 
   { label: "Message templates", href: "/recruiter/templates" }, // pob-023: add, edit and reuse; shared drafts wait for approval
   { label: "Interviews", href: "/recruiter/interviews" }, // rec-020
   { label: "Joinings", href: "/recruiter/joinings" }, // rec-023
+  { label: "Placements", href: "/recruiter/placements" }, // pob-024: closure records and invoice drafts
   { label: "Receivables", href: "/recruiter/receivables" }, // rec-031
   { label: "Campus Drives", href: "/recruiter/drives" }, // rec-029
   { label: "Colleges", href: "/recruiter/colleges" }, // pob-013: college placement profiles (TPO records)
@@ -217,6 +218,7 @@ export const RECRUITER_MANAGER_NAV: NavItem[] = withResources([
   { label: "Meetings", href: "/recruiter/meetings" }, // rec-028: the team's meetings, read only
   { label: "Interviews", href: "/recruiter/interviews" }, // rec-020: the team's interviews, read only
   { label: "Joinings", href: "/recruiter/joinings" }, // rec-023: the team's joinings, read only
+  { label: "Placements", href: "/recruiter/placements" }, // pob-024: the team's placements; the Team Lead changes the PO owner
   { label: "Receivables", href: "/recruiter/receivables" }, // rec-031: the team's invoices (RV10: the manager records too)
   { label: "Campus Drives", href: "/recruiter/drives" }, // rec-029: the team's drives, read only
   { label: "Colleges", href: "/recruiter/colleges" }, // pob-013: college placement profiles, read only

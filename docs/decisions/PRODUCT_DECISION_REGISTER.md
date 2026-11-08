@@ -12447,3 +12447,19 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - S8: the source owner is the primary, the backup owner or an assignee of the requirement.
   - S9/S10: the requirement's readers read; its writers save (cancelled = 409); a save is audited with field names only.
 - **Not built:** a dashboard widget (pob-028), breach reminders, external-site integrations (copy only, Q-13).
+
+### DEC-SCOPE-432 — Placement closure record and invoice trigger (pob-024)
+- **Date:** 2026-11-08. **Status:** built; P1-P14 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions. Q-17 answered "a draft only; a person issues it" as the backlog item proposes (partially reverses rec-031 R9 "track only"; `NEEDS_CONFIRMATION`). **Evidence:** backlog pob-024 (§13.1 bullets 1-6, §16 rows "Offer accepted / joining confirmed" and "Invoice/payment due", §18 AC "Placement closure tracks offer, joining, invoice/commission, payment").
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-024-placement-closure-design.md`. Migration `0312_placements`; API §12LY; RBAC §2.323.
+- **Calls:**
+  - P1: one placement per offer, created when the offer moves to Accepted (new and legacy routes), or on Joined when an older accepted offer has none.
+  - P2: snapshot of the candidate, requirement, client, vendor (`via_vendor_id`), role, recruiter owner (the requirement's) and PO owner (the company owner); the source is read live (first-submission source, else the candidate's).
+  - P3: the package (offer compensation) needs `candidates.compensation.view`. P4: the expected fee, the draft and the invoice actions need the rec-031 revenue gate (placement_team / placement_manager / super_admin + `commercials.client.view`).
+  - P5: separate candidate and client confirmations {by, on (not future, IST), via: call/email/whatsapp/in_person/other}; writers only; a Did Not Join placement is read-only (409).
+  - P6: the PO owner is changed by a Team Lead or super_admin, to an active placement_team user.
+  - P7: the placement's status is the offer's joining status (never stored twice).
+  - P8/P9: Joined creates exactly one draft (row lock; none -> draft only): amount = the hire's fee re-priced by rec-031 RV1/RV2 (null when unpriced: entered on issue); due = the actual joining date + `payment_days` when the trigger is `days_after_joining`.
+  - P10: issuing runs rec-031's invoice rules on the requirement and records the invoice, so receivables, revenue and the ledger see it unchanged; the notice markers re-arm. P11: a draft is discarded with a reason; Did Not Join discards an open draft.
+  - P12/P13: a daily sweep (08:45 IST) sends `it.recruitment.invoice_due` once and `it.recruitment.invoice_overdue` once per due date, for a draft or an issued invoice still owed, to the recruiter and PO owners and their Team Leads (all active Team Leads when none). The accountant role has no recruiter access, so it is not notified (`NEEDS_CONFIRMATION`).
+  - P14: read scope = the requirement's (rec-007); audit `placement.*` with ids, field names and amounts only.
+- **Not built:** commission tracking for recruiters, GST/PDF invoices (R9), accountant access to placements.
