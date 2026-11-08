@@ -78,7 +78,7 @@ test("a recruiter adds a candidate, is stopped on a duplicate, uploads a resume;
   await expect(page.getByRole("link", { name: "+ Add candidate" })).toHaveCount(0);
   await page.getByRole("link", { name }).click();
   await expect(page.getByRole("heading", { name, level: 2 })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Edit" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
   await expect(page.getByLabel("Upload resume")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Download resume version 1" })).toBeVisible(); // hrc-015: HR downloads through a signed link
   const link = await (await page.request.get(`/api/v1/recruiter/candidates/${page.url().split("/").pop()}/resume/1/link?mode=download`)).json();

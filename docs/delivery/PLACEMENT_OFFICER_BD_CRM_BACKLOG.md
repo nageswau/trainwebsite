@@ -665,6 +665,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** medium.
 
 #### pob-019: Candidate tags, enriched results and bulk actions
+- **Status:** built (`DEC-SCOPE-439`, 2026-11-08; migration `0319_candidate_tags`, API §12MF, RBAC §2.329); Q-14 and T1–T12 are the builder's calls (`NEEDS_CONFIRMATION`). Not built: role-family tags (no such candidate field), bulk tagging, exporting only the selected candidates.
 - **Business requirement:** §9 "Use tags such as skill category, role family, experience band, location, availability and source"; "Show current owner, contact status, last contacted date, active applications and prior submissions"; "Allow bulk shortlist, task assignment and controlled export".
 - **Existing behavior:** there are no tags. Search doesn't join applications, shares or messages. Shortlisting is one candidate per call; sharing is the only bulk action; there is no candidate export.
 - **Expected behavior:**

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 
+import LocalTime from "@/components/LocalTime";
+import RecruiterBulkTaskForm, { type BulkSkip, type BulkTaskResult } from "@/components/RecruiterBulkTaskForm";
 import RecruiterSavedSearches from "@/components/RecruiterSavedSearches";
 import RecruiterShareDialog, { type ShareCandidate } from "@/components/RecruiterShareDialog";
 import SearchableSelect from "@/components/SearchableSelect";
@@ -47,8 +49,8 @@ function Section({ title, count, open = false, children }: { title: string; coun
 }
 
 /** hrc-019: one FILTERS entry as a form control; its draft values are strings, checked by `stateOf` once they reach the URL. */
-function FilterField({ spec, values, categories, onChange }: {
-  spec: FilterSpec; values: string[]; categories: Category[]; onChange: (values: string[]) => void;
+function FilterField({ spec, values, categories, tags = [], onChange }: {
+  spec: FilterSpec; values: string[]; categories: Category[]; tags?: Category[]; onChange: (values: string[]) => void;
 }) {
   const id = `find-${spec.param}`;
   const one = values[0] ?? "";
@@ -61,8 +63,9 @@ function FilterField({ spec, values, categories, onChange }: {
       </label>
     );
   }
-  if (spec.kind === "multi" || spec.kind === "category") {
-    const options = spec.kind === "category" ? categories.filter((c) => c.active || values.includes(c.id)).map((c) => ({ key: c.id, label: c.name })) : spec.options ?? [];
+  if (spec.kind === "multi" || spec.kind === "category" || spec.kind === "tag") {
+    const listed = spec.kind === "category" ? categories : tags; // pob-019 T4: the active "Candidate tags"
+    const options = spec.kind === "multi" ? spec.options ?? [] : listed.filter((c) => c.active || values.includes(c.id)).map((c) => ({ key: c.id, label: c.name }));
     return (
       <fieldset style={{ border: 0, padding: 0, margin: 0, gridColumn: "1 / -1" }}>
         <legend style={{ fontWeight: 600, marginBottom: 4 }}>{spec.label}</legend>
@@ -144,22 +147,29 @@ export function SkillChips({ id, label, hint, terms, text, room, onText, onChang
 export function Card({ c, writes, requirement, shortlisted, onShortlist, matchNote = "matches your search", selected = null, onSelect }: {
   c: CandidateCard; writes: boolean; requirement: PickOption | null; shortlisted?: Shortlisted[string]; onShortlist: (c: CandidateCard) => void;
   matchNote?: string; // rec-015: a talent pool's page says "matches this pool"
-  selected?: boolean | null; onSelect?: (on: boolean) => void; // rec-019: select to share (null = not offered)
+  selected?: boolean | null; onSelect?: (on: boolean) => void; // rec-019 / pob-019: select for a bulk action (null = not offered)
 }) {
   const role = [c.preferred_role, experienceLabel(c.experience_months) === "—" ? null : experienceLabel(c.experience_months)].filter(Boolean).join(" | ");
-  const facts: [string, string][] = [
+  const facts: [string, React.ReactNode][] = [
     ["Location", c.location ?? "—"], ["Availability", availabilityOf(c.notice_days)],
     // hrc-001 H2: left out without the grant; hrc-011 C6: the yearly rupee figure the salary filter compares
     ...(c.expected_salary === undefined ? [] : [["Expected salary", salaryText(c.expected_annual_inr ?? null)] as [string, string]]),
     ["Source", c.source_detail ? `${c.source.name} — ${c.source_detail}` : c.source.name], ["Status", STATUS_LABEL[c.status] ?? c.status],
     ...(c.engagement ? [["Engagement", c.engagement.label] as [string, string]] : []), // hrc-021
+    // pob-019 (T5, AC1): owner, last contact, open applications and submissions -- present on every card the API enriches
+    ...(c.active_applications === undefined ? [] : [
+      ["Owner", c.owner?.full_name ?? "Unassigned"], ["Last contacted", c.last_contacted_at ? <LocalTime value={c.last_contacted_at} /> : "Never"],
+      ["Active applications", String(c.active_applications)], ["Prior submissions", String(c.prior_submissions ?? 0)],
+    ] as [string, React.ReactNode][]),
   ];
+  const tags = [...(c.tags ?? []).map((t) => ({ key: t.id, label: t.name, free: true })),
+    ...(c.system_tags ?? []).map((t) => ({ key: `${t.kind}:${t.label}`, label: t.label, free: false }))];
   const why = matchSummary(c.match); // hrc-019 S11
   return (
     <li className="action-card" style={{ gap: 10 }} aria-labelledby={`card-${c.id}`}>
       <div>
         {selected !== null && ( // QA-03: outside the heading, so the card's name stays the candidate's
-          <input type="checkbox" checked={selected} onChange={(e) => onSelect?.(e.target.checked)} aria-label={`Select ${c.name} to share`} style={{ float: "left", margin: "6px 8px 0 0" }} />
+          <input type="checkbox" checked={selected} onChange={(e) => onSelect?.(e.target.checked)} aria-label={`Select ${c.name}`} style={{ float: "left", margin: "6px 8px 0 0" }} />
         )}
         <h3 id={`card-${c.id}`} style={{ margin: 0, fontSize: 18 }}>
           <Link href={`${CANDIDATES_PATH}/${encodeURIComponent(c.id)}`} style={LINK_STYLE}>{c.name}</Link>{" "}
@@ -182,6 +192,14 @@ export function Card({ c, writes, requirement, shortlisted, onShortlist, matchNo
           </ul>
         )}
       </div>
+      {tags.length > 0 && ( // pob-019 T3/T5: free tags filled, system tags (experience band, skill categories) outlined
+        <ul aria-label="Tags" style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {tags.map((t) => (
+            <li key={t.key} className={t.free ? "badge" : undefined}
+              style={t.free ? undefined : { border: "1px dashed var(--line)", borderRadius: 99, padding: "4px 10px", fontSize: 12 }}>{t.label}</li>
+          ))}
+        </ul>
+      )}
       {why && (
         <div>
           <span className="muted" style={{ fontSize: 13 }}>Why matched</span>
@@ -241,6 +259,10 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
   const [sources, setSources] = useState<CatalogueValue[]>([]);
   const [requirement, setRequirement] = useState<PickOption | null>(null);
   const [categories, setCategories] = useState<Category[]>([]); // hrc-019: the skill-category filter's choices and chip names
+  const [tags, setTags] = useState<CatalogueValue[]>([]); // pob-019: the tag filter's choices and chip names
+  const [bulkBusy, setBulkBusy] = useState(false); // T11: one bulk request at a time
+  const [report, setReport] = useState<{ text: string; lines: string[]; failed?: boolean } | null>(null);
+  const [assigning, setAssigning] = useState(false);
   const permissions = usePermissions();
   const compensation = !!permissions?.includes(COMPENSATION_VIEW); // hrc-001 H2: no salary filter without the grant
   const exports = !!permissions?.includes(EXPORT_PERMISSION); // hrc-020 X8: the API refuses the rest; the button is hidden
@@ -306,6 +328,7 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
     if (!sourceFilter) return;
     const controller = new AbortController(); // a picker that fails to load leaves just "All sources"
     activeValues("candidate-sources", controller.signal).then(setSources).catch(() => undefined);
+    activeValues("candidate-tags", controller.signal).then(setTags).catch(() => undefined); // pob-019: the same readers as the sources
     return () => controller.abort();
   }, [sourceFilter]);
 
@@ -382,6 +405,33 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
     }));
   }
 
+  const nameOf = (candidateId: string) => selected.get(candidateId)?.name ?? "A candidate";
+  const skippedLines = (skipped: BulkSkip[]) => skipped.map((s) => `${nameOf(s.candidate_id)}: ${s.message}`);
+  const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+
+  /** pob-019 (T7/T8, AC2): one call for the whole selection; the added leave the selection, the skipped stay with their reason. */
+  async function bulkShortlist() {
+    if (!requirement || bulkBusy || selected.size === 0) return;
+    setBulkBusy(true);
+    setReport(null);
+    const outcome = await sendJson(`${requirementCandidatesUrl(requirement.id)}/bulk`, "POST", { candidate_ids: [...selected.keys()] });
+    setBulkBusy(false);
+    if (!outcome.ok) return setReport({ text: outcome.message, lines: [], failed: true });
+    const { added, skipped } = outcome.data as unknown as { added: { candidate_id: string }[]; skipped: BulkSkip[] };
+    setReport({ text: `Shortlisted ${plural(added.length, "candidate")} for ${requirement.label}.`, lines: skippedLines(skipped) });
+    setShortlisted((s) => ({ ...s, ...Object.fromEntries(added.map((a) => [a.candidate_id, { text: `Shortlisted for ${requirement.label}.` }])) }));
+    setSelected((current) => {
+      const next = new Map(current);
+      added.forEach((a) => next.delete(a.candidate_id));
+      return next;
+    });
+  }
+
+  function tasksDone(result: BulkTaskResult) {
+    setAssigning(false);
+    setReport({ text: `Created ${plural(result.created.length, "task")}.`, lines: skippedLines(result.skipped) });
+  }
+
   const set = <K extends keyof SearchState>(field: K, value: SearchState[K]) => setDraft((d) => ({ ...d, [field]: value }));
   const room = termCount(draft) < MAX_TERMS;
   const narrow = (changes: Partial<SearchState>) => go({ ...state, ...changes, offset: 0 });
@@ -393,15 +443,38 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
     else delete more[param];
     return { ...d, more };
   });
-  const offered = (spec: FilterSpec) => (!spec.package || compensation) && (spec.kind !== "category" || sourceFilter);
+  // hr_team reads neither the Skills Master nor the recruiter catalogue, so it gets no category or tag filter (QA-01)
+  const offered = (spec: FilterSpec) => (!spec.package || compensation) && ((spec.kind !== "category" && spec.kind !== "tag") || sourceFilter);
   const fields = (group: FilterGroup) => FILTERS.filter((spec) => spec.group === group && offered(spec)).map((spec) => (
-    <FilterField key={spec.param} spec={spec} values={draft.more[spec.param] ?? []} categories={categories} onChange={(v) => setMore(spec.param, v)} />
+    <FilterField key={spec.param} spec={spec} values={draft.more[spec.param] ?? []} categories={categories} tags={tags} onChange={(v) => setMore(spec.param, v)} />
   ));
   const applied = (group: FilterGroup, ...own: unknown[]) =>
     FILTERS.filter((spec) => spec.group === group).reduce((n, spec) => n + (state.more[spec.param]?.length ?? 0), 0) + own.filter(Boolean).length;
   const chips = activeFilters(state, {
     categories: Object.fromEntries(categories.map((c) => [c.id, c.name])), sources: Object.fromEntries(sources.map((s) => [s.id, s.name])),
+    tags: Object.fromEntries(tags.map((t) => [t.id, t.name])),
   });
+  const n = selected.size;
+  const bulkBar = writes && n > 0 ? ( // pob-019 T12: the selection's actions (Share and Shortlist need a requirement)
+    <div style={{ display: "grid", gap: 8 }}>
+      <div className="actions" role="group" aria-label="Selected candidates" style={{ gap: 8, alignItems: "center" }}>
+        <span style={{ fontWeight: 600 }}>{n} selected</span>
+        <button type="button" className="btn small" disabled={!requirement || bulkBusy} onClick={bulkShortlist}>
+          {bulkBusy ? "Shortlisting…" : `Shortlist selected (${n})`}
+        </button>
+        <button type="button" className="btn secondary small" disabled={!requirement} onClick={() => setSharing([...selected.values()])}>Share selected ({n})</button>
+        <button type="button" className="btn secondary small" aria-expanded={assigning} onClick={() => { setAssigning((a) => !a); setReport(null); }}>Assign task ({n})</button>
+        <button type="button" className="btn ghost small" onClick={() => { setSelected(new Map()); setAssigning(false); }}>Clear selection</button>
+      </div>
+      {assigning && <RecruiterBulkTaskForm candidateIds={[...selected.keys()]} requirement={requirement} onDone={tasksDone} onCancel={() => setAssigning(false)} />}
+    </div>
+  ) : null;
+  const bulkReport = report && ( // outside the bar, so it stays once the selection empties
+    <div role={report.failed ? "alert" : "status"}>
+      <p className={report.failed ? "form-error" : "form-message"} style={{ margin: 0 }}>{report.text}</p>
+      {report.lines.length > 0 && <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 14 }}>{report.lines.map((line) => <li key={line}>{line}</li>)}</ul>}
+    </div>
+  );
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -560,8 +633,8 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
             <RecruiterShareDialog requirement={requirement} candidates={sharing} onClose={() => setSharing(null)} onShared={() => setSelected(new Map())} />
           )}
           <Results result={result} state={state} loading={loading} writes={writes} requirement={requirement} shortlisted={shortlisted}
-            onRequirement={(r) => { setRequirement(r); setShortlisted({}); setSelected(new Map()); setSharing(null); }} onShortlist={shortlist} narrow={narrow}
-            page={(offset) => go({ ...state, offset })} selected={selected} onSelect={select} onShare={() => setSharing([...selected.values()])}
+            onRequirement={(r) => { setRequirement(r); setShortlisted({}); setSharing(null); setReport(null); }} onShortlist={shortlist} narrow={narrow}
+            page={(offset) => go({ ...state, offset })} selected={selected} onSelect={select} bulkBar={<>{bulkBar}{bulkReport}</>}
             sorts={sortOptions(compensation)} onSort={(sort) => narrow({ sort })}
             exportBar={exports && result.total > 0 ? (
               <div className="actions" style={{ gap: 6, alignItems: "center" }}>
@@ -581,11 +654,11 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
   );
 }
 
-function Results({ result, state, loading, writes, requirement, shortlisted, onRequirement, onShortlist, narrow, page, selected, onSelect, onShare, sorts, onSort,
+function Results({ result, state, loading, writes, requirement, shortlisted, onRequirement, onShortlist, narrow, page, selected, onSelect, bulkBar, sorts, onSort,
   exportBar = null }: {
   result: SearchResult; state: SearchState; loading: boolean; writes: boolean; requirement: PickOption | null; shortlisted: Shortlisted;
   onRequirement: (r: PickOption | null) => void; onShortlist: (c: CandidateCard) => void; narrow: (c: Partial<SearchState>) => void; page: (offset: number) => void;
-  selected: Map<string, ShareCandidate>; onSelect: (c: CandidateCard, on: boolean) => void; onShare: () => void;
+  selected: Map<string, ShareCandidate>; onSelect: (c: CandidateCard, on: boolean) => void; bulkBar: React.ReactNode; // pob-019 T12
   sorts: { key: SortKey; label: string }[]; onSort: (sort: SortKey) => void; // hrc-019 S10
   exportBar?: React.ReactNode; // hrc-020: Export CSV / Excel for holders of `candidates.export`
 }) {
@@ -638,12 +711,10 @@ function Results({ result, state, loading, writes, requirement, shortlisted, onR
         <div className="action-card" style={{ gap: 6 }}>
           <SearchableSelect label="Shortlist into requirement" noun="requirement" search={requirementSearch} onChange={onRequirement} initial={requirement} />
           <span className="muted" style={{ fontSize: 13 }}>
-            {requirement ? `Shortlist adds a candidate to ${requirement.label} as Shortlisted; or select candidates and share their profiles with the company.`
-              : "Choose one of your open requirements to shortlist candidates into it or share their profiles."}
+            {requirement ? `Shortlist adds a candidate to ${requirement.label} as Shortlisted; or select candidates to shortlist, share or assign a task in one go.`
+              : "Select candidates to assign them a task; choose one of your open requirements to shortlist them into it or share their profiles."}
           </span>
-          {requirement && selected.size > 0 && (
-            <span><button type="button" className="btn small" onClick={onShare}>Share selected ({selected.size})</button></span>
-          )}
+          {bulkBar}
         </div>
       )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
@@ -669,7 +740,7 @@ function Results({ result, state, loading, writes, requirement, shortlisted, onR
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 12 }}>
               {result.items.map((c) => (
                 <Card key={c.id} c={c} writes={writes} requirement={requirement} shortlisted={shortlisted[c.id]} onShortlist={onShortlist}
-                  selected={writes && requirement ? selected.has(c.id) : null} onSelect={(on) => onSelect(c, on)} />
+                  selected={writes ? selected.has(c.id) : null} onSelect={(on) => onSelect(c, on)} />
               ))}
             </ul>
           )}

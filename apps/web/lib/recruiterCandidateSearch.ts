@@ -21,7 +21,11 @@ export type CandidateCard = {
   status: CandidateStatus; skills: CardSkill[]; snippet?: SnippetSegment[] | null;
   engagement?: CandidateEngagement | null; // hrc-021
   match?: { required: MatchLine[]; preferred: MatchLine[] }; // hrc-019 S11
+  // pob-019 (DEC-SCOPE-439 T5): the enrichment facts and the tags (optional: a talent pool card from an older API has none)
+  owner?: { id: string; full_name: string } | null; last_contacted_at?: string | null; active_applications?: number; prior_submissions?: number;
+  tags?: CardTag[]; system_tags?: { kind: "experience" | "skill_category"; label: string }[];
 };
+export type CardTag = { id: string; name: string; active: boolean };
 export type MatchLine = { term: string; skill: string | null; held: boolean };
 export type Facet = { key: string; count: number };
 export type SearchResult = {
@@ -64,7 +68,7 @@ export const EMPTY_SEARCH: SearchState = {
 export const PREFERRED_MAX = 10;
 export const LIST_MAX = 10; // the API's cap on each multi-value filter (categories, types, stages)
 export type FilterGroup = "skills" | "education" | "experience" | "location" | "preferences" | "package" | "recruitment" | "records";
-type Kind = "text" | "years" | "lakhs" | "year" | "cgpa" | "flag" | "yesno" | "multi" | "choice" | "date" | "category";
+type Kind = "text" | "years" | "lakhs" | "year" | "cgpa" | "flag" | "yesno" | "multi" | "choice" | "date" | "category" | "tag";
 type Option = { key: string; label: string };
 export type FilterSpec = {
   param: string; body: string; label: string; group: FilterGroup; kind: Kind; options?: Option[];
@@ -106,6 +110,7 @@ export const FILTERS: FilterSpec[] = [
   f("owner", "owner", "Primary recruiter", "recruitment", "choice", { options: [{ key: "me", label: "Me" }, { key: "unassigned", label: "Nobody yet" }] }),
   f("reg_from", "registered_from", "Registered from", "recruitment", "date"),
   f("reg_to", "registered_to", "Registered to", "recruitment", "date"),
+  f("tag", "tag_ids", "Candidate tags", "recruitment", "tag"), // pob-019 T4: any of them; may stand alone
   f("resume", "has_resume", "Resume", "records", "yesno", { options: [{ key: "1", label: "Has a resume" }, { key: "0", label: "No resume" }] }),
   f("doc", "document_types", "Has document", "records", "multi", { options: DOCUMENT_TYPES.map((d) => ({ key: d.value, label: d.label })) }),
   f("app", "application_statuses", "Application stage", "records", "multi", { options: APPLICATION_STAGES }),
@@ -136,11 +141,11 @@ function valid(spec: FilterSpec, raw: string): string {
     case "cgpa": return CGPA.test(value) && Number(value) <= 10 ? value : "";
     case "flag": return value === "1" ? value : "";
     case "date": return DATE.test(value) && !Number.isNaN(Date.parse(value)) ? value : "";
-    case "category": return pick(value, UUID);
+    case "category": case "tag": return pick(value, UUID);
     default: return spec.options?.some((o) => o.key === value) ? value : "";
   }
 }
-const many = (spec: FilterSpec) => spec.kind === "multi" || spec.kind === "category";
+const many = (spec: FilterSpec) => spec.kind === "multi" || spec.kind === "category" || spec.kind === "tag";
 
 function moreOf(params: URLSearchParams): Record<string, string[]> {
   const out: Record<string, string[]> = {};
@@ -155,7 +160,7 @@ function moreOf(params: URLSearchParams): Record<string, string[]> {
 function bodyValue(spec: FilterSpec, values: string[]): unknown {
   const [value] = values;
   switch (spec.kind) {
-    case "multi": case "category": return values;
+    case "multi": case "category": case "tag": return values;
     case "years": return spec.max ? Math.min(600, Number(value) * 12 + 11) : Number(value) * 12;
     case "lakhs": return rupees(value);
     case "year": case "cgpa": return Number(value);
@@ -176,7 +181,7 @@ export type ActiveFilter = { key: string; label: string; clear: (state: SearchSt
 const short = (label: string) => label.replace(/ \(.*\)$/, "");
 
 /** AC2: one removable chip per active filter (skills and resume words have their own chips); clearing one goes back to page 1. */
-export function activeFilters(state: SearchState, lookup: { categories: Record<string, string>; sources?: Record<string, string> }): ActiveFilter[] {
+export function activeFilters(state: SearchState, lookup: { categories: Record<string, string>; sources?: Record<string, string>; tags?: Record<string, string> }): ActiveFilter[] {
   const out: ActiveFilter[] = [];
   const own = (key: string, label: string, changes: Partial<SearchState>) => out.push({ key, label, clear: (s) => ({ ...s, ...changes, offset: 0 }) });
   if (state.verified) own("verified", "Verified skills only", { verified: false });
@@ -195,6 +200,7 @@ export function activeFilters(state: SearchState, lookup: { categories: Record<s
   for (const spec of FILTERS) {
     for (const value of state.more[spec.param] ?? []) {
       const shown = spec.kind === "category" ? lookup.categories[value] ?? "Selected category"
+        : spec.kind === "tag" ? lookup.tags?.[value] ?? "Selected tag"
         : spec.options ? spec.options.find((o) => o.key === value)?.label ?? value
         : spec.kind === "years" ? `${value} yr` : spec.kind === "lakhs" ? `₹${value} L` : value;
       out.push({
@@ -290,7 +296,8 @@ const rupees = (lakhs: string) => Math.round(Number(lakhs) * 100000);
 /** The POST body (years → months, a maximum year counting in full; lakhs → rupees), or null with neither a skill nor resume words. */
 export function searchBody(state: SearchState): Record<string, unknown> | null {
   const any = state.any.filter((group) => group.length);
-  if (!state.all.length && !any.length && !state.text && !state.preferred.length && !state.more.cat?.length) return null; // hrc-019 S3
+  // hrc-019 S3: a category alone is a search; pob-019 T4: so is a tag
+  if (!state.all.length && !any.length && !state.text && !state.preferred.length && !state.more.cat?.length && !state.more.tag?.length) return null;
   const body: Record<string, unknown> = {};
   if (state.text) body.text = state.text;
   if (state.all.length) body.all = state.all;
@@ -337,7 +344,7 @@ function lakhsOf(rupees: unknown): string {
 
 function moreValues(spec: FilterSpec, value: unknown): string[] {
   switch (spec.kind) {
-    case "multi": case "category": return texts(value);
+    case "multi": case "category": case "tag": return texts(value);
     case "years": return [yearsOf(value)];
     case "lakhs": return [lakhsOf(value)];
     case "flag": return [value === true ? "1" : ""];

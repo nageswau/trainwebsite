@@ -26,7 +26,7 @@ test("manager sets a rate; recruiter records a package and sees the yearly rupee
   expect(created.status()).toBe(201);
   const id = (await created.json()).id as string;
   await page.goto(`/recruiter/candidates/${id}`);
-  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   const group = page.getByRole("group", { name: "Compensation" });
   await group.getByLabel("Current salary", { exact: true }).fill("50000");
   await group.getByLabel("Current salary pay period").selectOption("month");

@@ -31,20 +31,24 @@ from app.models import (
     CandidateEmployment,
     CandidateResume,
     CandidateSkill,
+    CandidateTagLink,
     CareerApplication,
     Interview,
     JobApplication,
+    ProfileShareItem,
     RecCandidateSource,
     RecruiterCall,
     RecruiterMessage,
     Skill,
     SkillAlias,
+    SkillCategory,
     SkillCategoryTag,
     SkillRelated,
     User,
 )
 from app.schemas import CandidateSearch
-from app.services import candidate_engagement
+from app.services import candidate_engagement, candidate_tags
+from app.services.candidate_privacy import CLOSED_APPLICATIONS
 from app.services.candidates import pool_filter
 
 logger = logging.getLogger("app.candidate_search")
@@ -206,7 +210,9 @@ def _more(body: CandidateSearch, terms: dict[str, dict], user_id: UUID | None) -
         tagged = exists().where(SkillCategoryTag.skill_id == Skill.id, SkillCategoryTag.category_id.in_(body.category_ids))
         out.append(select(CandidateSkill.id).join(Skill, Skill.id == CandidateSkill.skill_id)
                    .where(CandidateSkill.candidate_id == Candidate.id, or_(Skill.category_id.in_(body.category_ids), tagged)).exists())  # fmt: skip
-    if body.preferred and not (body.all or body.any or body.text or body.category_ids):  # S3: preferred alone lists who holds one
+    if body.tag_ids:  # pob-019 (DEC-SCOPE-439 T4): any of these free tags
+        out.append(exists().where(CandidateTagLink.candidate_id == Candidate.id, CandidateTagLink.tag_id.in_(body.tag_ids)))
+    if body.preferred and not (body.all or body.any or body.text or body.category_ids or body.tag_ids):  # S3: preferred alone lists who holds one
         out.append(_has(set().union(*(terms[t.lower()]["ids"] for t in body.preferred)), body.verified_only))
     if body.fresher is not None:
         out.append(Candidate.experience_months == 0 if body.fresher else Candidate.experience_months > 0)
@@ -364,6 +370,27 @@ def _match(body: CandidateSearch, terms: dict[str, dict], held: set[UUID]) -> di
     return {"required": [line(k) for k in _distinct([*body.all, *(t for g in body.any for t in g)])], "preferred": [line(k) for k in _distinct(body.preferred)]}
 
 
+async def _facts(db: AsyncSession, candidate_ids: list[UUID]) -> dict[UUID, dict]:
+    """pob-019 (T5/T6, AC1): one query for the page -- the owner (hrc-012), the latest logged call or message (the contact hrc-021 counts),
+    the open applications and the pob-021 submissions."""
+    def latest(column, owner):
+        return select(func.max(column)).where(owner == Candidate.id).scalar_subquery()
+
+    def count(model, *where):
+        return select(func.count()).select_from(model).where(model.candidate_id == Candidate.id, *where).scalar_subquery()
+
+    rows = await db.execute(
+        select(Candidate.id, User.id, User.full_name,
+               func.greatest(latest(RecruiterCall.occurred_at, RecruiterCall.candidate_id), latest(RecruiterMessage.sent_at, RecruiterMessage.candidate_id)),
+               count(JobApplication, JobApplication.status.not_in(CLOSED_APPLICATIONS)), count(ProfileShareItem))
+        .outerjoin(User, User.id == Candidate.owner_user_id).where(Candidate.id.in_(candidate_ids))
+    )  # fmt: skip
+    return {
+        cid: {"owner": {"id": uid, "full_name": name} if uid else None, "last_contacted_at": contacted, "active_applications": active, "prior_submissions": shared}
+        for cid, uid, name, contacted, active, shared in rows.all()
+    }
+
+
 async def page(db: AsyncSession, where: list, terms: dict[str, dict], limit: int, offset: int, text: str | None = None,
                body: CandidateSearch | None = None) -> list[dict]:  # fmt: skip
     """The page's cards, newest first (FS11) -- with text, the most relevant current resume first (FT5); hrc-019: in `body.sort`'s order,
@@ -372,16 +399,24 @@ async def page(db: AsyncSession, where: list, terms: dict[str, dict], limit: int
     matched = set().union(*(t["ids"] for t in terms.values()))
     skills: dict[UUID, list] = {c.id: [] for c, _, _ in rows}
     holds: dict[UUID, set] = {c.id: set() for c, _, _ in rows}
+    categories: dict[UUID, list[str]] = {c.id: [] for c, _, _ in rows}  # pob-019 T3: rides on the skills query
+    facts: dict[UUID, dict] = {}
+    tags: dict[UUID, list[dict]] = {}
     if skills:
         held = await db.execute(
-            select(CandidateSkill.candidate_id, CandidateSkill.skill_id, Skill.name, CandidateSkill.level, CandidateSkill.status)
-            .join(Skill, Skill.id == CandidateSkill.skill_id).where(CandidateSkill.candidate_id.in_(list(skills)))
-        )
-        for candidate_id, skill_id, name, level, status in held.all():
+            select(CandidateSkill.candidate_id, CandidateSkill.skill_id, Skill.name, CandidateSkill.level, CandidateSkill.status, SkillCategory.name)
+            .join(Skill, Skill.id == CandidateSkill.skill_id).outerjoin(SkillCategory, SkillCategory.id == Skill.category_id)
+            .where(CandidateSkill.candidate_id.in_(list(skills)))
+        )  # fmt: skip
+        for candidate_id, skill_id, name, level, status, category in held.all():
             skills[candidate_id].append({"name": name, "level": level, "status": status, "matched": skill_id in matched})
             holds[candidate_id].add(skill_id)
+            if category:
+                categories[candidate_id].append(category)
         for items in skills.values():
             items.sort(key=lambda s: (not s["matched"], s["name"].lower()))
+        facts = await _facts(db, list(skills))
+        tags = await candidate_tags.read(db, list(skills))
     cards = [
         {
             "id": c.id, "candidate_code": c.candidate_code, "name": c.name, "preferred_role": c.preferred_role, "current_company": c.current_company,
@@ -389,6 +424,7 @@ async def page(db: AsyncSession, where: list, terms: dict[str, dict], limit: int
             "expected_salary_currency": c.expected_salary_currency, "expected_salary_period": c.expected_salary_period, "expected_annual_inr": c.expected_annual_inr,
             "source": {"id": s.id, "name": s.name, "active": s.active}, "source_detail": c.source_detail, "status": c.status, "skills": skills[c.id],
             "snippet": None, "engagement": candidate_engagement.out(e),
+            **facts[c.id], "tags": tags[c.id], "system_tags": candidate_tags.system_tags(c.experience_months, categories[c.id]),
         }
         for c, s, e in rows
     ]

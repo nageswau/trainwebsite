@@ -16,7 +16,7 @@ from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
 from app.models import User
-from app.schemas import CandidateAssignee, CandidateNoteIn, CandidateTaskCreate, CandidateTaskUpdate
+from app.schemas import CandidateAssignee, CandidateBulkTaskCreate, CandidateNoteIn, CandidateTaskCreate, CandidateTaskUpdate
 from app.services import candidate_notes_tasks as svc
 from app.services import candidates
 from app.services.bdm_appointments import db_now
@@ -73,6 +73,16 @@ async def my_tasks(due: Literal["today", "overdue", "upcoming"] = "today", limit
     if user.role not in candidates.WRITERS:
         raise HTTPException(403, "Your role has no candidate tasks")
     return await svc.my_page(db, user, due, await db_now(db), limit, offset)
+
+
+@router.post("/candidate-tasks/bulk", status_code=201)
+async def create_tasks(payload: CandidateBulkTaskCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """pob-019 (DEC-SCOPE-439 T9): the same task for up to 50 candidates in one transaction. Not idempotent (a retry adds them again)."""
+    candidates.require_writer(user)
+    result = await svc.create_many(db, user, payload, await db_now(db))
+    await db.commit()
+    svc.logger.info("candidate_tasks_bulk_created", extra={"extra_fields": {"actor_id": str(user.id), "created": len(result["created"]), "skipped": len(result["skipped"])}})
+    return result
 
 
 @router.get("/candidate-tasks/assignees", response_model=list[CandidateAssignee])

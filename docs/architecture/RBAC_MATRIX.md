@@ -4130,3 +4130,15 @@ The token is not a session (`type` = `placement_survey`; `get_current_user` refu
 | See the revenue figures | — | with pob-001 `commercials.client.view` | ✓ | — |
 
 Out-of-scope placements and filters read as zero, never 403. Audit `placement_outcomes.export`: period, grouping, filter ids, row count, format.
+### 2.329 Candidate tags and bulk candidate actions *(added 2026-11-08 — `DEC-SCOPE-439`, pob-019)*
+
+| Action | placement_team | placement_manager | super_admin | hr_team | everyone else |
+|---|---|---|---|---|---|
+| Maintain the "Candidate tags" list | 403 (reads active tags) | ✓ | ✓ | 403 | 403 |
+| Read a candidate's tags; see tags and enrichment on result cards | ✓ (pool) | ✓ | ✓ | ✓ | 403 |
+| Replace a candidate's tags | ✓ (pool) | ✓ | ✓ | 403 | 403 |
+| Bulk shortlist into a requirement | ✓ in requirement scope (`applications.WRITERS`) | 403 | ✓ | 403 | 403 / 404 |
+| Bulk assign candidate tasks | ✓ (`candidates.WRITERS`) | ✓ | ✓ | 403 | 403 |
+| Export the search | `candidates.export` (hrc-020, unchanged) | | | | |
+
+Bulk actions only touch the caller's pool: a candidate outside it, archived or unknown is skipped as `unavailable` (no probing which). Audit rows carry ids only.

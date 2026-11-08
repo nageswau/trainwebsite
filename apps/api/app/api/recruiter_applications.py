@@ -16,7 +16,7 @@ from app.api import recruiter_screening
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import APPLICATION_STATUSES, ApplicationScreening, Candidate, Company, Job, JobApplication, User
-from app.schemas import RecApplicationCreate, RecApplicationStatusChange, RecScreeningIn
+from app.schemas import RecApplicationCreate, RecApplicationStatusChange, RecBulkShortlistIn, RecScreeningIn
 from app.services import application_review as review
 from app.services import application_screening as screening
 from app.services import applications as svc
@@ -84,6 +84,48 @@ async def add_requirement_candidate(requirement_id: UUID, payload: RecApplicatio
     await db.commit()
     svc.log("recruiter_application_added", user, application, status=payload.status)
     return {"application": await _item(db, user, application)}
+
+
+SKIPS = {  # pob-019 (DEC-SCOPE-439 T8): why a bulk shortlist left a candidate out
+    "already_added": svc.DUPLICATE,
+    "do_not_contact": "This candidate is marked Do Not Contact",
+    "unavailable": "This candidate is not an active candidate in the pool",
+}
+
+
+def _skip(candidate_id: UUID, reason: str) -> dict:
+    return {"candidate_id": candidate_id, "reason": reason, "message": SKIPS[reason]}
+
+
+@router.post("/requirements/{requirement_id}/candidates/bulk")
+async def bulk_shortlist(requirement_id: UUID, payload: RecBulkShortlistIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """pob-019 (T7/T8, AC2): shortlist up to 50 candidates -- the single add's checks, each candidate added as Shortlisted, the rest skipped
+    with a reason. One transaction, one commit; a concurrent add of the same pair hits the unique index and the whole batch is a 409 (retry).
+    Not idempotent: a repeat reports `already_added`."""
+    job = await requirements.load_scoped(db, user, requirement_id, lock=True)
+    svc.require_writer(user, job.id, "bulk_shortlist")
+    if job.status in requirements.ENDED:
+        raise HTTPException(409, "Candidates cannot be added to a closed or cancelled requirement")
+    found = {c.id: c for c in await db.scalars(
+        select(Candidate).where(Candidate.id.in_(payload.candidate_ids), *candidates.pool_filter(user.id)).order_by(Candidate.id).with_for_update(read=True)
+    )}  # fmt: skip
+    there = set(await db.scalars(select(JobApplication.candidate_id).where(JobApplication.job_id == job.id, JobApplication.candidate_id.in_(list(found)))))
+    added, skipped = [], []
+    for candidate_id in payload.candidate_ids:
+        candidate = found.get(candidate_id)
+        if candidate is None or candidate.archived_at is not None:
+            skipped.append(_skip(candidate_id, "unavailable"))
+        elif candidate_id in there:
+            skipped.append(_skip(candidate_id, "already_added"))
+        elif candidate.status == "do_not_contact":
+            skipped.append(_skip(candidate_id, "do_not_contact"))
+        else:
+            application = await svc.create(db, user, job, candidate, "shortlisted", payload.note)
+            svc.audit(db, user, "add", application, {"job_id": str(job.id), "candidate_id": str(candidate.id), "status": "shortlisted", "bulk": True})
+            added.append({"candidate_id": candidate.id, "application_id": application.id})
+    await db.commit()
+    svc.logger.info("recruiter_applications_bulk_added", extra={"extra_fields": {"actor_id": str(user.id), "job_id": str(job.id), "added": len(added), "skipped": len(skipped)}})
+    return {"added": added, "skipped": skipped}
 
 
 @router.post("/applications/{application_id}/status")

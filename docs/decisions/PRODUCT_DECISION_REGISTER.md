@@ -12570,3 +12570,8 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - R9/R10: dropouts, early dropouts (inside the guarantee), replacements owed/filled; mean client and candidate ratings.
   - R11: CSV/xlsx export of the group table, audited `placement_outcomes.export` (no names).
 - **Not built:** scheduled delivery, charts.
+### DEC-SCOPE-439 — Candidate tags, enriched results and bulk actions (pob-019)
+- **Date:** 2026-11-08. **Status:** builder's calls T1–T12, `NEEDS_CONFIRMATION` (the owner asked for recommended answers instead of questions; Q-14 answered "free tags come from an admin list").
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-019-candidate-tags-bulk-actions-design.md`. Migration `0319_candidate_tags`; API §12MF; RBAC §2.329.
+- **Calls:** free tags are a new rec-002 managed list; a candidate's set is replaced whole (≤ 20; an inactive tag may stay, not be added); system tags (experience band incl. Fresher, skill categories) are derived on read; search filter `tag_ids`; cards gain owner, last contacted, active applications, prior submissions and tags in two batched queries; bulk shortlist (≤ 50, skips `already_added` / `do_not_contact` / `unavailable`, one transaction) and bulk tasks (≤ 50, one notification); export stays hrc-020's.
+- **Not built:** role-family tags (no such candidate field), bulk tagging, exporting only the selected candidates.
