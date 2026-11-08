@@ -4121,3 +4121,12 @@ The replacement requirement must be in the caller's requirement scope and the sa
 | Close a requirement by hand (with a reason) | as rec-007 `can_change_status` | as rec-007 | ✓ | — | 403 |
 
 The token is not a session (`type` = `placement_survey`; `get_current_user` refuses it) and names only the survey id. Refused lookups are audited with the IP and throttled (429). Audit `placement_survey.responded`: ids and the rating, never the comment.
+
+### 2.328 Placement outcome reports *(added 2026-11-08 — `DEC-SCOPE-438`, pob-029)*
+
+| Action | placement_team | placement_manager | super_admin | everyone else |
+|---|---|---|---|---|
+| Read the outcome report and export it | 403 | team + Unassigned (rec-007 scope) | ✓ | 403 |
+| See the revenue figures | — | with pob-001 `commercials.client.view` | ✓ | — |
+
+Out-of-scope placements and filters read as zero, never 403. Audit `placement_outcomes.export`: period, grouping, filter ids, row count, format.

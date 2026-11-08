@@ -937,6 +937,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** low.
 
 #### pob-029: Placement outcome reports
+- **Status:** built (`DEC-SCOPE-438`, 2026-11-08; no migration, API §12ME, RBAC §2.328); R1-R12 are the builder's calls (`NEEDS_CONFIRMATION`). The design is in `docs/superpowers/specs/2026-11-08-pob-029-placement-outcome-reports-design.md`.
 - **Business requirement:** §13.2 (5 report groups).
 - **Existing behavior:** the funnel, joining rate and closure time by recruiter or in total, revenue by kind and receivables. There is no breakdown by vendor, source or PO, no offer acceptance, and no replacement/dropout/satisfaction figures.
 - **Expected behavior:**
