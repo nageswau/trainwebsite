@@ -1,5 +1,6 @@
 """hrc-033 (DEC-SCOPE-415, spec docs/superpowers/specs/2026-11-06-hrc-033-operational-recruitment-dashboards-design.md): the five operational
-recruitment dashboards -- funnel, vacancy, recruiter, placement officer, interview.
+recruitment dashboards -- funnel, vacancy, recruiter, placement officer, interview. pob-028 (DEC-SCOPE-436) adds the sixth, `po`: the
+Placement Officer's (placement team's) nine widgets, as sections over four more record kinds (company, follow-up, submission, placement).
 
 Every figure is declared once, as a record kind and a predicate. Its value and its drill-down are built from that one predicate by `_where`,
 so a figure always equals the records it opens (AC). All the figures of a board come from one statement of scalar sub-selects. Filters are
@@ -19,19 +20,28 @@ from app.models import (
     JOB_OPEN_STATUSES,
     Candidate,
     Company,
+    InstitutionVacancyShare,
     Interview,
     InterviewResult,
     Job,
     JobApplication,
     JobApplicationStatusHistory,
     JobAssignment,
+    JobOffer,
+    Placement,
+    ProfileShareItem,
     RecCandidateSource,
+    RecruiterFollowUp,
+    RecruiterInvoice,
+    RecruiterPayment,
     RecruiterProfile,
     User,
 )
-from app.services import candidate_ownership, website_registrations
+from app.recruiter_stages import LABELS
+from app.services import candidate_ownership, recruiter_companies, website_registrations
 from app.services import candidates as candidates_svc
 from app.services import interviews as interviews_svc
+from app.services import recruiter_contracts as contracts
 from app.services import recruiter_requirements as requirements
 from app.services.bdm_appointments import IST, today_ist
 from app.services.recruiter import MANAGER_ROLE, ROLE
@@ -44,6 +54,9 @@ WHOLE_ORGANISATION = ("hr_manager", "it_admin", "partner", "super_admin")
 NO_SCOPE = "Your role has no recruitment dashboards"
 NAMELESS_ROLES = ("it_admin", "partner")  # D9: management reads figures and codes; the people are the recruitment team's to work
 REQUIREMENT_OPENERS = (ROLE, MANAGER_ROLE, OFFICER_ROLE, "super_admin")
+COMPANY_OPENERS = (ROLE, MANAGER_ROLE, "super_admin")  # recruiter_companies.caller_scope's roles
+REVENUE_READERS = (ROLE, MANAGER_ROLE, "super_admin")  # pob-028 P4: rec-031 RV10 (recruiter_revenue.READERS; importing it here forms a cycle)
+NO_REVENUE = "Your role cannot read placement revenue"
 OPTIONS_LIMIT = 500
 
 
@@ -60,6 +73,7 @@ class Context:
     job: UUID | None
     job_scope: list
     candidate_scope: list
+    company_scope: list
 
 
 @dataclass(frozen=True)
@@ -67,7 +81,7 @@ class Figure:
     key: str
     label: str
     definition: str
-    kind: str  # candidate | job | application | interview
+    kind: str  # candidate | job | application | interview | company | follow_up | submission | placement (pob-028)
     where: Callable[[Context], list]
 
 
@@ -76,6 +90,7 @@ class Section:
     key: str
     label: str
     figures: tuple[Figure, ...]
+    commercial: bool = False  # pob-028 P4: shown only behind the rec-031 revenue gate (role + pob-001 `commercials.client.view`)
 
 
 @dataclass(frozen=True)
@@ -316,19 +331,171 @@ _OFFICER = Board(
     by_officer=True,
 )  # fmt: skip
 
-BOARDS: dict[str, Board] = {board.key: board for board in (_FUNNEL, _VACANCY, _RECRUITER, _OFFICER, _INTERVIEW)}
+
+# --- the PO dashboard (pob-028, DEC-SCOPE-436): the nine widgets of §15 ---------------------------------------------------------------------
+def _bd(*stages: str):
+    """P5: a company in the BD pipeline -- a client or prospect, neither lost nor inactive, at one of these stages."""
+    return lambda _ctx: [Company.partner_type != "vendor", Company.lost_at.is_(None), Company.inactive_at.is_(None), Company.stage.in_(stages)]
+
+
+def _bd_clients(_ctx: Context) -> list:
+    return [Company.partner_type != "vendor", Company.lost_at.is_(None), Company.inactive_at.is_(None), Company.client_status != "prospect"]
+
+
+def _follow_ups_due(ctx: Context) -> list:
+    """rec-024 FU2: due before tonight's IST midnight."""
+    tonight = datetime.combine(today_ist(ctx.now) + timedelta(days=1), time.min, tzinfo=IST)
+    return [RecruiterFollowUp.status == "open", RecruiterFollowUp.due_at < tonight]
+
+
+_OUTREACH = ("first_outreach", "cadence_step")  # pob-008 B10/B11: the outreach follow-ups (P6: a follow-up stores no channel)
+
+
+def _open_aged(youngest: int, oldest: int | None):
+    """A snapshot band, whatever the period: open requirements opened `youngest`..`oldest` days ago (hrc-033's opened-on rule)."""
+
+    def where(ctx: Context) -> list:
+        today = today_ist(ctx.now)
+        return [Job.status.in_(JOB_OPEN_STATUSES), *([_opened_on() <= today - timedelta(days=youngest)] if youngest else []),
+                *([_opened_on() >= today - timedelta(days=oldest)] if oldest is not None else [])]  # fmt: skip
+
+    return where
+
+
+_ACTIVE_APPLICATION = ("sourced", "screened", "shortlisted", "profile_shared", "interview")
+
+
+def _working(ctx: Context):
+    """A candidate on an active application on a requirement in view."""
+    chosen = _chosen_job(ctx)
+    return (select(JobApplication.id).join(Job, Job.id == JobApplication.job_id)
+            .where(JobApplication.candidate_id == Candidate.id, JobApplication.status.in_(_ACTIVE_APPLICATION), *ctx.job_scope, *chosen).exists())  # fmt: skip
+
+
+def _submitted(ctx: Context) -> list:
+    return _during(ProfileShareItem.created_at, ctx)
+
+
+def _never_submitted(_ctx: Context) -> list:
+    return [JobApplication.status.in_(("screened", "shortlisted")), ~exists().where(ProfileShareItem.application_id == JobApplication.id)]
+
+
+def _tpo_shared(ctx: Context) -> list:
+    return [exists().where(InstitutionVacancyShare.job_id == Job.id, InstitutionVacancyShare.shared_on >= ctx.first, InstitutionVacancyShare.shared_on <= ctx.last)]
+
+
+def _offered(ctx: Context) -> list:
+    return [exists().where(JobOffer.application_id == JobApplication.id, JobOffer.offered_on >= ctx.first, JobOffer.offered_on <= ctx.last)]
+
+
+def _invoice(*extra):
+    """An issued placement whose live invoice matches `extra`."""
+    return lambda _ctx: [Placement.invoice_status == "issued", exists().where(RecruiterInvoice.id == Placement.invoice_id, RecruiterInvoice.cancelled_at.is_(None), *extra)]
+
+
+def _paid():
+    return select(func.coalesce(func.sum(RecruiterPayment.amount), 0)).where(RecruiterPayment.invoice_id == RecruiterInvoice.id).scalar_subquery()
+
+
+def _overdue_invoice(ctx: Context) -> list:
+    return _invoice(RecruiterInvoice.due_date < today_ist(ctx.now), _paid() < RecruiterInvoice.amount)(ctx)
+
+
+_PO = Board(
+    "po", "PO dashboard",
+    "Your BD, requirements, candidates, interviews and placements. Queues are as they stand now; flows count what happened in the period.",
+    "Owner",
+    (
+        Section("bd", "BD pipeline (now)", (
+            Figure("bd_targets", "Targets", "Companies at Target Identified or Research Completed.", "company", _bd("new_lead", "research_completed")),
+            Figure("bd_contacts", "HR contact identified", "Companies whose HR contact is identified, before outreach.", "company", _bd("hr_contact_identified")),
+            Figure("bd_outreach", "Outreach sent", "Companies at Outreach Sent, with no reply yet.", "company", _bd("contacted")),
+            Figure("bd_replies", "Replied, interested", "Companies at Interested.", "company", _bd("interested")),
+            Figure("bd_meetings", "Meetings", "Companies at Meeting Booked, Requirement Discussion or Vendor Registration.", "company",
+                   _bd("meeting_scheduled", "requirement_discussion", "vendor_registration")),
+            Figure("bd_clients", "Clients", "Active clients and repeat business, neither lost nor inactive.", "company", _bd_clients),
+        )),
+        Section("follow_ups", "Follow-ups (now)", (
+            Figure("follow_ups_open_due", "Due today or overdue", "Open follow-ups due before tonight's midnight (IST): the Follow-ups page's Today.", "follow_up",
+                   _follow_ups_due),
+            Figure("follow_ups_today", "Due later today", "Open follow-ups due from now until tonight's midnight (IST).", "follow_up",
+                   lambda ctx: [*_follow_ups_due(ctx), RecruiterFollowUp.due_at >= ctx.now]),
+            Figure("follow_ups_overdue", "Overdue", "Open follow-ups whose due time has passed: the Follow-ups page's Overdue.", "follow_up",
+                   lambda ctx: [RecruiterFollowUp.status == "open", RecruiterFollowUp.due_at < ctx.now]),
+            Figure("follow_ups_outreach", "Outreach steps due", "Due or overdue first-outreach and cadence follow-ups.", "follow_up",
+                   lambda ctx: [*_follow_ups_due(ctx), RecruiterFollowUp.reason.in_(_OUTREACH)]),
+        )),
+        Section("requirements", "Requirements (now)", (
+            Figure("req_open", "Open", "Requirement received, sourcing, shortlisting, profiles shared or interviewing.", "job", _open_requirement),
+            Figure("req_on_hold", "On hold", "Paused requirements.", "job", lambda _ctx: [Job.status == "on_hold"]),
+            Figure("req_via_vendor", "Open via a vendor", "Open requirements that came through a vendor.", "job", lambda _ctx: [Job.status.in_(JOB_OPEN_STATUSES), Job.via_vendor_id.is_not(None)]),
+            Figure("req_age_0_15", "Open 0–15 days", "Open requirements opened up to 15 days ago.", "job", _open_aged(0, 15)),
+            Figure("req_age_16_30", "Open 16–30 days", "Open requirements opened 16 to 30 days ago.", "job", _open_aged(16, 30)),
+            Figure("req_age_over_30", "Open over 30 days", "Open requirements opened more than 30 days ago.", "job", _open_aged(31, None)),
+        )),
+        Section("sourcing", "Sourcing funnel (period)", (
+            Figure("src_added", "Candidates added", "Applications created on these requirements.", "application", _added),
+            Figure("src_shortlisted", "Shortlisted", "Applications moved to Shortlisted.", "application", _entered("shortlisted")),
+            Figure("src_submitted", "Submitted", "Candidates submitted to a client or vendor.", "submission", _submitted),
+            Figure("src_interview", "Interview", "Applications moved to Interview.", "application", _entered("interview")),
+            Figure("src_joined", "Joined", "Applications moved to Joined.", "application", _entered("joined")),
+        )),
+        Section("actions", "Candidate actions (now)", (
+            Figure("awaiting_contact", "Awaiting contact", "Candidates on an active application, never called or messaged.", "candidate",
+                   lambda ctx: [_working(ctx), Candidate.outreach_status == "not_contacted", website_registrations.first_contact().is_(None)]),
+            Figure("awaiting_consent", "Awaiting consent", "Candidates on an active application, contacted but with no permission to represent them.", "candidate",
+                   lambda ctx: [_working(ctx), Candidate.outreach_status.in_(("contacted", "responded"))]),
+            Figure("awaiting_screening", "Awaiting screening", "Applications still at Sourced.", "application", lambda _ctx: [JobApplication.status == "sourced"]),
+            Figure("awaiting_submission", "Awaiting submission", "Screened or shortlisted applications never submitted.", "application", _never_submitted),
+            Figure("awaiting_interview_confirmation", "Awaiting interview confirmation", "Scheduled or rescheduled interviews still in the future, not confirmed.", "interview",
+                   lambda ctx: [Interview.status.in_(("scheduled", "rescheduled")), Interview.scheduled_at > ctx.now]),
+        )),
+        Section("tpo", "TPO partnerships", (
+            Figure("tpo_shared", "Vacancies shared with institutions", "Requirements shared with a college or TPO in the period.", "job", _tpo_shared),
+            Figure("tpo_awaiting", "Awaiting an institution's reply", "Requirements with a share still awaiting the institution's response.", "job",
+                   lambda _ctx: [exists().where(InstitutionVacancyShare.job_id == Job.id, InstitutionVacancyShare.response == "awaiting")]),
+        )),
+        Section("interviews", "Interview tracker", (
+            Figure("iv_upcoming", "Upcoming", "Not yet held and still in the future.", "interview", _view("upcoming")),
+            Figure("iv_pending_feedback", "Pending feedback", "Time has passed with no update, or held with no decision.", "interview", _view("awaiting_update")),
+            Figure("iv_rescheduled", "Rescheduled", "Rescheduled interviews dated in the period.", "interview", _interview_status("rescheduled")),
+            Figure("iv_no_show", "No-shows", "Interviews dated in the period the candidate did not attend.", "interview", _interview_status("no_show")),
+        )),
+        Section("placements", "Offers and joinings (period)", (
+            Figure("offers", "Offers", "Applications with an offer made in the period.", "application", _offered),
+            Figure("joinings", "Joinings", "Applications moved to Joined.", "application", _entered("joined")),
+            Figure("placements", "Placement records", "Placement records created in the period.", "placement", lambda ctx: _during(Placement.created_at, ctx)),
+        )),
+        Section("invoicing", "Invoicing and collections (now)", (
+            Figure("invoice_pending", "Awaiting an invoice", "Placements with no invoice issued yet (none or a draft).", "placement", lambda _ctx: [Placement.invoice_status.in_(("none", "draft"))]),
+            Figure("invoices_issued", "Invoices issued", "Placements whose invoice is issued and not cancelled.", "placement", _invoice()),
+            Figure("invoices_overdue", "Invoices overdue", "Issued invoices past their due date and not paid in full.", "placement", _overdue_invoice),
+            Figure("invoices_collected", "Collected in full", "Issued invoices whose payments cover the amount.", "placement", _invoice(_paid() >= RecruiterInvoice.amount)),
+        ), commercial=True),
+    ),
+)  # fmt: skip
+
+BOARDS: dict[str, Board] = {board.key: board for board in (_FUNNEL, _VACANCY, _RECRUITER, _OFFICER, _INTERVIEW, _PO)}
 
 
 # --- record kinds: the one place a figure's rows are selected from -------------------------------------------------------------------------
 _JOBS = join(Job, Company, Company.id == Job.company_id)
 _APPLICATIONS = join(JobApplication, _JOBS, Job.id == JobApplication.job_id).join(Candidate, Candidate.id == JobApplication.candidate_id)
 _INTERVIEWS = join(Interview, _APPLICATIONS, JobApplication.id == Interview.application_id)
-_FROM = {"candidate": Candidate, "job": _JOBS, "application": _APPLICATIONS, "interview": _INTERVIEWS}
+_SUBMISSIONS = join(ProfileShareItem, _APPLICATIONS, JobApplication.id == ProfileShareItem.application_id)
+_PLACEMENTS = join(Placement, _JOBS, Job.id == Placement.job_id).join(Candidate, Candidate.id == Placement.candidate_id)
+_FOLLOW_UPS = join(RecruiterFollowUp, Company, Company.id == RecruiterFollowUp.company_id)
+_FROM = {"candidate": Candidate, "job": _JOBS, "application": _APPLICATIONS, "interview": _INTERVIEWS,
+         "company": Company, "follow_up": _FOLLOW_UPS, "submission": _SUBMISSIONS, "placement": _PLACEMENTS}  # fmt: skip
 
 
 def _where(board: Board, figure: Figure, ctx: Context) -> list:
     """Scope + filters + the figure's predicate: what both the count and the drill-down read."""
-    if figure.kind == "candidate":
+    if figure.kind in ("company", "follow_up"):  # pob-028 P2: the company's scope; owner = its recruiter; a job narrows to its company
+        common = [*ctx.company_scope, *([Company.id == ctx.employer] if ctx.employer else []),
+                  *([Company.id == select(Job.company_id).where(Job.id == ctx.job).scalar_subquery()] if ctx.job else []),
+                  *([Company.assigned_recruiter_user_id == ctx.owner] if ctx.owner else [])]  # fmt: skip
+    elif figure.kind == "candidate":
         common = [*candidates_svc.pool_filter(), Candidate.archived_at.is_(None), *ctx.candidate_scope]
         if board.by_officer:
             common += _officer_of_candidate(ctx)
@@ -352,28 +519,39 @@ def _count(board: Board, figure: Figure, ctx: Context):
 
 
 # --- reading -------------------------------------------------------------------------------------------------------------------------------
-async def _scope(db: AsyncSession, user: User) -> tuple[list, list]:
-    """D7: (requirement filters, candidate filters). A role granted the key with no defined record scope is refused, never shown everything."""
+async def _scope(db: AsyncSession, user: User) -> tuple[list, list, list]:
+    """D7: (requirement filters, candidate filters, company filters). A role granted the key with no defined record scope is refused, never
+    shown everything. pob-028 P2: the recruiter roles read their companies' scope; an officer the companies of their requirements."""
     if user.role == ROLE:  # hrc-025 N2: their own candidates and the unassigned queue
-        return await requirements.caller_scope(db, user), [or_(candidate_ownership.mine(user.id), Candidate.owner_user_id.is_(None))]
+        return (await requirements.caller_scope(db, user), [or_(candidate_ownership.mine(user.id), Candidate.owner_user_id.is_(None))],
+                await recruiter_companies.caller_scope(db, user))  # fmt: skip
     if user.role == MANAGER_ROLE:  # hrc-025 N2: a manager reads the whole pool
-        return await requirements.caller_scope(db, user), []
+        return await requirements.caller_scope(db, user), [], await recruiter_companies.caller_scope(db, user)
     if user.role == OFFICER_ROLE:
-        return await requirements.caller_scope(db, user, officers=True), [candidate_ownership.mine(user.id)]
+        jobs = await requirements.caller_scope(db, user, officers=True)
+        return jobs, [candidate_ownership.mine(user.id)], [Company.id.in_(select(Job.company_id).where(*jobs))]
     if user.role in WHOLE_ORGANISATION:
-        return [], []
+        return [], [], []
     raise HTTPException(403, NO_SCOPE)
 
 
 async def _context(db: AsyncSession, user: User, board: Board, date_from: date | None, date_to: date | None, owner: UUID | None, employer: UUID | None, job: UUID | None, now: datetime) -> Context:
-    job_scope, candidate_scope = await _scope(db, user)
+    job_scope, candidate_scope, company_scope = await _scope(db, user)
     first: date | None = None
     last: date | None = None
     start = end = None
     if board.default_month or date_from or date_to:
         first, last = date_range(date_from, date_to, today_ist(now))
         start, end = datetime.combine(first, time.min, tzinfo=IST), datetime.combine(last + timedelta(days=1), time.min, tzinfo=IST)
-    return Context(user, now, start, end, first, last, owner, employer, job, job_scope, candidate_scope)
+    return Context(user, now, start, end, first, last, owner, employer, job, job_scope, candidate_scope, company_scope)
+
+
+async def _sections(db: AsyncSession, user: User, board: Board) -> tuple[Section, ...]:
+    """pob-028 P4: a commercial section is left out, not zeroed, for a caller outside the revenue gate."""
+    if not any(section.commercial for section in board.sections):
+        return board.sections
+    sees = user.role in REVENUE_READERS and await contracts.sees_commercials(db, user)
+    return tuple(section for section in board.sections if sees or not section.commercial)
 
 
 async def _options(db: AsyncSession, board: Board, ctx: Context) -> dict:
@@ -402,7 +580,8 @@ async def _options(db: AsyncSession, board: Board, ctx: Context) -> dict:
 async def dashboard(db: AsyncSession, user: User, key: str, date_from: date | None, date_to: date | None, owner: UUID | None, employer: UUID | None, job: UUID | None, now: datetime, *, with_options: bool = True) -> dict:
     board = BOARDS[key]
     ctx = await _context(db, user, board, date_from, date_to, owner, employer, job, now)
-    figures = [figure for section in board.sections for figure in section.figures]
+    sections = await _sections(db, user, board)
+    figures = [figure for section in sections for figure in section.figures]
     row = (await db.execute(select(*(_count(board, figure, ctx).label(figure.key) for figure in figures)))).one()
     return {
         "board": board.key,
@@ -414,13 +593,15 @@ async def dashboard(db: AsyncSession, user: User, key: str, date_from: date | No
         "filters": {"owner": owner, "employer": employer, "job": job},
         "sections": [{"key": section.key, "label": section.label,
                       "figures": [{"key": f.key, "label": f.label, "definition": f.definition, "value": getattr(row, f.key)} for f in section.figures]}
-                     for section in board.sections],
+                     for section in sections],
         "options": await _options(db, board, ctx) if with_options else None,
     }  # fmt: skip
 
 
 def _status_label(kind: str, status: str) -> str:
     """D4/D9: an interview's status can hold the decision before its result is published, so a row only says it was held."""
+    if kind == "company":
+        return LABELS.get(status, status)
     return "Held" if kind == "interview" and status in ("selected", "rejected") else status.replace("_", " ").capitalize()
 
 
@@ -435,6 +616,14 @@ _COLUMNS = {
                     {"key": "company", "label": "Employer", "type": "text"}, _STATUS],
     "interview": [{"key": "interview", "label": "Interview", "type": "text"}, _CANDIDATE_CODE, _CANDIDATE_NAME, {"key": "requirement", "label": "Requirement", "type": "text"},
                   {"key": "company", "label": "Employer", "type": "text"}, {"key": "scheduled", "label": "When", "type": "datetime"}, _STATUS],
+    "company": [{"key": "code", "label": "Company", "type": "text"}, {"key": "company", "label": "Name", "type": "text"}, {"key": "status", "label": "Stage", "type": "text"},
+                {"key": "client_status", "label": "Client status", "type": "text"}, {"key": "owner", "label": "Owner", "type": "text"}],
+    "follow_up": [{"key": "company", "label": "Company", "type": "text"}, {"key": "reason", "label": "Reason", "type": "text"}, {"key": "due", "label": "Due", "type": "datetime"},
+                  {"key": "owner", "label": "Owner", "type": "text"}],
+    "submission": [{"key": "submission", "label": "Submission", "type": "text"}, _CANDIDATE_CODE, _CANDIDATE_NAME, {"key": "requirement", "label": "Requirement", "type": "text"},
+                   {"key": "company", "label": "Employer", "type": "text"}, _STATUS],
+    "placement": [_CANDIDATE_CODE, _CANDIDATE_NAME, {"key": "requirement", "label": "Requirement", "type": "text"}, {"key": "company", "label": "Employer", "type": "text"},
+                  {"key": "role", "label": "Role", "type": "text"}, {"key": "created", "label": "Recorded", "type": "datetime"}],
 }  # fmt: skip
 
 
@@ -451,6 +640,23 @@ def _rows_select(kind: str, ctx: Context):
         return (select(Job.id.label("id"), Job.requirement_code.label("requirement"), Job.title.label("title"), Company.name.label("company"), Job.status.label("status"),
                        owner.full_name.label("owner"), opened.label("opened_on"), func.greatest(today_ist(ctx.now) - opened, 0).label("age_days"))
                 .select_from(_JOBS).outerjoin(owner, owner.id == _job_owner()).order_by(opened, Job.id))  # fmt: skip
+    if kind in ("company", "follow_up"):
+        owner = aliased(User)
+        if kind == "company":
+            return (select(Company.id.label("id"), Company.id.label("company_id"), Company.company_code.label("code"), Company.name.label("company"), Company.stage.label("status"),
+                           Company.client_status.label("client_status"), owner.full_name.label("owner"))
+                    .select_from(Company).outerjoin(owner, owner.id == Company.assigned_recruiter_user_id).order_by(Company.name, Company.id))  # fmt: skip
+        return (select(RecruiterFollowUp.id.label("id"), Company.id.label("company_id"), Company.name.label("company"), RecruiterFollowUp.reason.label("reason"),
+                       RecruiterFollowUp.due_at.label("due"), owner.full_name.label("owner"))
+                .select_from(_FOLLOW_UPS).outerjoin(owner, owner.id == Company.assigned_recruiter_user_id).order_by(RecruiterFollowUp.due_at, RecruiterFollowUp.id))  # fmt: skip
+    if kind == "submission":
+        return (select(ProfileShareItem.id.label("id"), Candidate.id.label("candidate_id"), ProfileShareItem.submission_code.label("submission"), Candidate.candidate_code.label("candidate"),
+                       Candidate.name.label("name"), Job.requirement_code.label("requirement"), Company.name.label("company"), ProfileShareItem.status.label("status"))
+                .select_from(_SUBMISSIONS).order_by(ProfileShareItem.created_at.desc(), ProfileShareItem.id))  # fmt: skip
+    if kind == "placement":
+        return (select(Placement.id.label("id"), Candidate.id.label("candidate_id"), Candidate.candidate_code.label("candidate"), Candidate.name.label("name"),
+                       Job.requirement_code.label("requirement"), Company.name.label("company"), Placement.role.label("role"), Placement.created_at.label("created"))
+                .select_from(_PLACEMENTS).order_by(Placement.created_at.desc(), Placement.id))  # fmt: skip
     if kind == "application":
         return (select(JobApplication.id.label("id"), Candidate.id.label("candidate_id"), JobApplication.application_code.label("application"), Candidate.candidate_code.label("candidate"),
                        Candidate.name.label("name"), Job.requirement_code.label("requirement"), Company.name.label("company"), JobApplication.status.label("status"))
@@ -464,15 +670,20 @@ def _href(kind: str, role: str, row) -> str | None:
     """D9: a row links to its record only for a role that can open that screen."""
     if kind == "job":
         return f"/recruiter/requirements/{row.id}" if role in REQUIREMENT_OPENERS else None
+    if kind in ("company", "follow_up"):
+        return f"/recruiter/companies/{row.company_id}" if role in COMPANY_OPENERS else None
     return f"/recruiter/candidates/{row.candidate_id}" if role in candidates_svc.READERS else None
 
 
 async def drill(db: AsyncSession, user: User, key: str, figure_key: str, date_from: date | None, date_to: date | None, owner: UUID | None, employer: UUID | None, job: UUID | None,
                 now: datetime, *, limit: int, offset: int) -> dict:  # fmt: skip
     board = BOARDS[key]
-    figure = next((f for section in board.sections for f in section.figures if f.key == figure_key), None)
-    if figure is None:
+    section = next((s for s in board.sections if any(f.key == figure_key for f in s.figures)), None)
+    if section is None:
         raise HTTPException(404, "Figure not found")
+    if section not in await _sections(db, user, board):
+        raise HTTPException(403, NO_REVENUE)
+    figure = next(f for f in section.figures if f.key == figure_key)
     ctx = await _context(db, user, board, date_from, date_to, owner, employer, job, now)
     where = _where(board, figure, ctx)
     total = await db.scalar(select(_count(board, figure, ctx)))

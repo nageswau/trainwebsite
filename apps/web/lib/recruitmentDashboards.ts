@@ -8,6 +8,7 @@ export const PAGE_SIZE = 25;
 export const BOARD_TABS = [
   { key: "funnel", label: "Funnel" }, { key: "vacancy", label: "Vacancy" }, { key: "recruiter", label: "Recruiter" },
   { key: "officer", label: "Placement officer" }, { key: "interview", label: "Interview" },
+  { key: "po", label: "PO dashboard" }, // pob-028 (DEC-SCOPE-436): the placement team's nine widgets
 ] as const; // prettier-ignore
 export type BoardKey = (typeof BOARD_TABS)[number]["key"];
 

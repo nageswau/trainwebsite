@@ -63,10 +63,10 @@ describe("the dashboard", () => {
     expect(screen.getByRole("heading", { name: "Open vacancies by age" })).toBeTruthy();
   });
 
-  it("marks the current board among all five", () => {
+  it("marks the current board among all six (pob-028 adds the PO dashboard)", () => {
     render(<RecruitmentDashboard board="vacancy" data={VACANCY} drill={null} error="" query={QUERY} />);
     const nav = within(screen.getByRole("navigation", { name: "Recruitment dashboards" }));
-    expect(nav.getAllByRole("link").map((a) => a.textContent)).toEqual(["Funnel", "Vacancy", "Recruiter", "Placement officer", "Interview"]);
+    expect(nav.getAllByRole("link").map((a) => a.textContent)).toEqual(["Funnel", "Vacancy", "Recruiter", "Placement officer", "Interview", "PO dashboard"]);
     expect(nav.getByRole("link", { name: "Vacancy" }).getAttribute("aria-current")).toBe("page");
     expect(nav.getByRole("link", { name: "Funnel" }).getAttribute("aria-current")).toBeNull();
   });
