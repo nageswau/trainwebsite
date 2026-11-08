@@ -32,7 +32,7 @@ from app.models import (
     User,
 )
 from app.notifications.events import notify
-from app.schemas import PlacementInvoiceIssue, PlacementUpdate
+from app.schemas import PlacementDropout, PlacementInvoiceIssue, PlacementUpdate
 from app.services import applications, permissions
 from app.services import placement_surveys as surveys
 from app.services import recruiter_contracts as contracts
@@ -52,6 +52,8 @@ VIEWS = {
     "joined": JobOffer.joining_status == "joined",
     "did_not_join": JobOffer.joining_status == "did_not_join",
     "invoice_drafts": Placement.invoice_status == "draft",
+    # pob-025 G11: a dropout inside the guarantee whose replacement is not yet filled (G5)
+    "replacements": and_(Placement.dropout_on <= Placement.guarantee_end_date, Placement.replaced_by_placement_id.is_(None)),
 }
 CONFIRMATIONS = ("candidate_confirmation", "client_confirmation")
 OWNER_SETTERS = (MANAGER_ROLE, "super_admin")
@@ -62,6 +64,15 @@ NOT_OWNER_SETTER = "Only a Team Lead can change the PO owner"
 DID_NOT_JOIN = "Did not join"
 SWEEP_LIMIT = 200
 DUE, OVERDUE = "it.recruitment.invoice_due", "it.recruitment.invoice_overdue"
+# pob-025 (DEC-SCOPE-436 G3-G11): the replacement guarantee
+GUARANTEE_LABELS = {"none": "No guarantee", "active": "In guarantee", "ended": "Guarantee ended", "dropped_out": "Dropped out"}
+REPLACEMENT_LABELS = {"open": "Replacement owed", "requested": "Replacement in progress", "filled": "Replaced"}
+GUARANTEE_ALERT_DAYS = 7
+EXPIRING = "it.recruitment.guarantee_expiring"
+NOT_JOINED = {"message": "A dropout can be recorded only after the candidate has joined", "code": "not_joined"}
+DROPOUT_RECORDED = {"message": "A dropout is already recorded for this placement", "code": "dropout_recorded"}
+NO_REPLACEMENT = {"message": "This placement has no open replacement to link", "code": "no_replacement_owed"}
+OPEN_REQUIREMENT = "Choose an open requirement of this client"
 
 
 def url(placement_id) -> str:
@@ -97,13 +108,48 @@ async def ensure(db: AsyncSession, actor: User | None, offer: JobOffer, applicat
     db.add(placement)
     await db.flush()
     audit(db, actor, "created", placement, {"offer_id": str(offer.id), "expected_fee": _amount(placement.expected_fee)})
+    await _fill_replacement(db, actor, placement)
     return placement
 
 
+async def _fill_replacement(db: AsyncSession, actor: User | None, placement: Placement) -> None:
+    """pob-025 G7: a new placement on a requirement linked to an unfilled replacement fills the oldest such dropout, and carries no fee.
+    The original is locked and rechecked (a concurrent fill re-evaluates the filter after the lock); the unique column is the backstop."""
+    unfilled = (Placement.replacement_job_id == placement.job_id, Placement.replaced_by_placement_id.is_(None), Placement.id != placement.id)
+    original = await db.scalar(
+        select(Placement).where(*unfilled).order_by(Placement.dropout_on, Placement.id).limit(1).with_for_update().execution_options(populate_existing=True)
+    )
+    if original is None:
+        return
+    original.replaced_by_placement_id = placement.id
+    placement.expected_fee = 0
+    audit(db, actor, "replacement_filled", original, {"replacement_placement_id": str(placement.id)})
+
+
+async def _replaces(db: AsyncSession, placement_id, *, lock: bool = False) -> Placement | None:
+    """G7: the dropout this placement replaces, if any."""
+    stmt = select(Placement).where(Placement.replaced_by_placement_id == placement_id).execution_options(populate_existing=True)
+    return await db.scalar(stmt.with_for_update() if lock else stmt)
+
+
+async def _snapshot_guarantee(db: AsyncSession, placement: Placement, offer: JobOffer, job: Job) -> None:
+    """G2: set once on joining -- the requirement's days, else the company's current client contract's; none = no guarantee."""
+    if placement.guarantee_days is not None:
+        return
+    days = job.guarantee_days
+    if days is None:
+        contract = await contracts.load_current(db, await _fresh(db, Company, placement.company_id))
+        days = contract.guarantee_days if contract else None
+    if days:
+        placement.guarantee_days, placement.guarantee_end_date = days, offer.actual_joining_date + timedelta(days=days)
+
+
 async def on_joined(db: AsyncSession, actor: User, offer: JobOffer, application: JobApplication, job: Job) -> None:
-    """P8/P9: exactly one draft -- re-priced on today's terms, due on the joining date (+ the requirement's days when its trigger says so)."""
+    """P8/P9: exactly one draft -- re-priced on today's terms, due on the joining date (+ the requirement's days when its trigger says so).
+    pob-025: the guarantee is snapshotted first (G2); a replacement hire gets no draft and keeps its zero fee (G7/G12)."""
     placement = await _fresh(db, Placement, (await ensure(db, actor, offer, application)).id, lock=True)
-    if placement.invoice_status != "none":
+    await _snapshot_guarantee(db, placement, offer, job)
+    if placement.invoice_status != "none" or await _replaces(db, placement.id) is not None:
         return
     placement.expected_fee = await revenue.offer_fee(db, job, offer.compensation, offer.currency, requirements.ist_today())
     days = job.payment_days if job.payment_trigger == "days_after_joining" and job.payment_days else 0
@@ -122,6 +168,10 @@ async def on_did_not_join(db: AsyncSession, actor: User, offer: JobOffer) -> Non
     placement = await _fresh(db, Placement, placement_id, lock=True)
     if placement.invoice_status == "draft":
         _discard(db, actor, placement, DID_NOT_JOIN)
+    original = await _replaces(db, placement.id, lock=True)
+    if original is not None:  # pob-025 G8: the replacement did not join, so the original is again "in progress"
+        original.replaced_by_placement_id = None
+        audit(db, actor, "replacement_cleared", original, {"replacement_placement_id": str(placement.id)})
 
 
 def _discard(db: AsyncSession, actor: User, placement: Placement, reason: str) -> None:
@@ -161,6 +211,47 @@ def _confirmation(placement: Placement, side: str) -> dict | None:
     if on is None:
         return None
     return {"by": by, "on": on, "via": via, "via_label": VIA_LABELS.get(via, via)}
+
+
+def owes_replacement(placement: Placement) -> bool:
+    """G5: a dropout on or before the guarantee's end date; after it (or with no guarantee) nothing is owed."""
+    return placement.dropout_on is not None and placement.guarantee_end_date is not None and placement.dropout_on <= placement.guarantee_end_date
+
+
+def _placement_ref(placement: Placement, candidate: Candidate) -> dict:
+    return {"id": placement.id, "candidate": {"id": candidate.id, "code": candidate.candidate_code, "name": candidate.name}}
+
+
+async def _guarantee(db: AsyncSession, placement: Placement) -> dict:
+    """G3/G11: the derived status, the dropout, the replacement owed by this placement and the one it replaces."""
+    today = requirements.ist_today()
+    end = placement.guarantee_end_date
+    if placement.dropout_on is not None:
+        status = "dropped_out"
+    else:
+        status = "none" if end is None else "active" if today <= end else "ended"
+    replacement = None
+    if owes_replacement(placement):
+        job = await _fresh(db, Job, placement.replacement_job_id) if placement.replacement_job_id else None
+        filled = await _fresh(db, Placement, placement.replaced_by_placement_id) if placement.replaced_by_placement_id else None
+        r_status = "filled" if filled else "requested" if job else "open"
+        replacement = {
+            "status": r_status,
+            "status_label": REPLACEMENT_LABELS[r_status],
+            "requirement": {"id": job.id, "code": job.requirement_code, "title": job.title} if job else None,
+            "placement": _placement_ref(filled, await _fresh(db, Candidate, filled.candidate_id)) if filled else None,
+        }
+    original = await _replaces(db, placement.id)
+    return {
+        "days": placement.guarantee_days,
+        "end_date": end,
+        "status": status,
+        "status_label": GUARANTEE_LABELS[status],
+        "days_left": (end - today).days if status == "active" else None,
+        "dropout": {"on": placement.dropout_on, "reason": placement.dropout_reason} if placement.dropout_on else None,
+        "replacement": replacement,
+        "replaces": _placement_ref(original, await _fresh(db, Candidate, original.candidate_id)) if original else None,
+    }
 
 
 async def out(db: AsyncSession, user: User, placement: Placement, offer: JobOffer) -> dict:
@@ -209,10 +300,13 @@ async def out(db: AsyncSession, user: User, placement: Placement, offer: JobOffe
         "client_confirmation": _confirmation(placement, "client"),
         "commercials": commercials,
         "satisfaction": await surveys.satisfaction(db, placement.id),  # pob-026 S10
+        "guarantee": await _guarantee(db, placement),  # pob-025 G11
         "permissions": {
             "can_edit": applications.can_write(user) and status != "did_not_join",
             "can_change_owner": user.role in OWNER_SETTERS and status != "did_not_join",
             "can_invoice": sees and placement.invoice_status == "draft",
+            "can_record_dropout": applications.can_write(user) and status == "joined" and placement.dropout_on is None,
+            "can_request_replacement": applications.can_write(user) and owes_replacement(placement) and placement.replaced_by_placement_id is None,
         },
         "created_at": placement.created_at,
     }
@@ -310,6 +404,38 @@ async def issue(db: AsyncSession, user: User, placement: Placement, payload: Pla
     return invoice
 
 
+async def record_dropout(db: AsyncSession, user: User, placement: Placement, offer: JobOffer, payload: PlacementDropout) -> bool:
+    """G4/G5: once, on a Joined placement, dated from the joining date to today; returns whether a replacement is owed. The offer, the
+    application, the requirement and the invoice are unchanged (G12)."""
+    applications.require_writer(user, placement.id, "placement_dropout")
+    if offer.joining_status != "joined":
+        raise HTTPException(409, NOT_JOINED)
+    if placement.dropout_on is not None:
+        raise HTTPException(409, DROPOUT_RECORDED)
+    on = payload.dropout_on
+    if on > requirements.ist_today():
+        raise field_error("dropout_on", "The dropout date cannot be in the future", on.isoformat())
+    if offer.actual_joining_date and on < offer.actual_joining_date:
+        raise field_error("dropout_on", "The dropout date cannot be before the joining date", on.isoformat())
+    placement.dropout_on, placement.dropout_reason = on, payload.reason
+    owed = owes_replacement(placement)
+    audit(db, user, "dropout", placement, {"dropout_on": on.isoformat(), "replacement_owed": owed})  # never the reason
+    return owed
+
+
+async def request_replacement(db: AsyncSession, user: User, placement: Placement, job_id: UUID) -> None:
+    """G6: link the owed replacement to an open requirement of the same client in the caller's scope; changeable until filled."""
+    applications.require_writer(user, placement.id, "placement_replacement")
+    if not owes_replacement(placement) or placement.replaced_by_placement_id is not None:
+        raise HTTPException(409, NO_REPLACEMENT)
+    scope = await requirements.caller_scope(db, user)
+    open_job = (Job.id == job_id, Job.company_id == placement.company_id, Job.status.not_in(requirements.ENDED), *scope)
+    if await db.scalar(select(Job.id).where(*open_job)) is None:
+        raise field_error("job_id", OPEN_REQUIREMENT, str(job_id))
+    placement.replacement_job_id = job_id
+    audit(db, user, "replacement_requested", placement, {"job_id": str(job_id)})
+
+
 async def discard(db: AsyncSession, user: User, placement: Placement, reason: str) -> None:
     await require_invoicer(db, user)
     if placement.invoice_status != "draft":
@@ -359,6 +485,37 @@ async def run_invoice_notices(now: datetime | None = None) -> dict[str, int]:
         await db.commit()
     logger.info("placement_invoice_notices_sweep", extra={"extra_fields": counts})
     return counts
+
+
+async def run_guarantee_alerts(now: datetime | None = None) -> int:
+    """pob-025 G10: a Joined placement with no dropout whose guarantee ends today or within GUARANTEE_ALERT_DAYS gets `guarantee_expiring`
+    once (`guarantee_alerted_at`, written in the notice's transaction). A guarantee already past is never alerted. Bounded, SKIP LOCKED."""
+    now = now or datetime.now(UTC)
+    today = now.astimezone(requirements.IST).date()
+    sent = 0
+    async with SessionLocal() as db:
+        placements = list(
+            await db.scalars(
+                select(Placement)
+                .join(JobOffer, JobOffer.id == Placement.offer_id)
+                .where(
+                    JobOffer.joining_status == "joined",
+                    Placement.dropout_on.is_(None),
+                    Placement.guarantee_alerted_at.is_(None),
+                    Placement.guarantee_end_date.between(today, today + timedelta(days=GUARANTEE_ALERT_DAYS)),
+                )
+                .order_by(Placement.guarantee_end_date, Placement.id)
+                .limit(SWEEP_LIMIT)
+                .with_for_update(of=Placement, skip_locked=True)
+            )
+        )
+        managers = list(await db.scalars(select(User).where(User.role == MANAGER_ROLE, User.active))) if placements else []
+        for placement in placements:
+            await notify(db, await _recipients(db, placement, managers), EXPIRING, placement.id, action_url=url(placement.id))
+            placement.guarantee_alerted_at, sent = now, sent + 1
+        await db.commit()
+    logger.info("placement_guarantee_alerts_sweep", extra={"extra_fields": {"sent": sent}})
+    return sent
 
 
 # --- audit and log --------------------------------------------------------------------------------------------------------------------

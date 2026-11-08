@@ -13,7 +13,14 @@ from app.api.deps import get_current_user
 from app.core.client_ip import client_ip
 from app.core.database import get_db
 from app.models import User
-from app.schemas import PlacementInvoiceIssue, PlacementSurveyAnswer, PlacementUpdate, RecInvoiceCancel
+from app.schemas import (
+    PlacementDropout,
+    PlacementInvoiceIssue,
+    PlacementReplacementRequest,
+    PlacementSurveyAnswer,
+    PlacementUpdate,
+    RecInvoiceCancel,
+)
 from app.services import placement_surveys as surveys
 from app.services import placements as svc
 from app.services.bdm_appointments import db_now
@@ -24,7 +31,7 @@ public_router = APIRouter(prefix="/public/placement-surveys", tags=["public"])  
 
 @router.get("/placements")
 async def list_placements(
-    view: Literal["pending", "joined", "did_not_join", "invoice_drafts"] = "pending",
+    view: Literal["pending", "joined", "did_not_join", "invoice_drafts", "replacements"] = "pending",
     limit: int = LIMIT,
     offset: int = OFFSET,
     user: User = Depends(get_current_user),
@@ -67,6 +74,28 @@ async def discard_invoice_draft(placement_id: UUID, payload: RecInvoiceCancel, u
     await svc.discard(db, user, placement, payload.reason)
     await db.commit()
     svc.log("placement_invoice_discarded", user, placement_id)
+    placement, offer = await svc.load(db, user, placement_id)
+    return {"placement": await svc.out(db, user, placement, offer)}
+
+
+# --- pob-025 (DEC-SCOPE-436 G4/G6): the early dropout and the replacement request --------------------------------------------------------
+@router.post("/placements/{placement_id}/dropout")
+async def record_dropout(placement_id: UUID, payload: PlacementDropout, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Recorded once (a retry is the 409); a dropout inside the guarantee owes a replacement (AC2)."""
+    placement, offer = await svc.load(db, user, placement_id, lock=True)
+    owed = await svc.record_dropout(db, user, placement, offer, payload)
+    await db.commit()
+    svc.log("placement_dropout_recorded", user, placement_id, replacement_owed=owed)
+    placement, offer = await svc.load(db, user, placement_id)
+    return {"placement": await svc.out(db, user, placement, offer)}
+
+
+@router.post("/placements/{placement_id}/replacement")
+async def request_replacement(placement_id: UUID, payload: PlacementReplacementRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    placement, _offer = await svc.load(db, user, placement_id, lock=True)
+    await svc.request_replacement(db, user, placement, payload.job_id)
+    await db.commit()
+    svc.log("placement_replacement_requested", user, placement_id, job_id=payload.job_id)
     placement, offer = await svc.load(db, user, placement_id)
     return {"placement": await svc.out(db, user, placement, offer)}
 

@@ -9,9 +9,9 @@ export const PLACEMENTS_LIMIT = 25;
 export const placementUrl = (id: string, tail = "") => `${PLACEMENTS_URL}/${encodeURIComponent(id)}${tail ? `/${tail}` : ""}`;
 export const placementPath = (id: string) => `${PLACEMENTS_PATH}/${encodeURIComponent(id)}`;
 
-export type PlacementView = "pending" | "joined" | "did_not_join" | "invoice_drafts";
+export type PlacementView = "pending" | "joined" | "did_not_join" | "invoice_drafts" | "replacements";
 export const PLACEMENT_TABS: [PlacementView, string][] = [
-  ["pending", "Joining pending"], ["joined", "Joined"], ["invoice_drafts", "Invoice drafts"], ["did_not_join", "Did not join"],
+  ["pending", "Joining pending"], ["joined", "Joined"], ["invoice_drafts", "Invoice drafts"], ["replacements", "Replacements"], ["did_not_join", "Did not join"],
 ];
 export const isPlacementView = (v: string | null): v is PlacementView => PLACEMENT_TABS.some(([key]) => key === v);
 export const placementsUrl = (view: PlacementView, offset: number) =>
@@ -50,7 +50,16 @@ export type Placement = {
   candidate_confirmation: Confirmation; client_confirmation: Confirmation;
   commercials: { expected_fee: string | null; invoice: PlacementInvoice } | null;
   satisfaction?: { client: Survey; candidate: Survey };
-  permissions: { can_edit: boolean; can_change_owner: boolean; can_invoice: boolean };
+  guarantee?: Guarantee;
+  permissions: { can_edit: boolean; can_change_owner: boolean; can_invoice: boolean; can_record_dropout?: boolean; can_request_replacement?: boolean };
+};
+// pob-025 (DEC-SCOPE-436 G3/G11): the replacement guarantee -- every status and label is the API's.
+export type PlacementRef = { id: string; candidate: Ref };
+export type Guarantee = {
+  days: number | null; end_date: string | null; status: "none" | "active" | "ended" | "dropped_out"; status_label: string; days_left: number | null;
+  dropout: { on: string; reason: string } | null;
+  replacement: { status: "open" | "requested" | "filled"; status_label: string; requirement: Ref | null; placement: PlacementRef | null } | null;
+  replaces: PlacementRef | null;
 };
 export const placementOf = (data: unknown): Placement | null => {
   const p = (data as { placement?: Placement } | null)?.placement;

@@ -115,6 +115,12 @@ ROWS = [
     R("post", "/recruiter/placements/{hiring_placement}/invoice-draft/issue", lambda w: {"invoice_number": tag("R38-"), "invoice_date": now().date().isoformat(),
       "due_date": now().date().isoformat(), "amount": "100.00"}, **allow(409, "rec", "mgr", "super"), **allow(404, *OUT)),
     R("post", "/recruiter/placements/{hiring_placement}/invoice-draft/cancel", {"reason": "Not needed"}, **allow(409, "rec", "mgr", "super"), **allow(404, *OUT)),
+    # pob-025 (§2.327): the dropout and the replacement request are the writers' (the manager and the BDM 403 after scope); this placement
+    # has not joined and owes no replacement, so the writers get 409
+    R("post", "/recruiter/placements/{hiring_placement}/dropout", lambda w: {"dropout_on": now().date().isoformat(), "reason": "Left early"},
+      **allow(409, *WRITE), **allow(403, "mgr", "bdm"), **allow(404, *OUT)),
+    R("post", "/recruiter/placements/{hiring_placement}/replacement", lambda w: {"job_id": w["hiring_placement"]},
+      **allow(409, *WRITE), **allow(403, "mgr", "bdm"), **allow(404, *OUT)),
     # hrc-030 (§2.302): the result queue and its release are `results.release`'s (hr_manager by default, super_admin); the switch is super_admin's
     R("get", "/recruiter/interview-results", **allow(200, "hr_mgr", "super")),
     R("get", "/recruiter/interview-results/settings", **allow(200, "hr_mgr", "super")),

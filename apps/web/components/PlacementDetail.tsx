@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { type FormEvent, type ReactNode, useId, useMemo, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import LocalTime from "@/components/LocalTime";
 import RecruiterInvoiceCard from "@/components/RecruiterInvoiceCard";
@@ -12,8 +12,11 @@ import { SAVE_FAILED, SESSION_ENDED, writeFailure } from "@/lib/bdmTasks";
 import { fieldErrors, indiaToday } from "@/lib/bdmTravel";
 import { formatCalendarDate } from "@/lib/formatDate";
 import type { PickOption } from "@/lib/lookups";
-import { type Confirmation, type Placement, placementOf, placementUrl, SURVEY_AFTER_DAYS, type Survey, VIA_OPTIONS } from "@/lib/placements";
+import {
+  type Confirmation, type Placement, placementOf, placementPath, type PlacementRef, placementUrl, SURVEY_AFTER_DAYS, type Survey, VIA_OPTIONS,
+} from "@/lib/placements";
 import { recruiterSearch, RECRUITER_SIGN_IN } from "@/lib/recruiterCompanies";
+import { REQUIREMENTS_URL } from "@/lib/recruiterRequirements";
 import { inr } from "@/lib/recruiterRevenue";
 
 type Failure = { kind: "session" | "error"; message: string };
@@ -233,6 +236,128 @@ function DraftReview({ placement, onChanged }: { placement: Placement; onChanged
   );
 }
 
+type Option = { id: string; code: string; title: string; status: string };
+const ENDED = new Set(["closed", "cancelled"]);
+
+/** pob-025 (G6): pick one of the client's open requirements for the owed replacement; the API re-checks scope, client and status. */
+function ReplacementForm({ placement, onChanged, onCancel }: { placement: Placement; onChanged: Changed; onCancel: () => void }) {
+  const id = useId();
+  const [options, setOptions] = useState<Option[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [jobId, setJobId] = useState(placement.guarantee?.replacement?.requirement?.id ?? "");
+  const { busy, errors, failure, run } = useSubmit((p) => onChanged(p, "Replacement requirement linked."));
+  useEffect(() => {
+    const controller = new AbortController();
+    const query = new URLSearchParams({ company_id: placement.company.id, limit: "100" });
+    fetch(`${REQUIREMENTS_URL}?${query}`, { signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((body: { items?: Option[] }) => setOptions((body.items ?? []).filter((o) => !ENDED.has(o.status))))
+      .catch(() => {
+        if (!controller.signal.aborted) setLoadFailed(true);
+      });
+    return () => controller.abort();
+  }, [placement.company.id]);
+  const fid = `${id}-job`;
+  return (
+    <form aria-label="Link replacement requirement" noValidate style={{ display: "grid", gap: 8 }} onKeyDown={(e) => e.key === "Escape" && onCancel()}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (jobId) void run(() => sendJson(placementUrl(placement.id, "replacement"), "POST", { job_id: jobId }));
+      }}>
+      <Field id={fid} label="Replacement requirement" error={errors.job_id}>
+        {options === null && !loadFailed && <p className="muted" role="status" style={{ margin: 0 }}>Loading requirements…</p>}
+        {loadFailed && <p className="form-error" role="alert" style={{ margin: 0 }}>The requirements could not be loaded. Try again.</p>}
+        {options?.length === 0 && <p className="muted" style={{ margin: 0 }}>This client has no open requirement. Reopen the original or create a new one first.</p>}
+        {!!options?.length && (
+          <select id={fid} autoFocus value={jobId} onChange={(e) => setJobId(e.target.value)} aria-invalid={errors.job_id ? true : undefined}
+            aria-describedby={errors.job_id ? `${fid}-error` : undefined}>
+            <option value="">Choose a requirement</option>
+            {options.map((o) => <option key={o.id} value={o.id}>{o.title} ({o.code})</option>)}
+          </select>
+        )}
+      </Field>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button type="submit" className="btn small" disabled={busy || !jobId}>{busy ? "Linking…" : "Link requirement"}</button>
+        <button type="button" className="btn secondary small" onClick={onCancel}>Cancel</button>
+      </div>
+      <Problem failure={failure} />
+    </form>
+  );
+}
+
+const placementLink = (ref: PlacementRef) => <Link href={placementPath(ref.id)} style={LINK_STYLE}>{ref.candidate.name} ({ref.candidate.code})</Link>;
+
+/** pob-025 (G3-G8, G11): the guarantee -- status, end date and days left; the dropout; the replacement owed, its requirement and its hire. */
+function GuaranteeCard({ placement, onChanged }: { placement: Placement; onChanged: Changed }) {
+  const g = placement.guarantee!;
+  const id = useId();
+  const [mode, setMode] = useState<"dropout" | "replacement" | null>(null);
+  const [v, setV] = useState({ on: indiaToday(), reason: "" });
+  const dropout = useSubmit((p) => {
+    setMode(null);
+    onChanged(p, p.guarantee?.replacement ? "Dropout recorded. A replacement is owed." : "Dropout recorded. The guarantee had ended, so no replacement is owed.");
+  });
+  const linked: Changed = (p, text) => {
+    setMode(null);
+    onChanged(p, text);
+  };
+  const fid = (k: string) => `${id}-${k}`;
+  const invalid = (k: string) => ({ "aria-invalid": dropout.errors[k] ? true : undefined, "aria-describedby": dropout.errors[k] ? `${fid(k)}-error` : undefined });
+  const r = g.replacement;
+  return (
+    <section className="action-card" style={{ gap: 8 }} aria-label="Replacement guarantee">
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>
+        <strong>Replacement guarantee</strong>
+        <span className="badge">{g.status_label}</span>
+        {r && <span className="badge">{r.status_label}</span>}
+      </div>
+      <Facts rows={[
+        ["Guarantee", g.days ? `${g.days} days` : "Not set"],
+        ["Ends on", g.end_date ? formatCalendarDate(g.end_date) : placement.status === "joined" ? "No guarantee" : "Set when the candidate joins"],
+        ...(g.days_left !== null ? [["Days left", g.days_left === 0 ? "Ends today" : String(g.days_left)] as [string, ReactNode]] : []),
+        ...(g.dropout ? [["Dropped out on", formatCalendarDate(g.dropout.on)] as [string, ReactNode]] : []),
+        ...(r?.requirement ? [["Replacement requirement", <Link key="rr" href={`/recruiter/requirements/${encodeURIComponent(r.requirement.id)}`} style={LINK_STYLE}>{r.requirement.title} ({r.requirement.code})</Link>] as [string, ReactNode]] : []),
+        ...(r?.placement ? [["Replaced by", placementLink(r.placement)] as [string, ReactNode]] : []),
+        ...(g.replaces ? [["Replacement for", placementLink(g.replaces)] as [string, ReactNode]] : []),
+      ]} />
+      {g.dropout && <p style={{ margin: 0, overflowWrap: "anywhere", whiteSpace: "pre-line" }}>Reason: {g.dropout.reason}</p>}
+      {r?.status === "open" && <p className="muted" style={{ margin: 0 }}>Link the requirement that will fill the replacement. The replacement hire carries no new fee.</p>}
+      {r?.status === "requested" && <p className="muted" style={{ margin: 0 }}>The next offer accepted on this requirement becomes the replacement.</p>}
+      {mode === null && (placement.permissions.can_record_dropout || placement.permissions.can_request_replacement) && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {placement.permissions.can_record_dropout && <button type="button" className="btn secondary small" onClick={() => setMode("dropout")}>Record dropout</button>}
+          {placement.permissions.can_request_replacement && (
+            <button type="button" className="btn small" onClick={() => setMode("replacement")}>{r?.requirement ? "Change replacement requirement" : "Link replacement requirement"}</button>
+          )}
+        </div>
+      )}
+      {mode === "dropout" && (
+        <form aria-label="Record dropout" noValidate style={{ display: "grid", gap: 8 }} onKeyDown={(e) => e.key === "Escape" && setMode(null)}
+          onSubmit={(e) => {
+            e.preventDefault();
+            void dropout.run(() => sendJson(placementUrl(placement.id, "dropout"), "POST", { dropout_on: v.on || null, reason: v.reason.trim() || null }));
+          }}>
+          <div className="form-grid">
+            <Field id={fid("dropout_on")} label="Left on" error={dropout.errors.dropout_on}>
+              <input id={fid("dropout_on")} autoFocus type="date" min={placement.joining.actual_joining_date ?? undefined} max={indiaToday()} value={v.on}
+                onChange={(e) => setV({ ...v, on: e.target.value })} {...invalid("dropout_on")} />
+            </Field>
+            <Field id={fid("reason")} label="Why did the candidate leave?" error={dropout.errors.reason}>
+              <textarea id={fid("reason")} rows={2} maxLength={500} value={v.reason} onChange={(e) => setV({ ...v, reason: e.target.value })} {...invalid("reason")} />
+            </Field>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="submit" className="btn small" disabled={dropout.busy}>{dropout.busy ? "Saving…" : "Record dropout"}</button>
+            <button type="button" className="btn secondary small" onClick={() => setMode(null)}>Cancel</button>
+          </div>
+          <Problem failure={dropout.failure} />
+        </form>
+      )}
+      {mode === "replacement" && <ReplacementForm placement={placement} onChanged={linked} onCancel={() => setMode(null)} />}
+    </section>
+  );
+}
+
 /** pob-026 (S10): one side's survey -- not due yet, not sent (why), sent / reminded, or the answer. */
 function SurveyCard({ title, survey }: { title: string; survey: Survey }) {
   return (
@@ -267,6 +392,7 @@ export default function PlacementDetail({ initial }: { initial: Placement }) {
     setNotice(text);
   };
   const c = p.commercials;
+  const replacementHire = !!p.guarantee?.replaces; // pob-025 G7/G12
   const person = (x: Placement["recruiter"]) => (x ? x.full_name : "Not set");
   return (
     <div style={{ display: "grid", gap: 12 }}>
@@ -295,6 +421,7 @@ export default function PlacementDetail({ initial }: { initial: Placement }) {
         <ConfirmationCard placement={p} side="candidate" title="Candidate confirmation" onChanged={changed} />
         <ConfirmationCard placement={p} side="client" title="Client confirmation" onChanged={changed} />
       </div>
+      {p.guarantee && <GuaranteeCard placement={p} onChanged={changed} />}
       {p.satisfaction && (
         <section aria-labelledby={`${p.id}-satisfaction`} style={{ display: "grid", gap: 8 }}>
           <h3 id={`${p.id}-satisfaction`} style={{ margin: 0, fontSize: 16 }}>Satisfaction</h3>
@@ -308,16 +435,18 @@ export default function PlacementDetail({ initial }: { initial: Placement }) {
         <section className="action-card" style={{ gap: 8 }} aria-label="Invoice">
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>
             <strong>Invoice</strong>
-            <span className="badge">{c.invoice.status_label}</span>
+            <span className="badge">{replacementHire && c.invoice.status === "none" ? "Not invoiced" : c.invoice.status_label}</span>
           </div>
           <Facts rows={[
-            ["Expected fee", c.expected_fee === null ? "Not priced" : inr(c.expected_fee)],
+            ["Expected fee", replacementHire ? "No fee (replacement)" : c.expected_fee === null ? "Not priced" : inr(c.expected_fee)],
             ...(c.invoice.status !== "none" ? [
               ["Draft amount", c.invoice.draft_amount === null ? "Enter on issue" : inr(c.invoice.draft_amount)] as [string, ReactNode],
               ["Draft due date", c.invoice.draft_due_date ? formatCalendarDate(c.invoice.draft_due_date) : "Not set"] as [string, ReactNode],
             ] : []),
           ]} />
-          {c.invoice.status === "none" && <p className="muted" style={{ margin: 0 }}>A draft is created when the candidate joins.</p>}
+          {c.invoice.status === "none" && (
+            <p className="muted" style={{ margin: 0 }}>{replacementHire ? "A replacement hire gets no invoice draft." : "A draft is created when the candidate joins."}</p>
+          )}
           {c.invoice.discard_reason && <p style={{ margin: 0, overflowWrap: "anywhere" }}>Discarded: {c.invoice.discard_reason}</p>}
           {p.permissions.can_invoice && <DraftReview placement={p} onChanged={changed} />}
           {c.invoice.invoice && <ul style={{ padding: 0, margin: 0 }}><RecruiterInvoiceCard invoice={c.invoice.invoice} /></ul>}

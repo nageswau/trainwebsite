@@ -17,6 +17,7 @@ REDACTED = frozenset({
     # pob-002 (DEC-SCOPE-407 R8/R12): the History card is read by every requirement reader, so client terms and the decision-maker are
     # recorded as "changed" (their values live in the commercial-gated revisions)
     "payment_trigger", "payment_days", "payment_terms", "replacement_terms", "decision_maker_contact",
+    "guarantee_days",  # pob-025 G1
 })
 
 

@@ -6407,6 +6407,17 @@ Audit actions `recruiter_template.approve|archive|restore|copy`.
 - `POST /recruiter/requirements/{id}/tasks/{task_id}/complete` → `{task}`. 404 another requirement's task; 409 not open; 403 neither the assignee nor a requirement writer.
 - Worker beat `pob027-escalations` (every 15 minutes): each active rule notifies `it.recruiter.escalated` once per item (unique per rule and item), only for items whose threshold passed after the rule was created.
 
+## 12MC. Replacement guarantee, early dropouts and expiry alerts (pob-025) — addendum, 2026-11-08
+
+`DEC-SCOPE-436`. Migration `0318_placement_guarantee`. Under `/api/v1/recruiter`; scope first (404 outside the requirement's scope), then the writers (403), then state (409), then validation (422).
+
+- `GET /placements/{id}`: gains `guarantee: {days, end_date, status: none|active|ended|dropped_out, status_label, days_left, dropout: {on, reason} | null, replacement: {status: open|requested|filled, status_label, requirement: {id, code, title} | null, placement: {id, candidate} | null} | null, replaces: {id, candidate} | null}` and `permissions.can_record_dropout` / `can_request_replacement`. A replacement hire's `commercials.expected_fee` is `"0.00"` and it gets no invoice draft.
+- `GET /placements?view=replacements`: dropouts inside the guarantee not yet replaced; `counts.replacements`.
+- `POST /placements/{id}/dropout` `{dropout_on (date), reason (2-500)}` → 200 `{placement}`. 409 `not_joined` / `dropout_recorded`; 422 on `dropout_on` (future, before joining) and `reason`.
+- `POST /placements/{id}/replacement` `{job_id}` → 200 `{placement}`. 409 `no_replacement_owed` (none owed, or filled); 422 on `job_id` "Choose an open requirement of this client".
+- Contracts: `guarantee_days` (1-365 or null) in create / update / read, behind `commercials.client` like the other terms. Requirements: `guarantee_days` in create / update (`commercials.client.edit`); `commercial_terms.guarantee_days = {value, inherited}`.
+- Notification `it.recruitment.guarantee_expiring` (in-app, entity `placement`); beat `pob025-guarantee-alerts` daily 03:45 UTC.
+
 ## 12MB. Client and candidate satisfaction surveys (pob-026) — addendum, 2026-11-08
 
 `DEC-SCOPE-435`. Migration `0316_placement_surveys`. The public routes take no session: the signed link is the credential.

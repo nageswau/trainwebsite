@@ -823,6 +823,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** large. **Risk:** high.
 
 #### pob-025: Replacement guarantee, early dropouts and expiry alerts
+- **Status:** built (`DEC-SCOPE-436`, 2026-11-08; migration `0318_placement_guarantee`, API §12MC, RBAC §2.327); G1-G12 are the builder's calls (`NEEDS_CONFIRMATION`), answering Q-22 for this item. The design is in `docs/superpowers/specs/2026-11-08-pob-025-replacement-guarantee-design.md`.
 - **Business requirement:** §13.1 "Track replacement guarantee end date and any replacement request"; §13.2 "Replacement cases, early dropouts"; §16 "Replacement guarantee nearing expiry → Alert the assigned owner".
 - **Existing behavior:** ⚠ out of scope in the recruiter backlog (Q-22). `replacement_policy` is free text, and "did not join" just withdraws the application.
 - **Expected behavior:**

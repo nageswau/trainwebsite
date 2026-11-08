@@ -75,6 +75,8 @@ EVENTS: dict[str, Event] = {
     # pob-024 (DEC-SCOPE-432 P12/P13): a placement invoice (or its draft) is due / past due -- never an amount, a name or a date
     "it.recruitment.invoice_due": Event("placement", "Placement invoice due", "A placement invoice is due. Open EduSphere for the details."),
     "it.recruitment.invoice_overdue": Event("placement", "Placement invoice overdue", "A placement invoice is past its due date. Open EduSphere for the details."),
+    # pob-025 (DEC-SCOPE-436 G10): a placement's replacement guarantee ends within a week -- never a name or a date
+    "it.recruitment.guarantee_expiring": Event("placement", "Replacement guarantee ending", "A placement's replacement guarantee ends soon. Open EduSphere for the details."),
     # pob-027 (DEC-SCOPE-434 I2/I8): the Team Leads, when a new vacancy has no eligible owner; and an escalation rule firing -- never a name
     "it.requirement.unowned": Event("job", "Vacancy needs an owner", "A new vacancy has no eligible recruiter. Open EduSphere to assign it."),
     "it.recruiter.escalated": Event("escalation", "Escalation", "An item is overdue past its escalation time. Open EduSphere to act on it."),
