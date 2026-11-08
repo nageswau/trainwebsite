@@ -149,7 +149,7 @@ async def _application(db, job, candidate, status, *, entered=()):
 
 
 async def _share(db, job, vendor, applications, by, at):
-    share = ProfileShare(job_id=job.id, company_id=vendor.id, channel="email", shared_by_user_id=by.id, recipient="vendor", detail="anonymised")
+    share = ProfileShare(job_id=job.id, company_id=vendor.id, channel="other", shared_by_user_id=by.id, recipient="vendor", detail="anonymised")
     db.add(share)
     await db.flush()
     share.created_at = at
@@ -186,7 +186,7 @@ async def test_metrics_tie_out_to_the_drill_down(client, db_session):
     subs = d["submissions"]
     assert len(subs) == m["submitted"] and sum(s["interviewed"] for s in subs) == m["interviewed"]
     assert sum(s["placed"] for s in subs) == m["placed"] and sum(s["joined"] for s in subs) == m["joined"]
-    page = (await client.get(f"{PERF}/performance", params={"limit": 200})).json()
+    page = (await client.get(f"{PERF}/performance", params={"limit": 100})).json()
     row = next(r for r in page["items"] if r["vendor"]["id"] == str(vendor.id))
     assert row["metrics"] == m
 
@@ -196,6 +196,21 @@ async def test_a_vendor_with_no_submissions_shows_null_rates(client, db_session)
     _, _, vendor = await _setup(client, db_session)
     m = (await client.get(f"{PERF}/{vendor.id}/performance")).json()["metrics"]
     assert (m["submitted"], m["interview_rate"], m["joining_rate"], m["avg_response_hours"]) == (0, None, None, None)
+
+
+@pytest.mark.asyncio
+async def test_payment_dates_and_an_archived_vendor(client, db_session):
+    _, _, vendor = await _setup(client, db_session)
+    bill = (await client.post(f"{COMPANIES}/{vendor.id}/vendor-bills", json=_bill())).json()["bill"]
+    future = await client.post(f"{BILLS}/{bill['id']}/payments", json={"paid_on": (TODAY + timedelta(days=1)).isoformat(), "amount": "1.00"})
+    assert future.status_code == 422
+    early = await client.post(f"{BILLS}/{bill['id']}/payments", json={"paid_on": (TODAY - timedelta(days=4)).isoformat(), "amount": "1.00"})
+    assert early.status_code == 422
+    assert (await client.post(f"{BILLS}/{uuid.uuid4()}/payments", json={"paid_on": TODAY.isoformat(), "amount": "1.00"})).status_code == 404
+    vendor.archived_at = datetime.now(UTC)
+    await db_session.commit()
+    assert (await client.post(f"{COMPANIES}/{vendor.id}/vendor-bills", json=_bill())).status_code == 409
+    assert (await client.get(f"{COMPANIES}/{vendor.id}/vendor-bills")).json()["can_edit"] is False
 
 
 # --- W10: the migration ----------------------------------------------------------------------------------------------------------

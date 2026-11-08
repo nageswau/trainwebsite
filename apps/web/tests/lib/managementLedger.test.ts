@@ -42,6 +42,7 @@ describe("mgmt-005 automatic lines", () => {
     expect(SOURCE_LABEL).toEqual({
       payment: "Student payment", agent_commission: "Agent commission", trip_expense: "BDM trip expense", recruiter_payment: "Recruiter payment",
       university_commission: "University commission", salary: "Salaries", fee_refund: "IT fee refund", // itc-015 (DEC-SCOPE-362)
+      vendor_payment: "Vendor bill payment", vendor_receipt: "Vendor bill receipt", // pob-012 (DEC-SCOPE-433)
     });
     expect(formatMoney("120000.00", "INR")).toBe("₹1,20,000.00");
     expect(formatMoney("300.00", "GBP")).toBe("£300.00");

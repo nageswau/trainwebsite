@@ -41,7 +41,7 @@ export default async function RecruiterCompanyPage({ params, searchParams }: { p
     <PortalShell nav={nav} roleLabel={roleLabel} userName={user.full_name}>
       <div className="portal-content">
         {company ? (
-          <RecruiterCompanyDetail initial={company} created={created} history={history} showRevenue={canSeeRevenue(user.role, permissions)} canMerge={permissions.includes("crm.merge")} merged={merged} />
+          <RecruiterCompanyDetail initial={company} created={created} history={history} showRevenue={canSeeRevenue(user.role, permissions)} showVendorCommercials={permissions.includes("commercials.vendor.view")} canMerge={permissions.includes("crm.merge")} merged={merged} />
         ) : (
           <div className="action-card">
             <h2>Company not found</h2>

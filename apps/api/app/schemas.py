@@ -14967,7 +14967,7 @@ class LedgerEntryDetail(LedgerEntryOut):
 
 
 # mgmt-005 (DEC-SCOPE spec MA1-MA11): a read-only line computed from another module's money row; `id` is that row's id (MA9 source link).
-LEDGER_AUTO_SOURCES = ("payment", "agent_commission", "trip_expense", "recruiter_payment", "university_commission", "salary", "fee_refund")  # mgmt-011 SM8; itc-015
+LEDGER_AUTO_SOURCES = ("payment", "agent_commission", "trip_expense", "recruiter_payment", "university_commission", "salary", "fee_refund", "vendor_payment", "vendor_receipt")  # mgmt-011 SM8; itc-015; pob-012
 
 
 class LedgerAutoLine(BaseModel):

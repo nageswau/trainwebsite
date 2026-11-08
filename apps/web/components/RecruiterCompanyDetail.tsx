@@ -9,6 +9,7 @@ import RecruiterCalls from "@/components/RecruiterCalls";
 import RecruiterCompanyBusiness from "@/components/RecruiterCompanyBusiness";
 import RecruiterCompanyDocuments from "@/components/RecruiterCompanyDocuments";
 import RecruiterCompanyVendor from "@/components/RecruiterCompanyVendor";
+import RecruiterVendorCommercials from "@/components/RecruiterVendorCommercials";
 import RecruiterCompanyContacts from "@/components/RecruiterCompanyContacts";
 import RecruiterCompanyContract from "@/components/RecruiterCompanyContract";
 import RecruiterCompanyRevenue from "@/components/RecruiterCompanyRevenue";
@@ -105,8 +106,8 @@ function Reassign({ company, onChanged }: { company: Company; onChanged: (c: Com
   );
 }
 
-export default function RecruiterCompanyDetail({ initial, created = false, history = null, showRevenue = false, canMerge = false, merged }: {
-  initial: Company; created?: boolean; history?: Page<StageEvent> | null; showRevenue?: boolean; canMerge?: boolean; merged?: string;
+export default function RecruiterCompanyDetail({ initial, created = false, history = null, showRevenue = false, showVendorCommercials = false, canMerge = false, merged }: {
+  initial: Company; created?: boolean; history?: Page<StageEvent> | null; showRevenue?: boolean; showVendorCommercials?: boolean; canMerge?: boolean; merged?: string;
 }) {
   const [company, setCompany] = useState(initial);
   const [version, setVersion] = useState(0);
@@ -301,6 +302,7 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
       {!vendorOnly && <RecruiterCompanyContract key={`contract-${company.id}-${company.archived}`} companyId={company.id} onChanged={(text) => void contractChanged(text)} />}
       {company.vendor && <RecruiterCompanyContract key={`vendor-agreement-${company.id}-${company.archived}`} party="vendor" companyId={company.id} onChanged={(text) => void contractChanged(text)} />}
       {showRevenue && !vendorOnly && <RecruiterCompanyRevenue companyId={company.id} />}
+      {showVendorCommercials && company.vendor && <RecruiterVendorCommercials key={`vendor-bills-${company.id}-${company.archived}`} companyId={company.id} />}
       <RecruiterCompanyDocuments key={`documents-${company.id}-${company.archived}`} companyId={company.id}
         onUploaded={company.vendor ? () => void sendRequest(`${COMPANIES_URL}/${company.id}`, { method: "GET" }).then((o) => { if (o.ok && isCompanyBody(o.data)) setCompany(o.data.company); }) : undefined} />
       <RecruiterMessages key={`messages-${company.id}-${company.archived}`} source={{ kind: "company", companyId: company.id }} canWrite={p.can_edit}

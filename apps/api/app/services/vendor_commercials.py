@@ -32,7 +32,7 @@ from app.services import recruiter_contracts as contracts
 from app.services import recruiter_requirements as requirements
 from app.services.interviews import field_error
 from app.services.recruiter_companies import person
-from app.services.recruiter_revenue import PAYMENT_LABELS, ZERO, inr, money
+from app.services.recruiter_revenue import PAYMENT_LABELS, ZERO, inr, money, now
 
 logger = logging.getLogger("app.recruiter")
 
@@ -118,6 +118,49 @@ def payment_status(bill: VendorBill, paid: Decimal) -> str:
     if paid >= money(bill.amount):
         return "paid"
     return "part_paid" if paid > 0 else "unpaid"
+
+
+# --- writes (the route commits) -------------------------------------------------------------------------------------------------
+async def add_bill(db: AsyncSession, user: User, vendor: Company, payload) -> VendorBill:
+    """W2. An archived or merged vendor takes no new bill (409); the unique index backs the number check for two people at once."""
+    if vendor.archived_at is not None or vendor.merged_into_id is not None:
+        raise HTTPException(409, companies.STATE_REFUSALS["can_edit"])
+    check_dates(payload.bill_date, payload.due_date, requirements.ist_today())
+    job = await check_requirement(db, user, vendor, payload.requirement_id)
+    if await number_taken(db, vendor.id, payload.bill_number):
+        raise HTTPException(409, NUMBER_TAKEN)
+    amount = money(payload.amount)
+    bill = VendorBill(
+        company_id=vendor.id, job_id=job.id if job else None, kind=payload.kind, bill_number=payload.bill_number, bill_date=payload.bill_date,
+        due_date=payload.due_date, amount=amount, milestone=payload.milestone, note=payload.note, created_by_user_id=user.id,
+    )  # fmt: skip
+    db.add(bill)
+    await db.flush()
+    audit(db, user, "bill_created", bill, {"amount": str(amount)})
+    return bill
+
+
+async def add_payment(db: AsyncSession, user: User, bill: VendorBill, payload) -> VendorBillPayment:
+    """W3: the route has locked the bill, so two payments at once can't together pass its amount."""
+    if bill.cancelled_at is not None:
+        raise HTTPException(409, CANCELLED)
+    amount = money(payload.amount)
+    check_payment(bill, payload.paid_on, amount, await paid_total(db, bill.id), requirements.ist_today())
+    payment = VendorBillPayment(bill_id=bill.id, paid_on=payload.paid_on, amount=amount, reference=payload.reference, created_by_user_id=user.id)
+    db.add(payment)
+    await db.flush()
+    audit(db, user, "payment_recorded", bill, {"payment_id": str(payment.id), "amount": str(amount)})
+    return payment
+
+
+async def cancel(db: AsyncSession, user: User, bill: VendorBill, reason: str) -> None:
+    """W2 (rec-031 RV8): an unpaid bill only; its number stays used."""
+    if bill.cancelled_at is not None:
+        raise HTTPException(409, CANCELLED)
+    if await paid_total(db, bill.id) > 0:
+        raise HTTPException(409, HAS_PAYMENTS)
+    bill.cancelled_at, bill.cancelled_by_user_id, bill.cancel_reason = now(), user.id, reason
+    audit(db, user, "bill_cancelled", bill, {"amount": str(money(bill.amount))})
 
 
 # --- bills out ------------------------------------------------------------------------------------------------------------------
