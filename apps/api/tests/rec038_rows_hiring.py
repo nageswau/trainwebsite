@@ -11,7 +11,7 @@ import secrets
 import uuid
 from datetime import timedelta
 
-from app.models import CandidateResume, Company, Interview, InterviewResult, JobApplication, JobOffer, ProfileShare, ProfileShareItem, RecruiterMessage, ScreeningForm, ScreeningQuestion
+from app.models import CandidateResume, Company, Interview, InterviewResult, JobApplication, JobOffer, Placement, ProfileShare, ProfileShareItem, RecruiterMessage, ScreeningForm, ScreeningQuestion
 from app.services import candidates as candidate_svc
 from app.services import offers as offer_svc
 from app.services import profile_sharing
@@ -107,6 +107,14 @@ ROWS = [
     R("get", "/recruiter/offers/{hiring_accepted}/joining/proof", **allow(200, *READ), **allow(404, *OUT)),
     R("put", "/recruiter/offers/{hiring_accepted}/joining/proof", form=_pdf, **allow(200, *WRITE), **allow(404, *OUT)),
     R("get", "/recruiter/joinings", **allow(200, *LISTS)),
+    # pob-024 (§2.323): the placement on the Accepted offer -- read in the requirement scope; confirmations are the writers'; the draft
+    # actions take the rec-031 revenue gate (recruiter, manager, super_admin + commercials) and, with no draft on the record, answer 409
+    R("get", "/recruiter/placements", **allow(200, *LISTS)),
+    R("get", "/recruiter/placements/{hiring_placement}", **allow(200, *READ), **allow(404, *OUT)),
+    R("patch", "/recruiter/placements/{hiring_placement}", {"candidate_confirmation": None}, **allow(200, *WRITE), **allow(404, *OUT)),
+    R("post", "/recruiter/placements/{hiring_placement}/invoice-draft/issue", lambda w: {"invoice_number": tag("R38-"), "invoice_date": now().date().isoformat(),
+      "due_date": now().date().isoformat(), "amount": "100.00"}, **allow(409, "rec", "mgr", "super"), **allow(404, *OUT)),
+    R("post", "/recruiter/placements/{hiring_placement}/invoice-draft/cancel", {"reason": "Not needed"}, **allow(409, "rec", "mgr", "super"), **allow(404, *OUT)),
     # hrc-030 (§2.302): the result queue and its release are `results.release`'s (hr_manager by default, super_admin); the switch is super_admin's
     R("get", "/recruiter/interview-results", **allow(200, "hr_mgr", "super")),
     R("get", "/recruiter/interview-results/settings", **allow(200, "hr_mgr", "super")),
@@ -169,6 +177,8 @@ async def build(client, db, w) -> None:
     accepted = await add(db, JobOffer(application_id=joining.id, status="accepted", joining_status="pending", position="Java Developer", offered_on=today,
                                       joining_date=today + timedelta(days=14), created_by_user_id=rec.id, proof_key=proof, proof_content_type="application/pdf",
                                       proof_name="proof.pdf", proof_uploaded_at=now()))  # fmt: skip
+    placement = await add(db, Placement(offer_id=accepted.id, application_id=joining.id, job_id=job.id, candidate_id=joining.candidate_id,
+                                        company_id=company.id, role="Java Developer"))  # pob-024: no draft yet
     mine = await application("selected", candidate_id=uuid.UUID(w["student_candidate"]), student_id=student.id)
     student_offer = await add(db, JobOffer(application_id=mine.id, status="offer_received", position="Java Developer", offered_on=today, created_by_user_id=rec.id,
                                            **letter_fields))  # fmt: skip
@@ -189,5 +199,6 @@ async def build(client, db, w) -> None:
     w |= {
         "hiring_job": str(job.id), "hiring_app": str(interviewing.id), "hiring_interview": str(scheduled.id), "hiring_done": str(done.id),
         "hiring_selected": str(selected.id), "hiring_result": str(result.id), "hiring_offer": str(offer.id), "hiring_accepted": str(accepted.id),
+        "hiring_placement": str(placement.id),
         "hiring_student_offer": str(student_offer.id), "hiring_share": str(portal.id), "hiring_share_item": str(item.id), "hiring_token": token,
     }  # fmt: skip

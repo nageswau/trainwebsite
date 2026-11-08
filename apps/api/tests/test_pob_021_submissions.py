@@ -182,11 +182,11 @@ def test_the_migration_chains_and_freezes_the_checks():
 
     from app import models
 
-    path = pathlib.Path(__file__).resolve().parents[1] / "alembic" / "versions" / "0311_submissions.py"
-    spec = importlib.util.spec_from_file_location("m0311", path)
+    path = pathlib.Path(__file__).resolve().parents[1] / "alembic" / "versions" / "0313_submissions.py"
+    spec = importlib.util.spec_from_file_location("m0313", path)
     migration = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(migration)
-    assert migration.revision == "0311_submissions" and migration.down_revision == "0310_sourcing_plans"
+    assert migration.revision == "0313_submissions" and migration.down_revision == "0312_placements"
     assert migration.ITEM_CHECKS == models.SUBMISSION_CHECKS
     assert migration.DETAIL_NEW == models.PROFILE_SHARE_VENDOR_CHECKS["ck_profile_shares_recipient_detail"]
     assert migration.SLA_CHECK == models.COMPANY_CHECKS["ck_companies_submission_sla"]

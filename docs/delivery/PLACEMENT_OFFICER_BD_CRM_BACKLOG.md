@@ -720,7 +720,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** large. **Risk:** medium.
 
 #### pob-021: Submission record (client or vendor) with skills match, consent and SLA
-- **Status:** built (`DEC-SCOPE-430`, 2026-11-08; migration `0311_submissions`, API §12LW, RBAC §2.321); B1–B14 are the builder's calls (`NEEDS_CONFIRMATION`). Not built: the redacted resume (Q-16), relevant projects.
+- **Status:** built (`DEC-SCOPE-430`, 2026-11-08; migration `0313_submissions`, API §12LW, RBAC §2.321); B1–B14 are the builder's calls (`NEEDS_CONFIRMATION`). Not built: the redacted resume (Q-16), relevant projects.
 - **Business requirement:** §11.1 (7 groups); §11.2 workflow; §9 "Flag potential duplicate submissions"; §16 "Candidate selected for submission → Check consent, duplicate submission and required profile fields", "Candidate submitted → Log submission and create client follow-up task"; §17 resume-share gate; §18 AC "Candidate submission produces a summary with skills match and logs recipient/date/status".
 - **Existing behavior:** `ProfileShare`/`Item` holds the recipient contact, channel, resume version, link token, response and feedback, and prompts on a same-job duplicate. The summary uses the real name and has no compensation. There is no submission ID, vendor, anonymisation, match block, consent, full status set, rejection reason, acknowledgement or SLA task.
 - **Expected behavior:** extend `ProfileShareItem` into a **Submission**:
@@ -787,6 +787,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 ### Phase 5: Closure, automation and reports
 
 #### pob-024: Placement closure record and invoice trigger
+- **Status:** built (`DEC-SCOPE-432`, 2026-11-08; migration `0312_placements`, API §12LY, RBAC §2.323); Q-17 answered "a draft only; a person issues it" and P1-P14 are the builder's calls (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §13.1 bullets 1–6; §16 "Offer accepted / joining confirmed → Start placement closure and commercial tracking"; "Invoice/payment due → Notify finance/owner"; §18 AC "Placement closure tracks offer, joining, invoice/commission, payment …".
 - **Existing behavior:**
   - Offers and joining exist, and joining auto-closes the job when its vacancies are filled.

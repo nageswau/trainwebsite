@@ -221,5 +221,5 @@ def test_the_migration_chains_and_freezes_the_checks():
     spec.loader.exec_module(migration)
     assert migration.revision == "0308_vendor_requirements" and migration.down_revision == "0307_institution_vacancy_shares"
     assert migration.JOB_CHECKS == models.JOB_VENDOR_CHECKS
-    # pob-021's 0311 widened the recipient/detail rule; 0308 keeps the frozen original, which 0311's downgrade restores
+    # pob-021's 0313 widened the recipient/detail rule; 0308 keeps the frozen original, which 0313's downgrade restores
     assert migration.SHARE_CHECKS == models.PROFILE_SHARE_VENDOR_CHECKS | {"ck_profile_shares_recipient_detail": "(recipient = 'client') = (detail = 'named')"}

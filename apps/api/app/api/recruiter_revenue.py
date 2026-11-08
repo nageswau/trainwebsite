@@ -7,13 +7,12 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.bdm import LIMIT, OFFSET
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models import RecruiterInvoice, RecruiterPayment, User
+from app.models import RecruiterPayment, User
 from app.schemas import RecCompanyRevenue, RecFeeOverride, RecInvoiceCancel, RecInvoiceCreate, RecInvoiceEnvelope, RecInvoicePage, RecPaymentCreate, RecRequirementRevenue
 from app.services import job_revisions as revisions
 from app.services import recruiter_companies as companies
@@ -54,25 +53,7 @@ async def set_fee(requirement_id: UUID, payload: RecFeeOverride, user: User = De
 async def create_invoice(payload: RecInvoiceCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """RV6. The number is unique ignoring case; the unique index is the backstop for two people typing it at once."""
     job = await svc.load_job(db, user, payload.requirement_id)
-    svc.check_invoice_dates(payload.invoice_date, payload.due_date, ist_today())
-    if await svc.number_taken(db, payload.invoice_number):
-        raise HTTPException(409, svc.NUMBER_TAKEN)
-    invoice = RecruiterInvoice(
-        job_id=job.id,
-        invoice_number=payload.invoice_number,
-        invoice_date=payload.invoice_date,
-        due_date=payload.due_date,
-        amount=svc.money(payload.amount),
-        note=payload.note,
-        created_by_user_id=user.id,
-    )
-    db.add(invoice)
-    try:
-        await db.flush()
-    except IntegrityError:
-        await db.rollback()
-        raise HTTPException(409, svc.NUMBER_TAKEN) from None
-    svc.audit(db, user, "invoice_created", "recruiter_invoice", invoice.id, {"job_id": str(job.id), "amount": str(invoice.amount)})
+    invoice = await svc.add_invoice(db, user, job, payload.invoice_number, payload.invoice_date, payload.due_date, payload.amount, payload.note)
     await db.commit()
     await db.refresh(invoice)
     svc.log("recruiter_revenue_invoice_created", user, job_id=job.id, invoice_id=invoice.id)

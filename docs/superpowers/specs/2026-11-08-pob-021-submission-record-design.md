@@ -3,7 +3,7 @@
 - **Decision:** `DEC-SCOPE-430` (B1–B14 are the builder's calls, `NEEDS_CONFIRMATION`; the owner asked for recommended answers instead of questions).
 - **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` pob-021 (§11.1, §11.2, §9 duplicate flag, §16 two triggers, §17 share gate, §18 AC 9).
 - **Dependencies (built):** pob-018 (`DEC-SCOPE-428`), hrc-018 (`DEC-SCOPE-392`), pob-023 (`DEC-SCOPE-408`), pob-011 (`DEC-SCOPE-427`).
-- **Migration:** `0311_submissions`. **API:** §12LW. **RBAC:** §2.321.
+- **Migration:** `0313_submissions`. **API:** §12LW. **RBAC:** §2.321.
 
 ## Approach
 

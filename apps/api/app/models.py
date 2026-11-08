@@ -675,7 +675,7 @@ COMPANY_NAME_KEY_SQL = r"lower(regexp_replace(btrim(name), '\s+', ' ', 'g'))"
 COMPANY_CHECKS = {
     "ck_companies_priority": "priority IS NULL OR priority IN ('hot', 'warm', 'cold')",
     "ck_companies_employee_count": "employee_count IS NULL OR employee_count BETWEEN 0 AND 10000000",
-    "ck_companies_submission_sla": "submission_sla_hours IS NULL OR submission_sla_hours BETWEEN 1 AND 720",  # pob-021 B10 (migration 0311)
+    "ck_companies_submission_sla": "submission_sla_hours IS NULL OR submission_sla_hours BETWEEN 1 AND 720",  # pob-021 B10 (migration 0313)
 }
 # rec-005 (DEC-SCOPE-127): the pipeline stage and the Lost flag (both or neither); migration 0108 keeps a frozen copy.
 # pob-010 (DEC-SCOPE-420 V2/V3): migration 0300 keeps a frozen copy.
@@ -8741,13 +8741,13 @@ PROFILE_SHARE_ITEM_CHECKS = {
 PROFILE_SHARE_VENDOR_CHECKS = {
     "ck_profile_shares_recipient": "recipient IN ('client', 'vendor')",
     "ck_profile_shares_detail": "detail IN ('named', 'anonymised', 'full')",
-    # pob-021 (DEC-SCOPE-430 B8, migration 0311): a client summary is named or anonymised; a vendor's anonymised or full
+    # pob-021 (DEC-SCOPE-430 B8, migration 0313): a client summary is named or anonymised; a vendor's anonymised or full
     "ck_profile_shares_recipient_detail": "(recipient = 'client' AND detail IN ('named', 'anonymised')) OR (recipient = 'vendor' AND detail IN ('anonymised', 'full'))",
     "ck_profile_shares_vendor_channel": "recipient = 'client' OR channel <> 'portal'",
     "ck_profile_shares_consent": "(detail = 'full') = (consent_reference IS NOT NULL) AND (consent_reference IS NULL OR char_length(consent_reference) <= 300)",
 }
 SUBMISSION_SEQ = Sequence("profile_share_item_submission_seq", maxvalue=999999, metadata=Base.metadata)
-# pob-021 (DEC-SCOPE-430 B1-B13): each item is a submission. `draft` is the wizard's unsaved state, never stored (B2). Migration 0311 repeats these.
+# pob-021 (DEC-SCOPE-430 B1-B13): each item is a submission. `draft` is the wizard's unsaved state, never stored (B2). Migration 0313 repeats these.
 SUBMISSION_STATUSES = ("submitted", "client_reviewing", "shortlisted", "interview", "rejected", "on_hold", "selected", "withdrawn")
 SUBMISSION_CLOSED = ("rejected", "selected", "withdrawn")
 SUBMISSION_REJECTION_REASONS = (
@@ -8875,6 +8875,59 @@ class RecruiterPayment(Base):
     reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# pob-024 (DEC-SCOPE-432 P1-P14): one placement per accepted offer -- the closure record, the two joining confirmations and the invoice
+# draft made on joining (Q-17: a draft only; a person issues it as a rec-031 invoice). Migration 0312 repeats these strings.
+PLACEMENT_INVOICE_STATUSES = ("none", "draft", "issued", "discarded")
+PLACEMENT_CONFIRMATION_CHANNELS = ("call", "email", "whatsapp", "in_person", "other")
+PLACEMENT_RECORD_CHECKS = {
+    "ck_placements_invoice_status": _in_list("invoice_status", PLACEMENT_INVOICE_STATUSES),
+    "ck_placements_candidate_via": "candidate_confirmed_via IS NULL OR " + _in_list("candidate_confirmed_via", PLACEMENT_CONFIRMATION_CHANNELS),
+    "ck_placements_client_via": "client_confirmed_via IS NULL OR " + _in_list("client_confirmed_via", PLACEMENT_CONFIRMATION_CHANNELS),
+    "ck_placements_amounts": "(expected_fee IS NULL OR expected_fee >= 0) AND (draft_amount IS NULL OR draft_amount > 0)",
+    "ck_placements_issued": "(invoice_status = 'issued') = (invoice_id IS NOT NULL)",
+    "ck_placements_draft": "invoice_status = 'none' OR draft_due_date IS NOT NULL",
+    "ck_placements_discarded": "(invoice_status = 'discarded') = (draft_discard_reason IS NOT NULL)",
+}
+
+
+class Placement(Base, TimestampMixin):
+    """pob-024: services/placements.py is the only writer. The status is the offer's joining status (P7), never stored here; the commercial
+    columns are read only behind the rec-031 revenue gate (P4)."""
+
+    __tablename__ = "placements"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in PLACEMENT_RECORD_CHECKS.items()),
+        Index("ix_placements_job", "job_id"),
+        Index("ix_placements_invoice_status", "invoice_status"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    offer_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_offers.id", ondelete="RESTRICT"), unique=True)
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id", ondelete="RESTRICT"))
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"))
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"))
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    vendor_company_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"), nullable=True)
+    role: Mapped[str] = mapped_column(String(200))
+    recruiter_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    po_owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    expected_fee: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    candidate_confirmed_by: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    candidate_confirmed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    candidate_confirmed_via: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    client_confirmed_by: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    client_confirmed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    client_confirmed_via: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    invoice_status: Mapped[str] = mapped_column(String(10), default="none", server_default=text("'none'"))
+    draft_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    draft_due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    draft_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    draft_discard_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    invoice_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_invoices.id", ondelete="RESTRICT"), nullable=True)
+    due_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    overdue_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
 
 # rec-029 (DEC-SCOPE-178, DR1-DR7): campus recruitment drives (§21). Migration 0148 repeats the statuses and checks
 # (test_rec_029_migration). Labels live in services/recruitment_drives.py and the web client.

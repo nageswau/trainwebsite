@@ -1,8 +1,8 @@
 """pob-021 -- the submission record: each `profile_share_items` row gets a SUB- code, a status, consent, the match block and the
 acknowledgement; `profile_shares` the compensation flag and the SLA follow-up; `companies` its SLA hours.
 
-Revision ID: 0311_submissions
-Revises: 0310_sourcing_plans
+Revision ID: 0313_submissions
+Revises: 0312_placements
 
 docs/superpowers/specs/2026-11-08-pob-021-submission-record-design.md (DEC-SCOPE-430). Additive. 0001 builds a fresh database from the current
 models, which already carry all of this, so each step runs only when missing. The CHECK strings are frozen copies of `models.SUBMISSION_CHECKS`,
@@ -15,8 +15,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0311_submissions"
-down_revision = "0310_sourcing_plans"
+revision = "0313_submissions"
+down_revision = "0312_placements"
 branch_labels = None
 depends_on = None
 

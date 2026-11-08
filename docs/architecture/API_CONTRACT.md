@@ -6361,9 +6361,21 @@ Audit actions `recruiter_template.approve|archive|restore|copy`.
 
 ## 12LW. Submission record (pob-021) — addendum, 2026-11-08
 
-`DEC-SCOPE-430`. Migration `0311_submissions`. Additive on rec-019's routes.
+`DEC-SCOPE-430`. Migration `0313_submissions`. Additive on rec-019's routes.
 
 - `POST /recruiter/shares` gains `detail` (client: `named`|`anonymised`; vendor: `anonymised`|`full`), `consent_confirmed` + `consent_reference` (≤ 300) and `interest_confirmed` (all required: 409 otherwise), and `include_compensation` (403 without `candidates.compensation`). 422 for a candidate without a location or failing a switched-on hard filter. The repeat 409 covers the same end client on any requirement or route. The response's share gains `compensation_included` and `follow_up {id, due_at, status}`; each item gains `submission_code, status, status_label, status_changed_at, rejection_reason, rejection_reason_label, next_action, next_action_on, acknowledged_at, consent_reference, match {score, required_matched, required_missing, preferred_matched, preferred_missing, explanation[]}`.
 - `PATCH /recruiter/shares/{id}/items/{item_id}` gains `status`, `rejection_reason` (required with, and only with, `rejected`: 422), `next_action` (≤ 300), `next_action_on`, `acknowledged: true`. A closed submission is 409. A response maps onto the status unless `status` is sent. Audit `submission.status` {from, to, reason} per change.
 - `GET /employer/shared-profiles` items gain `submission_code, match, status, status_label`; an anonymised submission's `candidate.name` and `current_company` are null and it has no resume; `candidate.expected_salary` only when sent. `PATCH /employer/shared-profiles/{id}` maps the response onto the status.
 - `POST|PATCH /recruiter/companies` accept `submission_sla_hours` (1-720 | null); the company read returns it.
+
+## 12LY. Placement closure record and invoice draft (pob-024) — addendum, 2026-11-08
+
+`DEC-SCOPE-432`. Migration `0312_placements`.
+
+- `GET /recruiter/placements?view=pending|joined|did_not_join|invoice_drafts&limit&offset` → `{items[{id, status, status_label, role, candidate, requirement, company, joined_on, invoice_status, invoice_status_label}], total, limit, offset, counts{pending, joined, did_not_join, invoice_drafts}}`; the invoice fields are null without the commercial gate. Scoped like `/recruiter/joinings`.
+- `GET /recruiter/placements/{id}` → `{placement {id, status, status_label, role, offer_id, application, candidate, requirement, company, vendor, recruiter, po_owner, source, package|null, joining {expected_joining_date, actual_joining_date}, candidate_confirmation|null, client_confirmation|null ({by, on, via, via_label}), commercials|null {expected_fee, invoice {status: none|draft|issued|discarded, status_label, draft_amount, draft_due_date, draft_created_at, discard_reason, invoice (rec-031 invoice)|null}}, permissions {can_edit, can_change_owner, can_invoice}, created_at}}`. Out of scope 404; other roles 403.
+- `PATCH /recruiter/placements/{id}` `{candidate_confirmation?, client_confirmation? ({by, on, via} | null), po_owner_user_id?}` → `{placement}`. Only the keys sent change. 403: a confirmation from a non-writer, the owner from a non-Team-Lead; 409: Did Not Join; 422: a future date, an unknown `via`, a missing `by`, an owner who is not an active placement_team user. Audit `placement.updated {fields}`.
+- `POST /recruiter/placements/{id}/invoice-draft/issue` `{invoice_number, invoice_date, due_date, amount, note?}` → 201 `{placement}`: a rec-031 invoice on the requirement (its 422s and the `invoice_number_taken` 409). 409 `no_invoice_draft` when the placement has no open draft (a retry). 403 without the revenue gate.
+- `POST /recruiter/placements/{id}/invoice-draft/cancel` `{reason (2-500)}` → `{placement}`; 409 `no_invoice_draft`.
+- `GET /recruiter/applications/{id}/offer` and the offer routes: the offer gains `placement_id` (null until Accepted).
+- Notices: `it.recruitment.invoice_due`, `it.recruitment.invoice_overdue` (entity `placement`, fixed text, `action_url` `/recruiter/placements/{id}`); beat `pob024-invoice-notices` daily 03:15 UTC.

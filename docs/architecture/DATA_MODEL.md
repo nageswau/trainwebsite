@@ -2486,7 +2486,11 @@ The downgrade refuses while a vendor or an NDA exists.
 - `job_sourcing_searches` (PK `job_id`, `saved_search_id` → saved_candidate_searches CASCADE; index on `saved_search_id`).
 - `job_applications.submitted_source_id` (nullable → rec_candidate_sources RESTRICT): the candidate's source at the first submission, set once by `services/applications`; backfilled for applications already submitted.
 
-### pob-021 — submission record (`DEC-SCOPE-430`, migration `0311_submissions`)
+### pob-021 — submission record (`DEC-SCOPE-430`, migration `0313_submissions`)
 - `profile_share_items`: `submission_code` varchar(20) NOT NULL UNIQUE (default `'SUB-' || lpad(nextval('profile_share_item_submission_seq'), 6, '0')`), `status` (8 values, CHECK, default `submitted`), `status_changed_at`, `rejection_reason` (10 values; set iff rejected, CHECK), `next_action` ≤ 300, `next_action_on` date, `consent_reference` ≤ 300, `match` JSON, `acknowledged_at`.
 - `profile_shares`: `compensation_included` bool default false; `follow_up_id` → recruiter_follow_ups SET NULL; `ck_profile_shares_recipient_detail` widened (client named|anonymised, vendor anonymised|full).
 - `companies.submission_sla_hours` int 1-720 (CHECK), NULL = 48.
+
+### pob-024 — placement closure record (`DEC-SCOPE-432`, migration `0312_placements`)
+
+- `placements`: one row per accepted offer (`offer_id` unique) with application, requirement, candidate, client and vendor company, role, recruiter and PO owner, `expected_fee`, the candidate and client confirmations (`*_confirmed_by/on/via`), `invoice_status` (none/draft/issued/discarded), `draft_amount`, `draft_due_date`, `draft_created_at`, `draft_discard_reason`, `invoice_id` (→ `recruiter_invoices`), the notice markers `due_notified_at` / `overdue_notified_at`, `created_by_user_id`. CHECKs in `PLACEMENT_RECORD_CHECKS` (frozen in 0312). No backfill.

@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import AuditLog, Candidate, Company, Job, JobApplication, JobOffer, JobOfferEvent, Notification, User
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import RecOfferCreate, RecOfferUpdate
-from app.services import applications, company_pipeline
+from app.services import applications, company_pipeline, placements
 from app.services import recruiter_requirements as requirements
 from app.services.interviews import field_error
 from app.services.storage import storage
@@ -117,6 +117,7 @@ async def _apply_status(db: AsyncSession, actor: User, offer: JobOffer, applicat
         if legacy and applications.follow(db, actor, application, "joined", "Offer accepted"):
             await requirements.fill_when_complete(db, actor, application.job_id)  # hrc-007 (A11)
         start_joining(offer, application)
+        await placements.ensure(db, actor, offer, application)  # pob-024 (P1)
     return previous
 
 
@@ -147,6 +148,7 @@ async def legacy_status(db: AsyncSession, user: User, offer: JobOffer, applicati
         if applications.follow(db, user, application, "joined", "Offer accepted"):
             await requirements.fill_when_complete(db, user, application.job_id)  # hrc-007 (A11)
         start_joining(offer, application)
+        await placements.ensure(db, user, offer, application)  # pob-024 (P1)
 
 
 # --- recruiter writes ---------------------------------------------------------------------------------------------------------------
@@ -349,6 +351,7 @@ async def one(db: AsyncSession, user: User, offer_id: UUID) -> dict:
         "can_edit": writer and o.status not in FINAL,
         "can_upload": writer and o.status != "declined",
         "joining": joining_out(user, o, requirements.ist_today()),
+        "placement_id": await placements.id_for_offer(db, o.id),  # pob-024
     }
 
 

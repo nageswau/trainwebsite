@@ -116,6 +116,7 @@ from app.models import (
     PARTNERSHIP_POTENTIALS,
     PARTNERSHIP_TARGET_KPI_KEYS,
     PARTNERSHIP_TARGET_MAX,
+    PLACEMENT_CONFIRMATION_CHANNELS,
     PLAN_STATUSES,
     PLAN_VERTICALS,
     PO_TARGET_KPIS,
@@ -14008,6 +14009,36 @@ class RecInvoiceCancel(BaseModel):
         BeforeValidator(_bdm_newlines),
         BeforeValidator(_blank_if_null),
     ]
+
+
+# --- pob-024 (DEC-SCOPE-432): the placement closure record ---------------------------------------------------------------------------
+class PlacementConfirmation(BaseModel):
+    """P5: who confirmed the joining, when (not in the future: the service's check) and how."""
+
+    model_config = ConfigDict(extra="forbid")
+    by: _rec_requirement_text_type(160) = None
+    on: date
+    via: Literal[PLACEMENT_CONFIRMATION_CHANNELS]
+
+
+class PlacementUpdate(BaseModel):
+    """PATCH: only the keys sent change; a confirmation sent as null is cleared. The PO owner is a Team Lead's (P6)."""
+
+    model_config = ConfigDict(extra="forbid")
+    candidate_confirmation: PlacementConfirmation | None = None
+    client_confirmation: PlacementConfirmation | None = None
+    po_owner_user_id: UUID | None = None
+
+
+class PlacementInvoiceIssue(BaseModel):
+    """P10: the rec-031 invoice fields (RV6) for the placement's requirement; the form starts from the draft."""
+
+    model_config = ConfigDict(extra="forbid")
+    invoice_number: Annotated[Annotated[str, _trimmed(40)], AfterValidator(_trip_text(_BDM_CONTROL, True, REC_REVENUE_LABELS)), BeforeValidator(_blank_if_null)]
+    invoice_date: Annotated[date, BeforeValidator(_trip_date("invoice date"))]
+    due_date: Annotated[date, BeforeValidator(_trip_date("due date"))]
+    amount: RecRevenueAmount
+    note: RecRevenueText = None
 
 
 class RecRevenueRef(BaseModel):
