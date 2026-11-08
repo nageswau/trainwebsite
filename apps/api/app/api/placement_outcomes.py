@@ -1,4 +1,4 @@
-"""pob-029 (DEC-SCOPE-437, API §12MD): placement outcome reports and their CSV / xlsx export. Read-only and never cached; the export is
+"""pob-029 (DEC-SCOPE-438, API §12ME): placement outcome reports and their CSV / xlsx export. Read-only and never cached; the export is
 the on-screen group table, one audit row (filters and row count, no names) committed before the file is returned (fail closed)."""
 
 from datetime import date

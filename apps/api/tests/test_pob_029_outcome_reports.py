@@ -1,4 +1,4 @@
-"""pob-029 -- placement outcome reports (DEC-SCOPE-437 R1-R12; AC: each figure ties out to its definition and the conversions are the
+"""pob-029 -- placement outcome reports (DEC-SCOPE-438 R1-R12; AC: each figure ties out to its definition and the conversions are the
 period's own counts; +/−/E: a period with placements but no invoices). The shared test database is never truncated, so every report here
 is narrowed to this test's company."""
 

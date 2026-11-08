@@ -24,7 +24,7 @@ const REVENUE = [
   { key: "outstanding", label: "Outstanding", hint: "Invoiced − collected" },
 ];
 
-// pob-029 (DEC-SCOPE-437): the period's placement outcomes. The period, grouping and any drill-down filter are a plain GET form and
+// pob-029 (DEC-SCOPE-438): the period's placement outcomes. The period, grouping and any drill-down filter are a plain GET form and
 // links, so a view can be shared and needs no client JS. The totals, the group table and the placement list come from the same rows, so
 // the table sums to the totals and the list is what the figures count.
 export default function PlacementOutcomesPanel({ data, error, params, today }: { data: Outcomes | null; error?: string; params: OutcomeParams; today: string }) {

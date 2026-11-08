@@ -9,7 +9,7 @@ import type { User } from "@/lib/types";
 
 const ROLES = ["placement_manager", "super_admin"]; // R1
 
-// pob-029 (DEC-SCOPE-437): placement outcome reports for the Team Lead and super_admin. The role check only spares other roles a screen
+// pob-029 (DEC-SCOPE-438): placement outcome reports for the Team Lead and super_admin. The role check only spares other roles a screen
 // that can only fail; the API decides the scope (a Team Lead's team + Unassigned) and whether the revenue figures are shown.
 export default async function PlacementOutcomesPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const params = outcomeParams(await searchParams);

@@ -1,4 +1,4 @@
-"""pob-029 (DEC-SCOPE-437 R1-R12; design docs/superpowers/specs/2026-11-08-pob-029-placement-outcome-reports-design.md): placement outcome
+"""pob-029 (DEC-SCOPE-438 R1-R12; design docs/superpowers/specs/2026-11-08-pob-029-placement-outcome-reports-design.md): placement outcome
 reports -- the period's placements grouped by company, vendor, role, source, recruiter or PO; the requirement → submission → interview →
 offer conversions; offer acceptance, joining rate and time to fill; revenue; replacements, early dropouts and satisfaction.
 

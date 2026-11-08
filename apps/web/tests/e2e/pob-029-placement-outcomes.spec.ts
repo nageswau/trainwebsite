@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// pob-029 (DEC-SCOPE-437): the Team Lead opens Placement outcomes from the sidebar, regroups the period, drills into a group row and
+// pob-029 (DEC-SCOPE-438): the Team Lead opens Placement outcomes from the sidebar, regroups the period, drills into a group row and
 // downloads the table; the page holds at phone width; a recruiter is refused. The figures' tie-out, the funnel, revenue gating, the
 // "no invoices" edge and scope are covered by test_pob_029_outcome_reports.py.
 

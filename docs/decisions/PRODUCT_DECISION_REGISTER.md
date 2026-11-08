@@ -12556,3 +12556,17 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - P10: a "Replacement guarantee (now)" section: guarantees ending today or within 7 days IST on a Joined placement with no dropout (pob-025 G10's alert rule) and replacements owed (G11: a dropout on or before the end with no replacement filled). Not commercial, so not behind P4's gate.
   - P11: the PO board's Employer filter offers the caller's company scope (prospects have no requirement yet); the other boards keep companies with requirements.
 - **Not built:** performance by PO/recruiter/company/vendor/source/role (the existing performance pages; pob-029 builds the breakdowns), per-widget lazy loading (one statement of sub-selects per board already).
+
+### DEC-SCOPE-438 — Placement outcome reports (pob-029)
+- **Date:** 2026-11-08. **Status:** built; R1-R12 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions.
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-029-placement-outcome-reports-design.md`. No migration; API §12ME; RBAC §2.328; no new grant.
+- **Calls:**
+  - R1: readers are the Team Lead (`placement_manager`, their team + Unassigned) and `super_admin`; every other role 403.
+  - R3: the cohort is the placements whose offer was accepted in the period; totals, group rows and drill-down come from the same rows, so every figure ties out (AC).
+  - R4/R5: grouped by company, vendor, role, source, recruiter or PO; filtered by company, vendor, recruiter, PO, source.
+  - R6: conversions are the period's own requirements, first submissions, interviewed candidates, offers and decisions in the same scope.
+  - R7: offer acceptance and joining rate are of the decided ones; time to fill is requirement created → joined (a negative legacy span counts 0).
+  - R8: revenue (generated, invoiced, collected, outstanding) only behind the rec-031 / pob-001 revenue gate.
+  - R9/R10: dropouts, early dropouts (inside the guarantee), replacements owed/filled; mean client and candidate ratings.
+  - R11: CSV/xlsx export of the group table, audited `placement_outcomes.export` (no names).
+- **Not built:** scheduled delivery, charts.
