@@ -67,7 +67,7 @@ test("intake automation: template and rules, a new requirement's tasks, and the 
   await expect(tasks.getByText("Prepare the sourcing plan")).toBeVisible();
   await expect(tasks.getByText("Screen the first shortlisted profiles")).toBeVisible();
   await tasks.getByRole("button", { name: "Mark done: Prepare the sourcing plan" }).click();
-  await expect(tasks.getByText("Done")).toBeVisible();
+  await expect(tasks.getByText("Done", { exact: true })).toBeVisible();
   await expect(tasks.getByRole("button", { name: "Mark done: Prepare the sourcing plan" })).toHaveCount(0);
 
   // The recruiter cannot open the Team Lead's page.
