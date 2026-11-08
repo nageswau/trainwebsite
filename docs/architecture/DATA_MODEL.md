@@ -2464,3 +2464,15 @@ The downgrade refuses while a vendor or an NDA exists.
 ### pob-015 — vacancies shared with institutions (`DEC-SCOPE-426`, migration `0307_institution_vacancy_shares`)
 
 **`institution_vacancy_shares`:** (`organization_id` → bdm_organizations, `job_id` → jobs, `shared_on` date, `channel` (CHECK: meeting, call, email, whatsapp, visit, other), `template_id` → recruiter_message_templates nullable, `notes` ≤ 500, `response` (CHECK: awaiting, interested, declined, no_response; default awaiting), `response_note` ≤ 500, `responded_at`, `responded_by_user_id`, `shared_by_user_id`, timestamps); unique (`organization_id`, `job_id`, `shared_on`, `channel`); indexes (`organization_id`, `shared_on`) and (`job_id`). All FKs `ON DELETE RESTRICT`.
+
+### pob-011 — vendor requirements and vendor submissions (`DEC-SCOPE-427`, migration `0308_vendor_requirements`)
+
+**`jobs`:**
+- `via_vendor_id` → companies (nullable, `ON DELETE RESTRICT`, index `ix_jobs_via_vendor`; CHECK `ck_jobs_via_vendor_not_self`: never the job's own company).
+- `end_client_disclosure` (CHECK `external` | `internal`; default `external`).
+
+**`profile_shares`:**
+- `recipient` (CHECK `client` | `vendor`; default `client`). `company_id` is the recipient company.
+- `detail` (CHECK `named` | `anonymised` | `full`; default `named`; `named` exactly when the recipient is the client).
+- `consent_reference` (text ≤ 300; set exactly when `detail = 'full'`).
+- A vendor share is never on the `portal` channel (CHECK).

@@ -96,4 +96,49 @@ describe("RecruiterShareDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Share 2 profiles" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Choose active candidates from the pool");
   });
+
+  // pob-011 (DEC-SCOPE-427 V4-V7): a requirement via a vendor can be shared with the vendor -- anonymised by default, full only with consent
+  const vendor = { id: "V1", code: "CO-V1", name: "TalentBridge" };
+  const vendorContacts = () => res({ items: [contact("VK1", { is_primary: true, name: "Vendor Asha" })], can_edit: true });
+
+  it("offers the vendor as recipient, loads its contacts, hides Portal and shares anonymised by default", async () => {
+    replies.push(res({ share: share({ company_id: "V1", contact: { id: "VK1", name: "Vendor Asha" }, recipient: "vendor", detail: "anonymised" }), whatsapp_url: null }, 201));
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return Promise.resolve(replies.shift() ?? res({}, 500));
+      if (url.endsWith("/V1/contacts")) return Promise.resolve(vendorContacts());
+      if (url.endsWith("/CO1/contacts")) return Promise.resolve(res({ items: [contact("K1")], can_edit: true }));
+      return Promise.resolve(res({}, 404));
+    });
+    render(<RecruiterShareDialog requirement={{ id: "J1", label: "Java Dev" }} companyId="CO1" vendor={vendor} candidates={people} onShared={vi.fn()} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByLabelText(/Vendor: TalentBridge/));
+    await waitFor(() => expect((screen.getByLabelText("Contact") as HTMLSelectElement).value).toBe("VK1"));
+    expect(screen.queryByLabelText(/^Portal/)).toBeNull();
+    expect((screen.getByLabelText(/^Anonymised/) as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Share 2 profiles" }));
+    await screen.findByText(/Shared 0 profiles/);
+    expect(posted()).toEqual({ requirement_id: "J1", candidate_ids: ["C1", "C2"], channel: "email", contact_id: "VK1", recipient: "vendor", detail: "anonymised" });
+  });
+
+  it("asks for the candidates' consent before a full-details share with the vendor", async () => {
+    replies.push(res({ share: share({ recipient: "vendor", detail: "full" }), whatsapp_url: null }, 201));
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return Promise.resolve(replies.shift() ?? res({}, 500));
+      if (url === "/api/v1/recruiter/requirements/J1") return Promise.resolve(res({ requirement: { id: "J1", company: { id: "CO1" }, via_vendor: vendor } }));
+      if (url.endsWith("/V1/contacts")) return Promise.resolve(vendorContacts());
+      if (url.endsWith("/CO1/contacts")) return Promise.resolve(res({ items: [contact("K1")], can_edit: true }));
+      return Promise.resolve(res({}, 404));
+    });
+    render(<RecruiterShareDialog requirement={{ id: "J1", label: "Java Dev" }} candidates={people} onShared={vi.fn()} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByLabelText(/Vendor: TalentBridge/));
+    await waitFor(() => expect((screen.getByLabelText("Contact") as HTMLSelectElement).value).toBe("VK1"));
+    fireEvent.click(screen.getByLabelText(/^Full details/));
+    const submit = screen.getByRole("button", { name: "Share 2 profiles" }) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    fireEvent.click(screen.getByLabelText(/candidates agreed/));
+    fireEvent.change(screen.getByLabelText(/How and when they agreed/), { target: { value: "Call on 8 Nov" } });
+    expect(submit.disabled).toBe(false);
+    fireEvent.click(submit);
+    await screen.findByText(/Shared 0 profiles/);
+    expect(posted()).toMatchObject({ recipient: "vendor", detail: "full", consent_confirmed: true, consent_reference: "Call on 8 Nov", contact_id: "VK1" });
+  });
 });

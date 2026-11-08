@@ -18,6 +18,7 @@ import {
   isRequirementBody,
   label,
   monthsFromYears,
+  DISCLOSURE_OPTIONS,
   ownerSearch,
   PAYMENT_TRIGGER_OPTIONS,
   type PossibleDuplicate,
@@ -28,6 +29,7 @@ import {
   REQUIREMENTS_URL,
   type StatusCatalogue,
   valuesOf,
+  vendorSearch,
 } from "@/lib/recruiterRequirements";
 import { useStaleGuard } from "@/lib/staleGuard";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -88,6 +90,7 @@ const SKILL_FIELDS = new Set<string>(["required_skills", "preferred_skills", "in
 const FIELD_LABELS: Record<string, string> = {
   job_category_id: "Job category", skills: "Skills", status: "Status", assign: "Recruiter", weights: "Skill weights", lead_source_id: "Lead source",
   hiring_manager_user_id: "Hiring manager", decision_maker_contact_id: "Decision-maker", backup_owner_user_id: "Backup owner",
+  via_vendor_id: "Via vendor", end_client_disclosure: "End client name", // pob-011
 };
 
 /** FastAPI's 422 list -> errors at the form's fields (a skill's item lands on its list); null when any item is about something else. */
@@ -327,12 +330,12 @@ export default function RecruiterRequirementForm({
     );
   }
 
-  function selectField(key: FormField, text: string, options: { id: string; name: string }[]) {
+  function selectField(key: FormField, text: string, options: { id: string; name: string }[], blank = true) {
     return (
       <div className="field" key={key}>
         <label htmlFor={`${idPrefix}-${key}`}>{text}</label>
         <select id={`${idPrefix}-${key}`} value={values[key]} aria-invalid={errors[key] ? true : undefined} aria-describedby={describe(key)} onChange={(e) => set(key, e.target.value)}>
-          <option value="">Not set</option>
+          {blank && <option value="">Not set</option>}
           {options.map((o) => (
             <option key={o.id} value={o.id}>
               {o.name}
@@ -383,6 +386,25 @@ export default function RecruiterRequirementForm({
           )}
         </fieldset>
       )}
+      {/* pob-011 (DEC-SCOPE-427 V2/V3): the company is the end client; a vendor may have passed the requirement on */}
+      <fieldset className="form-section">
+        <legend>Source</legend>
+        <div className="form-grid">
+          <div className="field">
+            <SearchableSelect
+              id={`${idPrefix}-via_vendor_id`}
+              label="Via vendor (optional)"
+              noun="company"
+              search={vendorSearch}
+              initial={requirement?.via_vendor ? { id: requirement.via_vendor.id, label: requirement.via_vendor.name, detail: requirement.via_vendor.code } : null}
+              onChange={(option) => set("via_vendor_id", option?.id ?? "")}
+            />
+            <p className="muted field-help">When a staffing vendor passed this requirement on. The company stays the end client.</p>
+            {errorOf("via_vendor_id")}
+          </div>
+          {selectField("end_client_disclosure", "End client name", DISCLOSURE_OPTIONS, false)}
+        </div>
+      </fieldset>
       <fieldset className="form-section">
         <legend>Identification</legend>
         <div className="form-grid">

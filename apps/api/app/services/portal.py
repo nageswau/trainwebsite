@@ -130,7 +130,7 @@ def _student_interview(i: Interview, job: Job, company: Company, released: str |
     status = interview_svc.unreleased_status(i.status)
     return {
         "id": i.id, "title": f"meeting link for {job.title}",  # the link cell's accessible name ("Open meeting link for ...")
-        "round": interview_svc.round_text(i), "role": job.title, "company": company.name, "when": interview_svc.local_when(i), "mode": i.mode,
+        "round": interview_svc.round_text(i), "role": job.title, "company": job_visibility.client_name(job, company), "when": interview_svc.local_when(i), "mode": i.mode,
         "link": None if cancelled else i.meeting_url, "details": " · ".join(f"{label}: {value}" for label, value in facts if value) or None,
         "status": f"Cancelled — {i.cancel_reason}" if cancelled else (released or interview_svc.status_label(status)),
     }
@@ -177,7 +177,7 @@ async def _application_rows(db: AsyncSession, user: User) -> list[dict]:
     return [
         {
             # hrc-026 (A4): the stage the candidate sees, in the candidate's words -- never an internal stage or a rejection reason
-            "code": a.application_code, "role": j.title, "company": c.name, "location": j.location, "status": job_applications.candidate_label(a.candidate_status),
+            "code": a.application_code, "role": j.title, "company": job_visibility.client_name(j, c), "location": j.location, "status": job_applications.candidate_label(a.candidate_status),
             "applied_on": f"{today_ist(a.created_at):%d %b %Y}",
             "next_action": next_action(a.candidate_status, interview_svc.local_when(upcoming[a.id]) if a.id in upcoming else None, a.id in offered),
         }

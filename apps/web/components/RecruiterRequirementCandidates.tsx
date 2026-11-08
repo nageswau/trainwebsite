@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import type { VendorRef } from "@/lib/recruiterRequirements";
 import { type FormEvent, useEffect, useId, useState } from "react";
 
 import LocalTime from "@/components/LocalTime";
@@ -266,8 +267,9 @@ function ApplicationItem({ application, reasons, contacts, selected, onSelect, o
 /** rec-017 (spec §5): the requirement's candidates and each one's §12 status. Writers (the requirement's recruiter, super_admin) add
  *  pool candidates and move statuses; managers and the assigned BDM read. Every write re-reads the list. rec-020: each row opens its
  *  interviews; the company's active contacts (when the caller can read them) feed the interview form. */
-export default function RecruiterRequirementCandidates({ requirementId, requirementLabel = "this requirement", companyId, refreshKey = 0, version, onShared }: {
+export default function RecruiterRequirementCandidates({ requirementId, requirementLabel = "this requirement", companyId, vendor, refreshKey = 0, version, onShared }: {
   requirementId: string; requirementLabel?: string; companyId?: string; refreshKey?: number; onShared?: () => void;
+  vendor?: VendorRef | null; // pob-011: the share dialog offers the vendor the requirement came through
   version?: string; // hrc-009: the requirement's updated_at -- an edit may have flagged applications for review
 }) {
   const [data, setData] = useState<RequirementCandidates | null>(null);
@@ -346,7 +348,7 @@ export default function RecruiterRequirementCandidates({ requirementId, requirem
         </div>
       )}
       {sharing && (
-        <RecruiterShareDialog requirement={{ id: requirementId, label: requirementLabel }} companyId={companyId}
+        <RecruiterShareDialog requirement={{ id: requirementId, label: requirementLabel }} companyId={companyId} vendor={vendor}
           candidates={sharing} onClose={() => setSharing(null)}
           onShared={() => { setSelected(new Set()); reload(); onShared?.(); }} />
       )}

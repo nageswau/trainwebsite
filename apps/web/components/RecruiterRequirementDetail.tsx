@@ -271,6 +271,9 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
     ["Priority", label(r.priority)],
     ["Assigned recruiter", personName(r.assigned_recruiter)],
     ["Backup owner", personName(r.backup_owner ?? null, "—")], // pob-002 R9
+    // pob-011 (DEC-SCOPE-427 V2/V3): the company above is the end client; the vendor it came through, and who may see the client's name
+    ["Via vendor", r.via_vendor ? <Link href={`/recruiter/companies/${r.via_vendor.id}`}>{r.via_vendor.name}</Link> : "—"],
+    ["End client name", r.end_client_disclosure === "internal" ? "Staff only (candidates see “Confidential client”)" : "Can be shown to candidates"],
     // pob-002 R6: the client's hiring process
     ["Interview rounds", stepItems(r.interview_rounds)],
     ["Screening steps", stepItems(r.screening_steps)],
@@ -369,11 +372,11 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
           hrc-006 (O5): a placement officer co-owns the vacancy, not its candidates (hrc-012) -- none of these sections for them. */}
       {p.can_view_candidates && (
         <>
-          <RecruiterRequirementCandidates requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} refreshKey={shortlists + shares} version={r.updated_at}
+          <RecruiterRequirementCandidates requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} vendor={r.via_vendor ?? null} refreshKey={shortlists + shares} version={r.updated_at}
             onShared={() => setShares((n) => n + 1)} />
           <RecruiterScreeningForm requirementId={r.id} />
           {p.can_view_matches && (
-            <RecruiterRequirementMatches requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} version={r.updated_at}
+            <RecruiterRequirementMatches requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} vendor={r.via_vendor ?? null} version={r.updated_at}
               onRequirementChanged={setRequirement} onShortlisted={() => setShortlists((n) => n + 1)} onShared={() => setShares((n) => n + 1)} />
           )}
           <RecruiterShares source={{ kind: "requirement", requirementId: r.id }} refreshKey={shares} />

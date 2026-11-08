@@ -116,7 +116,7 @@ async def listing(db: AsyncSession, user: User, *, view: str, q: str | None, lim
         application = applied.get(job.id)
         blocked = assessed["blocked"] if assessed else []
         cards.append({
-            "id": job.id, "title": job.title, "company": company.name, "location": job.location, "work_mode": job.work_mode,
+            "id": job.id, "title": job.title, "company": job_visibility.client_name(job, company), "location": job.location, "work_mode": job.work_mode,
             "employment_type": job.employment_type, "required_skills": required, "preferred_skills": preferred,
             "experience_min_months": job.experience_min_months, "experience_max_months": job.experience_max_months, "closes_on": job.closes_on,
             "match": {"score": result["score"], "explanation": result["explanation"]} if result else None,
