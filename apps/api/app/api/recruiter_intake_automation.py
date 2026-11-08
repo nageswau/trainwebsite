@@ -35,7 +35,6 @@ async def get_settings(response: Response, user: User = Depends(get_current_user
 async def put_settings(payload: IntakeAutomationSettingsIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     row = await intake.save_settings(db, user, [item.model_dump() for item in payload.task_template])
     await db.commit()
-    intake.log("requirement_intake_settings_saved", "-", tasks=len(row.task_template))
     return _settings_out(row)
 
 

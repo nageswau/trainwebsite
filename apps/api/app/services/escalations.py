@@ -93,7 +93,7 @@ def _due_query(rule: EscalationRule, now: datetime):
             .order_by(fu.due_at))  # fmt: skip
 
 
-def _link(rule: EscalationRule, job_id: UUID | None) -> str:
+def _link(job_id: UUID | None) -> str:
     return f"/recruiter/requirements/{job_id}" if job_id else "/recruiter/follow-ups"
 
 
@@ -118,7 +118,7 @@ async def _fire(db: AsyncSession, rule: EscalationRule, now: datetime, leads: li
         )  # fmt: skip
         if inserted is None:  # a concurrent run escalated it first
             continue
-        await notify(db, recipients, EVENT, entity_id, action_url=_link(rule, job_id))
+        await notify(db, recipients, EVENT, entity_id, action_url=_link(job_id))
         fired += 1
     return fired
 
