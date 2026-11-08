@@ -17108,3 +17108,146 @@ class PoPlanItemPatch(BaseModel):
 class PoReportSubmit(BaseModel):
     model_config = ConfigDict(extra="forbid")
     note: Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)] | None = None
+
+
+
+# --- pob-012 (DEC-SCOPE-429): vendor bills (payables / receivables) and vendor performance ------------------------------------------
+VENDOR_BILL_LABELS = {"bill_number": "Bill number", "milestone": "Milestone", "note": "Note", "reference": "Reference", "reason": "Reason"}
+VendorBillKind = Literal["payable", "receivable"]
+
+
+class VendorBillCreate(BaseModel):
+    """W2. The dates against today (IST), the requirement and the vendor are checked in the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    kind: VendorBillKind
+    bill_number: Annotated[Annotated[str, _trimmed(40)], AfterValidator(_trip_text(_BDM_CONTROL, True, VENDOR_BILL_LABELS)), BeforeValidator(_blank_if_null)]
+    bill_date: Annotated[date, BeforeValidator(_trip_date("bill date"))]
+    due_date: Annotated[date, BeforeValidator(_trip_date("due date"))]
+    amount: RecRevenueAmount
+    milestone: Annotated[Annotated[str, _trimmed(120)] | None, AfterValidator(_trip_text(_BDM_CONTROL, False, VENDOR_BILL_LABELS))] = None
+    requirement_id: UUID | None = None
+    note: Annotated[Annotated[str, _trimmed(500)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, VENDOR_BILL_LABELS)), BeforeValidator(_bdm_newlines)] = None
+
+
+class VendorBillPaymentCreate(BaseModel):
+    """W3. The date and the outstanding cap are checked in the service under the bill lock."""
+
+    model_config = ConfigDict(extra="forbid")
+    paid_on: Annotated[date, BeforeValidator(_trip_date("payment date"))]
+    amount: RecRevenueAmount
+    reference: Annotated[Annotated[str, _trimmed(100)] | None, AfterValidator(_trip_text(_BDM_CONTROL, False, VENDOR_BILL_LABELS))] = None
+
+
+class VendorBillCancel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: Annotated[
+        Annotated[str, _trimmed(500)],
+        AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True, VENDOR_BILL_LABELS)),
+        AfterValidator(_revenue_reason),
+        BeforeValidator(_bdm_newlines),
+        BeforeValidator(_blank_if_null),
+    ]
+
+
+class VendorBillPaymentOut(BaseModel):
+    id: UUID
+    paid_on: date
+    amount: Decimal
+    reference: str | None
+    created_by: RecPersonRef
+    created_at: datetime
+
+
+class VendorBillPermissions(BaseModel):
+    can_pay: bool
+    can_cancel: bool
+
+
+class VendorBillOut(BaseModel):
+    id: UUID
+    kind: VendorBillKind
+    kind_label: str
+    bill_number: str
+    bill_date: date
+    due_date: date
+    amount: Decimal
+    milestone: str | None
+    note: str | None
+    paid: Decimal
+    outstanding: Decimal
+    payment_status: RecPaymentStatus
+    payment_status_label: str
+    overdue: bool
+    cancelled_at: datetime | None
+    cancel_reason: str | None
+    requirement: RecRevenueRequirementRef | None
+    created_by: RecPersonRef
+    payments: list[VendorBillPaymentOut]
+    permissions: VendorBillPermissions
+    created_at: datetime
+
+
+class VendorBillEnvelope(BaseModel):
+    bill: VendorBillOut
+
+
+class VendorMoneyTotals(BaseModel):
+    billed: Decimal
+    paid: Decimal
+    outstanding: Decimal
+    last_paid_on: date | None
+
+
+class VendorBillList(BaseModel):
+    items: list[VendorBillOut]
+    totals: dict[VendorBillKind, VendorMoneyTotals]
+    can_edit: bool
+
+
+class VendorMetrics(BaseModel):
+    requirements: int
+    responded_requirements: int
+    avg_response_hours: Decimal | None
+    submitted: int
+    interviewed: int
+    placed: int
+    joined: int
+    interview_rate: Decimal | None  # null: no submissions (shown "—", never 0%)
+    joining_rate: Decimal | None  # null: no placements
+    payments: dict[VendorBillKind, VendorMoneyTotals]
+
+
+class VendorPerformanceRow(BaseModel):
+    vendor: RecRevenueRef
+    vendor_status_label: str | None
+    metrics: VendorMetrics
+
+
+class VendorPerformancePage(BaseModel):
+    items: list[VendorPerformanceRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class VendorRequirementRow(BaseModel):
+    requirement: RecRevenueRequirementRef
+    created_at: datetime
+    first_submission_at: datetime | None
+    response_hours: Decimal | None
+
+
+class VendorSubmissionRow(BaseModel):
+    application_id: UUID
+    candidate: RecRevenueRef
+    requirement: RecRevenueRequirementRef
+    submitted_at: datetime
+    interviewed: bool
+    placed: bool
+    joined: bool
+
+
+class VendorPerformanceDetail(VendorPerformanceRow):
+    requirements: list[VendorRequirementRow]
+    submissions: list[VendorSubmissionRow]
