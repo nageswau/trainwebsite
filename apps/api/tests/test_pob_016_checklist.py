@@ -52,7 +52,7 @@ async def _mark_all(client, w, status: str = "confirmed", keys=KEYS) -> dict:
 
 
 async def _move(client, w, status: str, expected: int = 200) -> dict:
-    response = await client.post(f"{BASE}/{w['id']}/status", json={"status": status})
+    response = await client.post(f"{BASE}/{w['id']}/status", json={"status": status, **({"note": "Client paused hiring"} if status == "closed" else {})})  # pob-026 S11
     assert response.status_code == expected, response.text
     return response.json()
 

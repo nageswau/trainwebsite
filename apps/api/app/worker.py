@@ -335,6 +335,15 @@ def placement_invoice_notices_task():
 
 
 @celery.task
+def placement_surveys_task():
+    """pob-026 (DEC-SCOPE-435 S1/S7): daily via beat. Once per placement and respondent (a unique row); one reminder (`resent_at`)."""
+    import app.services.telecaller_alerts  # noqa: F401 -- enters main's telecaller import cycle at the end that resolves (pob-008)
+    from app.services.placement_surveys import run_surveys
+
+    return _run_with_fresh_pool(run_surveys)
+
+
+@celery.task
 def recruiter_follow_up_reminders_task():
     """pob-008 (DEC-SCOPE-423 B1): every 5 minutes via beat. Once per follow-up (`recruiter_follow_ups.reminded_at`)."""
     import app.services.telecaller_alerts  # noqa: F401 -- enters main's telecaller import cycle at the end that resolves (test_pob_008)
@@ -385,6 +394,7 @@ celery.conf.beat_schedule = {
     "pob022-interview-reminders": {"task": "app.worker.interview_reminders_task", "schedule": crontab(minute="*/15")},
     "pob008-follow-up-reminders": {"task": "app.worker.recruiter_follow_up_reminders_task", "schedule": 300.0},
     "pob024-invoice-notices": {"task": "app.worker.placement_invoice_notices_task", "schedule": crontab(hour=3, minute=15)},  # UTC 03:15 = 08:45 IST
+    "pob026-placement-surveys": {"task": "app.worker.placement_surveys_task", "schedule": crontab(hour=3, minute=30)},  # UTC 03:30 = 09:00 IST
     "pob008-cadences": {"task": "app.worker.recruiter_cadences_task", "schedule": crontab(minute="*/15")},
     "pob022-feedback-chase":{"task": "app.worker.interview_feedback_chase_task", "schedule": crontab(minute=20)},
     "hrc034-portal-events-retention": {"task": "app.worker.portal_events_retention_task", "schedule": crontab(hour=19, minute=15)},  # UTC = 00:45 IST

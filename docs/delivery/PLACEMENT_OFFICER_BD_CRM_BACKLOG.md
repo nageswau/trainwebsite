@@ -849,6 +849,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** low.
 
 #### pob-026: Client and candidate satisfaction feedback
+- **Status:** built (`DEC-SCOPE-435`, 2026-11-08; migration `0316_placement_surveys`, API §12MB, RBAC §2.326); S1-S12 are the builder's calls (`NEEDS_CONFIRMATION`): N = 30 days after joining, one reminder after 7 days, links valid 30 days. The design is in `docs/superpowers/specs/2026-11-08-pob-026-satisfaction-survey-design.md`.
 - **Business requirement:** §13.1 "Collect client and candidate feedback and mark the requirement filled or closed"; §13.2 "client satisfaction".
 - **Existing behavior:** share and interview feedback exist; there is no satisfaction score.
 - **Expected behavior:**

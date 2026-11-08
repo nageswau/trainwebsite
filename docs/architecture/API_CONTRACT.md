@@ -6391,3 +6391,13 @@ Audit actions `recruiter_template.approve|archive|restore|copy`.
 - `GET /recruiter/vendors/performance?limit (1-100)&offset` → `{items[{vendor{id, code, name}, vendor_status_label, metrics}], total, limit, offset}`; `metrics` = `{requirements, responded_requirements, avg_response_hours|null, submitted, interviewed, placed, joined, interview_rate|null, joining_rate|null, payments{payable|receivable}}`.
 - `GET /recruiter/vendors/{id}/performance` → the row plus `requirements[{requirement, created_at, first_submission_at|null, response_hours|null}]` and `submissions[{application_id, candidate, requirement, submitted_at, interviewed, placed, joined}]` — the rows every figure is counted from.
 - Management ledger `GET /management/ledger/lines`: new automatic sources `vendor_payment` (expense) and `vendor_receipt` (income), vertical `recruitment`.
+
+## 12MB. Client and candidate satisfaction surveys (pob-026) — addendum, 2026-11-08
+
+`DEC-SCOPE-435`. Migration `0316_placement_surveys`. The public routes take no session: the signed link is the credential.
+
+- `GET /public/placement-surveys/{token}` → `{respondent: client|candidate, role, company}`. 404 bad signature, another token type or an unknown survey; 410 answered or expired; 429 (`Retry-After`) after 20 refused lookups from one IP in an hour.
+- `POST /public/placement-surveys/{token}` `{rating (1-5, integer), comment? (≤1000, trimmed, blank = null)}` → 201 `{ok: true}`. Same 404/410/429; a second answer (or a race) is 410; 422 on the fields.
+- `GET /recruiter/placements/{id}`: the placement gains `satisfaction: {client, candidate}`, each null (not handled yet) or `{status: sent|responded|skipped, status_label, sent_at, resent_at, responded_at, rating, comment, skip_reason, skip_reason_label}`.
+- `POST /recruiter/requirements/{id}/status` `{status: "closed"}` now needs a `note` (422 on `note`: "Enter a reason for closing").
+- Email: a `recruiter_messages` email row per send/reminder (company + contact, or candidate); beat `pob026-placement-surveys` daily 03:30 UTC.

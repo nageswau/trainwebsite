@@ -12491,3 +12491,20 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - W6/W7: per vendor, all time: average response time (requirement created → first share to the vendor), submitted, interview conversion, placements, joining rate and payment history, each computed from the drill-down rows it lists; a zero denominator is null ("—", never 0%).
   - W8/W9: API §12LZ; a "Vendor commercials" section on a vendor's company page and a "Vendor performance" report with a drill-down page.
 - **Not built:** vendor-supplied candidates (we only have submissions *to* vendors), GST/PDF bills, automatic bills from joinings, a period filter.
+
+### DEC-SCOPE-435 — Client and candidate satisfaction feedback (pob-026)
+- **Date:** 2026-11-08. **Status:** built; S1-S12 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions. Dependency pob-024 (`DEC-SCOPE-432`) is built.
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-026-satisfaction-survey-design.md`. Migration `0316_placement_surveys`; API §12MB; RBAC §2.326.
+- **Calls:**
+  - S1: a daily beat sweep (`pob026-placement-surveys`, 03:30 UTC = 09:00 IST) sends a placement's surveys once its offer is Joined and the actual joining date is 30-120 days ago (`SURVEY_AFTER_DAYS` / `SURVEY_LOOKBACK_DAYS`).
+  - S2: `placement_surveys`, one row per (placement, client|candidate), written once: sent, or skipped with `no_contact` / `no_email` / `no_sender` (never retried).
+  - S3: the client survey goes to the contact the candidate was last submitted to (pob-021 share) when active, emailable and not do-not-contact; otherwise the company's primary contact (the "contact has left" edge); otherwise skipped.
+  - S4/S5: the candidate's own email (not archived). Delivery is a rec-026 `recruiter_messages` email (timeline + worker retries), sent as the PO owner, else the recruiter, else the placement's creator.
+  - S6: the link is a signed JWT `{sub: survey id, type: placement_survey, exp}` valid 30 days from each send; no PII in the URL; nothing stored.
+  - S7: one reminder (a new link) 7 days after the first send while unanswered.
+  - S8: `GET`/`POST /public/placement-surveys/{token}`; 404 unknown, 410 answered or expired; the answer is set under a row lock, so a second POST or a race is 410.
+  - S9: every refused lookup (404/410) is an audit row with the IP; 20 in an hour from one IP → 429 with `Retry-After`.
+  - S10: the placement read gains `satisfaction {client, candidate}`; the response is audited `placement_survey.responded` (ids and rating only).
+  - S11: a manual Closed on `POST /recruiter/requirements/{id}/status` needs a note (422 `note` "Enter a reason for closing"); the joining auto-close and the employer / IT-jobs legacy words are unchanged.
+  - S12: a public page `/feedback/[token]` (noindex, no-referrer) and a Satisfaction section on the placement.
+- **Not built:** a template editor, multi-question/NPS forms, WhatsApp, a reporting roll-up (pob-029), an in-app notice on a response.

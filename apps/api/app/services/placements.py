@@ -34,6 +34,7 @@ from app.models import (
 from app.notifications.events import notify
 from app.schemas import PlacementInvoiceIssue, PlacementUpdate
 from app.services import applications, permissions
+from app.services import placement_surveys as surveys
 from app.services import recruiter_contracts as contracts
 from app.services import recruiter_requirements as requirements
 from app.services import recruiter_revenue as revenue
@@ -207,6 +208,7 @@ async def out(db: AsyncSession, user: User, placement: Placement, offer: JobOffe
         "candidate_confirmation": _confirmation(placement, "candidate"),
         "client_confirmation": _confirmation(placement, "client"),
         "commercials": commercials,
+        "satisfaction": await surveys.satisfaction(db, placement.id),  # pob-026 S10
         "permissions": {
             "can_edit": applications.can_write(user) and status != "did_not_join",
             "can_change_owner": user.role in OWNER_SETTERS and status != "did_not_join",

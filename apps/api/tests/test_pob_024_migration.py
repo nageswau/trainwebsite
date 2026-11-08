@@ -51,6 +51,7 @@ def _tables(url) -> set[str]:
 
 def test_the_round_trip(isolated_db):
     cfg, url = isolated_db["cfg"], isolated_db["url"]
+    _sql(url, "DROP TABLE IF EXISTS placement_surveys", autocommit=True)  # pob-026's child of placements (0316, later in the chain)
     _sql(url, "DROP TABLE IF EXISTS placements", autocommit=True)  # 0001 builds today's models: the guarded upgrade must add it back
     command.upgrade(cfg, HEAD)
     assert "placements" in _tables(url)

@@ -136,6 +136,7 @@ from app.api import (
     recruiter_messages,
     recruiter_offers,
     recruiter_pipeline,
+    recruiter_placements,
     recruiter_pools,
     recruiter_requirements,
     recruiter_revenue,
@@ -219,6 +220,7 @@ app.include_router(recruiter_interviews.interviewer_router, prefix="/api/v1")  #
 app.include_router(recruiter_interviews.results_router, prefix="/api/v1")  # hrc-030 (DEC-SCOPE-409): result approval and release
 app.include_router(recruiter_interviews.exceptions_router, prefix="/api/v1")  # hrc-032 (DEC-SCOPE-413): delivery exceptions
 app.include_router(recruitment_insights.router, prefix="/api/v1")  # hrc-034 (DEC-SCOPE-416): skill demand, portal analytics, data quality
+app.include_router(recruiter_placements.public_router, prefix="/api/v1")  # pob-026 (DEC-SCOPE-435): the no-login satisfaction survey
 # nehn-003 (DEC-SCOPE-279 PS3): no public static mount -- `/local-files/...` is a session-checked compatibility route.
 app.include_router(files.local_router)
 
