@@ -37,6 +37,7 @@ from app.schemas import (
     CandidateDetail,
     CandidateEngagementKey,
     CandidateMergeBody,
+    CandidateOutreachIn,
     CandidateOwnershipIn,
     CandidateOwnershipSettings,
     CandidateOwnershipSettingsOut,
@@ -57,6 +58,7 @@ from app.services import candidate_ownership as ownership
 from app.services import candidate_previews as previews
 from app.services import candidate_privacy as privacy
 from app.services import candidate_profile as profile
+from app.services import candidate_sourcing as sourcing
 from app.services import candidates as svc
 from app.services import resume_extraction as extraction
 from app.services import website_registrations as registrations
@@ -287,8 +289,11 @@ async def create_candidate(payload: dict = Body(...), user: User = Depends(get_c
     lawful_basis = privacy.basis(payload.pop("lawful_basis", None)) if isinstance(payload, dict) else None  # hrc-035 K1
     data = _body(CandidateCreate, payload).model_dump()
     stored = {kind: data.pop(kind) for kind in profile.ROWS}  # hrc-010 P1
+    if data["source_date"] is None:
+        del data["source_date"]  # pob-018 A2: today (IST), the model's default
     await svc.require_compensation(db, user, payload)
     await svc.active_source(db, data["source_id"])
+    await sourcing.check_links(db, user, None, data)  # pob-018 A3
     candidate = Candidate(**data, mobile_normalized=normalise_phone(data["mobile"]), created_by_user_id=user.id)  # email: lower-cased by the schema
     profile.sync(candidate, stored, set(payload))  # hrc-010 P4/P5
     await compensation.normalise(db, candidate)  # hrc-011
@@ -361,6 +366,7 @@ async def update_candidate(candidate_id: UUID, payload: dict = Body(...), user: 
         raise HTTPException(409, svc.ARCHIVED)
     if changes.get("source_id", candidate.source_id) != candidate.source_id:
         await svc.active_source(db, changes["source_id"])
+    await sourcing.check_links(db, user, candidate.id, {k: v for k, v in changes.items() if getattr(candidate, k, None) != v})  # pob-018 A3
     # hrc-004: the stored values, for the audit diff -- hrc-010: plus the rows sent and the mirrors they may move (P5)
     audited = {*changes, *profile.DERIVED}
     stored_before = await profile.rows(db, candidate.id)
@@ -407,6 +413,29 @@ async def change_ownership(candidate_id: UUID, payload: dict = Body(...), user: 
         raise HTTPException(409, svc.ARCHIVED)
     await ownership.change(db, user, candidate, sent)
     await db.commit()
+    return await svc.detail_out(db, user, candidate)
+
+
+@router.post("/{candidate_id}/verify", response_model=CandidateDetail, response_model_exclude_unset=True)
+async def verify_candidate(candidate_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """pob-018 (DEC-SCOPE-428 A6, AC2): "Verify details" -- today (IST) and who; an archived candidate 409."""
+    svc.require_writer(user)
+    candidate = await svc.load(db, candidate_id, lock=True, viewer_id=user.id)
+    sourcing.verify(db, user, candidate)
+    await db.commit()
+    svc.log("candidate_verified", user, candidate)
+    return await svc.detail_out(db, user, candidate)
+
+
+@router.put("/{candidate_id}/outreach", response_model=CandidateDetail, response_model_exclude_unset=True)
+async def set_outreach(candidate_id: UUID, payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """pob-018 (A4/A5): the outreach status and, with `consented`, how and when the candidate agreed to be represented. Same values = no-op."""
+    svc.require_writer(user)
+    candidate = await svc.load(db, candidate_id, lock=True, viewer_id=user.id)
+    body = _body(CandidateOutreachIn, payload)
+    if sourcing.set_outreach(db, user, candidate, body):
+        await db.commit()
+        svc.log("candidate_outreach_changed", user, candidate, status=body.status)
     return await svc.detail_out(db, user, candidate)
 
 

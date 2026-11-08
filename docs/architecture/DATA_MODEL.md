@@ -2476,3 +2476,6 @@ The downgrade refuses while a vendor or an NDA exists.
 - `detail` (CHECK `named` | `anonymised` | `full`; default `named`; `named` exactly when the recipient is the client).
 - `consent_reference` (text ≤ 300; set exactly when `detail = 'full'`).
 - A vendor share is never on the `portal` channel (CHECK).
+### pob-018 — source attribution and outreach permission (`DEC-SCOPE-428`, migration `0309_candidate_sourcing`)
+
+**`candidates`** gains `source_date` date NOT NULL (default today IST; backfilled to `created_at` in IST), `referrer_name` ≤ 160, `referrer_candidate_id` → candidates, `vendor_id` → companies (partial index where not null), `portal_import_reference` ≤ 120, `last_verified_on`, `last_verified_by_user_id` → users, `outreach_status` NOT NULL default `not_contacted` (CHECK: not_contacted, contacted, responded, consented, declined), `outreach_status_changed_at`, `outreach_permission_method` (CHECK: call, email, whatsapp, linkedin, in_person, form, other), `outreach_permission_on`, `outreach_permission_note` ≤ 500, `outreach_permission_by_user_id` → users. CHECKs: `consented` ⇔ method, date and recorder all set; the referrer is not the candidate itself. All FKs `ON DELETE RESTRICT`. `rec_candidate_sources` gains Vendor, Website (hrc-023's value), Community, Institution when missing.

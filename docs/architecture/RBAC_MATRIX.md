@@ -4056,3 +4056,8 @@ A placement officer has no company scope, but answering Missing still creates th
 - **No new grants.** Setting `via_vendor_id` and `end_client_disclosure` follows the requirement edit rules (rec-007/hrc-006). The vendor must be in the caller's company scope; roles outside the company CRM get 422.
 - **Vendor shares** follow the rec-019 share rules (the requirement's writers, `require_writer`). The vendor gate (V5) and the consent stub (V7) are server-side and apply to every role, super_admin included.
 - **Disclosure:** staff readers always see the end client's name. Public visitors and students see "Confidential client" when it is `internal`.
+### 2.319 Source attribution, verification and outreach permission *(added 2026-11-08 — `DEC-SCOPE-428`, pob-018)*
+
+- **Read (`sourcing` on the candidate):** every candidate reader (placement_team, placement_manager, super_admin, hr_team); institution students stay pob-014-scoped (404).
+- **Change attribution / verify / outreach:** candidate writers (placement_team, placement_manager, super_admin); hr_team 403. A vendor link needs the vendor in the caller's company scope; a referrer link needs the referrer in the caller's pool (422 otherwise, one message).
+- **Profile share:** additionally refused (422) for a candidate without an outreach permission.

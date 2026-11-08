@@ -12420,3 +12420,15 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - V9: a vendor share does not move the end client's BD pipeline; the vendor's contact status and last contact move.
   - V10-V12: the output gains `via_vendor`, `end_client_disclosure`, a share's `recipient`/`detail`/`consent_reference`. The audit carries recipient and detail, never the consent text. No new grants.
 - **Not built:** per-candidate consent records, SUB- codes, statuses, the SLA and the redacted resume (pob-021); vendor payables and performance (pob-012); anonymised shares to clients.
+### DEC-SCOPE-428 — Source attribution, verification and outreach permission (pob-018)
+- **Date:** 2026-11-08. **Status:** built; A1-A12 are the builder's calls (`NEEDS_CONFIRMATION`). **Evidence:** backlog pob-018 (§8.1, §17).
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-018-source-attribution-outreach-design.md`. Migration `0309_candidate_sourcing`; API §12LU; RBAC §2.319.
+- **Calls:**
+  - A1: catalogue adds Vendor, Website (the hrc-023 name, so "Website registration" stays one entry), Community, Institution.
+  - A2: `source_date` required, default today (IST), never future; existing candidates backfilled to their `created_at` date (IST).
+  - A3: referrer name and/or a referrer candidate the caller can see; a vendor company in the caller's company scope; a portal import reference (manual / licensed exports only, Q-13). Institution stays pob-014's.
+  - A4/A5: outreach status (not contacted → contacted → responded → consented → declined, any manual move); `consented` carries the permission (method, date, note, recorder); leaving it withdraws the permission (audit keeps it).
+  - A6: Verify details sets `last_verified_on` (IST) and who.
+  - A7 (AC3): a profile share (today's only submission; pob-021 will reuse `candidate_sourcing.permitted`) needs a recorded permission, the candidate's own opt-in (student, portal, website) or an institution permission (pob-014).
+  - A9: the anonymiser clears the referrer name, the portal reference and the permission note.
+- **Not built:** search filters/enrichment (pob-019); per-submission consent (pob-021); an import column for source date or permission; merge field choice for attribution (the survivor keeps its own).

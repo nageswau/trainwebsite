@@ -13,6 +13,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
+    Candidate,
     Company,
     CompanyAssignmentHistory,
     CompanyBranch,
@@ -67,7 +68,8 @@ MOVED = {
     "contracts": RecruiterContract, "documents": CompanyDocument, "shares": ProfileShare, "drives": RecruitmentDrive, "stage_history": CompanyStageHistory,
     "assignment_history": CompanyAssignmentHistory, "import_rows": CrmImportRow,
 }  # fmt: skip
-HANDLED = (CompanyBranch, CompanySkillDemand, EmployerProfile, CompanyVendorStatusHistory)  # M4's two rules; an employer's company is refused as the victim (M2); a vendor is refused (pob-010 V11)
+# M4's two rules; an employer's company is refused as the victim (M2); a vendor is refused (pob-010 V11), so a candidate's vendor (pob-018) never moves
+HANDLED = (CompanyBranch, CompanySkillDemand, EmployerProfile, CompanyVendorStatusHistory, Candidate)
 
 CONTACT_FIELDS = ("name", "designation", "department", "role_id", "mobile", "email", "linkedin_url", "preferred_channel", "notes", "source", "verified_on")  # C3
 CONTACT_MOVED = {

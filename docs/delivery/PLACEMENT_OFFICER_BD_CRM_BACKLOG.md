@@ -635,6 +635,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** low.
 
 #### pob-018: Source attribution, verification and outreach permission
+- **Status:** built (`DEC-SCOPE-428`, 2026-11-08); A1–A12 are the builder's calls (`NEEDS_CONFIRMATION`); per-submission consent stays with pob-021.
 - **Business requirement:** §8.1 channel rules (LinkedIn URL + source date + outreach status; portal imports through approved tools; referrals/vendors recorded); "All candidate records must retain source attribution, consent/permission status where required and a date last verified"; §17 LinkedIn/portal terms.
 - **Existing behavior:** there is a source catalogue (12, with no vendor, website or community entries), free-text `source_detail` and a LinkedIn URL. There is no source date, outreach status, referrer/vendor link or last-verified date. External candidates have no permission record.
 - **Expected behavior:**

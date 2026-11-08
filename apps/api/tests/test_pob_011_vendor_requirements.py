@@ -12,7 +12,7 @@ from app import models
 from app.models import AuditLog, Company, CompanyContact, CompanyDocument, Job, RecruiterContract, RecruiterMessage
 from tests.rec001_helpers import make_recruiter
 from tests.test_rec_017_tracking import _candidate, _requirement, _tag, _team
-from tests.test_rec_019_shares import _upload, published, smtp_on  # noqa: F401  (fixtures)
+from tests.test_rec_019_shares import _upload, permitted, published, smtp_on  # noqa: F401  (fixtures)
 
 SHARES = "/api/v1/recruiter/shares"
 REQ = "/api/v1/recruiter/requirements"
@@ -45,7 +45,8 @@ async def _setup(client, db, n=2, **vendor_opts):
     job = await _requirement(db, recruiter)
     job.via_vendor_id = vendor.id
     await db.commit()
-    people = [await _candidate(db, recruiter, mobile=f"+9197{uuid.uuid4().int % 10**8:08d}", current_company=f"Acme {_tag()}", location="Pune") for _ in range(n)]
+    people = [await _candidate(db, recruiter, mobile=f"+9197{uuid.uuid4().int % 10**8:08d}", current_company=f"Acme {_tag()}", location="Pune", **permitted(recruiter))
+              for _ in range(n)]
     return {"manager": manager, "recruiter": recruiter, "vendor": vendor, "vendor_contact": await _contact(db, vendor.id), "job": job,
             "client_contact": await _contact(db, job.company_id), "candidates": people}  # fmt: skip
 
@@ -203,7 +204,7 @@ async def test_direct_shares_across_requirements_stay_unwarned(client, db_sessio
     _, recruiter = await _team(client, db_session)
     first_job = await _requirement(db_session, recruiter)
     second_job = await _requirement(db_session, recruiter, company=await db_session.get(Company, first_job.company_id))
-    person = await _candidate(db_session, recruiter)
+    person = await _candidate(db_session, recruiter, **permitted(recruiter))  # pob-018 AC3
     for job in (first_job, second_job):
         response = await client.post(SHARES, json={"requirement_id": str(job.id), "candidate_ids": [str(person.id)], "channel": "other"})
         assert response.status_code == 201, response.text

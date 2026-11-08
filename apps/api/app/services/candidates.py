@@ -326,6 +326,7 @@ def item_out(candidate: Candidate, source: RecCandidateSource) -> dict:
         "status": candidate.status,
         "archived": candidate.archived_at is not None,
         "created_at": candidate.created_at,
+        "source_date": candidate.source_date,  # pob-018 (DEC-SCOPE-428 A2)
     }
 
 
@@ -350,6 +351,8 @@ DETAIL_FIELDS = (
 
 async def detail_out(db: AsyncSession, user: User, candidate: Candidate) -> dict:
     """Every field, the people, and the resume versions newest first (the first one is current)."""
+    from app.services import candidate_sourcing  # pob-018: that module builds on this one (pool filter, audit)
+
     await db.refresh(candidate)
     source = await db.get(RecCandidateSource, candidate.source_id)
     ids = {candidate.created_by_user_id, candidate.updated_by_user_id} - {None}
@@ -386,6 +389,7 @@ async def detail_out(db: AsyncSession, user: User, candidate: Candidate) -> dict
         "ownership": ownership,
         "consent": await candidate_privacy.latest_consent(db, candidate.id),  # hrc-035 (DEC-SCOPE-396 K2)
         "engagement": candidate_engagement.out((await candidate_engagement.of(db, [candidate.id])).get(candidate.id)),  # hrc-021
+        "sourcing": await candidate_sourcing.out(db, user, candidate),  # pob-018 (DEC-SCOPE-428 A10)
     }
 
 
