@@ -183,3 +183,9 @@ async def my_offers(user: User = Depends(get_current_user), db: AsyncSession = D
 async def my_offer_letter(offer_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require_student(user)
     return await _download(db, user, await svc.student_offer(db, user, offer_id))
+
+
+# pob-024 (DEC-SCOPE-432): the placement routes share this router's `/recruiter` prefix (no main.py change).
+from app.api.recruiter_placements import router as _placements  # noqa: E402
+
+router.include_router(_placements)

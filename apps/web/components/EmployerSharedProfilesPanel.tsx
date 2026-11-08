@@ -9,6 +9,7 @@ import {
   experienceLabel,
   isPortalItem,
   isPortalPage,
+  matchSummary,
   PAGE_SIZE,
   type PortalItem,
   type PortalPage,
@@ -23,6 +24,7 @@ function Profile({ item, onAnswered }: { item: PortalItem; onAnswered: (next: Po
   const [busy, setBusy] = useState(false);
   const id = useId();
   const c = item.candidate;
+  const who = c.name ?? `Candidate ${c.code}`; // pob-021 B8: an anonymised submission has no name
   const facts: [string, string | null][] = [
     ["Qualification", [c.qualification, c.college, c.passing_year].filter(Boolean).join(" · ") || null],
     ["Experience", experienceLabel(c.experience_months)],
@@ -31,21 +33,24 @@ function Profile({ item, onAnswered }: { item: PortalItem; onAnswered: (next: Po
     ["Preferred locations", c.preferred_locations.join(", ") || null],
     ["Preferred role", c.preferred_role],
     ["Notice period", c.notice_days === null ? null : `${c.notice_days} days`],
+    ["Expected salary", c.expected_salary ?? null], // pob-021 B9: only when the recruiter sent it
+    ["Skills match", matchSummary(item.match)], // pob-021 B14
   ];
 
   async function save() {
     setBusy(true);
     const outcome = await sendJson(employerItemUrl(item.id), "PATCH", { response });
     setBusy(false);
-    if (outcome.ok && isPortalItem(outcome.data)) onAnswered(outcome.data, `Response saved for ${c.name}.`);
+    if (outcome.ok && isPortalItem(outcome.data)) onAnswered(outcome.data, `Response saved for ${who}.`);
     else onAnswered(null, outcome.ok ? "Unable to save the response." : outcome.message);
   }
 
   return (
     <li className="action-card" style={{ listStyle: "none", gap: 8 }} aria-labelledby={`${id}-name`}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>
-        <h4 id={`${id}-name`} style={{ margin: 0, overflowWrap: "anywhere" }}>{c.name}</h4>
+        <h4 id={`${id}-name`} style={{ margin: 0, overflowWrap: "anywhere" }}>{who}</h4>
         <span className="muted" style={{ fontSize: 13 }}>{c.code}</span>
+        {item.submission_code && <span className="muted" style={{ fontSize: 13 }}>{item.submission_code}</span>}
         <span className="badge">{item.response_label}</span>
       </div>
       <p className="muted" style={{ margin: 0, fontSize: 13 }}>
@@ -62,7 +67,7 @@ function Profile({ item, onAnswered }: { item: PortalItem; onAnswered: (next: Po
       {c.skills.length > 0 && <p style={{ margin: 0, fontSize: 14 }}><span className="muted">Skills:</span> {c.skills.join(", ")}</p>}
       <div className="actions" style={{ flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
         {item.has_resume ? (
-          <a className="btn secondary small" href={`${employerItemUrl(item.id)}/resume`}>Download resume<span className="visually-hidden"> of {c.name}</span></a>
+          <a className="btn secondary small" href={`${employerItemUrl(item.id)}/resume`}>Download resume<span className="visually-hidden"> of {who}</span></a>
         ) : <span className="muted" style={{ fontSize: 13 }}>Resume on request</span>}
         <label htmlFor={`${id}-response`} style={{ display: "grid", gap: 4 }}>
           Your response
@@ -71,7 +76,7 @@ function Profile({ item, onAnswered }: { item: PortalItem; onAnswered: (next: Po
           </select>
         </label>
         <button type="button" className="btn small" disabled={busy || response === item.response} onClick={() => void save()}>
-          {busy ? "Saving…" : "Save response"}<span className="visually-hidden"> for {c.name}</span>
+          {busy ? "Saving…" : "Save response"}<span className="visually-hidden"> for {who}</span>
         </button>
       </div>
     </li>

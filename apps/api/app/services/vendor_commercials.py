@@ -1,4 +1,4 @@
-"""pob-012 (DEC-SCOPE-429): vendor payables and receivables (W2/W3) and vendor performance (W6/W7). Track only, like rec-031.
+"""pob-012 (DEC-SCOPE-433): vendor payables and receivables (W2/W3) and vendor performance (W6/W7). Track only, like rec-031.
 
 Functions only; nothing here commits -- the route owns the transaction. The `commercials.vendor` grant is checked first (W4: view to read,
 edit to write), then the vendor resolves through the company scope (`load_scoped`), so an id outside it is the same 404 as a missing one.

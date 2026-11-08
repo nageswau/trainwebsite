@@ -1,7 +1,7 @@
-"""pob-012 -- vendor payables and receivables (DEC-SCOPE-429 W2, W3, W10).
+"""pob-012 -- vendor payables and receivables (DEC-SCOPE-433 W2, W3, W10).
 
-Revision ID: 0310_vendor_bills
-Revises: 0309_candidate_sourcing
+Revision ID: 0314_vendor_bills
+Revises: 0313_submissions
 
 docs/superpowers/specs/2026-11-08-pob-012-vendor-commercials-performance-design.md. Additive only: `vendor_bills` and
 `vendor_bill_payments`. 0001 runs `create_all` from today's models, so a fresh database already has both tables: each is created only when
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0310_vendor_bills"
-down_revision = "0309_candidate_sourcing"
+revision = "0314_vendor_bills"
+down_revision = "0313_submissions"
 branch_labels = None
 depends_on = None
 

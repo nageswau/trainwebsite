@@ -184,14 +184,16 @@ def hard_filter_gaps(spec: Spec, facts: dict) -> list[str]:
     return [k for k in HARD_FILTERS if k in spec.hard and failed[k]]
 
 
-def evaluate(spec: Spec, facts: dict, *, today: date, amounts: bool = True, audience: str = "staff") -> dict | None:
-    """The pure rule (E4-E7, E9). `amounts=False` keeps salary figures out (E8); the candidate audience gets no salary line (E9)."""
+def evaluate(spec: Spec, facts: dict, *, today: date, amounts: bool = True, audience: str = "staff", gate: bool = True) -> dict | None:
+    """The pure rule (E4-E7, E9). `amounts=False` keeps salary figures out (E8); the candidate audience gets no salary line (E9).
+    `gate=False` (pob-021 B14) scores a candidate who misses a required skill or a hard filter instead of dropping them, so a
+    submission's match block can name the gaps."""
     hits = skill_hits(spec, facts)
     required = [s for s in spec.skills if s["kind"] == "required"]
     preferred = [s for s in spec.skills if s["kind"] == "preferred"]
-    if required and not all(hits[s["id"]] for s in required):
+    if gate and required and not all(hits[s["id"]] for s in required):
         return None
-    if not required and not any(hits[s["id"]] for s in preferred):
+    if gate and not required and not any(hits[s["id"]] for s in preferred):
         return None  # rec-016 M4: with no required skill, at least one preferred one
     breakdown = [{"key": f"skill:{s['id']}", "label": s["name"], "kind": s["kind"], "points": s["points"] if hits[s["id"]] else 0,
                   "max": s["points"], "matched": hits[s["id"]]} for s in spec.skills]  # fmt: skip
@@ -228,7 +230,7 @@ def evaluate(spec: Spec, facts: dict, *, today: date, amounts: bool = True, audi
         ok, words, _fit = _salary(spec, facts, today, amounts)
         checks["salary"] = (ok, words)
 
-    if hard_filter_gaps(spec, facts):  # E6: the optional hard filters; an unknown value fails
+    if gate and hard_filter_gaps(spec, facts):  # E6: the optional hard filters; an unknown value fails
         return None
 
     for key in MATCH_FACTORS[1:]:

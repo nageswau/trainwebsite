@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
 
 import ReturnToLoginLink from "@/components/ReturnToLoginLink";
@@ -7,6 +8,7 @@ import { SAVE_FAILED, SESSION_ENDED, writeFailure } from "@/lib/bdmTasks";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { fieldErrors } from "@/lib/bdmTravel";
 import { formatCalendarDate, formatSchoolDateTime } from "@/lib/formatDate";
+import { placementPath } from "@/lib/placements";
 import { RECRUITER_SIGN_IN } from "@/lib/recruiterCompanies";
 import {
   type ApplicationOffer, applicationOfferUrl, isApplicationOffer, type Joining, LETTER_ACCEPT, LETTER_MAX_BYTES, NOTE_MAX, OFFER_STATUS_LABELS, offerEventText,
@@ -326,6 +328,9 @@ function JoiningSection({ offer: o, joining: j, candidateName, onChanged }: {
         <p style={{ margin: 0 }}>
           <a href={offerUrl(o.id, "joining/proof")} download style={LINK_STYLE}>Download joining proof<span className="muted" style={{ fontSize: 13 }}>{j.proof.name ? ` (${j.proof.name})` : ""}</span></a>
         </p>
+      )}
+      {o.placement_id && (
+        <p style={{ margin: 0 }}><Link href={placementPath(o.placement_id)} style={LINK_STYLE}>Open placement</Link></p>
       )}
       {j.can_edit && !editing && (
         <div className="actions">

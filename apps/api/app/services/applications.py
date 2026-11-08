@@ -46,6 +46,7 @@ LEGACY = {  # A1: the words the legacy routes have always written; migration 012
 }
 OPEN = ("sourced", "screened", "shortlisted", "profile_shared", "interview")
 INITIAL = ("sourced", "screened", "shortlisted")  # what a recruiter may add a candidate at
+SUBMITTED = ("profile_shared", "interview", "selected", "joined")  # pob-017 (S5/S6): the client has the profile
 TRANSITIONS = {  # A2: free moves among the open statuses; Joined only from Selected; Rejected / Withdrawn reopen to Sourced
     **{s: (*(o for o in OPEN if o != s), "selected", "rejected", "withdrawn") for s in OPEN},
     "selected": ("joined", "rejected", "withdrawn"),
@@ -119,6 +120,9 @@ def _record(db: AsyncSession, actor: User | None, application: JobApplication, t
         application.candidate_status = target
     application.stage_changed_at = datetime.now(UTC)
     application.needs_review_since = None  # hrc-009 (R4): a move answers an eligibility review
+    if target in SUBMITTED:  # pob-017 (S6): the candidate's source at the first submission, kept after; in SQL, so the attribute is never read here
+        source = select(Candidate.source_id).where(Candidate.id == application.candidate_id).scalar_subquery()
+        application.submitted_source_id = func.coalesce(JobApplication.submitted_source_id, source)
     return previous
 
 
@@ -206,6 +210,7 @@ async def create(db: AsyncSession, actor: User, job: Job, candidate: Candidate, 
         # hrc-026 (A5/A6): where it came from, and the recruiter who owns it (the adding recruiter, else the requirement's)
         source="drive" if drive_id else "portal" if own else "employer" if actor.role == "employer" else "recruiter",
         owner_user_id=actor.id if actor.role == ROLE else job.assigned_recruiter_user_id,
+        submitted_source_id=candidate.source_id if status in SUBMITTED else None,  # pob-017 (S6)
     )
     db.add(application)
     try:

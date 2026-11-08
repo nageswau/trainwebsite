@@ -1,8 +1,8 @@
-# pob-012 — Vendor commercials, payables and performance (DEC-SCOPE-429)
+# pob-012 — Vendor commercials, payables and performance (DEC-SCOPE-433)
 
 **Evidence:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` pob-012 (`UNVERIFIED` requirements draft). The owner asked to proceed
 with the recommended answers; W1–W10 are the builder's calls and are `NEEDS_CONFIRMATION`.
-**Dependencies:** pob-010 (vendor master, vendor agreement) and pob-011 (`jobs.via_vendor_id`, vendor shares) are merged.
+**Dependencies:** pob-010 (vendor master, vendor agreement), pob-011 (`jobs.via_vendor_id`, vendor shares) are merged.
 
 **Non-goals:** vendor-supplied candidates (a vendor submitting profiles to us); GST/PDF invoices (rec-031 R9: track only); automatic
 bills from joinings; a period filter on the report; vendor merge.
@@ -38,11 +38,11 @@ bills from joinings; a period filter on the report; vendor merge.
 - **W7 Tie-out (AC).** The drill-down returns the rows the figures are counted from (requirements with their response hours;
   submitted applications with interviewed/placed/joined flags). Both the report and the drill-down compute the figures from the same
   rows in one function, so every figure equals its drill-down count.
-- **W8 API (§12LV).** `GET/POST /recruiter/companies/{id}/vendor-bills`, `POST /recruiter/vendor-bills/{id}/payments`,
+- **W8 API (§12LZ).** `GET/POST /recruiter/companies/{id}/vendor-bills`, `POST /recruiter/vendor-bills/{id}/payments`,
   `POST /recruiter/vendor-bills/{id}/cancel`, `GET /recruiter/vendors/performance` (paged vendors), `GET /recruiter/vendors/{id}/performance`.
 - **W9 UI.** A "Vendor commercials" section on a vendor's company page (totals, bills with payments, record bill / payment / cancel)
   for holders of the view grant; a "Vendor performance" page linked from the Vendors page, each row opening the drill-down page.
-- **W10 Migration `0310_vendor_bills`.** Additive and guarded (0001 runs `create_all`); the downgrade drops both tables.
+- **W10 Migration `0314_vendor_bills`.** Additive and guarded (0001 runs `create_all`); the downgrade drops both tables.
 
 ## Security review
 
@@ -57,7 +57,7 @@ CSRF/session unchanged. Concurrency: bill row `FOR UPDATE` on payment and cancel
 2. Models + migration + schemas + `services/vendor_commercials.py` + `api/vendor_commercials.py` + ledger source. GREEN.
 3. Web: `lib/vendorCommercials.ts`, `RecruiterVendorCommercials.tsx`, `RecruiterVendorPerformance.tsx`, two pages; vitest.
 4. Playwright `pob-012-vendor-commercials.spec.ts`.
-5. Docs: DEC-SCOPE-429, API §12LV, DATA_MODEL, RBAC §2.320, RTM, backlog status.
+5. Docs: DEC-SCOPE-433, API §12LZ, DATA_MODEL, RBAC §2.324, RTM, backlog status.
 
 ## Regression risks
 

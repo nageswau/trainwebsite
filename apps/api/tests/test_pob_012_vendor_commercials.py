@@ -1,4 +1,4 @@
-"""pob-012 -- vendor commercials, payables and performance (DEC-SCOPE-429 W1-W10). Shared database: every value is unique per test."""
+"""pob-012 -- vendor commercials, payables and performance (DEC-SCOPE-433 W1-W10). Shared database: every value is unique per test."""
 
 import importlib.util
 import pathlib
@@ -200,9 +200,9 @@ async def test_a_vendor_with_no_submissions_shows_null_rates(client, db_session)
 
 # --- W10: the migration ----------------------------------------------------------------------------------------------------------
 def test_the_migration_repeats_the_model_checks():
-    path = pathlib.Path(__file__).resolve().parents[1] / "alembic" / "versions" / "0310_vendor_bills.py"
-    spec = importlib.util.spec_from_file_location("m0310", path)
+    path = pathlib.Path(__file__).resolve().parents[1] / "alembic" / "versions" / "0314_vendor_bills.py"
+    spec = importlib.util.spec_from_file_location("m0314", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.BILL_CHECKS == models.VENDOR_BILL_CHECKS and module.PAYMENT_CHECKS == models.VENDOR_BILL_PAYMENT_CHECKS
-    assert module.down_revision == "0309_candidate_sourcing"
+    assert module.down_revision == "0313_submissions"

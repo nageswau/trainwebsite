@@ -116,6 +116,7 @@ from app.models import (
     PARTNERSHIP_POTENTIALS,
     PARTNERSHIP_TARGET_KPI_KEYS,
     PARTNERSHIP_TARGET_MAX,
+    PLACEMENT_CONFIRMATION_CHANNELS,
     PLAN_STATUSES,
     PLAN_VERTICALS,
     PO_TARGET_KPIS,
@@ -9915,6 +9916,7 @@ REC_COMPANY_FIELDS = (  # the columns a create or edit may write; everything els
     "products_services", "departments_hiring", "hiring_locations", "target_roles",  # pob-003 D2
     "partner_type", "vendor_specialisations", "vendor_service_categories", "vendor_locations",  # pob-010 V2/V3
     "territory",  # pob-009 T4
+    "submission_sla_hours",  # pob-021 B10
 )
 REC_COMPANY_RELATIONS = ("branch_locations", "skill_demand_ids")  # pob-003 D1/D3: rows in their own tables, replaced as a set
 
@@ -10152,6 +10154,7 @@ class RecCompanyUpdate(BaseModel):
     vendor_service_categories: RecContextList = None
     vendor_locations: RecContextList = None
     territory: RecCompanyShort = None  # pob-009 T4: free text; null clears
+    submission_sla_hours: int | None = Field(default=None, ge=1, le=720)  # pob-021 B10: null = the 48-hour default
 
 
 class RecVendorStatusMove(BaseModel):
@@ -10480,6 +10483,7 @@ class RecCompanyOut(RecCompanyRow):
     branch_locations: list[RecBranchOut] = []
     skill_demand: list[RecCatalogueRef] = []
     merged_into: RecCompanyMergedInto | None = None  # pob-006 M6
+    submission_sla_hours: int | None = None  # pob-021 B10
     archived_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -11477,6 +11481,32 @@ class RecChecklistCompanyRule(BaseModel):
     block_sourcing: StrictBool | None
 
 
+SourcingTarget = Annotated[StrictInt, Field(ge=0, le=10000)]
+
+
+class RecSourcingString(BaseModel):
+    """pob-017 (S1): a Boolean search string for an external site, kept as text (copy only)."""
+
+    model_config = ConfigDict(extra="forbid")
+    label: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
+    query: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+
+
+class RecSourcingPlanIn(BaseModel):
+    """pob-017 (S1-S3, S8): the whole plan; a save replaces it. Ids are checked by the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    target_profile: Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)] | None, AfterValidator(lambda v: v or None)] = None
+    boolean_strings: list[RecSourcingString] = Field(default_factory=list, max_length=10)
+    channel_ids: list[UUID] = Field(default_factory=list, max_length=20)
+    saved_search_ids: list[UUID] = Field(default_factory=list, max_length=10)
+    target_found: SourcingTarget | None = None
+    target_screened: SourcingTarget | None = None
+    target_submitted: SourcingTarget | None = None
+    deadline: date | None = None
+    source_owner_user_id: UUID | None = None
+
+
 class RecRequirementVisibility(BaseModel):
     """hrc-008 (DEC-SCOPE-385 V1/V7): who sees the job; a segment names its talent pool and nothing else does."""
 
@@ -12043,6 +12073,11 @@ class RecDriveUpdate(BaseModel):
 
 # --- rec-019 (DEC-SCOPE-160): profile sharing (services/profile_sharing) ---------------------------------------------------------------
 ShareResponse = Literal["pending", "interested", "not_interested", "interview_requested"]  # models.PROFILE_SHARE_RESPONSES
+SubmissionStatus = Literal["submitted", "client_reviewing", "shortlisted", "interview", "rejected", "on_hold", "selected", "withdrawn"]  # models.SUBMISSION_STATUSES
+SubmissionRejectionReason = Literal[
+    "skills_mismatch", "experience_mismatch", "compensation_mismatch", "location_mismatch", "notice_period", "duplicate_submission",
+    "position_filled", "client_not_interested", "candidate_withdrew", "other",
+]  # models.SUBMISSION_REJECTION_REASONS  # fmt: skip
 
 
 class RecShareCreate(BaseModel):
@@ -12057,14 +12092,18 @@ class RecShareCreate(BaseModel):
     repeat: bool = False
     # pob-011 (DEC-SCOPE-427 V4-V7): to the requirement's vendor, anonymised unless `full` (which needs the consent stub; checked in the service)
     recipient: Literal["client", "vendor"] = "client"
-    detail: Literal["anonymised", "full"] | None = None
+    detail: Literal["named", "anonymised", "full"] | None = None
+    # pob-021 (DEC-SCOPE-430 B3, B4, B9): every submission needs the candidates' consent and confirmed interest (409 in the service);
+    # the salary line only on request and with the grant
     consent_confirmed: bool = False
     consent_reference: _rec_requirement_text_type(300) = None
+    interest_confirmed: bool = False
+    include_compensation: bool = False
 
     @model_validator(mode="after")
-    def _vendor_only(self):
-        if self.recipient == "client" and (self.detail is not None or self.consent_confirmed or self.consent_reference is not None):
-            raise ValueError("Detail and consent apply only to a share with a vendor")
+    def _detail_fits(self):
+        if self.detail is not None and self.detail not in (("named", "anonymised") if self.recipient == "client" else ("anonymised", "full")):
+            raise ValueError("A client gets a named or anonymised summary; a vendor an anonymised one or full details")
         return self
 
     @field_validator("candidate_ids")
@@ -12079,11 +12118,19 @@ class RecShareItemUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     response: ShareResponse | None = None
     feedback: _rec_requirement_text_type(1000, multiline=True) = None
+    # pob-021 (DEC-SCOPE-430 B11-B13): the submission's status, why it was rejected, the next step and the client's acknowledgement
+    status: SubmissionStatus | None = None
+    rejection_reason: SubmissionRejectionReason | None = None
+    next_action: _rec_requirement_text_type(300) = None
+    next_action_on: date | None = None
+    acknowledged: Literal[True] | None = None
 
     @model_validator(mode="after")
     def _something(self):
         if not self.model_fields_set:
             raise ValueError("Give a response or feedback")
+        if (self.status == "rejected") != (self.rejection_reason is not None):
+            raise ValueError("Choose a rejection reason with the Rejected status, and only with it")
         return self
 
 
@@ -13962,6 +14009,36 @@ class RecInvoiceCancel(BaseModel):
         BeforeValidator(_bdm_newlines),
         BeforeValidator(_blank_if_null),
     ]
+
+
+# --- pob-024 (DEC-SCOPE-432): the placement closure record ---------------------------------------------------------------------------
+class PlacementConfirmation(BaseModel):
+    """P5: who confirmed the joining, when (not in the future: the service's check) and how."""
+
+    model_config = ConfigDict(extra="forbid")
+    by: _rec_requirement_text_type(160) = None
+    on: date
+    via: Literal[PLACEMENT_CONFIRMATION_CHANNELS]
+
+
+class PlacementUpdate(BaseModel):
+    """PATCH: only the keys sent change; a confirmation sent as null is cleared. The PO owner is a Team Lead's (P6)."""
+
+    model_config = ConfigDict(extra="forbid")
+    candidate_confirmation: PlacementConfirmation | None = None
+    client_confirmation: PlacementConfirmation | None = None
+    po_owner_user_id: UUID | None = None
+
+
+class PlacementInvoiceIssue(BaseModel):
+    """P10: the rec-031 invoice fields (RV6) for the placement's requirement; the form starts from the draft."""
+
+    model_config = ConfigDict(extra="forbid")
+    invoice_number: Annotated[Annotated[str, _trimmed(40)], AfterValidator(_trip_text(_BDM_CONTROL, True, REC_REVENUE_LABELS)), BeforeValidator(_blank_if_null)]
+    invoice_date: Annotated[date, BeforeValidator(_trip_date("invoice date"))]
+    due_date: Annotated[date, BeforeValidator(_trip_date("due date"))]
+    amount: RecRevenueAmount
+    note: RecRevenueText = None
 
 
 class RecRevenueRef(BaseModel):
@@ -17111,7 +17188,7 @@ class PoReportSubmit(BaseModel):
 
 
 
-# --- pob-012 (DEC-SCOPE-429): vendor bills (payables / receivables) and vendor performance ------------------------------------------
+# --- pob-012 (DEC-SCOPE-433): vendor bills (payables / receivables) and vendor performance ------------------------------------------
 VENDOR_BILL_LABELS = {"bill_number": "Bill number", "milestone": "Milestone", "note": "Note", "reference": "Reference", "reason": "Reason"}
 VendorBillKind = Literal["payable", "receivable"]
 

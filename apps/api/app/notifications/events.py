@@ -72,6 +72,9 @@ EVENTS: dict[str, Event] = {
     "it.interview.feedback_escalated": Event("interview", "Interview feedback escalated", "Interview feedback is still overdue after a follow-up. Open EduSphere to review it."),
     # pob-008 (DEC-SCOPE-423 B3): the owner of a recruiter follow-up that is due soon or overdue -- never the reason, a note or a company
     "it.recruiter.follow_up_due": Event("recruiter_follow_up", "Follow-up due", "A follow-up is due soon or overdue. Open EduSphere to act on it."),
+    # pob-024 (DEC-SCOPE-432 P12/P13): a placement invoice (or its draft) is due / past due -- never an amount, a name or a date
+    "it.recruitment.invoice_due": Event("placement", "Placement invoice due", "A placement invoice is due. Open EduSphere for the details."),
+    "it.recruitment.invoice_overdue": Event("placement", "Placement invoice overdue", "A placement invoice is past its due date. Open EduSphere for the details."),
 }
 COUNT = "{count}"
 

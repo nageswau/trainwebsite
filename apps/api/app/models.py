@@ -675,6 +675,7 @@ COMPANY_NAME_KEY_SQL = r"lower(regexp_replace(btrim(name), '\s+', ' ', 'g'))"
 COMPANY_CHECKS = {
     "ck_companies_priority": "priority IS NULL OR priority IN ('hot', 'warm', 'cold')",
     "ck_companies_employee_count": "employee_count IS NULL OR employee_count BETWEEN 0 AND 10000000",
+    "ck_companies_submission_sla": "submission_sla_hours IS NULL OR submission_sla_hours BETWEEN 1 AND 720",  # pob-021 B10 (migration 0313)
 }
 # rec-005 (DEC-SCOPE-127): the pipeline stage and the Lost flag (both or neither); migration 0108 keeps a frozen copy.
 # pob-010 (DEC-SCOPE-420 V2/V3): migration 0300 keeps a frozen copy.
@@ -769,6 +770,8 @@ class Company(Base, TimestampMixin):
     vendor_specialisations: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
     vendor_service_categories: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
     vendor_locations: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    # pob-021 (DEC-SCOPE-430 B10): hours from a submission to its client follow-up; NULL = SUBMISSION_SLA_DEFAULT_HOURS
+    submission_sla_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)
     territory: Mapped[str | None] = mapped_column(String(120), nullable=True)  # pob-009 T4: free text, filterable case-insensitively
 
 
@@ -1238,6 +1241,47 @@ class JobChecklistOverride(Base, TimestampMixin):
     overridden_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
+# pob-017 (DEC-SCOPE-429 S1-S3): a requirement's sourcing plan, its planned channels and its linked saved searches. Migration 0310 repeats the checks.
+JOB_SOURCING_PLAN_CHECKS = {
+    "ck_job_sourcing_plans_targets": " AND ".join(f"({c} IS NULL OR {c} BETWEEN 0 AND 10000)" for c in ("target_found", "target_screened", "target_submitted")),
+    "ck_job_sourcing_plans_profile": "target_profile IS NULL OR char_length(target_profile) <= 2000",
+}
+
+
+class JobSourcingPlan(Base, TimestampMixin):
+    """pob-017 (S1): one per requirement, written by its first save; no row = an empty plan. `boolean_strings` is a list of {label, query} kept as
+    text for external sites (copy only). The source owner is one of the requirement's team (S8)."""
+
+    __tablename__ = "job_sourcing_plans"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in JOB_SOURCING_PLAN_CHECKS.items())
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), primary_key=True)
+    target_profile: Mapped[str | None] = mapped_column(Text, nullable=True)
+    boolean_strings: Mapped[list] = mapped_column(JSON, default=list)
+    target_found: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    target_screened: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    target_submitted: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    source_owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class JobSourcingChannel(Base):
+    """pob-017 (S2): a planned channel -- a candidate source the requirement will be sourced from."""
+
+    __tablename__ = "job_sourcing_channels"
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), primary_key=True)
+    source_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_candidate_sources.id", ondelete="RESTRICT"), primary_key=True)
+
+
+class JobSourcingSearch(Base):
+    """pob-017 (S3): an hrc-020 saved search linked to the requirement; deleting the search removes the link."""
+
+    __tablename__ = "job_sourcing_searches"
+    __table_args__ = (Index("ix_job_sourcing_searches_search", "saved_search_id"),)
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), primary_key=True)
+    saved_search_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("saved_candidate_searches.id", ondelete="CASCADE"), primary_key=True)
+
+
 class RequirementChecklistSetting(Base, TimestampMixin):
     """pob-016 (C6): one row (`id = 1`) holding the global rule; no row means off. A company's `checklist_blocks_sourcing` wins over it."""
 
@@ -1501,6 +1545,9 @@ class JobApplication(Base, TimestampMixin):
     owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     candidate_status: Mapped[str] = mapped_column(String(30), default=lambda ctx: _visible_status(ctx.get_current_parameters().get("status")), server_default=text("'sourced'"))
     rejection_reason: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # pob-017 (DEC-SCOPE-429 S6): the candidate's source when the application was first submitted; set once (services/applications), so the
+    # funnel keeps counting it there when the candidate's source later changes.
+    submitted_source_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_candidate_sources.id", ondelete="RESTRICT"), nullable=True)
 
 
 class JobApplicationStatusHistory(Base):
@@ -8694,10 +8741,26 @@ PROFILE_SHARE_ITEM_CHECKS = {
 PROFILE_SHARE_VENDOR_CHECKS = {
     "ck_profile_shares_recipient": "recipient IN ('client', 'vendor')",
     "ck_profile_shares_detail": "detail IN ('named', 'anonymised', 'full')",
-    "ck_profile_shares_recipient_detail": "(recipient = 'client') = (detail = 'named')",
+    # pob-021 (DEC-SCOPE-430 B8, migration 0313): a client summary is named or anonymised; a vendor's anonymised or full
+    "ck_profile_shares_recipient_detail": "(recipient = 'client' AND detail IN ('named', 'anonymised')) OR (recipient = 'vendor' AND detail IN ('anonymised', 'full'))",
     "ck_profile_shares_vendor_channel": "recipient = 'client' OR channel <> 'portal'",
     "ck_profile_shares_consent": "(detail = 'full') = (consent_reference IS NOT NULL) AND (consent_reference IS NULL OR char_length(consent_reference) <= 300)",
 }
+SUBMISSION_SEQ = Sequence("profile_share_item_submission_seq", maxvalue=999999, metadata=Base.metadata)
+# pob-021 (DEC-SCOPE-430 B1-B13): each item is a submission. `draft` is the wizard's unsaved state, never stored (B2). Migration 0313 repeats these.
+SUBMISSION_STATUSES = ("submitted", "client_reviewing", "shortlisted", "interview", "rejected", "on_hold", "selected", "withdrawn")
+SUBMISSION_CLOSED = ("rejected", "selected", "withdrawn")
+SUBMISSION_REJECTION_REASONS = (
+    "skills_mismatch", "experience_mismatch", "compensation_mismatch", "location_mismatch", "notice_period", "duplicate_submission",
+    "position_filled", "client_not_interested", "candidate_withdrew", "other",
+)  # fmt: skip
+SUBMISSION_CHECKS = {
+    "ck_profile_share_items_status": _in_list("status", SUBMISSION_STATUSES),
+    "ck_profile_share_items_rejection": f"(status = 'rejected') = (rejection_reason IS NOT NULL) AND (rejection_reason IS NULL OR {_in_list('rejection_reason', SUBMISSION_REJECTION_REASONS)})",
+    "ck_profile_share_items_next_action": "next_action IS NULL OR char_length(next_action) <= 300",
+    "ck_profile_share_items_consent": "consent_reference IS NULL OR char_length(consent_reference) <= 300",
+}
+SUBMISSION_SLA_DEFAULT_HOURS = 48  # B10: a company without its own setting
 
 
 class ProfileShare(Base, TimestampMixin):
@@ -8722,6 +8785,9 @@ class ProfileShare(Base, TimestampMixin):
     recipient: Mapped[str] = mapped_column(String(10), default="client", server_default=text("'client'"))
     detail: Mapped[str] = mapped_column(String(12), default="named", server_default=text("'named'"))
     consent_reference: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # pob-021 (DEC-SCOPE-430 B9, B10): the salary line was sent (granted and ticked); the client follow-up created at the SLA
+    compensation_included: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    follow_up_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_follow_ups.id", ondelete="SET NULL"), nullable=True)
 
 
 class ProfileShareItem(Base, TimestampMixin):
@@ -8731,8 +8797,9 @@ class ProfileShareItem(Base, TimestampMixin):
 
     __tablename__ = "profile_share_items"
     __table_args__ = (
-        *(CheckConstraint(sql, name=name) for name, sql in PROFILE_SHARE_ITEM_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in {**PROFILE_SHARE_ITEM_CHECKS, **SUBMISSION_CHECKS}.items()),
         UniqueConstraint("share_id", "candidate_id", name="uq_profile_share_items_candidate"),
+        UniqueConstraint("submission_code", name="uq_profile_share_items_submission_code"),
         Index("ix_profile_share_items_candidate", "candidate_id"),
         Index("uq_profile_share_items_token", "token_hash", unique=True, postgresql_where=text("token_hash IS NOT NULL")),
     )
@@ -8747,6 +8814,17 @@ class ProfileShareItem(Base, TimestampMixin):
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
     responded_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # pob-021 (DEC-SCOPE-430 B1): the submission. `submission_code` comes from a sequence (server default); `match` is the skills-match
+    # block as sent; `consent_reference` is the candidate's consent, required on every new submission (legacy rows have none).
+    submission_code: Mapped[str] = mapped_column(String(20), server_default=text("'SUB-' || lpad(nextval('profile_share_item_submission_seq')::text, 6, '0')"))
+    status: Mapped[str] = mapped_column(String(20), default="submitted", server_default=text("'submitted'"))
+    status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    next_action: Mapped[str | None] = mapped_column(Text, nullable=True)
+    next_action_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    consent_reference: Mapped[str | None] = mapped_column(Text, nullable=True)
+    match: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 # rec-031 (DEC-SCOPE-176, RV6-RV8): manually recorded invoices and payments per requirement (track only, R9). Migration 0147 repeats
@@ -8799,7 +8877,60 @@ class RecruiterPayment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# pob-012 (DEC-SCOPE-429 W2/W3): vendor payables and receivables, recorded by hand like rec-031's invoices. Migration 0310 repeats these
+# pob-024 (DEC-SCOPE-432 P1-P14): one placement per accepted offer -- the closure record, the two joining confirmations and the invoice
+# draft made on joining (Q-17: a draft only; a person issues it as a rec-031 invoice). Migration 0312 repeats these strings.
+PLACEMENT_INVOICE_STATUSES = ("none", "draft", "issued", "discarded")
+PLACEMENT_CONFIRMATION_CHANNELS = ("call", "email", "whatsapp", "in_person", "other")
+PLACEMENT_RECORD_CHECKS = {
+    "ck_placements_invoice_status": _in_list("invoice_status", PLACEMENT_INVOICE_STATUSES),
+    "ck_placements_candidate_via": "candidate_confirmed_via IS NULL OR " + _in_list("candidate_confirmed_via", PLACEMENT_CONFIRMATION_CHANNELS),
+    "ck_placements_client_via": "client_confirmed_via IS NULL OR " + _in_list("client_confirmed_via", PLACEMENT_CONFIRMATION_CHANNELS),
+    "ck_placements_amounts": "(expected_fee IS NULL OR expected_fee >= 0) AND (draft_amount IS NULL OR draft_amount > 0)",
+    "ck_placements_issued": "(invoice_status = 'issued') = (invoice_id IS NOT NULL)",
+    "ck_placements_draft": "invoice_status = 'none' OR draft_due_date IS NOT NULL",
+    "ck_placements_discarded": "(invoice_status = 'discarded') = (draft_discard_reason IS NOT NULL)",
+}
+
+
+class Placement(Base, TimestampMixin):
+    """pob-024: services/placements.py is the only writer. The status is the offer's joining status (P7), never stored here; the commercial
+    columns are read only behind the rec-031 revenue gate (P4)."""
+
+    __tablename__ = "placements"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in PLACEMENT_RECORD_CHECKS.items()),
+        Index("ix_placements_job", "job_id"),
+        Index("ix_placements_invoice_status", "invoice_status"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    offer_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_offers.id", ondelete="RESTRICT"), unique=True)
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id", ondelete="RESTRICT"))
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"))
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"))
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    vendor_company_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"), nullable=True)
+    role: Mapped[str] = mapped_column(String(200))
+    recruiter_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    po_owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    expected_fee: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    candidate_confirmed_by: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    candidate_confirmed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    candidate_confirmed_via: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    client_confirmed_by: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    client_confirmed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    client_confirmed_via: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    invoice_status: Mapped[str] = mapped_column(String(10), default="none", server_default=text("'none'"))
+    draft_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    draft_due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    draft_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    draft_discard_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    invoice_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_invoices.id", ondelete="RESTRICT"), nullable=True)
+    due_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    overdue_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+# pob-012 (DEC-SCOPE-433 W2/W3): vendor payables and receivables, recorded by hand like rec-031's invoices. Migration 0314 repeats these
 # strings (test_pob_012_vendor_commercials). services/vendor_commercials.py owns every rule; the CHECKs are the backstop.
 VENDOR_BILL_KINDS = ("payable", "receivable")
 VENDOR_BILL_CHECKS = {

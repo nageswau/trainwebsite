@@ -12432,3 +12432,50 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - A7 (AC3): a profile share (today's only submission; pob-021 will reuse `candidate_sourcing.permitted`) needs a recorded permission, the candidate's own opt-in (student, portal, website) or an institution permission (pob-014).
   - A9: the anonymiser clears the referrer name, the portal reference and the permission note.
 - **Not built:** search filters/enrichment (pob-019); per-submission consent (pob-021); an import column for source date or permission; merge field choice for attribution (the survivor keeps its own).
+
+### DEC-SCOPE-429 — Per-requirement sourcing plan and source funnel (pob-017)
+- **Date:** 2026-11-08. **Status:** built; S1-S12 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions. **Evidence:** backlog pob-017 (§8 sourcing plan, §18 AC 5, §15 funnel by source, Appendix B source conversion).
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-017-sourcing-plan-design.md`. Migration `0310_sourcing_plans`; API §12LV; RBAC §2.320.
+- **Calls:**
+  - S1: one plan per requirement (target profile ≤ 2000, ≤ 10 Boolean strings {label, query} kept as text with a copy button, targets to find/screen/submit 0-10 000, deadline, source owner); no row = an empty plan.
+  - S2: planned channels are candidate-source catalogue entries (new ones active; inactive ones already planned are kept); every planned channel is a funnel row.
+  - S3: linked hrc-020 saved searches (≤ 10): only a candidate reader links, only searches they can see; others' private links are counted, not shown, and survive their saves.
+  - S4: must-have/alternative skills are the requirement's own required/preferred skills (shown, not copied).
+  - S5: found = every application; screened = reached Screened or later, or a screening saved; suitable = reached Shortlisted or later; submitted = reached Profile Shared/Interview/Selected/Joined, or shared; rejected = currently rejected. Conversion = submitted ÷ found.
+  - S6: `job_applications.submitted_source_id` freezes the candidate's source at the first submission; the funnel counts by it, else the current source. Existing submitted applications are backfilled with today's source.
+  - S7: progress `no_targets | met | on_track | breached` (deadline before today, IST, with a set target short).
+  - S8: the source owner is the primary, the backup owner or an assignee of the requirement.
+  - S9/S10: the requirement's readers read; its writers save (cancelled = 409); a save is audited with field names only.
+- **Not built:** a dashboard widget (pob-028), breach reminders, external-site integrations (copy only, Q-13).
+
+### DEC-SCOPE-430 — Submission record (client or vendor) with skills match, consent and SLA (pob-021)
+- **Date:** 2026-11-08. **Status:** built; B1-B14 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions. **Evidence:** backlog pob-021 (§11.1, §11.2, §9 duplicate flag, §16 two triggers, §17 share gate, §18 AC 9).
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-021-submission-record-design.md`. Migration `0313_submissions`; API §12LW; RBAC §2.321.
+- **Calls:**
+  - B1/B2: each shared candidate (`profile_share_items`) is a submission with a `SUB-NNNNNN` code from a sequence; existing items are backfilled in creation order with the status `submitted`. `draft` is the wizard's unsaved state and is never stored.
+  - B3/B4: every new submission needs the candidates' consent (`consent_confirmed` + `consent_reference` ≤ 300, stored per item) and confirmed interest/availability, else 409. This replaces pob-011's consent stub.
+  - B5/B6: a current location is required (422 naming each candidate); the requirement's switched-on hrc-018 hard filters gate eligibility (422).
+  - B7: the duplicate warning covers the same end client across every requirement and route (widening pob-011 V8; direct shares across requirements of one client now warn).
+  - B8: a client gets named (default) or anonymised; anonymised drops the name, current company and resume. There is no redacted rendition until Q-16.
+  - B9: the expected salary only when ticked and with `candidates.compensation` (else 403); `profile_shares.compensation_included`.
+  - B10: on submit, one `profile_feedback` follow-up at `companies.submission_sla_hours` (1-720; NULL = 48 h) of the recipient company.
+  - B11/B12: status submitted → client_reviewing → shortlisted → interview → rejected/on_hold/selected/withdrawn; closed statuses stay closed (409); rejected needs a reason from a 10-entry catalogue; each change is audited as `submission.status` {from, to}; the acknowledgement moves submitted → client_reviewing; next action and date per item.
+  - B13: a client response (portal or recorded) maps onto an open submission: interested → shortlisted, interview requested → interview, not interested → rejected (client_not_interested).
+  - B14: the skills-match block (hrc-018, candidate audience, ungated) is stored per item and shown in the email/WhatsApp text, the recruiter list and the employer portal.
+- **Not built:** the redacted resume (Q-16), "relevant projects" (no candidate projects record), pob-023 templates for the submission email, a client acknowledgement link.
+
+### DEC-SCOPE-432 — Placement closure record and invoice trigger (pob-024)
+- **Date:** 2026-11-08. **Status:** built; P1-P14 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions. Q-17 answered "a draft only; a person issues it" as the backlog item proposes (partially reverses rec-031 R9 "track only"; `NEEDS_CONFIRMATION`). **Evidence:** backlog pob-024 (§13.1 bullets 1-6, §16 rows "Offer accepted / joining confirmed" and "Invoice/payment due", §18 AC "Placement closure tracks offer, joining, invoice/commission, payment").
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-024-placement-closure-design.md`. Migration `0312_placements`; API §12LY; RBAC §2.323.
+- **Calls:**
+  - P1: one placement per offer, created when the offer moves to Accepted (new and legacy routes), or on Joined when an older accepted offer has none.
+  - P2: snapshot of the candidate, requirement, client, vendor (`via_vendor_id`), role, recruiter owner (the requirement's) and PO owner (the company owner); the source is read live (first-submission source, else the candidate's).
+  - P3: the package (offer compensation) needs `candidates.compensation.view`. P4: the expected fee, the draft and the invoice actions need the rec-031 revenue gate (placement_team / placement_manager / super_admin + `commercials.client.view`).
+  - P5: separate candidate and client confirmations {by, on (not future, IST), via: call/email/whatsapp/in_person/other}; writers only; a Did Not Join placement is read-only (409).
+  - P6: the PO owner is changed by a Team Lead or super_admin, to an active placement_team user.
+  - P7: the placement's status is the offer's joining status (never stored twice).
+  - P8/P9: Joined creates exactly one draft (row lock; none -> draft only): amount = the hire's fee re-priced by rec-031 RV1/RV2 (null when unpriced: entered on issue); due = the actual joining date + `payment_days` when the trigger is `days_after_joining`.
+  - P10: issuing runs rec-031's invoice rules on the requirement and records the invoice, so receivables, revenue and the ledger see it unchanged; the notice markers re-arm. P11: a draft is discarded with a reason; Did Not Join discards an open draft.
+  - P12/P13: a daily sweep (08:45 IST) sends `it.recruitment.invoice_due` once and `it.recruitment.invoice_overdue` once per due date, for a draft or an issued invoice still owed, to the recruiter and PO owners and their Team Leads (all active Team Leads when none). The accountant role has no recruiter access, so it is not notified (`NEEDS_CONFIRMATION`).
+  - P14: read scope = the requirement's (rec-007); audit `placement.*` with ids, field names and amounts only.
+- **Not built:** commission tracking for recruiters, GST/PDF invoices (R9), accountant access to placements.

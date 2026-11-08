@@ -36,6 +36,7 @@ export type Vendor = {
 export type Assignment = { from_user: Person | null; to_user: Person; changed_by: Person; created_at: string };
 export type Company = CompanyRow & {
   website: string | null; linkedin_url: string | null; company_size: Ref | null; employee_count: number | null; state: string | null;
+  submission_sla_hours?: number | null; // pob-021 B10
   country: string | null; head_office: string | null; branches: string | null; description: string | null; campaign: Ref | null;
   assigned_bdm: Person | null; owner_type: string; created_by: Person | null; assignment_history: Assignment[]; pipeline: Pipeline; archived_at: string | null;
   created_at: string; updated_at: string;
@@ -71,7 +72,7 @@ export function companyShell(role: string): { nav: NavItem[]; roleLabel: string 
 }
 
 /** The form's text fields, in screen order (EVID-018 §2/§3, company side). */
-export const TEXT_FIELDS = ["name", "website", "linkedin_url", "city", "state", "country", "head_office", "branches", "description", "employee_count", "territory"] as const; // pob-009 T4: territory
+export const TEXT_FIELDS = ["name", "website", "linkedin_url", "city", "state", "country", "head_office", "branches", "description", "employee_count", "territory", "submission_sla_hours"] as const; // pob-009 T4: territory; pob-021 B10: SLA hours
 export const PICK_FIELDS = ["industry_id", "company_size_id", "lead_source_id", "campaign_id", "priority", "assigned_bdm_user_id", "partner_type"] as const;
 export type FormField = (typeof TEXT_FIELDS)[number] | (typeof PICK_FIELDS)[number];
 export type FormValues = Record<FormField, string>;
@@ -81,7 +82,7 @@ export function valuesOf(c?: Company): FormValues {
   return {
     name: text(c?.name), website: text(c?.website), linkedin_url: text(c?.linkedin_url), city: text(c?.city), state: text(c?.state),
     country: text(c?.country), head_office: text(c?.head_office), branches: text(c?.branches), description: text(c?.description),
-    employee_count: text(c?.employee_count), territory: text(c?.territory), industry_id: text(c?.industry?.id), company_size_id: text(c?.company_size?.id),
+    employee_count: text(c?.employee_count), territory: text(c?.territory), submission_sla_hours: text(c?.submission_sla_hours), industry_id: text(c?.industry?.id), company_size_id: text(c?.company_size?.id),
     lead_source_id: text(c?.lead_source?.id), campaign_id: text(c?.campaign?.id), priority: text(c?.priority),
     assigned_bdm_user_id: text(c?.assigned_bdm?.id), partner_type: c?.partner_type ?? "recruiter",
   };
@@ -92,7 +93,7 @@ export function valuesOf(c?: Company): FormValues {
 export function wire(key: FormField, value: string): unknown {
   const trimmed = value.trim();
   if (trimmed === "") return null;
-  if (key === "employee_count" && /^\d+$/.test(trimmed)) return Number(trimmed);
+  if ((key === "employee_count" || key === "submission_sla_hours") && /^\d+$/.test(trimmed)) return Number(trimmed);
   return trimmed;
 }
 
