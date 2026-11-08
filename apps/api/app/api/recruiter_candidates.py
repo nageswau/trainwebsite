@@ -447,7 +447,7 @@ async def _tags_out(db: AsyncSession, user: User, candidate: Candidate) -> dict:
 
 @router.get("/{candidate_id}/tags")
 async def read_tags(candidate_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """pob-019 (DEC-SCOPE-437 T2): the candidate's free tags -- every candidate reader."""
+    """pob-019 (DEC-SCOPE-439 T2): the candidate's free tags -- every candidate reader."""
     svc.require_reader(user)
     return await _tags_out(db, user, await svc.load(db, candidate_id, viewer_id=user.id))
 

@@ -1,4 +1,4 @@
-"""pob-019 -- migration 0319_candidate_tags (DEC-SCOPE-437): the chain, model parity and the round trip, in a throwaway database (the
+"""pob-019 -- migration 0319_candidate_tags (DEC-SCOPE-439): the chain, model parity and the round trip, in a throwaway database (the
 pob-025 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util

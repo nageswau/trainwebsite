@@ -1,6 +1,6 @@
 # pob-019 — Candidate tags, enriched results and bulk actions (design)
 
-- **Decision:** `DEC-SCOPE-437` (2026-11-08). Migration `0319_candidate_tags`; API §12MD; RBAC §2.328 (renumbered after pob-025/026/027 took 434-436).
+- **Decision:** `DEC-SCOPE-439` (2026-11-08). Migration `0319_candidate_tags`; API §12MF; RBAC §2.329 (renumbered after pob-025/026/027 took 434-436).
 - **Backlog:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` pob-019. Dependencies hrc-012, hrc-016, hrc-019, hrc-020, hrc-021 and
   pob-021 are built.
 - **Status of the calls:** T1–T12 are the builder's calls (`NEEDS_CONFIRMATION`). The owner asked for recommended answers instead of

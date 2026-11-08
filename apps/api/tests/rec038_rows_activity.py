@@ -197,6 +197,8 @@ ROWS = [
     R("get", "/recruiter/performance.xlsx", **allow(200, *METRICS)),  # nehn-004
     R("get", "/recruiter/performance/by-recruiter?recruiter={rec_id}", **allow(200, "rec", "mgr", "super"), rec_out=403, mgr_out=404),
     R("get", "/recruiter/management", **allow(200, *METRICS)),
+    # pob-029 (§2.328, R1): the Team Lead and super_admin; out of scope reads as zero, never 403
+    *(R("get", f"/recruiter/reports/placement-outcomes{ext}", **allow(200, "mgr", "mgr_out", "super")) for ext in ("", ".csv", ".xlsx")),
     # hrc-033 (§2.308): `reports.recruitment` opens them; a filter or figure outside the caller's scope reads as zero, never 403
     R("get", "/recruiter/recruitment-dashboards/{board}", **allow(200, "rec", "rec_out", "mgr", "mgr_out", "super", "it_admin", "hr_mgr", "officer")),
     R("get", "/recruiter/recruitment-dashboards/{board}.csv", **allow(200, "rec", "rec_out", "mgr", "mgr_out", "super", "it_admin", "hr_mgr", "officer")),

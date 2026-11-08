@@ -18,7 +18,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api import recruitment_dashboards
+from app.api import placement_outcomes, recruitment_dashboards
 from app.api.agent_reports import NO_STORE, export_response
 from app.api.deps import get_current_user
 from app.core.database import get_db
@@ -28,6 +28,7 @@ from app.services.bdm_appointments import db_now
 
 router = APIRouter(prefix="/recruiter", tags=["recruiter-dashboard"])
 router.include_router(recruitment_dashboards.router)  # hrc-033
+router.include_router(placement_outcomes.router)  # pob-029
 
 
 @router.get("/dashboard")

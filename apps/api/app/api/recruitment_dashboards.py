@@ -17,7 +17,7 @@ from app.services.bdm_appointments import db_now
 
 router = APIRouter(prefix="/recruitment-dashboards", tags=["recruitment-dashboards"])
 
-BoardKey = Literal["funnel", "vacancy", "recruiter", "officer", "interview"]
+BoardKey = Literal["funnel", "vacancy", "recruiter", "officer", "interview", "po"]  # pob-028 (DEC-SCOPE-437): po
 _READ = require_permission("reports.recruitment", "view", "Your role has no recruitment dashboards")
 _DOWNLOAD = require_permission("reports.recruitment", "download", "You cannot download recruitment dashboards")
 

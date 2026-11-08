@@ -1,4 +1,4 @@
-"""pob-019 (DEC-SCOPE-437, spec docs/superpowers/specs/2026-11-08-pob-019-candidate-tags-bulk-actions-design.md): free candidate tags from an
+"""pob-019 (DEC-SCOPE-439, spec docs/superpowers/specs/2026-11-08-pob-019-candidate-tags-bulk-actions-design.md): free candidate tags from an
 admin list (T1/T2), the tag filter (T4), the enriched result cards within a fixed query budget (T5/T6, AC1), bulk shortlist (T7/T8, AC2) and
 bulk tasks (T9). Every test makes its own skills, tags and candidates; the shared database is never truncated."""
 

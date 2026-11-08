@@ -7162,7 +7162,7 @@ class RecCompanyInactiveReason(_RecCatalogueValue, Base):
 
 
 class RecCandidateTag(_RecCatalogueValue, Base):
-    __tablename__ = "rec_candidate_tags"  # pob-019 (DEC-SCOPE-437 T1): the free candidate tags (Q-14 "from an admin list")
+    __tablename__ = "rec_candidate_tags"  # pob-019 (DEC-SCOPE-439 T1): the free candidate tags (Q-14 "from an admin list")
 
 
 # The URL slug of each simple list (api/recruiter_catalogue.py).
@@ -7766,7 +7766,7 @@ class CandidateNote(Base):
 
 
 class CandidateTagLink(Base):
-    """pob-019 (DEC-SCOPE-437 T2, migration 0319): a free tag on a candidate -- who put it there and when. The set is replaced as a whole
+    """pob-019 (DEC-SCOPE-439 T2, migration 0319): a free tag on a candidate -- who put it there and when. The set is replaced as a whole
     (services/candidate_tags); a tag is deactivated, never deleted, so a link keeps its tag."""
 
     __tablename__ = "candidate_tag_links"

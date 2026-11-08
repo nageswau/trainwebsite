@@ -21,7 +21,7 @@ export type CandidateCard = {
   status: CandidateStatus; skills: CardSkill[]; snippet?: SnippetSegment[] | null;
   engagement?: CandidateEngagement | null; // hrc-021
   match?: { required: MatchLine[]; preferred: MatchLine[] }; // hrc-019 S11
-  // pob-019 (DEC-SCOPE-437 T5): the enrichment facts and the tags (optional: a talent pool card from an older API has none)
+  // pob-019 (DEC-SCOPE-439 T5): the enrichment facts and the tags (optional: a talent pool card from an older API has none)
   owner?: { id: string; full_name: string } | null; last_contacted_at?: string | null; active_applications?: number; prior_submissions?: number;
   tags?: CardTag[]; system_tags?: { kind: "experience" | "skill_category"; label: string }[];
 };

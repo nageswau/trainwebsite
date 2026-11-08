@@ -5,7 +5,7 @@ import RecruiterCandidateTags from "@/components/RecruiterCandidateTags";
 import RecruiterFindCandidates from "@/components/RecruiterFindCandidates";
 import { clearPermissions } from "@/lib/usePermissions";
 
-// pob-019 (DEC-SCOPE-437): the card's enrichment facts and tags (T5), the tag filter (T4), the bulk bar -- shortlist, share, assign task
+// pob-019 (DEC-SCOPE-439): the card's enrichment facts and tags (T5), the tag filter (T4), the bulk bar -- shortlist, share, assign task
 // (T7-T12) -- and the candidate page's Tags section (T2).
 let query = "";
 const push = vi.fn();

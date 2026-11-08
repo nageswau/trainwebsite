@@ -1,4 +1,4 @@
-"""pob-019 (DEC-SCOPE-437 T1-T3, spec docs/superpowers/specs/2026-11-08-pob-019-candidate-tags-bulk-actions-design.md): a candidate's free
+"""pob-019 (DEC-SCOPE-439 T1-T3, spec docs/superpowers/specs/2026-11-08-pob-019-candidate-tags-bulk-actions-design.md): a candidate's free
 tags (from the rec-002 "Candidate tags" list) and the system tags derived on read.
 
 Functions only; nothing here commits -- the route owns the transaction. The audit row carries tag ids only."""

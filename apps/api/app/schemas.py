@@ -10361,7 +10361,7 @@ class CandidateNoteIn(BaseModel):
     body: CandidateNoteBody
 
 
-BULK_MAX = 50  # pob-019 (DEC-SCOPE-437 T7/T9): candidates per bulk action
+BULK_MAX = 50  # pob-019 (DEC-SCOPE-439 T7/T9): candidates per bulk action
 BulkCandidateIds = Annotated[list[UUID], Field(min_length=1, max_length=BULK_MAX), AfterValidator(lambda v: list(dict.fromkeys(v)))]
 
 
@@ -13194,7 +13194,7 @@ class CandidateSearch(BaseModel):
     # hrc-019 (DEC-SCOPE-399): S3 skills
     preferred: Annotated[list[SearchTerm], Field(max_length=CANDIDATE_SEARCH_LIST_MAX)] = []
     category_ids: Annotated[list[UUID], Field(max_length=CANDIDATE_SEARCH_LIST_MAX), AfterValidator(lambda v: list(dict.fromkeys(v)))] = []
-    # pob-019 (DEC-SCOPE-437 T4): any of these free tags; like `category_ids` it may stand alone
+    # pob-019 (DEC-SCOPE-439 T4): any of these free tags; like `category_ids` it may stand alone
     tag_ids: Annotated[list[UUID], Field(max_length=CANDIDATE_SEARCH_LIST_MAX), AfterValidator(lambda v: list(dict.fromkeys(v)))] = []
     min_level: Literal[CANDIDATE_SKILL_LEVELS] | None = None
     skill_min_months: RecMonths = None

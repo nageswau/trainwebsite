@@ -210,7 +210,7 @@ def _more(body: CandidateSearch, terms: dict[str, dict], user_id: UUID | None) -
         tagged = exists().where(SkillCategoryTag.skill_id == Skill.id, SkillCategoryTag.category_id.in_(body.category_ids))
         out.append(select(CandidateSkill.id).join(Skill, Skill.id == CandidateSkill.skill_id)
                    .where(CandidateSkill.candidate_id == Candidate.id, or_(Skill.category_id.in_(body.category_ids), tagged)).exists())  # fmt: skip
-    if body.tag_ids:  # pob-019 (DEC-SCOPE-437 T4): any of these free tags
+    if body.tag_ids:  # pob-019 (DEC-SCOPE-439 T4): any of these free tags
         out.append(exists().where(CandidateTagLink.candidate_id == Candidate.id, CandidateTagLink.tag_id.in_(body.tag_ids)))
     if body.preferred and not (body.all or body.any or body.text or body.category_ids or body.tag_ids):  # S3: preferred alone lists who holds one
         out.append(_has(set().union(*(terms[t.lower()]["ids"] for t in body.preferred)), body.verified_only))

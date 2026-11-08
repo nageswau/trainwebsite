@@ -12540,8 +12540,38 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - S12: a public page `/feedback/[token]` (noindex, no-referrer) and a Satisfaction section on the placement.
 - **Not built:** a template editor, multi-question/NPS forms, WhatsApp, a reporting roll-up (pob-029), an in-app notice on a response.
 
-### DEC-SCOPE-437 — Candidate tags, enriched results and bulk actions (pob-019)
+### DEC-SCOPE-437 — Placement Officer dashboard (pob-028)
+- **Date:** 2026-11-08. **Status:** built; P1-P9 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions. pob-025 (replacement guarantee) landed first, so its deadlines are on the board (P10).
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-028-po-dashboard-design.md`. No migration; API §12MD; no new grant (hrc-033's `reports.recruitment`).
+- **Calls:**
+  - P1: the dashboard is a sixth hrc-033 board, `po` ("PO dashboard"): the same routes, filters, drill-down, export and scope. Each figure is one predicate, so it equals its drill-down (the AC).
+  - P2: the PO is `placement_team`, the Team Lead `placement_manager`. Company and follow-up figures use `recruiter_companies.caller_scope` (an officer: the companies of their requirements; management: everything); the owner filter is the company's recruiter there and the requirement owner elsewhere.
+  - P3: nine sections: BD pipeline, follow-ups, requirements, sourcing funnel, candidate actions, TPO partnerships, interview tracker, offers and joinings, invoicing and collections. Figures are counts; amounts stay on the pob-024 / rec-031 screens.
+  - P4: the invoicing section is left out (and its drill is 403) unless the caller passes the rec-031 revenue gate (placement_team / placement_manager / super_admin with pob-001 `commercials.client.view`). Offers and joinings are not commercial.
+  - P5: the BD pipeline groups the pob-004 stages (Targets = Target Identified + Research Completed; Meetings = Meeting Booked + Requirement Discussion + Vendor Registration; Clients = client status beyond Prospect) and leaves out vendors, lost and inactive companies.
+  - P6: a follow-up stores no channel, so "split by channel" is the outreach follow-ups (`first_outreach`, `cadence_step`) beside the rest; Today/Overdue use rec-024 FU2's definitions.
+  - P7: candidate actions: awaiting contact / consent (pob-018 outreach status on an active application), screening (still Sourced), submission (screened or shortlisted, never submitted, pob-021), interview confirmation (scheduled or rescheduled, in the future).
+  - P8: TPO = requirements shared with an institution in the period and those still awaiting its reply (pob-015).
+  - P9: queues are snapshots; flows use the period (this IST month by default).
+  - P10: a "Replacement guarantee (now)" section: guarantees ending today or within 7 days IST on a Joined placement with no dropout (pob-025 G10's alert rule) and replacements owed (G11: a dropout on or before the end with no replacement filled). Not commercial, so not behind P4's gate.
+  - P11: the PO board's Employer filter offers the caller's company scope (prospects have no requirement yet); the other boards keep companies with requirements.
+- **Not built:** performance by PO/recruiter/company/vendor/source/role (the existing performance pages; pob-029 builds the breakdowns), per-widget lazy loading (one statement of sub-selects per board already).
+
+### DEC-SCOPE-438 — Placement outcome reports (pob-029)
+- **Date:** 2026-11-08. **Status:** built; R1-R12 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions.
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-029-placement-outcome-reports-design.md`. No migration; API §12ME; RBAC §2.328; no new grant.
+- **Calls:**
+  - R1: readers are the Team Lead (`placement_manager`, their team + Unassigned) and `super_admin`; every other role 403.
+  - R3: the cohort is the placements whose offer was accepted in the period; totals, group rows and drill-down come from the same rows, so every figure ties out (AC).
+  - R4/R5: grouped by company, vendor, role, source, recruiter or PO; filtered by company, vendor, recruiter, PO, source.
+  - R6: conversions are the period's own requirements, first submissions, interviewed candidates, offers and decisions in the same scope.
+  - R7: offer acceptance and joining rate are of the decided ones; time to fill is requirement created → joined (a negative legacy span counts 0).
+  - R8: revenue (generated, invoiced, collected, outstanding) only behind the rec-031 / pob-001 revenue gate.
+  - R9/R10: dropouts, early dropouts (inside the guarantee), replacements owed/filled; mean client and candidate ratings.
+  - R11: CSV/xlsx export of the group table, audited `placement_outcomes.export` (no names).
+- **Not built:** scheduled delivery, charts.
+### DEC-SCOPE-439 — Candidate tags, enriched results and bulk actions (pob-019)
 - **Date:** 2026-11-08. **Status:** builder's calls T1–T12, `NEEDS_CONFIRMATION` (the owner asked for recommended answers instead of questions; Q-14 answered "free tags come from an admin list").
-- **Spec:** `docs/superpowers/specs/2026-11-08-pob-019-candidate-tags-bulk-actions-design.md`. Migration `0319_candidate_tags`; API §12MD; RBAC §2.328.
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-019-candidate-tags-bulk-actions-design.md`. Migration `0319_candidate_tags`; API §12MF; RBAC §2.329.
 - **Calls:** free tags are a new rec-002 managed list; a candidate's set is replaced whole (≤ 20; an inactive tag may stay, not be added); system tags (experience band incl. Fresher, skill categories) are derived on read; search filter `tag_ids`; cards gain owner, last contacted, active applications, prior submissions and tags in two batched queries; bulk shortlist (≤ 50, skips `already_added` / `do_not_contact` / `unavailable`, one transaction) and bulk tasks (≤ 50, one notification); export stays hrc-020's.
 - **Not built:** role-family tags (no such candidate field), bulk tagging, exporting only the selected candidates.

@@ -201,7 +201,7 @@ UNAVAILABLE = "This candidate is not an active candidate in the pool"
 
 
 async def create_many(db: AsyncSession, user: User, payload: CandidateBulkTaskCreate, now: datetime) -> dict:
-    """pob-019 (DEC-SCOPE-437 T9): one task per open pool candidate, with the single create's checks run once (due time, requirement,
+    """pob-019 (DEC-SCOPE-439 T9): one task per open pool candidate, with the single create's checks run once (due time, requirement,
     assignee); archived, merged or unknown candidates are skipped with a reason. The assignee gets one notification for the batch."""
     check_due(payload.due_at, now)
     if payload.job_id is not None and await db.scalar(select(Job.id).where(Job.id == payload.job_id)) is None:

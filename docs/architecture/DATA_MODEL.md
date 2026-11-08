@@ -2510,7 +2510,7 @@ The downgrade refuses while a vendor or an NDA exists.
 
 - `placement_surveys`: `placement_id` → placements RESTRICT, `respondent` client|candidate (CHECK; unique with the placement), `contact_id` → company_contacts RESTRICT (the client recipient), `message_id` / `resend_message_id` → recruiter_messages RESTRICT, `sent_at`, `resent_at`, `skip_reason` no_contact|no_email|no_sender, `rating` 1-5, `comment` ≤1000, `responded_at`, timestamps. CHECKs: sent ⇔ a message and no skip reason; resent ⇔ a resend message; rating ⇔ responded_at; a response only after a send. Written once by the sweep; never deleted. The guarded migration adds the table only when missing; no backfill.
 
-### pob-019 — candidate tags (`DEC-SCOPE-437`, migration `0319_candidate_tags`)
+### pob-019 — candidate tags (`DEC-SCOPE-439`, migration `0319_candidate_tags`)
 - `rec_candidate_tags`: a rec-002 simple list (`id`, `name` 120 unique case-insensitively, `active`, `sort_order`, timestamps). Deactivated, never deleted.
 - `candidate_tag_links`: PK (`candidate_id` → candidates RESTRICT, `tag_id` → rec_candidate_tags RESTRICT), `added_by_user_id` → users, `created_at`; index `ix_candidate_tag_links_tag`.
 - System tags are not stored (derived from `experience_months` and the skills' categories).

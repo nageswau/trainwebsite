@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// pob-019 (DEC-SCOPE-437): a manager adds a candidate tag in the catalogue (T1); the seeded recruiter tags candidates on their pages (T2),
+// pob-019 (DEC-SCOPE-439): a manager adds a candidate tag in the catalogue (T1); the seeded recruiter tags candidates on their pages (T2),
 // finds them by the tag alone (T4) with the enriched cards (T5, AC1), shortlists the selection in one go with the Do Not Contact one skipped
 // (T7/T8, AC2) and assigns that one a task (T9). A phone shows the bulk bar without sideways scroll.
 const RECRUITER = "placement@edusphere.local";

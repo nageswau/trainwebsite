@@ -1,4 +1,4 @@
-"""pob-019 -- candidate tags: the "Candidate tags" managed list (rec-002 shape) and the links from a candidate to its tags (DEC-SCOPE-437 T1/T2).
+"""pob-019 -- candidate tags: the "Candidate tags" managed list (rec-002 shape) and the links from a candidate to its tags (DEC-SCOPE-439 T1/T2).
 
 Revision ID: 0319_candidate_tags
 Revises: 0318_placement_guarantee

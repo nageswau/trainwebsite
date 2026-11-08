@@ -22,7 +22,7 @@ export const VALUE_TABS = {
   "job-categories": { label: "Job categories", noun: "job category", intro: "A requirement's job category, also used in reports." },
   "lost-reasons": { label: "Lost reasons", noun: "lost reason", intro: "Why a company was marked lost. Recruiters pick one." },
   "inactive-reasons": { label: "Inactive reasons", noun: "inactive reason", intro: "Why a company was marked inactive. Recruiters pick one." },
-  // pob-019 (DEC-SCOPE-437 T1): the free tags recruiters put on candidates and filter by
+  // pob-019 (DEC-SCOPE-439 T1): the free tags recruiters put on candidates and filter by
   "candidate-tags": { label: "Candidate tags", noun: "candidate tag", intro: "Labels recruiters put on candidates and filter the search by, for example Hot or Relocation ready." },
 } satisfies Record<string, Tab>;
 export type ValueKind = keyof typeof VALUE_TABS;

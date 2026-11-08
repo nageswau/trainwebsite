@@ -665,7 +665,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** medium.
 
 #### pob-019: Candidate tags, enriched results and bulk actions
-- **Status:** built (`DEC-SCOPE-437`, 2026-11-08; migration `0319_candidate_tags`, API §12MD, RBAC §2.328); Q-14 and T1–T12 are the builder's calls (`NEEDS_CONFIRMATION`). Not built: role-family tags (no such candidate field), bulk tagging, exporting only the selected candidates.
+- **Status:** built (`DEC-SCOPE-439`, 2026-11-08; migration `0319_candidate_tags`, API §12MF, RBAC §2.329); Q-14 and T1–T12 are the builder's calls (`NEEDS_CONFIRMATION`). Not built: role-family tags (no such candidate field), bulk tagging, exporting only the selected candidates.
 - **Business requirement:** §9 "Use tags such as skill category, role family, experience band, location, availability and source"; "Show current owner, contact status, last contacted date, active applications and prior submissions"; "Allow bulk shortlist, task assignment and controlled export".
 - **Existing behavior:** there are no tags. Search doesn't join applications, shares or messages. Shortlisting is one candidate per call; sharing is the only bulk action; there is no candidate export.
 - **Expected behavior:**
@@ -906,6 +906,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** low.
 
 #### pob-028: Placement Officer dashboard
+- **Status:** built (`DEC-SCOPE-437`, 2026-11-08; no migration, API §12MD); P1-P10 are the builder's calls (`NEEDS_CONFIRMATION`). A sixth hrc-033 board, `po`, with pob-025's replacement deadlines. The per-dimension performance breakdowns for pob-029.
 - **Business requirement:** §15 (9 widgets); §18 AC "Dashboards show BD activity, requirement pipeline, sourcing, interviews and placements".
 - **Existing behavior:** 18 recruiter tiles, the pipeline board and performance by recruiter exist.
 - **Expected behavior:** nine widgets:
@@ -937,6 +938,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** low.
 
 #### pob-029: Placement outcome reports
+- **Status:** built (`DEC-SCOPE-438`, 2026-11-08; no migration, API §12ME, RBAC §2.328); R1-R12 are the builder's calls (`NEEDS_CONFIRMATION`). The design is in `docs/superpowers/specs/2026-11-08-pob-029-placement-outcome-reports-design.md`.
 - **Business requirement:** §13.2 (5 report groups).
 - **Existing behavior:** the funnel, joining rate and closure time by recruiter or in total, revenue by kind and receivables. There is no breakdown by vendor, source or PO, no offer acceptance, and no replacement/dropout/satisfaction figures.
 - **Expected behavior:**

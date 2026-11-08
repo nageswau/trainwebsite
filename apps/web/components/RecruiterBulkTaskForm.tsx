@@ -11,7 +11,7 @@ import { NOTE_MAX, TASK_TYPES, TASKS_URL, taskAssigneeSearch, TITLE_MAX } from "
 export type BulkSkip = { candidate_id: string; reason: string; message: string };
 export type BulkTaskResult = { created: { candidate_id: string; task_id: string }[]; skipped: BulkSkip[] };
 
-/** pob-019 (DEC-SCOPE-437 T9/T12): one hrc-016 task for every selected candidate, inline under the bulk bar. Times are entered in IST;
+/** pob-019 (DEC-SCOPE-439 T9/T12): one hrc-016 task for every selected candidate, inline under the bulk bar. Times are entered in IST;
  *  a chosen requirement is linked to each task. The API checks every rule; Create is disabled while the request runs (T11). */
 export default function RecruiterBulkTaskForm({ candidateIds, requirement, onDone, onCancel }: {
   candidateIds: string[]; requirement: PickOption | null; onDone: (result: BulkTaskResult) => void; onCancel: () => void;

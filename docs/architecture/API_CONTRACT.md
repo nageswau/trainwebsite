@@ -6428,9 +6428,23 @@ Audit actions `recruiter_template.approve|archive|restore|copy`.
 - `POST /recruiter/requirements/{id}/status` `{status: "closed"}` now needs a `note` (422 on `note`: "Enter a reason for closing").
 - Email: a `recruiter_messages` email row per send/reminder (company + contact, or candidate); beat `pob026-placement-surveys` daily 03:30 UTC.
 
-## 12MD. Candidate tags, enriched results and bulk actions (pob-019) — addendum, 2026-11-08
+## 12MD. Placement Officer dashboard (pob-028) — addendum, 2026-11-08
 
-`DEC-SCOPE-437`. Migration `0319_candidate_tags`. Under `/api/v1/recruiter`; role first (403), then scope / existence (404), then state (409), then validation (422). Additive: no existing field changes.
+`DEC-SCOPE-437`. No migration. hrc-033's routes (§12LI) gain the board key `po`; `reports.recruitment` view/download as before.
+
+- `GET /recruiter/recruitment-dashboards/po` → the hrc-033 board shape; sections `bd`, `follow_ups`, `requirements`, `sourcing`, `actions`, `tpo`, `interviews`, `placements`, `guarantee` (pob-025: `guarantee_expiring`, `replacements_owed`), and `invoicing` only for the rec-031 revenue gate (P4). `options.employers` is the caller's company scope (P11).
+- `GET /recruiter/recruitment-dashboards/po/drill/{figure}` → hrc-033's drill shape over four more record kinds: company (`code, company, status (stage label), client_status, owner`), follow-up (`company, reason, due, owner`), submission (`submission, candidate, name, requirement, company, status`) and placement (`candidate, name, requirement, company, role, created`). 403 "Your role cannot read placement revenue" for an invoicing figure outside the gate; 404 for an unknown figure.
+- `GET /recruiter/recruitment-dashboards/po.csv|.xlsx` → the figures with definitions, without the invoicing section outside the gate.
+
+## 12ME. Placement outcome reports (pob-029) — addendum, 2026-11-08
+
+`DEC-SCOPE-438`. No migration. Readers: `placement_manager` (team + Unassigned) and `super_admin`; others 403.
+
+- `GET /recruiter/reports/placement-outcomes?from&to&group_by=company|vendor|role|source|recruiter|po&company&vendor&recruiter&po&source` → `{date_from, date_to, group_by, group_label, filters, revenue_visible, columns[{key,label}], totals, items[{key, label, figures}], funnel{requirements, submissions, interviews, offers, offers_accepted, offers_declined, requirement_to_submission, submission_to_interview, interview_to_offer, offer_acceptance}, placements[≤100], placements_total}`. Figures: `placements, joined, pending, did_not_join, joining_rate, time_to_fill_days, dropouts, early_dropouts, replacements_owed, replacements_filled, client_rating, client_responses, candidate_rating, candidate_responses, fee_generated, invoiced, collected, outstanding` (money as strings; null without the revenue gate). A null rate means nothing to divide by. 422 on the range rules, an unknown `group_by` or a malformed id. `Cache-Control: private, no-store`.
+- `GET /recruiter/reports/placement-outcomes.csv|.xlsx` (same query) → the group table, Total last; audit `placement_outcomes.export`.
+## 12MF. Candidate tags, enriched results and bulk actions (pob-019) — addendum, 2026-11-08
+
+`DEC-SCOPE-439`. Migration `0319_candidate_tags`. Under `/api/v1/recruiter`; role first (403), then scope / existence (404), then state (409), then validation (422). Additive: no existing field changes.
 
 - Managed list `candidate-tags` under the rec-002 catalogue (`GET/POST /catalogue/candidate-tags`, `PATCH /catalogue/candidate-tags/{id}`): the same shape and rules as every simple list (managers / super_admin write; recruiters read active values only).
 - `GET /candidates/{id}/tags` → `{items: [{id, name, active}], can_edit}` (every candidate reader; `can_edit` false for hr_team or an archived candidate).

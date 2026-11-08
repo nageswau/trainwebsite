@@ -128,7 +128,7 @@ ROWS = [
     # rec-017 a requirement's candidates (§2.62): its readers list, the requirement's editors add
     R("get", "/recruiter/requirements/{requirement}/candidates", **REQ_READ),
     R("post", "/recruiter/requirements/{requirement}/candidates", lambda w: {"candidate_id": w["candidates_spare"]}, **allow(201, "rec", "super"), **OUT),
-    # pob-019 (§2.328): bulk shortlist follows the single add (a repeat reports `already_added`, still 200)
+    # pob-019 (§2.329): bulk shortlist follows the single add (a repeat reports `already_added`, still 200)
     R("post", "/recruiter/requirements/{requirement}/candidates/bulk", lambda w: {"candidate_ids": [w["candidates_spare"]]}, **allow(200, "rec", "super"), **OUT),
     # rec-008 JD (§2.58): the requirement's scope; writes follow `can_edit`
     R("get", "/recruiter/requirements/{requirement}/jd", **OWN),
@@ -158,7 +158,7 @@ ROWS = [
     # pob-018 (§2.319): verify and the outreach status are the writers'; readers see them on the candidate
     R("post", "/recruiter/candidates/{candidate}/verify", **allow(200, *WRITERS)),
     R("put", "/recruiter/candidates/{candidate}/outreach", {"status": "contacted"}, **allow(200, *WRITERS)),
-    # pob-019 (§2.328): tags -- readers read, writers replace the set
+    # pob-019 (§2.329): tags -- readers read, writers replace the set
     R("get", "/recruiter/candidates/{candidate}/tags", **allow(200, *READERS)),
     R("put", "/recruiter/candidates/{candidate}/tags", {"tag_ids": []}, **allow(200, *WRITERS)),
     R("get", "/recruiter/candidates/{candidate}/applications", **allow(200, *READERS)),  # rec-017: every candidate reader sees every row

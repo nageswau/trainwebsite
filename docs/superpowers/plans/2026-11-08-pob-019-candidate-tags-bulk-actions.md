@@ -11,8 +11,8 @@ add (`applications.create`) and the hrc-016 task service inside one transaction 
 
 **Tech Stack:** FastAPI, SQLAlchemy async, Alembic, PostgreSQL; Next.js/React, Vitest, Playwright.
 
-**Spec:** `docs/superpowers/specs/2026-11-08-pob-019-candidate-tags-bulk-actions-design.md` (DEC-SCOPE-437, migration `0319_candidate_tags`,
-API §12MD, RBAC §2.328).
+**Spec:** `docs/superpowers/specs/2026-11-08-pob-019-candidate-tags-bulk-actions-design.md` (DEC-SCOPE-439, migration `0319_candidate_tags`,
+API §12MF, RBAC §2.329).
 
 ## Global Constraints
 - Tags per candidate ≤ 20; `tag_ids` search filter ≤ 10; bulk `candidate_ids` 1–50, de-duplicated.
@@ -61,7 +61,7 @@ Test `apps/api/tests/test_pob_019_candidate_tags_bulk.py::test_migration_round_t
 - Tests: N tasks, single notification, archived skipped, past due 422, hr_team 403.
 
 ### Task 6: RBAC / matrix rows + docs
-rec-038 route rows for the 4 routes; API_CONTRACT §12MD, RBAC_MATRIX §2.328, DATA_MODEL, PRODUCT_DECISION_REGISTER DEC-SCOPE-437, backlog
+rec-038 route rows for the 4 routes; API_CONTRACT §12MF, RBAC_MATRIX §2.329, DATA_MODEL, PRODUCT_DECISION_REGISTER DEC-SCOPE-439, backlog
 status, RTM.
 
 ### Task 7: Front end

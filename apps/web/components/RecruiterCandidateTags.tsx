@@ -11,7 +11,7 @@ type Tags = { items: CardTag[]; can_edit: boolean };
 const MAX = 20;
 const tagLabel = (t: CardTag) => (t.active ? t.name : `${t.name} (inactive)`);
 
-/** pob-019 (DEC-SCOPE-437 T2): the candidate's free tags. Every reader sees them; a writer edits the whole set from the active "Candidate
+/** pob-019 (DEC-SCOPE-439 T2): the candidate's free tags. Every reader sees them; a writer edits the whole set from the active "Candidate
  *  tags" list (a deactivated tag already on the candidate can stay). The API decides every rule. */
 export default function RecruiterCandidateTags({ candidateId }: { candidateId: string }) {
   const id = useId();

@@ -86,7 +86,7 @@ async def add_requirement_candidate(requirement_id: UUID, payload: RecApplicatio
     return {"application": await _item(db, user, application)}
 
 
-SKIPS = {  # pob-019 (DEC-SCOPE-437 T8): why a bulk shortlist left a candidate out
+SKIPS = {  # pob-019 (DEC-SCOPE-439 T8): why a bulk shortlist left a candidate out
     "already_added": svc.DUPLICATE,
     "do_not_contact": "This candidate is marked Do Not Contact",
     "unavailable": "This candidate is not an active candidate in the pool",

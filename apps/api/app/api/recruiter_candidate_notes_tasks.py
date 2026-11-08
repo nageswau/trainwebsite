@@ -77,7 +77,7 @@ async def my_tasks(due: Literal["today", "overdue", "upcoming"] = "today", limit
 
 @router.post("/candidate-tasks/bulk", status_code=201)
 async def create_tasks(payload: CandidateBulkTaskCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """pob-019 (DEC-SCOPE-437 T9): the same task for up to 50 candidates in one transaction. Not idempotent (a retry adds them again)."""
+    """pob-019 (DEC-SCOPE-439 T9): the same task for up to 50 candidates in one transaction. Not idempotent (a retry adds them again)."""
     candidates.require_writer(user)
     result = await svc.create_many(db, user, payload, await db_now(db))
     await db.commit()
