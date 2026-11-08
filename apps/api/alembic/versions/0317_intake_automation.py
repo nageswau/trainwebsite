@@ -1,7 +1,7 @@
 """pob-027 -- intake automation: the task template, requirement tasks and escalation rules (DEC-SCOPE-434 I3-I8, I11).
 
-Revision ID: 0315_intake_automation
-Revises: 0314_vendor_bills
+Revision ID: 0317_intake_automation
+Revises: 0316_placement_surveys
 
 docs/superpowers/specs/2026-11-08-pob-027-intake-automation-design.md. Additive only: four new tables and the settings row with the
 default template. 0001 runs `create_all` from today's models, so a fresh database already has the tables: each is created only when
@@ -16,8 +16,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0315_intake_automation"
-down_revision = "0314_vendor_bills"
+revision = "0317_intake_automation"
+down_revision = "0316_placement_surveys"
 branch_labels = None
 depends_on = None
 

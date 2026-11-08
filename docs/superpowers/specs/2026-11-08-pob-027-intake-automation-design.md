@@ -6,7 +6,7 @@
   (`NEEDS_CONFIRMATION`); the owner asked for the recommended answers instead of questions.
 - **Dependencies (built):** itc-002 (notification events, DEC-SCOPE-336), hrc-016 (tasks pattern, DEC-SCOPE-387), hrc-012/hrc-006
   (requirement owners), pob-022 (Team Lead automation panel, DEC-SCOPE-421), pob-008 (follow-up reminders, DEC-SCOPE-423).
-- **Numbering:** DEC-SCOPE-434, migration `0315_intake_automation` (after `0314_vendor_bills`), API §12MA, RBAC §2.325.
+- **Numbering:** DEC-SCOPE-434, migration `0317_intake_automation` (after `0316_placement_surveys`), API §12MA, RBAC §2.325.
 
 ## Intent
 
@@ -55,7 +55,7 @@ screening work in front of them, and work that stalls should reach the Team Lead
   follow-up (`NEEDS_CONFIRMATION`). pob-025 is not built; it can add an event type later.
 - **I10 UI.** A Team Lead page `/recruiter/automation` ("Intake automation": the task template and the escalation rules; Team Lead and
   super_admin only) linked from their navs; a "Tasks" section on the requirement page with "Mark done".
-- **I11 Migration.** `0315_intake_automation`: four new tables, settings row seeded; additive; downgrade drops them.
+- **I11 Migration.** `0317_intake_automation`: four new tables, settings row seeded; additive; downgrade drops them.
 - **I12 Privacy.** Logs and audit carry ids, kinds and counts only.
 
 ## Non-goals

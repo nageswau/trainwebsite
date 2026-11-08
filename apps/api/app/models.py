@@ -1968,7 +1968,7 @@ class InterviewAutomationSetting(Base, TimestampMixin):
 
 
 # pob-027 (DEC-SCOPE-434 I3-I8): intake automation -- the task template, the requirement tasks it creates, and the escalation rules with the
-# record of each one fired. Migration 0315 repeats these checks (test_pob_027_migration keeps them identical).
+# record of each one fired. migration 0317 repeats these checks (test_pob_027_migration keeps them identical).
 REQUIREMENT_TASK_KINDS = ("sourcing", "screening")
 REQUIREMENT_TASK_STATUSES = ("open", "done", "cancelled")
 ESCALATION_EVENT_TYPES = ("requirement_unowned", "requirement_task_overdue", "follow_up_overdue")
@@ -1986,7 +1986,7 @@ ESCALATION_RULE_CHECKS = {
 
 
 class RequirementAutomationSetting(Base, TimestampMixin):
-    """pob-027 (I3): the one global row (id 1, seeded by migration 0315) -- the tasks a requirement's first owner starts with."""
+    """pob-027 (I3): the one global row (id 1, seeded by migration 0317) -- the tasks a requirement's first owner starts with."""
 
     __tablename__ = "requirement_automation_settings"
     id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
@@ -9000,6 +9000,44 @@ class Placement(Base, TimestampMixin):
     due_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     overdue_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+# pob-026 (DEC-SCOPE-435 S2): one satisfaction survey per placement and respondent. Migration 0316 repeats these strings
+# (test_pob_026_migration). services/placement_surveys.py owns every rule; the CHECKs are the backstop.
+PLACEMENT_SURVEY_RESPONDENTS = ("client", "candidate")
+PLACEMENT_SURVEY_SKIP_REASONS = ("no_contact", "no_email", "no_sender")
+PLACEMENT_SURVEY_CHECKS = {
+    "ck_placement_surveys_respondent": "respondent IN ('client', 'candidate')",
+    "ck_placement_surveys_skip_reason": "skip_reason IS NULL OR skip_reason IN ('no_contact', 'no_email', 'no_sender')",
+    "ck_placement_surveys_sent": "(sent_at IS NULL) = (skip_reason IS NOT NULL) AND (sent_at IS NULL) = (message_id IS NULL)",
+    "ck_placement_surveys_resent": "(resent_at IS NULL) = (resend_message_id IS NULL) AND (resent_at IS NULL OR sent_at IS NOT NULL)",
+    "ck_placement_surveys_client": "(respondent = 'client') = (contact_id IS NOT NULL) OR skip_reason IS NOT NULL",
+    "ck_placement_surveys_rating": "(rating IS NULL) = (responded_at IS NULL) AND (rating IS NULL OR rating BETWEEN 1 AND 5)",
+    "ck_placement_surveys_response": "responded_at IS NULL OR sent_at IS NOT NULL",
+}
+
+
+class PlacementSurvey(Base, TimestampMixin):
+    """pob-026: written once when the sweep first handles it -- sent (with its rec-026 email row) or skipped with a reason; answered once
+    through the signed link (S6/S8). Never deleted."""
+
+    __tablename__ = "placement_surveys"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in PLACEMENT_SURVEY_CHECKS.items()),
+        UniqueConstraint("placement_id", "respondent", name="uq_placement_surveys_respondent"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    placement_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("placements.id", ondelete="RESTRICT"))
+    respondent: Mapped[str] = mapped_column(String(10))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    message_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_messages.id", ondelete="RESTRICT"), nullable=True)
+    resend_message_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_messages.id", ondelete="RESTRICT"), nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    skip_reason: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    rating: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    comment: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 # pob-012 (DEC-SCOPE-433 W2/W3): vendor payables and receivables, recorded by hand like rec-031's invoices. Migration 0314 repeats these

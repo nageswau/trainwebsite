@@ -14041,6 +14041,21 @@ class PlacementInvoiceIssue(BaseModel):
     note: RecRevenueText = None
 
 
+class PlacementSurveyAnswer(BaseModel):
+    """pob-026 (DEC-SCOPE-435 S8): the one response through the signed link -- a 1-5 rating and an optional comment."""
+
+    model_config = ConfigDict(extra="forbid")
+    rating: Annotated[int, Field(strict=True, ge=1, le=5)]
+    comment: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=1000), BeforeValidator(_bdm_newlines)] = None
+
+    @field_validator("comment")
+    @classmethod
+    def _comment(cls, value: str | None) -> str | None:
+        if value is not None and _BDM_CONTROL_MULTILINE.search(value):
+            raise ValueError("Comment contains invalid characters")
+        return value or None
+
+
 class RecRevenueRef(BaseModel):
     id: UUID
     code: str

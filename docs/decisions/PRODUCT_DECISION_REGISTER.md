@@ -12494,7 +12494,7 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 
 ### DEC-SCOPE-434 — Intake automations and an escalation framework (pob-027)
 - **Date:** 2026-11-08. **Status:** built; I1-I12 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions. Q-18 answered "the company owner by default" as the backlog item proposes; the hrc-024-style distributor is not built. **Evidence:** backlog pob-027 (§16 rows "New requirement received", "Requirement assigned to recruiter", "Feedback overdue → escalation rules"); the source is `UNVERIFIED`.
-- **Spec:** `docs/superpowers/specs/2026-11-08-pob-027-intake-automation-design.md`. Migration `0315_intake_automation`; API §12MA; RBAC §2.325.
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-027-intake-automation-design.md`. Migration `0317_intake_automation`; API §12MA; RBAC §2.325.
 - **Calls:**
   - I1/I2: every create path settles the owner (the company's recruiter when the requirement has none; an inactive or non-recruiter owner is dropped) and notifies the owner (`it.requirement.assigned`, not when self-created) or, with none, every active Team Lead (`it.requirement.unowned`), in the create's transaction. The assign route now notifies the new primary.
   - I3: one `requirement_automation_settings` row: a task template of 0-10 `{kind sourcing|screening, title, due_in_hours 1-720}`, seeded with two tasks; read and written by the Team Lead and super_admin; audited with item counts.
@@ -12502,5 +12502,22 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - I6: tasks are read in the requirement scope and completed by the assignee or a requirement writer (409 when closed).
   - I7/I8: `escalation_rules` {requirement_unowned, requirement_task_overdue, follow_up_overdue; after 1-720 h; the owner's Team Lead or every Team Lead; switched off, never deleted}; the `pob027-escalations` beat (every 15 minutes) notifies `it.recruiter.escalated` once per rule and item (`escalation_events`, unique, ON CONFLICT DO NOTHING), only for items whose threshold passed after the rule was created.
   - I9: pob-022's interview-feedback escalation keeps its own settings (moving it onto the rules is a follow-up, `NEEDS_CONFIRMATION`); pob-025 can add an event type later.
-  - I10: `/recruiter/manager/automation` (Team Lead and super_admin) and a Tasks section on the requirement page. I11: migration 0315 is additive. I12: logs and audit carry ids, kinds and counts only.
+  - I10: `/recruiter/manager/automation` (Team Lead and super_admin) and a Tasks section on the requirement page. I11: migration 0317 is additive. I12: logs and audit carry ids, kinds and counts only.
 - **Not built:** round-robin distribution, hand-made requirement tasks, per-user settings, a rule cap.
+
+### DEC-SCOPE-435 — Client and candidate satisfaction feedback (pob-026)
+- **Date:** 2026-11-08. **Status:** built; S1-S12 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions. Dependency pob-024 (`DEC-SCOPE-432`) is built.
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-026-satisfaction-survey-design.md`. Migration `0316_placement_surveys`; API §12MB; RBAC §2.326.
+- **Calls:**
+  - S1: a daily beat sweep (`pob026-placement-surveys`, 03:30 UTC = 09:00 IST) sends a placement's surveys once its offer is Joined and the actual joining date is 30-120 days ago (`SURVEY_AFTER_DAYS` / `SURVEY_LOOKBACK_DAYS`).
+  - S2: `placement_surveys`, one row per (placement, client|candidate), written once: sent, or skipped with `no_contact` / `no_email` / `no_sender` (never retried).
+  - S3: the client survey goes to the contact the candidate was last submitted to (pob-021 share) when active, emailable and not do-not-contact; otherwise the company's primary contact (the "contact has left" edge); otherwise skipped.
+  - S4/S5: the candidate's own email (not archived). Delivery is a rec-026 `recruiter_messages` email (timeline + worker retries), sent as the PO owner, else the recruiter, else the placement's creator.
+  - S6: the link is a signed JWT `{sub: survey id, type: placement_survey, exp}` valid 30 days from each send; no PII in the URL; nothing stored.
+  - S7: one reminder (a new link) 7 days after the first send while unanswered.
+  - S8: `GET`/`POST /public/placement-surveys/{token}`; 404 unknown, 410 answered or expired; the answer is set under a row lock, so a second POST or a race is 410.
+  - S9: every refused lookup (404/410) is an audit row with the IP; 20 in an hour from one IP → 429 with `Retry-After`.
+  - S10: the placement read gains `satisfaction {client, candidate}`; the response is audited `placement_survey.responded` (ids and rating only).
+  - S11: a manual Closed on `POST /recruiter/requirements/{id}/status` needs a note (422 `note` "Enter a reason for closing"); the joining auto-close and the employer / IT-jobs legacy words are unchanged.
+  - S12: a public page `/feedback/[token]` (noindex, no-referrer) and a Satisfaction section on the placement.
+- **Not built:** a template editor, multi-question/NPS forms, WhatsApp, a reporting roll-up (pob-029), an in-app notice on a response.

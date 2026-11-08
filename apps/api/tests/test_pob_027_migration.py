@@ -1,4 +1,4 @@
-"""pob-027 -- migration 0315_intake_automation (DEC-SCOPE-434 I11): the chain, the frozen checks, the seeded template and the round trip,
+"""pob-027 -- migration 0317_intake_automation (DEC-SCOPE-434 I11): the chain, the frozen checks, the seeded template and the round trip,
 in a throwaway database (the pob-006 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -15,7 +15,7 @@ from app.models import ESCALATION_RULE_CHECKS, REQUIREMENT_TASK_CHECKS
 from app.services.requirement_intake import DEFAULT_TEMPLATE
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_pob_027_migration", VERSIONS / "0315_intake_automation.py")
+_spec = importlib.util.spec_from_file_location("_pob_027_migration", VERSIONS / "0317_intake_automation.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
@@ -56,7 +56,7 @@ def _tables(url) -> set[str]:
 
 def test_the_round_trip_seeds_the_template_once(isolated_db):
     cfg, url = isolated_db["cfg"], isolated_db["url"]
-    # 0001 builds today's models, so remove what 0315 adds first: the guarded upgrade must add it back
+    # 0001 builds today's models, so remove what 0317 adds first: the guarded upgrade must add it back
     for table in TABLES:
         _sql(url, f"DROP TABLE IF EXISTS {table}", autocommit=True)
     command.upgrade(cfg, HEAD)

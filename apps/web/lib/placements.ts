@@ -35,6 +35,13 @@ export type PlacementInvoice = {
   status: "none" | "draft" | "issued" | "discarded"; status_label: string; draft_amount: string | null; draft_due_date: string | null;
   draft_created_at: string | null; discard_reason: string | null; invoice: Invoice | null;
 };
+// pob-026 (DEC-SCOPE-435 S10): one side's satisfaction survey; null until the daily sweep has handled it (S1).
+export const SURVEY_AFTER_DAYS = 30;
+export const surveyUrl = (token: string) => `/api/v1/public/placement-surveys/${encodeURIComponent(token)}`;
+export type Survey = {
+  status: "sent" | "responded" | "skipped"; status_label: string; sent_at: string | null; resent_at: string | null; responded_at: string | null;
+  rating: number | null; comment: string | null; skip_reason: string | null; skip_reason_label: string | null;
+} | null;
 export type Placement = {
   id: string; status: string; status_label: string; role: string; offer_id: string;
   application: { id: string; code: string }; candidate: Ref; requirement: Ref; company: { id: string; name: string }; vendor: { id: string; name: string } | null;
@@ -42,6 +49,7 @@ export type Placement = {
   joining: { expected_joining_date: string | null; actual_joining_date: string | null };
   candidate_confirmation: Confirmation; client_confirmation: Confirmation;
   commercials: { expected_fee: string | null; invoice: PlacementInvoice } | null;
+  satisfaction?: { client: Survey; candidate: Survey };
   permissions: { can_edit: boolean; can_change_owner: boolean; can_invoice: boolean };
 };
 export const placementOf = (data: unknown): Placement | null => {

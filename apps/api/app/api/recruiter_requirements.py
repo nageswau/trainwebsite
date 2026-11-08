@@ -40,10 +40,12 @@ from app.services import recruiter_contracts as contracts
 from app.services import recruiter_requirements as svc
 from app.services import requirement_intake as intake
 from app.services import requirement_owners as owners
+from app.services.interviews import field_error
 from app.services.recruiter import ROLE, recruiter_context
 from app.services.stale_guard import require_fresh
 
 router = APIRouter(prefix="/recruiter/requirements", tags=["recruiter-requirements"])
+CLOSE_REASON = "Enter a reason for closing"  # pob-026 S11
 # hrc-007 (DEC-SCOPE-380 A9): the approval queue and the per-source settings, for `jobs.approve` holders.
 approvals_router = APIRouter(prefix="/recruiter/requirement-approvals", tags=["recruiter-requirements"])
 match_settings_router = APIRouter(prefix="/recruiter/match-settings", tags=["recruiter-requirements"])  # hrc-018 (DEC-SCOPE-392 E3)
@@ -272,6 +274,8 @@ async def change_requirement_status(requirement_id: UUID, payload: RecRequiremen
     """AC2: every move is a history row (actor, note) in the same transaction; a move not in the table is a 409."""
     job = await svc.load_scoped(db, user, requirement_id, lock=True, officers=True)
     svc.require(user, job, "can_change_status", "status")
+    if payload.status == "closed" and not payload.note:  # pob-026 (DEC-SCOPE-435 S11); the joining auto-close is not this route
+        raise field_error("note", CLOSE_REASON)
     previous = await svc.change_status(db, user, job, payload.status, payload.note)
     job.updated_by_user_id = user.id
     svc.audit(db, user, "status", job.id, {"from": previous, "to": payload.status, "changes": {"status": [previous, payload.status]}})

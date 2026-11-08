@@ -2,7 +2,7 @@
 
 Spec: `docs/superpowers/specs/2026-11-08-pob-027-intake-automation-design.md`.
 
-1. **Models + migration 0315** — `RequirementAutomationSetting`, `RequirementTask`, `EscalationRule`, `EscalationEvent` with check
+1. **Models + migration 0317** — `RequirementAutomationSetting`, `RequirementTask`, `EscalationRule`, `EscalationEvent` with check
    constants; migration creates when missing, seeds the settings row. Test: migration/model checks identical.
 2. **Service `requirement_intake.py`** — `eligible_owner`, `on_created` (auto-assign, notify / Team Lead notice, tasks),
    `on_assigned` (notify, move open tasks or create once), settings read/save, task list/complete. Tests first (RED) via API.
