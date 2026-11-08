@@ -23,6 +23,7 @@ from app.models import (
 )
 from tests.rec001_helpers import as_role, login, make_pm, make_recruiter, make_user
 from tests.test_rec_017_tracking import _add, _candidate, _move, _requirement
+from tests.test_rec_019_shares import permitted
 from tests.test_rec_020_interviews import _interview
 from tests.test_rec_022_offers import _offer, _status
 
@@ -96,7 +97,7 @@ async def test_meetings_follow_ups_requirements_shares_and_contracts_appear(clie
     stored = await db_session.get(Company, uuid.UUID(company["id"]))
     job = await _requirement(db_session, recruiter, company=stored)
     db_session.add(JobStatusHistory(job_id=job.id, from_status=None, to_status="requirement_received", changed_by_user_id=recruiter.id))
-    candidate = await _candidate(db_session, recruiter, mobile="+919812345678")
+    candidate = await _candidate(db_session, recruiter, mobile="+919812345678", **permitted(recruiter))
     application = JobApplication(job_id=job.id, candidate_id=candidate.id, status="profile_shared")
     contract = RecruiterContract(company_id=stored.id, created_by_user_id=recruiter.id, contract_document_key="secret/contract-key.pdf", contract_document_content_type="application/pdf")
     db_session.add_all([application, contract])
@@ -237,7 +238,7 @@ async def test_candidate_timeline_lists_calls_messages_applications_interviews_o
     _, recruiter = await _team(client, db_session)
     job = await _requirement(db_session, recruiter)
     company = await db_session.get(Company, job.company_id)
-    candidate = await _candidate(db_session, recruiter, mobile=f"+9198{uuid.uuid4().int % 10**8:08d}")
+    candidate = await _candidate(db_session, recruiter, mobile=f"+9198{uuid.uuid4().int % 10**8:08d}", **permitted(recruiter))
     application = (await _add(client, job, candidate)).json()["application"]
     assert (await client.post(CALLS, json={"candidate_id": str(candidate.id), "outcome": "connected", "notes": "Keen"})).status_code == 201
     sent = await client.post(MESSAGES, json={"candidate_id": str(candidate.id), "channel": "whatsapp", "body": "Interview on Monday"})
@@ -276,7 +277,7 @@ async def test_candidate_timeline_lists_calls_messages_applications_interviews_o
 @pytest.mark.asyncio
 async def test_candidate_timeline_readers(client, db_session):
     _, recruiter = await _team(client, db_session)
-    candidate = await _candidate(db_session, recruiter)
+    candidate = await _candidate(db_session, recruiter, **permitted(recruiter))
     assert (await client.post(CALLS, json={"candidate_id": str(candidate.id), "outcome": "busy"})).status_code == 201
     await login(client, await make_recruiter(db_session))  # R11: every recruiter reads the whole pool
     assert [r["kind"] for r in (await timeline(client, "candidates", candidate.id))["items"]] == ["call"]

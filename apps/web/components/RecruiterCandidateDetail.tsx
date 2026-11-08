@@ -13,6 +13,7 @@ import RecruiterCandidateOwnership from "@/components/RecruiterCandidateOwnershi
 import RecruiterCandidateTraining from "@/components/RecruiterCandidateTraining";
 import RecruiterCandidateDocuments from "@/components/RecruiterCandidateDocuments";
 import RecruiterCandidateResumes from "@/components/RecruiterCandidateResumes";
+import RecruiterCandidateSourcing from "@/components/RecruiterCandidateSourcing";
 import RecruiterCandidateSkills from "@/components/RecruiterCandidateSkills";
 import RecruiterCandidateTasks from "@/components/RecruiterCandidateTasks";
 import RecruiterMessages from "@/components/RecruiterMessages";
@@ -104,7 +105,6 @@ export default function RecruiterCandidateDetail({ initial, merged }: { initial:
     ["Willing to relocate", candidate.willing_to_relocate === true ? "Yes" : candidate.willing_to_relocate === false ? "No" : null],
     ["Tools", list(candidate.tools)], ["Languages", list(candidate.languages)],
     ["LinkedIn", candidate.linkedin && <a href={candidate.linkedin} target="_blank" rel="noopener noreferrer nofollow" style={{ overflowWrap: "anywhere" }}>{candidate.linkedin}</a>],
-    ["Source", `${candidate.source.name}${candidate.source.active ? "" : " (inactive)"}`], ["Source detail", candidate.source_detail],
     ["Campaign", candidate.utm ? Object.entries(candidate.utm).map(([key, value]) => `${key.replace("utm_", "")}: ${value}`).join(" · ") : null], // hrc-023
     ["Basis for holding", consentSummary(candidate.consent)], // hrc-035 (DEC-SCOPE-396 K2)
     ["Added", <><LocalTime value={candidate.created_at} time />{candidate.created_by ? ` by ${candidate.created_by.full_name}` : ""}</>],
@@ -185,6 +185,8 @@ export default function RecruiterCandidateDetail({ initial, merged }: { initial:
       {candidate.ownership && !candidate.merged_into && (
         <RecruiterCandidateOwnership candidateId={candidate.id} ownership={candidate.ownership} onSaved={(saved) => { setCandidate(saved); touched(); }} />
       )}
+      {/* pob-018: source, referrer, vendor, verification and the permission to be represented (Source / Source detail moved here) */}
+      <RecruiterCandidateSourcing candidate={candidate} canEdit={canEdit} onSaved={(saved) => { setCandidate(saved); touched(); }} />
       {/* rec-011: re-keyed on archive/restore, so the card re-reads can_edit (an archived candidate's skills are read only). */}
       <RecruiterCandidateSkills key={`skills-${candidate.id}-${archived}-${skillsVersion}`} candidateId={candidate.id} />
       {/* rec-036: lead → IT student → trained → recruiter candidate → placed (read only). */}

@@ -6333,3 +6333,13 @@ Audit actions `recruiter_template.approve|archive|restore|copy`.
 - `PATCH /recruiter/colleges/{org}/vacancy-shares/{share}` `{response, response_note?}` → the vacancies envelope; a share of another college 404; same values = no audit. Audit `bdm_organization.placement_vacancy_response`.
 - `GET /recruiter/campus-calendar?from&to&college_id` → `{from, to, items[{kind(drive|event|batch), id, date, end_date, title, code, status, event_kind, student_count, college{id, code, name}}], truncated}`; default the current month (IST); `to < from` or more than 92 days 422. `GET /recruiter/campus-calendar.ics` returns the same as all-day `text/calendar` events (attachment).
 - `GET /recruiter/campus-summary` → `{colleges, shared_30d, awaiting, upcoming_30d, upcoming_truncated, outcomes{…}}` over the caller's colleges.
+
+## 12LT. Source attribution, verification and outreach permission (pob-018) — addendum, 2026-11-08
+
+`DEC-SCOPE-427`. Migration `0308_candidate_sourcing`.
+
+- `POST`/`PATCH /recruiter/candidates[/{id}]` accept `source_date` (not in the future; omitted on create = today IST; null on PATCH 422), `referrer_name` (≤ 160), `referrer_candidate_id` (another pool candidate the caller can see, else 422), `vendor_id` (a live vendor company in the caller's company scope, else 422), `portal_import_reference` (≤ 120). Audited by the existing `candidate.create|update` diff.
+- `GET /recruiter/candidates` rows add `source_date`. The candidate detail adds `sourcing {source_date, referrer_name, referrer{id, candidate_code, name}|null ("Restricted record" with null id/code when the viewer cannot see it), vendor{id, name}|null, institution{id, name}|null, portal_import_reference, last_verified_on, last_verified_by, outreach_status, outreach_status_changed_at, permission{method, given_on, note, recorded_by}|null, permitted}`.
+- `POST /recruiter/candidates/{id}/verify` → the candidate detail; sets `last_verified_on` (today IST) and who. Writers only (403), outside the pool 404, archived 409. Audit `candidate.verify`.
+- `PUT /recruiter/candidates/{id}/outreach` `{status: not_contacted|contacted|responded|consented|declined, method?, given_on?, note? ≤ 500}` → the candidate detail. `consented` requires `method` (call|email|whatsapp|linkedin|in_person|form|other) and `given_on` (not in the future); the permission fields with any other status 422; leaving `consented` withdraws the permission. Same values = no-op. Writers only (403), 404, archived 409. Audit `candidate.outreach` `{from, to, method?, given_on?}` (never the note).
+- `POST /recruiter/shares`: 422 "Record each candidate's permission to be represented … : <names>" when a candidate has no outreach permission (consented, their own opt-in, or an institution student under pob-014).

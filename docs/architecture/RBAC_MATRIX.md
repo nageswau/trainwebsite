@@ -4050,3 +4050,9 @@ A placement officer has no company scope, but answering Missing still creates th
 
 - **Read (vacancies view, campus calendar and its ICS, TPO widget):** every pob-013 college reader (placement_team, placement_manager, the college BDMs in bdm-002 scope, super_admin); others 403, out of scope 404. Outcomes never count institution students outside the caller's active pob-014 permission.
 - **Share a vacancy / record the reply / the share form's options:** the college's pob-013 writers (placement_team, super_admin, the college's assigned BDM); both managers and another BDM 403 after scope. Sharing also needs the requirement in the caller's requirement scope (404 otherwise).
+
+### 2.318 Source attribution, verification and outreach permission *(added 2026-11-08 — `DEC-SCOPE-427`, pob-018)*
+
+- **Read (`sourcing` on the candidate):** every candidate reader (placement_team, placement_manager, super_admin, hr_team); institution students stay pob-014-scoped (404).
+- **Change attribution / verify / outreach:** candidate writers (placement_team, placement_manager, super_admin); hr_team 403. A vendor link needs the vendor in the caller's company scope; a referrer link needs the referrer in the caller's pool (422 otherwise, one message).
+- **Profile share:** additionally refused (422) for a candidate without an outreach permission.

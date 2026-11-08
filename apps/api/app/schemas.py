@@ -56,6 +56,8 @@ from app.models import (
     CANDIDATE_DOCUMENT_TYPES,
     CANDIDATE_ENGAGEMENTS,
     CANDIDATE_NOTE_MAX,
+    CANDIDATE_OUTREACH_STATUSES,
+    CANDIDATE_PERMISSION_METHODS,
     CANDIDATE_SKILL_LEVELS,
     CANDIDATE_SKILL_SOURCES,
     CANDIDATE_SKILL_STATUSES,
@@ -10589,6 +10591,10 @@ CANDIDATE_FIELD_LABELS = {
     "tools": "Tools", "languages": "Languages", "preferred_roles": "Preferred roles", "work_modes": "Work modes", "employment_types": "Employment types",
     "shifts": "Shifts", "available_from": "Available from", "willing_to_relocate": "Willing to relocate", "education": "Education",
     "employment": "Employment history", "certifications": "Certifications",
+    # pob-018 (DEC-SCOPE-427)
+    "source_date": "Source date", "referrer_name": "Referrer name", "referrer_candidate_id": "Referrer candidate", "vendor_id": "Vendor",
+    "portal_import_reference": "Portal import reference", "method": "Permission method", "given_on": "Permission date",
+    "note": "Note",
 }
 NO_CONTACT = "Enter a mobile number or an email"
 _LINKEDIN = re.compile(r"https?://\S+", re.IGNORECASE)
@@ -10708,6 +10714,17 @@ CandidateName = _tel_name(160)
 CandidateMobile = Annotated[_candidate_text("Mobile", 40), AfterValidator(_candidate_mobile)]
 CandidateEmail = Annotated[str | None, AfterValidator(_candidate_email)]
 CandidateLinkedin = Annotated[_candidate_text("LinkedIn", 300), AfterValidator(_linkedin)]
+
+
+def _past_day(label: str):
+    """pob-018 (A2/A5): a day that has already come, in IST (the office day)."""
+
+    def check(value: date | None) -> date | None:
+        if value is not None and value > datetime.now(ZoneInfo("Asia/Kolkata")).date():
+            raise ValueError(f"{label} cannot be in the future")
+        return value
+
+    return AfterValidator(check)
 
 
 # --- hrc-010 (DEC-SCOPE-383 P1-P3, P7): the profile rows. A list replaces the whole set; a row's error names it ("Employment 2: ...").
@@ -10871,6 +10888,12 @@ class _CandidateFields(BaseModel):
     education: _rows(CandidateEducationRow, "Education", "education rows", 10) = Field(default_factory=list)
     employment: _rows(CandidateEmploymentRow, "Employment", "employment rows", 20) = Field(default_factory=list)
     certifications: _rows(CandidateCertificationRow, "Certification", "certifications", 20) = Field(default_factory=list)
+    # pob-018 (DEC-SCOPE-427 A2/A3): an omitted source date is today (IST); the links are checked by services/candidate_sourcing
+    source_date: Annotated[date | None, _past_day("Source date")] = None
+    referrer_name: _candidate_text("Referrer name", 160) = None
+    referrer_candidate_id: UUID | None = None
+    vendor_id: UUID | None = None
+    portal_import_reference: _candidate_text("Portal import reference", 120) = None
 
 
 class CandidateCreate(_CandidateFields):
@@ -10903,6 +10926,7 @@ class CandidateUpdate(_CandidateFields):
     education: _rows(CandidateEducationRow, "Education", "education rows", 10) = None
     employment: _rows(CandidateEmploymentRow, "Employment", "employment rows", 20) = None
     certifications: _rows(CandidateCertificationRow, "Certification", "certifications", 20) = None
+    source_date: Annotated[date, _past_day("Source date")] = None  # pob-018: null is refused, like the name
     expected_updated_at: datetime | None = None  # hrc-003: the version the form showed; another one is 409 `record_changed`
 
 
@@ -10929,6 +10953,7 @@ class CandidateItem(BaseModel):
     archived: bool
     created_at: datetime
     owner: RecPersonRef | None = None  # hrc-012 (DEC-SCOPE-382 O2): the primary recruiter; None = unassigned
+    source_date: date | None = None  # pob-018 (DEC-SCOPE-427 A2)
     engagement: CandidateEngagement | None = None  # hrc-021 (DEC-SCOPE-397 E7): derived from activity, applications and the manual flags
 
 
@@ -11042,6 +11067,62 @@ class CandidateDetail(CandidateItem):
     completeness: dict | None = None
     ownership: "CandidateOwnershipOut | None" = None  # hrc-012 (DEC-SCOPE-382)
     consent: "CandidateConsentOut | None" = None  # hrc-035 (DEC-SCOPE-396 K2): the latest recorded basis, null = none recorded
+    sourcing: "CandidateSourcing | None" = None  # pob-018 (DEC-SCOPE-427 A10)
+
+
+# --- pob-018 (DEC-SCOPE-427): source attribution, verification and outreach permission -----------------------------------------------
+CandidateOutreachStatus = Literal[CANDIDATE_OUTREACH_STATUSES]
+
+
+class CandidateRefNamed(BaseModel):
+    id: UUID | None  # null: a candidate the viewer may no longer see ("Restricted record")
+    candidate_code: str | None
+    name: str
+
+
+class CandidateNamedRef(BaseModel):
+    id: UUID
+    name: str
+
+
+class CandidatePermissionOut(BaseModel):
+    method: str
+    given_on: date
+    note: str | None
+    recorded_by: BdmPersonRef | None
+
+
+class CandidateSourcing(BaseModel):
+    source_date: date
+    referrer_name: str | None
+    referrer: CandidateRefNamed | None
+    vendor: CandidateNamedRef | None
+    institution: CandidateNamedRef | None
+    portal_import_reference: str | None
+    last_verified_on: date | None
+    last_verified_by: BdmPersonRef | None
+    outreach_status: CandidateOutreachStatus
+    outreach_status_changed_at: datetime | None
+    permission: CandidatePermissionOut | None
+    permitted: bool  # A7: may be put forward to a client
+
+
+class CandidateOutreachIn(BaseModel):
+    """A4/A5: the new outreach status; the permission details go with `consented` only (and are then required)."""
+
+    model_config = ConfigDict(extra="forbid")
+    status: CandidateOutreachStatus
+    method: Literal[CANDIDATE_PERMISSION_METHODS] | None = None
+    given_on: Annotated[date | None, _past_day("Permission date")] = None
+    note: _candidate_text("Note", 500) = None
+
+    @model_validator(mode="after")
+    def _permission(self):
+        if self.status == "consented" and (self.method is None or self.given_on is None):
+            raise ValueError("Record how and when the candidate agreed to be represented")
+        if self.status != "consented" and (self.method or self.given_on or self.note):
+            raise ValueError("Permission details go with the Consented status only")
+        return self
 
 
 class CandidateConsentOut(BaseModel):

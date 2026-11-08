@@ -109,6 +109,7 @@ CLEARED = (
     "current_salary", "expected_salary", "minimum_salary", "current_salary_currency", "current_salary_period", "expected_salary_currency",
     "expected_salary_period", "minimum_salary_currency", "minimum_salary_period", "salary_negotiable", "current_annual_inr",
     "expected_annual_inr", "minimum_annual_inr", "notice_days", "available_from", "preferred_contact",
+    "referrer_name", "portal_import_reference", "outreach_permission_note",  # pob-018 (DEC-SCOPE-427 A9)
 )  # fmt: skip
 
 

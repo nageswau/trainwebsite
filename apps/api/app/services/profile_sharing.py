@@ -39,7 +39,7 @@ from app.models import (
 )
 from app.notifications.phone import wa_number
 from app.schemas import RecShareCreate
-from app.services import applications, candidates, company_pipeline, contact_status, mailer, recruiter_companies
+from app.services import applications, candidate_sourcing, candidates, company_pipeline, contact_status, mailer, recruiter_companies
 from app.services import recruiter_messages as messages
 from app.services import recruiter_requirements as requirements
 
@@ -58,6 +58,7 @@ CONTACT_REQUIRED = "Choose the company contact to send the profiles to"
 CONTACT_UNUSABLE = "Choose an active contact of this requirement's company"
 NO_PORTAL_USERS = "This company has no employer portal account yet. Share by email, WhatsApp or Other"
 NOT_IN_POOL = "Choose active candidates from the pool"
+NO_PERMISSION = "Record each candidate's permission to be represented (Source and outreach) before sharing"
 LINK_GONE = "This link has expired or is no longer available"
 ITEM_NOT_FOUND = "Shared profile not found"
 
@@ -201,6 +202,10 @@ async def _candidates(db: AsyncSession, ids: list[UUID], user: User) -> list[Can
         barred = [c for c in rows if c.institution_permission_id is not None and c.institution_permission_id not in allowed]
         if barred:
             raise HTTPException(422, f"Their institution's permission does not cover the placement purpose: {_names(barred)}")
+    # pob-018 (DEC-SCOPE-427 A7, AC3): under the same FOR SHARE lock, so a concurrent withdrawal waits for this share's commit
+    unpermitted = [found[i] for i in ids if not candidate_sourcing.permitted(found[i])]
+    if unpermitted:
+        raise HTTPException(422, f"{NO_PERMISSION}: {_names(unpermitted)}")
     return [found[i] for i in ids]
 
 

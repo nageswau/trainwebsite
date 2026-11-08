@@ -1,6 +1,7 @@
 from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import (
     JSON,
@@ -7184,6 +7185,23 @@ CANDIDATE_INSTITUTION_CHECKS = {
     "ck_candidates_institution_notice": "institution_notice_status IS NULL OR institution_notice_status IN ('notice_sent', 'consented')",
     "ck_candidates_institution_pair": "(institution_permission_id IS NULL) = (institution_org_id IS NULL)",
 }
+# pob-018 (DEC-SCOPE-427 A4/A5): how far outreach has got and how the candidate agreed to be represented. Migration 0308 keeps a frozen
+# copy of the checks (test_pob_018_migration asserts they stay identical).
+CANDIDATE_OUTREACH_STATUSES = ("not_contacted", "contacted", "responded", "consented", "declined")
+CANDIDATE_PERMISSION_METHODS = ("call", "email", "whatsapp", "linkedin", "in_person", "form", "other")
+CANDIDATE_SOURCING_CHECKS = {
+    "ck_candidates_outreach_status": _in("outreach_status", CANDIDATE_OUTREACH_STATUSES),
+    "ck_candidates_permission_method": _in("outreach_permission_method", CANDIDATE_PERMISSION_METHODS),
+    "ck_candidates_outreach_permission": (
+        "(outreach_status = 'consented') = (outreach_permission_method IS NOT NULL) AND (outreach_permission_method IS NULL) = "
+        "(outreach_permission_on IS NULL) AND (outreach_permission_on IS NULL) = (outreach_permission_by_user_id IS NULL)"
+    ),
+    "ck_candidates_referrer_self": "referrer_candidate_id IS NULL OR referrer_candidate_id <> id",
+}
+
+
+def _ist_today() -> date:
+    return datetime.now(ZoneInfo("Asia/Kolkata")).date()
 
 
 class Candidate(Base, TimestampMixin):
@@ -7193,8 +7211,9 @@ class Candidate(Base, TimestampMixin):
     __tablename__ = "candidates"
     __table_args__ = (
         *(CheckConstraint(sql, name=name) for name, sql in (CANDIDATE_CHECKS | CANDIDATE_PACKAGE_CHECKS | CANDIDATE_MERGE_CHECKS | CANDIDATE_PROFILE_CHECKS
-                                                            | CANDIDATE_PRIVACY_CHECKS | CANDIDATE_INSTITUTION_CHECKS).items()),
+                                                            | CANDIDATE_PRIVACY_CHECKS | CANDIDATE_INSTITUTION_CHECKS | CANDIDATE_SOURCING_CHECKS).items()),
         Index("ix_candidates_institution_permission", "institution_permission_id", postgresql_where=text("institution_permission_id IS NOT NULL")),
+        Index("ix_candidates_vendor", "vendor_id", postgresql_where=text("vendor_id IS NOT NULL")),  # pob-018 A3
         Index("uq_candidates_mobile", "mobile_normalized", unique=True, postgresql_where=text("mobile_normalized IS NOT NULL")),
         Index("uq_candidates_email", text("lower(email)"), unique=True, postgresql_where=text("email IS NOT NULL")),
         Index("ix_candidates_source_id", "source_id"),
@@ -7281,6 +7300,21 @@ class Candidate(Base, TimestampMixin):
     institution_org_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"), nullable=True, index=True)
     institution_permission_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("institution_data_permissions.id", ondelete="RESTRICT"), nullable=True)
     institution_notice_status: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    # pob-018 (DEC-SCOPE-427 A2-A6): when and through whom the candidate was sourced, when the details were last checked, how far outreach
+    # has got and -- while `consented` -- how and when the candidate agreed to be represented (services/candidate_sourcing).
+    source_date: Mapped[date] = mapped_column(Date, default=_ist_today, server_default=func.current_date())
+    referrer_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    referrer_candidate_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"), nullable=True)
+    vendor_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"), nullable=True)
+    portal_import_reference: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    last_verified_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    last_verified_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    outreach_status: Mapped[str] = mapped_column(String(16), default="not_contacted", server_default=text("'not_contacted'"))
+    outreach_status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    outreach_permission_method: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    outreach_permission_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    outreach_permission_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    outreach_permission_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
 
 
 class InstitutionDataPermission(Base, TimestampMixin):

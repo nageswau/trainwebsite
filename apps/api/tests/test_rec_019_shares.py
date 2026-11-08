@@ -52,11 +52,17 @@ async def _employer(db, company_id) -> User:
     return user
 
 
+def permitted(user) -> dict:
+    """pob-018 (DEC-SCOPE-427 AC3): a staff-added candidate is shared only with a recorded permission to be represented."""
+    return {"outreach_status": "consented", "outreach_permission_method": "email", "outreach_permission_on": datetime(2026, 1, 5).date(),
+            "outreach_permission_by_user_id": user.id}  # fmt: skip
+
+
 async def _setup(client, db, n: int = 3):
     manager, recruiter = await _team(client, db)
     job = await _requirement(db, recruiter)
     contact = await _contact(db, job.company_id)
-    people = [await _candidate(db, recruiter, mobile=f"+9198{uuid.uuid4().int % 10**8:08d}", qualification="B.Tech", experience_months=26, location="Pune") for _ in range(n)]
+    people = [await _candidate(db, recruiter, mobile=f"+9198{uuid.uuid4().int % 10**8:08d}", qualification="B.Tech", experience_months=26, location="Pune", **permitted(recruiter)) for _ in range(n)]
     return {"manager": manager, "recruiter": recruiter, "job": job, "contact": contact, "candidates": people}
 
 
