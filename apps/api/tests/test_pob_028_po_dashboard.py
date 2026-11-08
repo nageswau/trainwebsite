@@ -1,4 +1,4 @@
-"""pob-028 -- the Placement Officer dashboard (DEC-SCOPE-436; design docs/superpowers/specs/2026-11-08-pob-028-po-dashboard-design.md).
+"""pob-028 -- the Placement Officer dashboard (DEC-SCOPE-437; design docs/superpowers/specs/2026-11-08-pob-028-po-dashboard-design.md).
 A sixth hrc-033 board, `po`: every figure is one predicate, so it ties out to its drill-down (AC). The database is shared and never
 truncated, so exact figures are read through this test's own employer filter."""
 
@@ -22,6 +22,7 @@ from app.models import (
     RecruiterPayment,
 )
 from app.services import recruitment_dashboards as svc
+from app.services.bdm_appointments import today_ist
 from tests.bdm015_helpers import org_row
 from tests.rec001_helpers import as_role, login, make_recruiter, make_user
 from tests.test_hrc_033_dashboards import URL, _ago, _apply, _board, _company, _drill, _interview, _job, _values
@@ -38,7 +39,7 @@ async def _follow_up(db, company, creator, due_at, *, status="open", reason="new
     return row
 
 
-async def _placement(db, application, job, candidate, creator, *, invoice: str = "none", paid: Decimal | None = None) -> Placement:
+async def _placement(db, application, job, candidate, creator, *, invoice: str = "none", paid: Decimal | None = None, **extra) -> Placement:
     offer = JobOffer(application_id=application.id, status="accepted", joining_status="joined")
     db.add(offer)
     await db.flush()
@@ -53,7 +54,7 @@ async def _placement(db, application, job, candidate, creator, *, invoice: str =
         fields = {"invoice_status": "issued", "invoice_id": bill.id, "draft_due_date": bill.due_date}
     elif invoice == "draft":
         fields = {"invoice_status": "draft", "draft_due_date": _ago(days=-20).date(), "draft_amount": Decimal("500")}
-    row = Placement(offer_id=offer.id, application_id=application.id, job_id=job.id, candidate_id=candidate.id, company_id=job.company_id, role="Engineer", **fields)
+    row = Placement(offer_id=offer.id, application_id=application.id, job_id=job.id, candidate_id=candidate.id, company_id=job.company_id, role="Engineer", **fields, **extra)
     db.add(row)
     await db.commit()
     return row
@@ -91,7 +92,7 @@ async def test_every_po_figure_equals_its_drill_down_count(client, db_session):
     planted = await _plant(db_session)
     params = {"employer": str(planted["company"].id)}
     payload = await _board(client, BOARD, **params)
-    assert [s["key"] for s in payload["sections"]] == ["bd", "follow_ups", "requirements", "sourcing", "actions", "tpo", "interviews", "placements", "invoicing"]
+    assert [s["key"] for s in payload["sections"]] == ["bd", "follow_ups", "requirements", "sourcing", "actions", "tpo", "interviews", "placements", "guarantee", "invoicing"]
     for section in payload["sections"]:
         assert section["figures"], section["key"]
         for figure in section["figures"]:
@@ -169,6 +170,28 @@ async def test_invoicing_counts_overdue_and_collected(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_guarantee_counts_expiring_and_owed_replacements(client, db_session):
+    """pob-025 G10/G11: ending today..+7 with no dropout; a dropout on or before the end with no replacement filled."""
+    await as_role(client, db_session, "super_admin", "global")
+    planted = await _plant(db_session)
+    job, creator = planted["job"], planted["creator"]
+    today = today_ist(_ago())
+    cases = [
+        {"guarantee_end_date": today + timedelta(days=3)},  # expiring
+        {"guarantee_end_date": today + timedelta(days=10)},  # later
+        {"guarantee_end_date": today - timedelta(days=1)},  # already past
+        {"guarantee_end_date": today + timedelta(days=5), "dropout_on": today - timedelta(days=2), "dropout_reason": "Left"},  # owed
+        {"guarantee_end_date": today - timedelta(days=4), "dropout_on": today - timedelta(days=2), "dropout_reason": "Left"},  # after the end
+    ]
+    for extra in cases:
+        person = await _candidate(db_session, creator)
+        application = await _apply(db_session, person, job, "sourced", "selected", "joined")
+        await _placement(db_session, application, job, person, creator, guarantee_days=30, **extra)
+    values = _values(await _board(client, BOARD, employer=str(planted["company"].id)))
+    assert (values["guarantee_expiring"], values["replacements_owed"]) == (1, 1)
+
+
+@pytest.mark.asyncio
 async def test_the_invoicing_section_is_for_the_revenue_gate_only(client, db_session):
     planted = await _plant(db_session)
     await as_role(client, db_session, "hr_manager", "it")
@@ -203,6 +226,17 @@ async def test_a_po_reads_only_their_own_companies(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_the_employer_filter_lists_the_pos_prospects(client, db_session):
+    """A BD prospect has no requirement yet, so the PO board takes its employer choices from the company scope."""
+    recruiter = await make_recruiter(db_session)
+    mine, theirs = await _company(db_session, recruiter), await _company(db_session)
+    await login(client, recruiter)
+    employers = {option["id"] for option in (await _board(client, BOARD, employer=str(mine.id)))["options"]["employers"]}
+    assert str(mine.id) in employers
+    assert str(theirs.id) not in employers
+
+
+@pytest.mark.asyncio
 async def test_the_po_board_query_count_does_not_grow_with_the_data(client, db_session):
     await as_role(client, db_session, "super_admin", "global")
 
@@ -225,4 +259,3 @@ def test_the_service_imports_in_a_fresh_interpreter():
     """pob-016 lesson: a cycle hidden by conftest's `import app.main` breaks the worker and the seed."""
     result = subprocess.run([sys.executable, "-c", "import app.services.recruitment_dashboards"], capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr
-

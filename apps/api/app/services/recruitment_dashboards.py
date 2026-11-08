@@ -1,5 +1,5 @@
 """hrc-033 (DEC-SCOPE-415, spec docs/superpowers/specs/2026-11-06-hrc-033-operational-recruitment-dashboards-design.md): the five operational
-recruitment dashboards -- funnel, vacancy, recruiter, placement officer, interview. pob-028 (DEC-SCOPE-436) adds the sixth, `po`: the
+recruitment dashboards -- funnel, vacancy, recruiter, placement officer, interview. pob-028 (DEC-SCOPE-437) adds the sixth, `po`: the
 Placement Officer's (placement team's) nine widgets, as sections over four more record kinds (company, follow-up, submission, placement).
 
 Every figure is declared once, as a record kind and a predicate. Its value and its drill-down are built from that one predicate by `_where`,
@@ -332,7 +332,7 @@ _OFFICER = Board(
 )  # fmt: skip
 
 
-# --- the PO dashboard (pob-028, DEC-SCOPE-436): the nine widgets of §15 ---------------------------------------------------------------------
+# --- the PO dashboard (pob-028, DEC-SCOPE-437): the nine widgets of §15 ---------------------------------------------------------------------
 def _bd(*stages: str):
     """P5: a company in the BD pipeline -- a client or prospect, neither lost nor inactive, at one of these stages."""
     return lambda _ctx: [Company.partner_type != "vendor", Company.lost_at.is_(None), Company.inactive_at.is_(None), Company.stage.in_(stages)]
@@ -340,6 +340,13 @@ def _bd(*stages: str):
 
 def _bd_clients(_ctx: Context) -> list:
     return [Company.partner_type != "vendor", Company.lost_at.is_(None), Company.inactive_at.is_(None), Company.client_status != "prospect"]
+
+
+def _guarantee_expiring(ctx: Context) -> list:
+    """pob-025 G10's alert rule (services/placements.run_guarantee_alerts; not imported: placements imports recruiter_revenue)."""
+    today = today_ist(ctx.now)
+    joined = exists().where(JobOffer.id == Placement.offer_id, JobOffer.joining_status == "joined")
+    return [joined, Placement.dropout_on.is_(None), Placement.guarantee_end_date.between(today, today + timedelta(days=7))]
 
 
 def _follow_ups_due(ctx: Context) -> list:
@@ -466,6 +473,12 @@ _PO = Board(
             Figure("joinings", "Joinings", "Applications moved to Joined.", "application", _entered("joined")),
             Figure("placements", "Placement records", "Placement records created in the period.", "placement", lambda ctx: _during(Placement.created_at, ctx)),
         )),
+        Section("guarantee", "Replacement guarantee (now)", (
+            Figure("guarantee_expiring", "Guarantee ending within 7 days", "Joined placements with no dropout whose guarantee ends today or within 7 days (IST).",
+                   "placement", _guarantee_expiring),
+            Figure("replacements_owed", "Replacements owed", "Dropouts inside the guarantee whose replacement is not yet filled.", "placement",
+                   lambda _ctx: [Placement.dropout_on <= Placement.guarantee_end_date, Placement.replaced_by_placement_id.is_(None)]),
+        )),
         Section("invoicing", "Invoicing and collections (now)", (
             Figure("invoice_pending", "Awaiting an invoice", "Placements with no invoice issued yet (none or a draft).", "placement", lambda _ctx: [Placement.invoice_status.in_(("none", "draft"))]),
             Figure("invoices_issued", "Invoices issued", "Placements whose invoice is issued and not cancelled.", "placement", _invoice()),
@@ -565,19 +578,28 @@ async def _options(db: AsyncSession, board: Board, ctx: Context) -> dict:
         people = people.where(User.id.in_(select(RecruiterProfile.user_id).where(RecruiterProfile.reporting_manager_user_id == user.id)))
     elif user.role == ROLE or (user.role == OFFICER_ROLE and not board.by_officer):
         people = people.where(false())
-    employers = (select(Company.id, Company.name).join(Job, Job.company_id == Company.id).where(*ctx.job_scope).group_by(Company.id, Company.name)
+    if board is _PO:  # pob-028: BD prospects have no requirement yet, so the PO board offers its company scope
+        employers = select(Company.id, Company.name).where(*ctx.company_scope)
+    else:
+        employers = select(Company.id, Company.name).join(Job, Job.company_id == Company.id).where(*ctx.job_scope).group_by(Company.id, Company.name)
+    employers = (employers
                  .order_by(*([(Company.id == ctx.employer).desc()] if ctx.employer else []), Company.name, Company.id).limit(OPTIONS_LIMIT))  # fmt: skip
     jobs = (select(Job.id, Job.requirement_code, Job.title)
             .where(*ctx.job_scope, *([Job.company_id == ctx.employer] if ctx.employer else []))
             .order_by((Job.id == ctx.job).desc() if ctx.job else Job.created_at.desc(), Job.created_at.desc(), Job.id).limit(OPTIONS_LIMIT))  # fmt: skip
     return {
-        "owners": [{"id": str(i), "label": name} for i, name in (await db.execute(people.order_by(*([(User.id == ctx.owner).desc()] if ctx.owner else []), User.full_name, User.id).limit(OPTIONS_LIMIT))).all()],
+        "owners": [
+            {"id": str(i), "label": name}
+            for i, name in (await db.execute(people.order_by(*([(User.id == ctx.owner).desc()] if ctx.owner else []), User.full_name, User.id).limit(OPTIONS_LIMIT))).all()
+        ],
         "employers": [{"id": str(i), "label": name} for i, name in (await db.execute(employers)).all()],
         "jobs": [{"id": str(i), "label": f"{code} — {title}"} for i, code, title in (await db.execute(jobs)).all()],
     }
 
 
-async def dashboard(db: AsyncSession, user: User, key: str, date_from: date | None, date_to: date | None, owner: UUID | None, employer: UUID | None, job: UUID | None, now: datetime, *, with_options: bool = True) -> dict:
+async def dashboard(
+    db: AsyncSession, user: User, key: str, date_from: date | None, date_to: date | None, owner: UUID | None, employer: UUID | None, job: UUID | None, now: datetime, *, with_options: bool = True
+) -> dict:
     board = BOARDS[key]
     ctx = await _context(db, user, board, date_from, date_to, owner, employer, job, now)
     sections = await _sections(db, user, board)

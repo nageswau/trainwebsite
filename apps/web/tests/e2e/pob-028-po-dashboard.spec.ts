@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// pob-028 (DEC-SCOPE-436; AC: each widget ties out to its drill-down; a PO with no activity sees zeros, not errors): the seeded placement team
+// pob-028 (DEC-SCOPE-437; AC: each widget ties out to its drill-down; a PO with no activity sees zeros, not errors): the seeded placement team
 // member adds a company at Outreach Sent, opens the PO dashboard tab narrowed to it and opens the figure's records. Every figure is compared with
 // its records through the API the page reads.
 
@@ -30,9 +30,11 @@ test("a PO opens the PO dashboard, narrows it to a company and every figure ties
   const company = await page.request.post("/api/v1/recruiter/companies", { data: { name } });
   expect(company.ok(), await company.text()).toBeTruthy();
   const id = (await company.json()).company.id;
-  const due = new Date(Date.now() - 2 * 86_400_000).toISOString();
-  const followUp = await page.request.post(`/api/v1/recruiter/companies/${id}/follow-ups`, { data: { reason: "new_requirement", due_at: due } });
+  // The API only accepts a future due time (rec-024), so the follow-up is due in a few seconds and overdue once that passes.
+  const dueAt = Date.now() + 5_000;
+  const followUp = await page.request.post(`/api/v1/recruiter/companies/${id}/follow-ups`, { data: { reason: "new_requirement", due_at: new Date(dueAt).toISOString() } });
   expect(followUp.ok(), await followUp.text()).toBeTruthy();
+  await page.waitForTimeout(Math.max(0, dueAt - Date.now()) + 1_000);
 
   await page.goto(`${PATH}/funnel`);
   await page.getByRole("navigation", { name: "Recruitment dashboards" }).getByRole("link", { name: "PO dashboard" }).click();

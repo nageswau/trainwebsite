@@ -1,11 +1,11 @@
 # pob-028 — Placement Officer dashboard (design)
 
-`DEC-SCOPE-436`. Source: `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` pob-028 (§15, nine widgets; AC "each widget ties out to its
+`DEC-SCOPE-437`. Source: `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` pob-028 (§15, nine widgets; AC "each widget ties out to its
 drill-down"; edge "a PO with no activity sees zeros, not errors"; performance "fixed query count"). Status of the source: `UNVERIFIED`;
 the calls below are the builder's (`NEEDS_CONFIRMATION`).
 
 ## Dependency gate
-pob-025 (replacement guarantee) is not built. The owner said to continue, so the replacement-deadline figure is left out until pob-025 lands.
+pob-025 (replacement guarantee) is built: a "Replacement guarantee (now)" section counts guarantees ending within 7 days (its G10 alert rule) and replacements owed (G11).
 pob-029 (outcome reports) is not built either, so the breakdowns by PO, recruiter, company, vendor, source and role (widget 9) are left to it.
 
 ## Options considered
@@ -25,7 +25,7 @@ pob-029 (outcome reports) is not built either, so the breakdowns by PO, recruite
 
 ## Sections (Appendix B definitions live in each figure's `definition`)
 BD pipeline · Follow-ups · Requirements (status, vendor, ageing) · Sourcing funnel · Candidate actions · TPO partnerships · Interview tracker ·
-Offers and joinings · Invoicing and collections (gated).
+Offers and joinings · Replacement guarantee · Invoicing and collections (gated).
 
 ## Risks
 - hrc-033's tests: `_scope` returns three lists; the existing boards ignore the company scope.

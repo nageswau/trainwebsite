@@ -6428,10 +6428,10 @@ Audit actions `recruiter_template.approve|archive|restore|copy`.
 - `POST /recruiter/requirements/{id}/status` `{status: "closed"}` now needs a `note` (422 on `note`: "Enter a reason for closing").
 - Email: a `recruiter_messages` email row per send/reminder (company + contact, or candidate); beat `pob026-placement-surveys` daily 03:30 UTC.
 
-## 12MC. Placement Officer dashboard (pob-028) — addendum, 2026-11-08
+## 12MD. Placement Officer dashboard (pob-028) — addendum, 2026-11-08
 
-`DEC-SCOPE-436`. No migration. hrc-033's routes (§12LI) gain the board key `po`; `reports.recruitment` view/download as before.
+`DEC-SCOPE-437`. No migration. hrc-033's routes (§12LI) gain the board key `po`; `reports.recruitment` view/download as before.
 
-- `GET /recruiter/recruitment-dashboards/po` → the hrc-033 board shape; sections `bd`, `follow_ups`, `requirements`, `sourcing`, `actions`, `tpo`, `interviews`, `placements`, and `invoicing` only for the rec-031 revenue gate (P4).
+- `GET /recruiter/recruitment-dashboards/po` → the hrc-033 board shape; sections `bd`, `follow_ups`, `requirements`, `sourcing`, `actions`, `tpo`, `interviews`, `placements`, `guarantee` (pob-025: `guarantee_expiring`, `replacements_owed`), and `invoicing` only for the rec-031 revenue gate (P4). `options.employers` is the caller's company scope (P11).
 - `GET /recruiter/recruitment-dashboards/po/drill/{figure}` → hrc-033's drill shape over four more record kinds: company (`code, company, status (stage label), client_status, owner`), follow-up (`company, reason, due, owner`), submission (`submission, candidate, name, requirement, company, status`) and placement (`candidate, name, requirement, company, role, created`). 403 "Your role cannot read placement revenue" for an invoicing figure outside the gate; 404 for an unknown figure.
 - `GET /recruiter/recruitment-dashboards/po.csv|.xlsx` → the figures with definitions, without the invoicing section outside the gate.
