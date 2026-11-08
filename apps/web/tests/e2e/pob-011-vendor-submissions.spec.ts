@@ -38,7 +38,11 @@ async function world(request: APIRequestContext, stamp: number) {
   const source_id = sources.items.find((s: { active: boolean }) => s.active).id;
   const people = [];
   for (const n of [1, 2]) {
-    people.push((await ok(await request.post(`${API}/candidates`, { data: { name: `POB11 Cand${n} ${stamp}`, email: `pob11-${n}-${stamp}@example.com`, source_id } }))));
+    people.push((await ok(await request.post(`${API}/candidates`, { data: { name: `POB11 Cand${n} ${stamp}`, email: `pob11-${n}-${stamp}@example.com`, source_id, location: "Pune" } }))));
+  }
+  for (const person of people) { // pob-018 AC3: the permission to be represented
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+    await ok(await request.put(`${API}/candidates/${person.id}/outreach`, { data: { status: "consented", method: "call", given_on: today } }));
   }
   await apiSignIn(request, ADMIN);
   await ok(await request.post(`${API}/companies/${vendor.id}/vendor-status`, { data: { status: "approved", from_status: "registration_submitted" } }));
@@ -82,6 +86,9 @@ test("a vendor requirement is shared with the vendor anonymised, and a direct sh
   await dialog.getByLabel(/^Full details/).check();
   await expect(dialog.getByRole("button", { name: "Share 2 profiles" })).toBeDisabled();
   await dialog.getByLabel(/^Anonymised/).check();
+  await dialog.getByLabel(/candidates agreed/).check(); // pob-021 B3/B4: every submission
+  await dialog.getByLabel(/How and when they agreed/).fill("Phone call today");
+  await dialog.getByLabel(/confirmed their interest/).check();
   await dialog.getByRole("button", { name: "Share 2 profiles" }).click();
   await expect(page.getByRole("status").filter({ hasText: "(vendor, anonymised)" })).toBeVisible();
   await page.getByRole("region", { name: "Profiles shared" }).getByRole("button", { name: "Close" }).click();
@@ -89,9 +96,10 @@ test("a vendor requirement is shared with the vendor anonymised, and a direct sh
 
   // AC1: the same candidate shared directly for another requirement of that end client warns about the duplicate.
   const direct = (await ok(await page.request.post(`${API}/requirements`, { data: { company_id: client.id, title: `POB11 Direct ${stamp}`, location: "Pune" } }))).requirement;
-  const repeat = await page.request.post(`${API}/shares`, { data: { requirement_id: direct.id, candidate_ids: [people[0].id], channel: "other" } });
+  const repeat = await page.request.post(`${API}/shares`, { data: { requirement_id: direct.id, candidate_ids: [people[0].id], channel: "other",
+    consent_confirmed: true, consent_reference: "Call", interest_confirmed: true } });
   expect(repeat.status()).toBe(409);
-  expect((await repeat.json()).detail.message).toContain("with its end client through another route");
+  expect((await repeat.json()).detail.message).toContain("to the same client on another requirement or route"); // pob-021 B7
 
   // The detail fits a phone.
   await page.setViewportSize({ width: 375, height: 800 });

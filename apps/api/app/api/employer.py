@@ -301,8 +301,10 @@ async def respond_to_shared_profile(item_id: UUID, payload: EmployerShareRespons
     """rec-019 (S9): the company's response on a Portal item; another company's item is 404."""
     company_id = await sharing.employer_company(db, user)
     item, share, candidate, job = await sharing.portal_item(db, company_id, item_id, lock=True)
-    if sharing.respond(item, user, payload.response, await db_now(db)):
-        db.add(AuditLog(user_id=user.id, action="profile_share.respond", entity_type="profile_share_item", entity_id=str(item.id), metadata_json={"fields": ["response"], "response": item.response}))
+    changed = sharing.respond(db, item, user, payload.response, await db_now(db))  # pob-021 B13: moves the submission's status too
+    if changed:
+        db.add(AuditLog(user_id=user.id, action="profile_share.respond", entity_type="profile_share_item", entity_id=str(item.id),
+                        metadata_json={"fields": changed, "response": item.response, "status": item.status}))  # fmt: skip
     await db.commit()
     sharing.log("profile_share_employer_response", user, item.id, response=item.response)
     skills = await sharing.skill_names(db, [candidate.id])

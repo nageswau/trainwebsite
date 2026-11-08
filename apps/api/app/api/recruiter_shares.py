@@ -60,12 +60,10 @@ async def update_share_item(share_id: UUID, item_id: UUID, payload: RecShareItem
     if job.status in requirements.ENDED:
         raise HTTPException(409, "This requirement is closed or cancelled")
     item = await db.get(ProfileShareItem, item_id, with_for_update=True, populate_existing=True)
-    changed = svc.respond(item, user, payload.response, await db_now(db))
-    if "feedback" in payload.model_fields_set and payload.feedback != item.feedback:
-        item.feedback = payload.feedback
-        changed.append("feedback")
+    changed = svc.update_item(db, user, item, payload, await db_now(db))  # pob-021: status changes add their own `submission.status` rows
     if changed:
-        db.add(AuditLog(user_id=user.id, action="profile_share.respond", entity_type="profile_share_item", entity_id=str(item.id), metadata_json={"fields": changed, "response": item.response}))
+        db.add(AuditLog(user_id=user.id, action="profile_share.respond", entity_type="profile_share_item", entity_id=str(item.id),
+                        metadata_json={"fields": changed, "response": item.response, "status": item.status}))  # fmt: skip
     await db.commit()
     if changed:
         svc.log("profile_share_item_updated", user, item.id, fields=changed)

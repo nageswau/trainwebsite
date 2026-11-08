@@ -9916,6 +9916,7 @@ REC_COMPANY_FIELDS = (  # the columns a create or edit may write; everything els
     "products_services", "departments_hiring", "hiring_locations", "target_roles",  # pob-003 D2
     "partner_type", "vendor_specialisations", "vendor_service_categories", "vendor_locations",  # pob-010 V2/V3
     "territory",  # pob-009 T4
+    "submission_sla_hours",  # pob-021 B10
 )
 REC_COMPANY_RELATIONS = ("branch_locations", "skill_demand_ids")  # pob-003 D1/D3: rows in their own tables, replaced as a set
 
@@ -10153,6 +10154,7 @@ class RecCompanyUpdate(BaseModel):
     vendor_service_categories: RecContextList = None
     vendor_locations: RecContextList = None
     territory: RecCompanyShort = None  # pob-009 T4: free text; null clears
+    submission_sla_hours: int | None = Field(default=None, ge=1, le=720)  # pob-021 B10: null = the 48-hour default
 
 
 class RecVendorStatusMove(BaseModel):
@@ -10481,6 +10483,7 @@ class RecCompanyOut(RecCompanyRow):
     branch_locations: list[RecBranchOut] = []
     skill_demand: list[RecCatalogueRef] = []
     merged_into: RecCompanyMergedInto | None = None  # pob-006 M6
+    submission_sla_hours: int | None = None  # pob-021 B10
     archived_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -12070,6 +12073,11 @@ class RecDriveUpdate(BaseModel):
 
 # --- rec-019 (DEC-SCOPE-160): profile sharing (services/profile_sharing) ---------------------------------------------------------------
 ShareResponse = Literal["pending", "interested", "not_interested", "interview_requested"]  # models.PROFILE_SHARE_RESPONSES
+SubmissionStatus = Literal["submitted", "client_reviewing", "shortlisted", "interview", "rejected", "on_hold", "selected", "withdrawn"]  # models.SUBMISSION_STATUSES
+SubmissionRejectionReason = Literal[
+    "skills_mismatch", "experience_mismatch", "compensation_mismatch", "location_mismatch", "notice_period", "duplicate_submission",
+    "position_filled", "client_not_interested", "candidate_withdrew", "other",
+]  # models.SUBMISSION_REJECTION_REASONS  # fmt: skip
 
 
 class RecShareCreate(BaseModel):
@@ -12084,14 +12092,18 @@ class RecShareCreate(BaseModel):
     repeat: bool = False
     # pob-011 (DEC-SCOPE-427 V4-V7): to the requirement's vendor, anonymised unless `full` (which needs the consent stub; checked in the service)
     recipient: Literal["client", "vendor"] = "client"
-    detail: Literal["anonymised", "full"] | None = None
+    detail: Literal["named", "anonymised", "full"] | None = None
+    # pob-021 (DEC-SCOPE-430 B3, B4, B9): every submission needs the candidates' consent and confirmed interest (409 in the service);
+    # the salary line only on request and with the grant
     consent_confirmed: bool = False
     consent_reference: _rec_requirement_text_type(300) = None
+    interest_confirmed: bool = False
+    include_compensation: bool = False
 
     @model_validator(mode="after")
-    def _vendor_only(self):
-        if self.recipient == "client" and (self.detail is not None or self.consent_confirmed or self.consent_reference is not None):
-            raise ValueError("Detail and consent apply only to a share with a vendor")
+    def _detail_fits(self):
+        if self.detail is not None and self.detail not in (("named", "anonymised") if self.recipient == "client" else ("anonymised", "full")):
+            raise ValueError("A client gets a named or anonymised summary; a vendor an anonymised one or full details")
         return self
 
     @field_validator("candidate_ids")
@@ -12106,11 +12118,19 @@ class RecShareItemUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     response: ShareResponse | None = None
     feedback: _rec_requirement_text_type(1000, multiline=True) = None
+    # pob-021 (DEC-SCOPE-430 B11-B13): the submission's status, why it was rejected, the next step and the client's acknowledgement
+    status: SubmissionStatus | None = None
+    rejection_reason: SubmissionRejectionReason | None = None
+    next_action: _rec_requirement_text_type(300) = None
+    next_action_on: date | None = None
+    acknowledged: Literal[True] | None = None
 
     @model_validator(mode="after")
     def _something(self):
         if not self.model_fields_set:
             raise ValueError("Give a response or feedback")
+        if (self.status == "rejected") != (self.rejection_reason is not None):
+            raise ValueError("Choose a rejection reason with the Rejected status, and only with it")
         return self
 
 

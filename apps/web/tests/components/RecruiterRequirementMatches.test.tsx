@@ -187,10 +187,14 @@ describe("RecruiterRequirementMatches", () => {
     expect(screen.queryByRole("checkbox", { name: "Select Priya Shah to share" })).toBeNull(); // Rejected on this requirement
     fireEvent.click(screen.getByRole("button", { name: "Share selected (1)" }));
     fireEvent.click(screen.getByLabelText(/^Other/));
+    fireEvent.click(screen.getByLabelText(/candidates agreed/)); // pob-021 B3/B4
+    fireEvent.change(screen.getByLabelText(/How and when they agreed/), { target: { value: "Call" } });
+    fireEvent.click(screen.getByLabelText(/confirmed their interest/));
     fireEvent.click(screen.getByRole("button", { name: "Share 1 profile" }));
     expect(await screen.findByText(/Shared 0 profiles for Java Dev by Other/)).toBeTruthy();
     expect(onShared).toHaveBeenCalled();
-    expect(sent("POST")).toEqual([["/api/v1/recruiter/shares", { requirement_id: "J1", candidate_ids: ["C1"], channel: "other" }]]);
+    expect(sent("POST")).toEqual([["/api/v1/recruiter/shares", { requirement_id: "J1", candidate_ids: ["C1"], channel: "other", detail: "named",
+      consent_confirmed: true, consent_reference: "Call", interest_confirmed: true }]]);
     expect(screen.queryByRole("button", { name: /Share selected/ })).toBeNull();
   });
 });

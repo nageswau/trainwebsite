@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { type Locator, expect, test, type Page } from "@playwright/test";
 
 // rec-019 (AC1-AC4; DEC-SCOPE-160 S1-S14): a self-registered employer's company is assigned to the seeded recruiter, who adds two
 // candidates (one with a resume) to a requirement. From the Candidates board the recruiter shares both on the Portal (both move to
@@ -58,9 +58,20 @@ test("share: portal + repeat + email from the board, the employer answers, phone
   const sources = await (await page.request.get("/api/v1/recruiter/catalogue/candidate-sources?limit=100")).json();
   const source = sources.items.find((s: { name: string }) => s.name === "Referral").id;
   const rahul = await post(page, "/api/v1/recruiter/candidates", {
-    name: `Rahul ${stamp}`, email: `rahul${stamp}@example.com`, mobile, source_id: source, qualification: "B.Tech", experience_months: 26,
+    name: `Rahul ${stamp}`, email: `rahul${stamp}@example.com`, mobile, source_id: source, qualification: "B.Tech", experience_months: 26, location: "Pune",
   });
-  const priya = await post(page, "/api/v1/recruiter/candidates", { name: `Priya ${stamp}`, email: `priya${stamp}@example.com`, source_id: source });
+  const priya = await post(page, "/api/v1/recruiter/candidates", { name: `Priya ${stamp}`, email: `priya${stamp}@example.com`, source_id: source, location: "Pune" });
+  // pob-021 (DEC-SCOPE-430 B3/B4): every submission records the candidates' consent and confirmed interest
+  const confirm = async (scope: Locator | typeof page) => {
+    await scope.getByLabel(/candidates agreed/).check();
+    await scope.getByLabel(/How and when they agreed/).fill("Phone call today");
+    await scope.getByLabel(/confirmed their interest/).check();
+  };
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+  for (const c of [rahul, priya]) { // pob-018 AC3: the permission to be represented
+    const given = await page.request.put(`/api/v1/recruiter/candidates/${c.id}/outreach`, { data: { status: "consented", method: "call", given_on: today } });
+    expect(given.ok()).toBeTruthy();
+  }
   const upload = await page.request.put(`/api/v1/recruiter/candidates/${rahul.id}/resume`, { multipart: { file: { name: "cv.pdf", mimeType: "application/pdf", buffer: PDF } } });
   expect(upload.ok()).toBeTruthy();
   const requirement = (await post(page, "/api/v1/recruiter/requirements", { company_id: companyId, title: `Java Developer ${stamp}`, location: "Pune" })).requirement;
@@ -78,6 +89,7 @@ test("share: portal + repeat + email from the board, the employer answers, phone
   await board.getByRole("button", { name: "Share selected (2)" }).click();
   const dialog = board.getByRole("form", { name: "Share 2 profiles" });
   await dialog.getByLabel(/^Portal/).check();
+  await confirm(dialog);
   await dialog.getByRole("button", { name: "Share 2 profiles" }).click();
   await expect(board.getByText(`Shared 2 profiles for Java Developer ${stamp} by Portal with Meera Iyer.`)).toBeVisible();
   await board.getByRole("button", { name: "Close" }).click();
@@ -88,6 +100,7 @@ test("share: portal + repeat + email from the board, the employer answers, phone
   // S5: a repeat is warned, then sent by Email (AC1-AC3 through Mailpit).
   await board.getByRole("checkbox", { name: `Select Rahul ${stamp} to share` }).check();
   await board.getByRole("button", { name: "Share selected (1)" }).click();
+  await confirm(board);
   await board.getByRole("button", { name: "Share 1 profile" }).click();
   await expect(board.getByRole("alert")).toContainText("already shared");
   await board.getByRole("button", { name: "Share again" }).click();
@@ -136,6 +149,7 @@ test("share: portal + repeat + email from the board, the employer answers, phone
   await page.getByRole("checkbox", { name: `Select Priya ${stamp} to share` }).check();
   await page.getByRole("button", { name: "Share selected (1)" }).click();
   await page.getByLabel(/^Other/).check();
+  await confirm(page);
   await page.getByRole("button", { name: "Share 1 profile" }).click();
   await page.getByRole("button", { name: "Share again" }).click();
   await expect(page.getByText(new RegExp(`Shared 1 profile for Java Developer ${stamp} .*by Other with Meera Iyer\\.`))).toBeVisible();

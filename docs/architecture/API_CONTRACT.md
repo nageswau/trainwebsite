@@ -6359,6 +6359,15 @@ Audit actions `recruiter_template.approve|archive|restore|copy`.
 - `GET /recruiter/requirements/{id}/sourcing` → `{plan {target_profile, boolean_strings[{label, query}], target_found, target_screened, target_submitted, deadline, source_owner, updated_by, updated_at}, channels[{id, name, active}], searches[hrc-020 saved-search rows the caller can see], hidden_searches, funnel {rows[{source{id, name, active}, planned, found, screened, suitable, submitted, rejected, conversion}], total{…}}, progress {state: no_targets|met|on_track|breached, short[], deadline, days_left, found|screened|submitted {actual, target}}, can_edit, can_link_searches}`. Every requirement reader (officers included); out of scope 404.
 - `PUT /recruiter/requirements/{id}/sourcing` `{target_profile?, boolean_strings[] ≤ 10, channel_ids[] ≤ 20, saved_search_ids[] ≤ 10, target_found|target_screened|target_submitted (0-10 000 | null), deadline?, source_owner_user_id?}` (unknown keys 422) → the same body. The whole plan is replaced; links the caller cannot see are kept. 422: owner not on the requirement, an inactive/unknown source, a search the caller cannot see; 403: not a requirement writer, or linking a search without candidate-reader rights; 409: cancelled. Audit `requirement_sourcing_plan.update {fields}`; the same plan again is a no-op.
 
+## 12LW. Submission record (pob-021) — addendum, 2026-11-08
+
+`DEC-SCOPE-430`. Migration `0313_submissions`. Additive on rec-019's routes.
+
+- `POST /recruiter/shares` gains `detail` (client: `named`|`anonymised`; vendor: `anonymised`|`full`), `consent_confirmed` + `consent_reference` (≤ 300) and `interest_confirmed` (all required: 409 otherwise), and `include_compensation` (403 without `candidates.compensation`). 422 for a candidate without a location or failing a switched-on hard filter. The repeat 409 covers the same end client on any requirement or route. The response's share gains `compensation_included` and `follow_up {id, due_at, status}`; each item gains `submission_code, status, status_label, status_changed_at, rejection_reason, rejection_reason_label, next_action, next_action_on, acknowledged_at, consent_reference, match {score, required_matched, required_missing, preferred_matched, preferred_missing, explanation[]}`.
+- `PATCH /recruiter/shares/{id}/items/{item_id}` gains `status`, `rejection_reason` (required with, and only with, `rejected`: 422), `next_action` (≤ 300), `next_action_on`, `acknowledged: true`. A closed submission is 409. A response maps onto the status unless `status` is sent. Audit `submission.status` {from, to, reason} per change.
+- `GET /employer/shared-profiles` items gain `submission_code, match, status, status_label`; an anonymised submission's `candidate.name` and `current_company` are null and it has no resume; `candidate.expected_salary` only when sent. `PATCH /employer/shared-profiles/{id}` maps the response onto the status.
+- `POST|PATCH /recruiter/companies` accept `submission_sla_hours` (1-720 | null); the company read returns it.
+
 ## 12LY. Placement closure record and invoice draft (pob-024) — addendum, 2026-11-08
 
 `DEC-SCOPE-432`. Migration `0312_placements`.

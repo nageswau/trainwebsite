@@ -4068,6 +4068,13 @@ A placement officer has no company scope, but answering Missing still creates th
 - **Save:** the requirement's writers (placement_team, an assigned placement_officer, super_admin); placement_manager and bdm 403; cancelled 409.
 - **Link saved searches:** additionally a candidate reader (`candidates.READERS`), and only searches the caller can see (own or shared); other users' private links are counted, never shown.
 
+### 2.321 Submission record *(added 2026-11-08 — `DEC-SCOPE-430`, pob-021)*
+
+- **Submit:** the requirement's writers (as rec-019); the consent, interest, location and eligibility gates apply to every role, super_admin included.
+- **Include salary:** only with the `candidates.compensation` view grant (403 otherwise).
+- **Change status / acknowledge / next action:** the requirement's writers; readers (placement_manager, the assigned bdm) 403; out of scope 404.
+- **Employer:** sees only its company's Portal submissions (another company's is 404); anonymised ones carry no name, current company or resume; its response moves the status.
+
 ### 2.323 Placement closure record and invoice draft *(added 2026-11-08 — `DEC-SCOPE-432`, pob-024)*
 
 - **Read (list, record):** the requirement's readers (placement_team, placement_manager, super_admin, the company's assigned bdm); out of scope 404; other roles 403. The package needs `candidates.compensation.view`; the expected fee and the invoice block need the rec-031 revenue role and `commercials.client.view` (otherwise null).

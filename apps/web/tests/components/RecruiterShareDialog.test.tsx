@@ -37,6 +37,13 @@ afterEach(() => {
 });
 
 const posted = () => JSON.parse(fetchMock.mock.calls.find(([, init]) => init?.method === "POST")![1].body as string);
+// pob-021 (DEC-SCOPE-430 B3/B4): every submission needs the candidates' consent and confirmed interest
+const SUBMIT = { consent_confirmed: true, consent_reference: "Call on 8 Nov", interest_confirmed: true };
+const confirm = () => {
+  fireEvent.click(screen.getByLabelText(/candidates agreed/));
+  fireEvent.change(screen.getByLabelText(/How and when they agreed/), { target: { value: "Call on 8 Nov" } });
+  fireEvent.click(screen.getByLabelText(/confirmed their interest/));
+};
 
 describe("RecruiterShareDialog", () => {
   it("offers only active contacts, preselects the primary and shares by email", async () => {
@@ -47,9 +54,12 @@ describe("RecruiterShareDialog", () => {
     await waitFor(() => expect((select as HTMLSelectElement).value).toBe("K1"));
     expect(screen.queryByRole("option", { name: /Contact K3/ })).toBeNull();
     fireEvent.change(screen.getByLabelText(/Internal note/), { target: { value: "Top two" } });
-    fireEvent.click(screen.getByRole("button", { name: "Share 2 profiles" }));
+    const submit = screen.getByRole("button", { name: "Share 2 profiles" }) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true); // pob-021: consent and interest first
+    confirm();
+    fireEvent.click(submit);
     expect(await screen.findByText(/Shared 0 profiles for Java Dev by Email with Contact K1/)).toBeTruthy();
-    expect(posted()).toEqual({ requirement_id: "J1", candidate_ids: ["C1", "C2"], channel: "email", contact_id: "K1", note: "Top two" });
+    expect(posted()).toEqual({ requirement_id: "J1", candidate_ids: ["C1", "C2"], channel: "email", contact_id: "K1", note: "Top two", detail: "named", ...SUBMIT });
     expect(onShared).toHaveBeenCalled();
   });
 
@@ -68,13 +78,14 @@ describe("RecruiterShareDialog", () => {
     render(<RecruiterShareDialog requirement={{ id: "J1", label: "Java Dev" }} companyId="CO1" candidates={people} onShared={vi.fn()} onClose={vi.fn()} />);
     fireEvent.click(await screen.findByLabelText(/^Other/));
     fireEvent.change(screen.getByLabelText("Contact (optional)"), { target: { value: "" } });
+    confirm();
     fireEvent.click(screen.getByRole("button", { name: "Share 2 profiles" }));
     expect(await screen.findByText(/already shared/)).toBeTruthy();
     expect(screen.getByText("Rahul (CAN-000001)")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Share again" }));
     expect(await screen.findByText(/by Other/)).toBeTruthy();
     const bodies = fetchMock.mock.calls.filter(([, init]) => init?.method === "POST").map(([, init]) => JSON.parse(init!.body as string));
-    expect(bodies[0]).toEqual({ requirement_id: "J1", candidate_ids: ["C1", "C2"], channel: "other" });
+    expect(bodies[0]).toEqual({ requirement_id: "J1", candidate_ids: ["C1", "C2"], channel: "other", detail: "named", ...SUBMIT });
     expect(bodies[1].repeat).toBe(true);
   });
 
@@ -83,6 +94,7 @@ describe("RecruiterShareDialog", () => {
     render(<RecruiterShareDialog requirement={{ id: "J1", label: "Java Dev" }} companyId="CO1" candidates={people} onShared={vi.fn()} onClose={vi.fn()} />);
     fireEvent.click(await screen.findByLabelText(/^WhatsApp/));
     await waitFor(() => expect((screen.getByLabelText("Contact") as HTMLSelectElement).value).toBe("K1"));
+    confirm();
     fireEvent.click(screen.getByRole("button", { name: "Record and open WhatsApp" }));
     const link = await screen.findByRole("link", { name: /Open WhatsApp/ });
     expect(link.getAttribute("href")).toBe("https://wa.me/919876543210?text=hi");
@@ -93,8 +105,21 @@ describe("RecruiterShareDialog", () => {
     replies.push(res({ detail: "Choose active candidates from the pool" }, 422));
     render(<RecruiterShareDialog requirement={{ id: "J1", label: "Java Dev" }} companyId="CO1" candidates={people} onShared={vi.fn()} onClose={vi.fn()} />);
     await waitFor(() => expect((screen.getByLabelText("Contact") as HTMLSelectElement).value).toBe("K1"));
+    confirm();
     fireEvent.click(screen.getByRole("button", { name: "Share 2 profiles" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Choose active candidates from the pool");
+  });
+
+  it("sends an anonymised summary with the salary line on request", async () => {
+    replies.push(res({ share: share({ detail: "anonymised", compensation_included: true }), whatsapp_url: null }, 201));
+    render(<RecruiterShareDialog requirement={{ id: "J1", label: "Java Dev" }} companyId="CO1" candidates={people} onShared={vi.fn()} onClose={vi.fn()} />);
+    await waitFor(() => expect((screen.getByLabelText("Contact") as HTMLSelectElement).value).toBe("K1"));
+    fireEvent.click(screen.getByLabelText(/^Anonymised/));
+    fireEvent.click(screen.getByLabelText(/Include expected salary/));
+    confirm();
+    fireEvent.click(screen.getByRole("button", { name: "Share 2 profiles" }));
+    await screen.findByText(/Shared 0 profiles/);
+    expect(posted()).toMatchObject({ detail: "anonymised", include_compensation: true, ...SUBMIT });
   });
 
   // pob-011 (DEC-SCOPE-427 V4-V7): a requirement via a vendor can be shared with the vendor -- anonymised by default, full only with consent
@@ -114,9 +139,10 @@ describe("RecruiterShareDialog", () => {
     await waitFor(() => expect((screen.getByLabelText("Contact") as HTMLSelectElement).value).toBe("VK1"));
     expect(screen.queryByLabelText(/^Portal/)).toBeNull();
     expect((screen.getByLabelText(/^Anonymised/) as HTMLInputElement).checked).toBe(true);
+    confirm();
     fireEvent.click(screen.getByRole("button", { name: "Share 2 profiles" }));
     await screen.findByText(/Shared 0 profiles/);
-    expect(posted()).toEqual({ requirement_id: "J1", candidate_ids: ["C1", "C2"], channel: "email", contact_id: "VK1", recipient: "vendor", detail: "anonymised" });
+    expect(posted()).toEqual({ requirement_id: "J1", candidate_ids: ["C1", "C2"], channel: "email", contact_id: "VK1", recipient: "vendor", detail: "anonymised", ...SUBMIT });
   });
 
   it("asks for the candidates' consent before a full-details share with the vendor", async () => {
@@ -134,8 +160,7 @@ describe("RecruiterShareDialog", () => {
     fireEvent.click(screen.getByLabelText(/^Full details/));
     const submit = screen.getByRole("button", { name: "Share 2 profiles" }) as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
-    fireEvent.click(screen.getByLabelText(/candidates agreed/));
-    fireEvent.change(screen.getByLabelText(/How and when they agreed/), { target: { value: "Call on 8 Nov" } });
+    confirm();
     expect(submit.disabled).toBe(false);
     fireEvent.click(submit);
     await screen.findByText(/Shared 0 profiles/);

@@ -95,7 +95,7 @@ async def _bdm(db, manager: User) -> User:
 async def make_candidate(db, creator: User, **fields) -> Candidate:
     source = await db.scalar(select(RecCandidateSource).where(func.lower(RecCandidateSource.name) == "referral"))
     return await add(db, Candidate(candidate_code=await candidate_svc.next_code(db), source_id=source.id, created_by_user_id=creator.id,
-                                   name=f"Rahul {tag()}", email=f"{tag('c38-')}@example.com", preferred_locations=[], opted_in=True, **fields))  # fmt: skip
+                                   name=f"Rahul {tag()}", email=f"{tag('c38-')}@example.com", preferred_locations=[], opted_in=True, **({"location": "Pune"} | fields)))  # fmt: skip  # pob-021 B5
 
 
 async def make_job(db, company: Company, recruiter: User) -> Job:

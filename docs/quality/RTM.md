@@ -1866,6 +1866,14 @@ half.
 | `pob-017-AC1` | The plan saves | `::test_the_plan_saves_and_reads_back`, `::test_invalid_plans_are_refused`, `::test_the_owner_must_be_on_the_requirement_and_channels_must_exist`, `::test_saved_searches_link_and_hidden_links_survive_a_save`; vitest; e2e | Built |
 | `pob-017-AC2` | The funnel counts by source tie out | `::test_the_funnel_by_source_ties_out`, `::test_a_source_change_after_submission_keeps_the_submitted_source`, `::test_the_snapshot_is_set_when_created_already_submitted`, `test_pob_017_migration.py::test_the_round_trip_backfills_submitted_applications`; e2e | Built |
 | `pob-017-AC3` | Deadline breaches are flagged | `::test_a_passed_deadline_with_short_targets_is_breached`; vitest; e2e | Built |
+
+| `pob-021` | Requirement: `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-021` → `DEC-SCOPE-430`; migration `0313_submissions`; `API_CONTRACT.md` §12LW; `RBAC_MATRIX.md` §2.321; spec `docs/superpowers/specs/2026-11-08-pob-021-submission-record-design.md` | | Built |
+| `pob-021-AC1` | Without consent a submission is 409 | `test_pob_021_submissions.py::test_without_consent_or_interest_a_submission_is_409_and_with_them_each_candidate_gets_a_sub_code`; vitest `RecruiterShareDialog`; e2e `pob-021-submissions` | Built |
+| `pob-021-AC2` | A duplicate to the same client warns | `::test_a_duplicate_to_the_same_client_on_another_requirement_warns_and_repeat_submits`, `test_pob_011_vendor_requirements.py::test_direct_shares_across_requirements_of_one_client_now_warn`; e2e | Built |
+| `pob-021-AC3` | The summary includes the match block | `::test_the_summary_carries_the_skills_match_block`; vitest `RecruiterShares` | Built |
+| `pob-021-AC4` | Submitting creates the SLA follow-up | `::test_submitting_creates_the_client_follow_up_at_the_company_sla`; e2e | Built |
+| `pob-021-AC5` | Status changes are logged | `::test_status_changes_are_checked_and_logged`, `::test_an_employer_portal_response_maps_onto_the_submission_status`; vitest; e2e | Built |
+
 | `pob-024` | Requirement: `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-024` → `DEC-SCOPE-432`; migration `0312_placements`; `API_CONTRACT.md` §12LY; `RBAC_MATRIX.md` §2.323; spec `docs/superpowers/specs/2026-11-08-pob-024-placement-closure-design.md` | `apps/api/tests/test_pob_024_placements.py`, `test_pob_024_migration.py`, rec-038 rows; vitest `pob024Placements.test.tsx`; e2e `pob-024-placements.spec.ts` | Built |
 | `pob-024-AC1` | Accepting an offer creates one placement | `::test_accepting_an_offer_creates_one_placement`, `::test_the_list_views_and_counts`; e2e | Built |
 | `pob-024-AC2` | Joining creates exactly one invoice draft | `::test_joining_creates_exactly_one_invoice_draft_due_per_the_payment_trigger`, `::test_a_percentage_fee_is_priced_on_the_offer_and_due_on_joining`, `::test_an_unpriced_hire_still_gets_one_draft_without_an_amount`; vitest; e2e | Built |

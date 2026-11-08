@@ -73,8 +73,12 @@ def _body(s, channel="email", **over) -> dict:
     return body | over
 
 
+# pob-021 (DEC-SCOPE-430 B3/B4): every submission carries the candidates' consent and confirmed interest
+SUBMIT = {"consent_confirmed": True, "consent_reference": "Phone call on 8 Nov", "interest_confirmed": True}
+
+
 async def _share(client, s, channel="email", **over):
-    return await client.post(SHARES, json=_body(s, channel, **over))
+    return await client.post(SHARES, json=_body(s, channel, **(SUBMIT | over)))
 
 
 async def _upload(client, candidate_id):

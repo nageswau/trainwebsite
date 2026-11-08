@@ -16,11 +16,13 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
-from sqlalchemy import and_, func, or_, select, true
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models import (
+    SUBMISSION_CLOSED,
+    SUBMISSION_SLA_DEFAULT_HOURS,
     AuditLog,
     Candidate,
     CandidateResume,
@@ -34,13 +36,14 @@ from app.models import (
     JobApplication,
     ProfileShare,
     ProfileShareItem,
+    RecruiterFollowUp,
     RecruiterMessage,
     Skill,
     User,
 )
 from app.notifications.phone import wa_number
-from app.schemas import RecShareCreate
-from app.services import applications, candidate_sourcing, candidates, company_pipeline, contact_status, mailer, recruiter_companies
+from app.schemas import RecShareCreate, RecShareItemUpdate
+from app.services import applications, candidate_sourcing, candidates, company_pipeline, contact_status, mailer, matching, recruiter_companies
 from app.services import recruiter_contracts as contracts
 from app.services import recruiter_messages as messages
 from app.services import recruiter_requirements as requirements
@@ -70,8 +73,20 @@ VENDOR_NO_PORTAL = "A vendor has no employer portal. Share by email, WhatsApp or
 VENDOR_NOT_ACTIVE = "Profiles can be shared with this vendor only while it is active"
 VENDOR_NO_AGREEMENT = "The vendor agreement must be signed or active before sharing profiles with this vendor"
 VENDOR_NO_NDA = "Upload the vendor's signed NDA before sharing profiles with it"
-CONSENT_MISSING = "Confirm the candidates' consent and say how it was given before sharing their full details with a vendor"
 DETAIL_LABELS = {"named": "Named", "anonymised": "Anonymised", "full": "Full details"}
+# pob-021 (DEC-SCOPE-430 B3-B14): the submission record
+CONSENT_MISSING = "Confirm the candidates' consent to this submission and say how and when they gave it"
+INTEREST_MISSING = "Confirm the candidates' interest in and availability for this requirement before submitting them"
+NO_LOCATION = "Record the candidate's current location before submitting"
+NOT_ELIGIBLE = "Not eligible for this requirement (its hard filters)"
+SUBMISSION_CLOSED_MSG = "This submission is closed (rejected, selected or withdrawn)"
+STATUS_LABELS = {"submitted": "Submitted", "client_reviewing": "Client reviewing", "shortlisted": "Shortlisted", "interview": "Interview",
+                 "rejected": "Rejected", "on_hold": "On hold", "selected": "Selected", "withdrawn": "Withdrawn"}  # fmt: skip
+REJECTION_LABELS = {"skills_mismatch": "Skills mismatch", "experience_mismatch": "Experience mismatch", "compensation_mismatch": "Compensation mismatch",
+                    "location_mismatch": "Location mismatch", "notice_period": "Notice period", "duplicate_submission": "Duplicate submission",
+                    "position_filled": "Position filled", "client_not_interested": "Client not interested", "candidate_withdrew": "Candidate withdrew",
+                    "other": "Other"}  # fmt: skip
+RESPONSE_STATUS = {"interested": "shortlisted", "interview_requested": "interview", "not_interested": "rejected"}  # B13
 
 
 # --- tokens (S7) --------------------------------------------------------------------------------------------------------------------
@@ -127,13 +142,42 @@ def summary(candidate: Candidate, skills: list[str]) -> dict:
     }
 
 
-def vendor_summary(candidate: Candidate, skills: list[str], detail: str) -> dict:
-    """pob-011 V6: what a vendor sees. Anonymised drops the name and current company (and the share gets no resume link); full adds the
-    contact details, which only a share with the consent stub, an NDA and a current agreement reaches."""
-    base = summary(candidate, skills)
+def compensation(candidate: Candidate) -> str | None:
+    """pob-021 B9: the expected-salary line, sent only when ticked by a holder of the compensation grant."""
+    if candidate.expected_salary is None:
+        return None
+    amount = candidate.expected_salary
+    figure = f"{amount:.0f}" if amount == amount.to_integral_value() else f"{amount}"
+    period = f" per {candidate.expected_salary_period}" if candidate.expected_salary_period else ""
+    return f"{candidate.expected_salary_currency or ''} {figure}{period}".strip()
+
+
+def recipient_summary(candidate: Candidate, skills: list[str], detail: str, *, match: dict | None = None, salary: bool = False) -> dict:
+    """What the recipient sees. pob-011 V6 / pob-021 B8: anonymised drops the name and current company (and the share gets no resume);
+    full (a vendor with consent, an NDA and a current agreement) adds the contact details. pob-021 adds the match block (B14) and, when
+    ticked, the expected salary (B9)."""
+    base = summary(candidate, skills) | {"match": match} | ({"expected_salary": compensation(candidate)} if salary else {})  # R8: no salary key unless sent
     if detail == "anonymised":
         return base | {"name": None, "current_company": None}
-    return base | {"email": candidate.email, "mobile": candidate.mobile}
+    if detail == "full":
+        return base | {"email": candidate.email, "mobile": candidate.mobile}
+    return base
+
+
+def match_line(match: dict | None) -> str | None:
+    """B14: "1 of 1 required · 0 of 1 preferred · gaps: Kafka · score 80/100"."""
+    if not match:
+        return None
+    required = len(match["required_matched"]) + len(match["required_missing"])
+    preferred = len(match["preferred_matched"]) + len(match["preferred_missing"])
+    parts = [f"{len(match['required_matched'])} of {required} required"] if required else []
+    if preferred:
+        parts.append(f"{len(match['preferred_matched'])} of {preferred} preferred")
+    gaps = match["required_missing"] + match["preferred_missing"]
+    if gaps:
+        parts.append(f"gaps: {', '.join(gaps)}")
+    parts.append(f"score {match['score']}/100")
+    return " · ".join(parts)
 
 
 def _who(s: dict) -> str:
@@ -152,6 +196,8 @@ def _lines(s: dict) -> list[str]:
         ("Preferred role", s["preferred_role"]),
         ("Notice period", f"{s['notice_days']} days" if s["notice_days"] is not None else None),
         ("Skills", ", ".join(s["skills"])),
+        ("Skills match", match_line(s.get("match"))),
+        ("Expected salary", s.get("expected_salary")),
     )
     return [f"   {label}: {value}" for label, value in fields if value]
 
@@ -172,7 +218,8 @@ def whatsapp_text(job: Job, contact: CompanyContact, sender: User, entries: list
     lines = [f"Hi {contact.name}, candidate profiles for {job.title} ({job.requirement_code}):", ""]
     for number, (s, token) in enumerate(entries, 1):
         facts = ", ".join(v for v in (s.get("email"), s.get("mobile"), experience(s["experience_months"]), s["location"], ", ".join(s["skills"][:5])) if v)
-        lines += [f"{number}. {_who(s)}{f' – {facts}' if facts else ''}", f"   {_resume_line(token, expires_at)}"]
+        extra = [f"   {label}: {value}" for label, value in (("Skills match", match_line(s.get("match"))), ("Expected salary", s.get("expected_salary"))) if value]
+        lines += [f"{number}. {_who(s)}{f' – {facts}' if facts else ''}", *extra, f"   {_resume_line(token, expires_at)}"]
     lines += ["", f"– {sender.full_name}"]
     return "\n".join(lines)
 
@@ -236,6 +283,34 @@ async def _candidates(db: AsyncSession, ids: list[UUID], user: User) -> list[Can
     return [found[i] for i in ids]
 
 
+def _check_submission(payload: RecShareCreate) -> None:
+    """pob-021 B3/B4: the candidates' consent (how and when) and their confirmed interest, before anything is read or written."""
+    if not (payload.consent_confirmed and payload.consent_reference):
+        raise HTTPException(409, CONSENT_MISSING)
+    if not payload.interest_confirmed:
+        raise HTTPException(409, INTEREST_MISSING)
+
+
+async def _matches(db: AsyncSession, job: Job, people: list[Candidate], today) -> dict[UUID, dict]:
+    """pob-021 B5/B6/B14: 422 for a missing location or a failed hard filter (naming each candidate); else each one's match block. The
+    candidate audience of hrc-018 keeps salary wording out of what a client sees."""
+    no_location = [c for c in people if not (c.location or "").strip()]
+    if no_location:
+        raise HTTPException(422, f"{NO_LOCATION}: {_names(no_location)}")
+    spec = await matching.spec(db, job)
+    facts = await matching.facts(db, people, spec)
+    gaps = {c.id: matching.hard_filter_gaps(spec, facts[c.id]) for c in people}
+    barred = [f"{c.name} ({c.candidate_code}): {', '.join(matching.LABELS[g].lower() for g in gaps[c.id])}" for c in people if gaps[c.id]]
+    if barred:
+        raise HTTPException(422, f"{NOT_ELIGIBLE}: {'; '.join(barred)}")
+    out = {}
+    for c in people:
+        result = matching.evaluate(spec, facts[c.id], today=today, amounts=False, audience="candidate", gate=False)
+        explanation = [{"label": e["label"], "text": e["text"], "matched": e["matched"]} for e in result["explanation"] if e["text"]]
+        out[c.id] = {"score": result["score"], **result["skills"], "explanation": explanation}
+    return out
+
+
 async def _vendor(db: AsyncSession, job: Job, payload: RecShareCreate) -> Company | None:
     """pob-011 V4-V7: the vendor a vendor share goes to, after its gate (read-locked so a concurrent suspension waits); None for a client
     share. Every refusal happens before anything is written."""
@@ -253,21 +328,18 @@ async def _vendor(db: AsyncSession, job: Job, payload: RecShareCreate) -> Compan
         raise HTTPException(409, VENDOR_NO_AGREEMENT)
     if await db.scalar(select(CompanyDocument.id).where(CompanyDocument.company_id == vendor.id, CompanyDocument.kind == "nda").limit(1)) is None:
         raise HTTPException(409, VENDOR_NO_NDA)
-    if payload.detail == "full" and not (payload.consent_confirmed and payload.consent_reference):
-        raise HTTPException(409, CONSENT_MISSING)
-    return vendor
+    return vendor  # full details need consent, which every submission now needs (pob-021 B3, checked next)
 
 
-async def _repeats(db: AsyncSession, job: Job, people: list[Candidate], to_vendor: bool) -> tuple[list[Candidate], bool]:
-    """The candidates already shared for this requirement or (pob-011 V8) for another requirement of the same end client when this share
-    or the earlier one went through a vendor. The flag says whether any repeat is only of the second kind (the wording names the route)."""
-    other_route = and_(Job.company_id == job.company_id, true() if to_vendor else ProfileShare.recipient == "vendor")
+async def _repeats(db: AsyncSession, job: Job, people: list[Candidate]) -> tuple[list[Candidate], bool]:
+    """The candidates already submitted for this requirement or for another requirement of the same end client, directly or through a
+    vendor (pob-011 V8, widened by pob-021 B7 to every route). The flag says whether any repeat is only of the second kind."""
     rows = (
         await db.execute(
             select(ProfileShareItem.candidate_id, ProfileShare.job_id)
             .join(ProfileShare, ProfileShare.id == ProfileShareItem.share_id)
             .join(Job, Job.id == ProfileShare.job_id)
-            .where(or_(ProfileShare.job_id == job.id, other_route), ProfileShareItem.candidate_id.in_([c.id for c in people]))
+            .where(Job.company_id == job.company_id, ProfileShareItem.candidate_id.in_([c.id for c in people]))
         )
     ).all()
     same_job = {cid for cid, job_id in rows if job_id == job.id}
@@ -283,19 +355,23 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
     if job.status in requirements.ENDED:
         raise HTTPException(409, "Profiles cannot be shared for a closed or cancelled requirement")
     vendor = await _vendor(db, job, payload)
-    detail = (payload.detail or "anonymised") if vendor else "named"
+    _check_submission(payload)
+    if payload.include_compensation and not await candidates.sees_compensation(db, user):
+        raise HTTPException(403, candidates.NO_COMPENSATION)  # pob-021 B9
+    detail = payload.detail or ("anonymised" if vendor else "named")
     contact = await _contact(db, vendor.id if vendor else job.company_id, payload)
     await _check_channel(db, job, payload.channel, contact)
     people = await _candidates(db, payload.candidate_ids, user)
+    blocks = await _matches(db, job, people, now.astimezone(IST).date())
     existing = {
         a.candidate_id: a for a in (await db.scalars(select(JobApplication).where(JobApplication.job_id == job.id, JobApplication.candidate_id.in_(payload.candidate_ids)).with_for_update())).all()
     }
     closed = [c for c in people if c.id in existing and existing[c.id].status in REFUSED]
     if closed:
         raise HTTPException(422, f"Rejected, withdrawn or joined candidates cannot be shared for this requirement: {_names(closed)}")
-    repeats, across = await _repeats(db, job, people, vendor is not None)
+    repeats, across = await _repeats(db, job, people)
     if repeats and not payload.repeat:
-        where = "for this requirement or with its end client through another route" if across else "for this requirement"  # pob-011 V8
+        where = "for this requirement or to the same client on another requirement or route" if across else "for this requirement"  # B7
         raise HTTPException(
             409,
             {
@@ -324,8 +400,9 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
     expires_at = now + LINK_TTL
     linked = payload.channel in MESSAGE_CHANNELS and detail != "anonymised"  # pob-011 V6: an anonymised share never carries a resume link
     tokens = {c.id: secrets.token_urlsafe(32) if linked and c.id in resumes else None for c in people}
-    entries = [(vendor_summary(c, skills[c.id], detail) if vendor else summary(c, skills[c.id]), tokens[c.id]) for c in people]
-    recipient_id = vendor.id if vendor else company.id
+    entries = [(recipient_summary(c, skills[c.id], detail, match=blocks[c.id], salary=payload.include_compensation), tokens[c.id]) for c in people]
+    recipient = vendor or company
+    recipient_id = recipient.id
 
     message, url = None, None
     if payload.channel in MESSAGE_CHANNELS:
@@ -359,9 +436,18 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
         note=payload.note,
         message_id=message.id if message else None,
         shared_by_user_id=user.id,
+        compensation_included=payload.include_compensation,
     )
     db.add(share)
     await db.flush()
+    # pob-021 B10: the client follow-up at the recipient company's SLA
+    noun = f"profile{'s' if len(people) != 1 else ''}"
+    follow_up = RecruiterFollowUp(company_id=recipient_id, contact_id=share.contact_id, job_id=job.id, reason="profile_feedback",
+                                  due_at=now + timedelta(hours=recipient.submission_sla_hours or SUBMISSION_SLA_DEFAULT_HOURS),
+                                  notes=f"Client feedback on {len(people)} {noun} submitted for {job.requirement_code} {job.title}", created_by_user_id=user.id)  # fmt: skip
+    db.add(follow_up)
+    await db.flush()
+    share.follow_up_id = follow_up.id
     await contact_status.advance(db, user, [share.contact_id], "contacted", "share")  # pob-005 D4
     note = f"Profile shared ({CHANNEL_LABELS[payload.channel]})"
     for candidate in people:
@@ -376,9 +462,12 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
                 share_id=share.id,
                 candidate_id=candidate.id,
                 application_id=application.id,
-                resume_id=resumes.get(candidate.id),
+                resume_id=None if detail == "anonymised" else resumes.get(candidate.id),  # B8: no redacted rendition yet (Q-16)
                 token_hash=digest(token) if token else None,
                 token_expires_at=expires_at if token else None,
+                status="submitted",
+                consent_reference=payload.consent_reference,
+                match=blocks[candidate.id],
             )
         )
     await db.flush()
@@ -391,20 +480,58 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
             entity_type="profile_share",
             entity_id=str(share.id),
             metadata_json={"job_id": str(job.id), "channel": share.channel, "candidate_ids": [str(c.id) for c in people], "repeat": bool(repeats),
-                          "recipient": share.recipient, "detail": share.detail},  # fmt: skip  # pob-011: never the consent text
+                          "recipient": share.recipient, "detail": share.detail, "compensation": share.compensation_included,
+                          "follow_up_id": str(follow_up.id)},  # fmt: skip  # pob-011/pob-021: never the consent text
         )
     )
     return share, url
 
 
 # --- responses (S9) ------------------------------------------------------------------------------------------------------------------
-def respond(item: ProfileShareItem, user: User, response: str | None, now: datetime) -> list[str]:
-    """Records who answered and when, only when the response changes. Returns the changed field names."""
+def respond(db: AsyncSession, item: ProfileShareItem, user: User, response: str | None, now: datetime, *, map_status: bool = True) -> list[str]:
+    """Records who answered and when, only when the response changes. Returns the changed field names. pob-021 B13: the response also
+    moves an open submission (interested -> shortlisted, interview requested -> interview, not interested -> rejected)."""
     changed = []
     if response is not None and response != item.response:
         item.response, item.responded_by_user_id, item.responded_at = response, user.id, now
         changed.append("response")
+        to = RESPONSE_STATUS.get(response)
+        if map_status and to and item.status not in SUBMISSION_CLOSED and move(db, user, item, to, now, "client_not_interested" if to == "rejected" else None):
+            changed.append("status")
     return changed
+
+
+def move(db: AsyncSession, user: User, item: ProfileShareItem, to: str, now: datetime, reason: str | None = None) -> bool:
+    """pob-021 B11: one status change, audited {from, to}. A closed submission stays closed (409); leaving Rejected clears the reason."""
+    if to == item.status:
+        return False
+    if item.status in SUBMISSION_CLOSED:
+        raise HTTPException(409, SUBMISSION_CLOSED_MSG)
+    db.add(AuditLog(user_id=user.id, action="submission.status", entity_type="profile_share_item", entity_id=str(item.id),
+                    metadata_json={"from": item.status, "to": to, "reason": reason}))  # fmt: skip
+    item.status, item.status_changed_at, item.rejection_reason = to, now, reason if to == "rejected" else None
+    return True
+
+
+def update_item(db: AsyncSession, user: User, item: ProfileShareItem, payload: RecShareItemUpdate, now: datetime) -> list[str]:
+    """S9 + pob-021 B11-B13: the response, feedback, acknowledgement, status and next step. An explicit status wins over the response's."""
+    sent = payload.model_fields_set
+    changed = respond(db, item, user, payload.response, now, map_status=payload.status is None)
+    if "feedback" in sent and payload.feedback != item.feedback:
+        item.feedback = payload.feedback
+        changed.append("feedback")
+    if payload.acknowledged and item.acknowledged_at is None:
+        item.acknowledged_at = now
+        changed.append("acknowledged")
+        if payload.status is None and item.status == "submitted" and move(db, user, item, "client_reviewing", now):
+            changed.append("status")
+    if payload.status is not None and move(db, user, item, payload.status, now, payload.rejection_reason):
+        changed.append("status")
+    for field in ("next_action", "next_action_on"):
+        if field in sent and getattr(payload, field) != getattr(item, field):
+            setattr(item, field, getattr(payload, field))
+            changed.append(field)
+    return list(dict.fromkeys(changed))
 
 
 async def load_item(db: AsyncSession, share_id: UUID, item_id: UUID) -> tuple[ProfileShare, ProfileShareItem]:
@@ -453,14 +580,19 @@ async def portal_page(db: AsyncSession, company_id: UUID, limit: int, offset: in
 
 
 def portal_out(item: ProfileShareItem, share: ProfileShare, candidate: Candidate, job: Job, skills: list[str]) -> dict:
+    """pob-021: the submission as the client sees it -- named or anonymised (B8), its match block (B14) and, when sent, the salary (B9)."""
     return {
         "id": item.id,
+        "submission_code": item.submission_code,
         "shared_at": share.created_at,
         "requirement": {"code": job.requirement_code, "title": job.title},
-        "candidate": summary(candidate, skills),
+        "candidate": recipient_summary(candidate, skills, share.detail, salary=share.compensation_included),
+        "match": item.match,
         "has_resume": item.resume_id is not None,
         "response": item.response,
         "response_label": RESPONSE_LABELS[item.response],
+        "status": item.status,
+        "status_label": STATUS_LABELS[item.status],
     }
 
 
@@ -504,11 +636,12 @@ async def page(db: AsyncSession, user: User, where, limit: int, offset: int) -> 
     total = await db.scalar(select(func.count()).select_from(ProfileShare).where(where))
     rows = (
         await db.execute(
-            select(ProfileShare, Job, User, CompanyContact, RecruiterMessage)
+            select(ProfileShare, Job, User, CompanyContact, RecruiterMessage, RecruiterFollowUp)
             .join(Job, Job.id == ProfileShare.job_id)
             .join(User, User.id == ProfileShare.shared_by_user_id)
             .outerjoin(CompanyContact, CompanyContact.id == ProfileShare.contact_id)
             .outerjoin(RecruiterMessage, RecruiterMessage.id == ProfileShare.message_id)
+            .outerjoin(RecruiterFollowUp, RecruiterFollowUp.id == ProfileShare.follow_up_id)
             .where(where)
             .order_by(ProfileShare.created_at.desc(), ProfileShare.id)
             .limit(limit)
@@ -517,7 +650,8 @@ async def page(db: AsyncSession, user: User, where, limit: int, offset: int) -> 
     ).all()
     items = await _items(db, [share.id for share, *_ in rows])
     return {
-        "items": [share_out(share, job, sender, contact, message, items.get(share.id, []), can_respond(user, job)) for share, job, sender, contact, message in rows],
+        "items": [share_out(share, job, sender, contact, message, follow_up, items.get(share.id, []), can_respond(user, job))
+                  for share, job, sender, contact, message, follow_up in rows],  # fmt: skip
         "total": total or 0,
         "limit": limit,
         "offset": offset,
@@ -559,10 +693,23 @@ def item_out(item: ProfileShareItem, candidate: Candidate, responder_name: str |
         "feedback": item.feedback,
         "responded_by": {"id": item.responded_by_user_id, "full_name": responder_name} if item.responded_by_user_id else None,
         "responded_at": item.responded_at,
+        # pob-021 (DEC-SCOPE-430 B1, B11-B14)
+        "submission_code": item.submission_code,
+        "status": item.status,
+        "status_label": STATUS_LABELS[item.status],
+        "status_changed_at": item.status_changed_at,
+        "rejection_reason": item.rejection_reason,
+        "rejection_reason_label": REJECTION_LABELS.get(item.rejection_reason),
+        "next_action": item.next_action,
+        "next_action_on": item.next_action_on,
+        "acknowledged_at": item.acknowledged_at,
+        "consent_reference": item.consent_reference,
+        "match": item.match,
     }
 
 
-def share_out(share: ProfileShare, job: Job, sender: User, contact: CompanyContact | None, message: RecruiterMessage | None, items: list[dict], respond_ok: bool) -> dict:
+def share_out(share: ProfileShare, job: Job, sender: User, contact: CompanyContact | None, message: RecruiterMessage | None, follow_up: RecruiterFollowUp | None,
+              items: list[dict], respond_ok: bool) -> dict:  # fmt: skip
     return {
         "id": share.id,
         "channel": share.channel,
@@ -580,6 +727,8 @@ def share_out(share: ProfileShare, job: Job, sender: User, contact: CompanyConta
         "created_at": share.created_at,
         "items": items,
         "can_respond": respond_ok,
+        "compensation_included": share.compensation_included,  # pob-021 B9
+        "follow_up": {"id": follow_up.id, "due_at": follow_up.due_at, "status": follow_up.status} if follow_up else None,  # B10
     }
 
 
