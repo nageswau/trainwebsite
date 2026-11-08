@@ -64,7 +64,7 @@ export function VendorPerformanceDrillDown({ data }: { data: VendorPerformanceDe
     </div>
   );
   return (
-    <>
+    <div style={{ display: "grid", gap: 16 }}>
       <section aria-label="Figures" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
         {tile("Avg response time", `${hoursText(m.avg_response_hours)} (${m.responded_requirements} of ${m.requirements} requirements)`)}
         {tile("Submitted", String(m.submitted))}
@@ -132,6 +132,6 @@ export function VendorPerformanceDrillDown({ data }: { data: VendorPerformanceDe
           </div>
         )}
       </section>
-    </>
+    </div>
   );
 }
