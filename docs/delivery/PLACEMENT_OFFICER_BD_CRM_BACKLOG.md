@@ -428,6 +428,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** medium.
 
 #### pob-011: Vendor requirements, vendor submissions and candidate-visibility control
+- **Status:** built (`DEC-SCOPE-427`, 2026-11-08; migration `0308_vendor_requirements`, API §12LT, RBAC §2.318) with a consent stub until pob-021 (the owner's choice); V1-V12 are the builder's calls (`NEEDS_CONFIRMATION`). The end client is the requirement's company, so `end_client_name`/`id` were dropped (V1).
 - **Business requirement:** §5 bullets 3, 4 and 7; §17 "Ensure a candidate's resume is not shared with a client/vendor without appropriate candidate authorisation and a valid business purpose".
 - **Existing behavior:** a requirement belongs to one company, and there is no end-client mapping. Shares go to the requirement's own company only. Consent means pool opt-in only; external candidates need none.
 - **Expected behavior:**

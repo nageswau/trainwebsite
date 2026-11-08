@@ -98,6 +98,7 @@ function ShareCard({ share, showRequirement, onItem }: { share: Share; showRequi
         <strong id={`${id}-title`}>
           {share.channel_label}{share.contact ? ` to ${share.contact.name}` : ""} · {share.items.length} profile{share.items.length === 1 ? "" : "s"}
         </strong>
+        {share.recipient === "vendor" && <span className="badge">Vendor · {share.detail_label ?? share.detail}</span>}
         {delivery && <span className="badge">Email {DELIVERY[delivery] ?? delivery}</span>}
       </div>
       <p className="muted" style={{ margin: 0, fontSize: 13 }}>

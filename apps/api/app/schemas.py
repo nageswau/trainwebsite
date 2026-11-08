@@ -89,6 +89,7 @@ from app.models import (
     INVESTMENT_VERTICALS,
     JOB_CHECKLIST_ITEM_STATUSES,
     JOB_EMPLOYMENT_TYPES,
+    JOB_END_CLIENT_DISCLOSURES,
     JOB_FEE_BASES,
     JOB_PAYMENT_TRIGGERS,
     JOB_PRIORITIES,
@@ -11233,6 +11234,8 @@ REC_REQUIREMENT_FIELDS = (  # the `jobs` columns a create or edit may write; cod
     # pob-002 (DEC-SCOPE-407 R6/R7/R9): the hiring process, the per-requirement terms and the backup owner
     "interview_rounds", "screening_steps", "decision_maker_contact_id", "expected_tat_days", "payment_trigger", "payment_days",
     "payment_terms", "replacement_terms", "backup_owner_user_id",
+    # pob-011 (DEC-SCOPE-427 V2/V3): the vendor the requirement came through and the end client's disclosure
+    "via_vendor_id", "end_client_disclosure",
 )
 REC_REQUIREMENT_TERMS = ("payment_trigger", "payment_days", "payment_terms", "replacement_terms")  # pob-002 R8: behind commercials.client
 
@@ -11331,6 +11334,8 @@ class RecRequirementUpdate(BaseModel):
     payment_terms: _rec_requirement_text_type(2000, multiline=True) = None
     replacement_terms: _rec_requirement_text_type(2000, multiline=True) = None
     backup_owner_user_id: UUID | None = None
+    via_vendor_id: UUID | None = None  # pob-011 V2: a vendor-type company in the caller's scope (services/recruiter_requirements)
+    end_client_disclosure: Literal[JOB_END_CLIENT_DISCLOSURES] = None  # pob-011 V3; null is refused (the column always has a value)
     revision_reason: _rec_requirement_text_type(500, multiline=True) = None
 
     @model_validator(mode="after")
@@ -11969,6 +11974,17 @@ class RecShareCreate(BaseModel):
     contact_id: UUID | None = None
     note: _rec_requirement_text_type(500, multiline=True) = None
     repeat: bool = False
+    # pob-011 (DEC-SCOPE-427 V4-V7): to the requirement's vendor, anonymised unless `full` (which needs the consent stub; checked in the service)
+    recipient: Literal["client", "vendor"] = "client"
+    detail: Literal["anonymised", "full"] | None = None
+    consent_confirmed: bool = False
+    consent_reference: _rec_requirement_text_type(300) = None
+
+    @model_validator(mode="after")
+    def _vendor_only(self):
+        if self.recipient == "client" and (self.detail is not None or self.consent_confirmed or self.consent_reference is not None):
+            raise ValueError("Detail and consent apply only to a share with a vendor")
+        return self
 
     @field_validator("candidate_ids")
     @classmethod

@@ -147,12 +147,14 @@ async def create_requirement(payload: RecRequirementCreate, user: User = Depends
     values = payload.model_dump(include=set(REC_REQUIREMENT_FIELDS))
     values["description"] = values["description"] or ""
     values["requirement_date"] = values["requirement_date"] or svc.ist_today()  # J4: the received date, today unless given
+    values["end_client_disclosure"] = values["end_client_disclosure"] or "external"  # pob-011 V3: today's behaviour unless chosen
     await svc.check_references(db, values, None)
     await svc.require_terms_edit(db, user, payload.model_fields_set, "create")  # pob-002 R8
     assignee = user.id if user.role == ROLE else company.assigned_recruiter_user_id
     if user.role != ROLE and payload.assigned_recruiter_user_id:
         assignee = (await companies.locked_recruiter_target(db, user, payload.assigned_recruiter_user_id)).id
     await svc.check_owner_fields(db, user, values, None, company.id, assignee)  # pob-002 R6/R9
+    await svc.check_vendor(db, user, values, None, company.id)  # pob-011 V2
     job = Job(
         **values,
         company_id=company.id,
@@ -224,6 +226,7 @@ async def update_requirement(requirement_id: UUID, payload: RecRequirementUpdate
     await svc.require_terms_edit(db, user, payload.model_fields_set, "update")  # pob-002 R8: 403 before any other check
     await svc.check_references(db, changes, job)
     await svc.check_owner_fields(db, user, changes, job, job.company_id, job.assigned_recruiter_user_id)  # pob-002 R6/R9
+    await svc.check_vendor(db, user, changes, job, job.company_id)  # pob-011 V2
     snapshot_before = await revisions.snapshot(db, job)  # pob-002 R2/R3: under the row lock, before any change
     changed = sorted(k for k, v in changes.items() if getattr(job, k) != v)
     old_location, old_place = job.location, svc.place_text(job.city, job.state, job.country)

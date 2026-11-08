@@ -2148,11 +2148,12 @@ async def open_jobs(user: User = Depends(get_current_user), db: AsyncSession = D
     seen = [await job_visibility.student_filter(db, user)] if user.role == "it_student" else []
     rows = (
         await db.execute(
-            select(Job, Company).join(Company).where(Job.status.in_(JOB_OPEN_STATUSES), or_(Job.closes_on.is_(None), Job.closes_on >= date.today()), *seen).order_by(Job.created_at.desc())
+            select(Job, Company).join(Company, Company.id == Job.company_id).where(Job.status.in_(JOB_OPEN_STATUSES), or_(Job.closes_on.is_(None), Job.closes_on >= date.today()), *seen).order_by(Job.created_at.desc())
         )
     ).all()
     return [
-        {"id": job.id, "company": company.name, "title": job.title, "location": job.location, "description": job.description, "skills": job.skills, "closes_on": job.closes_on} for job, company in rows
+        {"id": job.id, "company": job_visibility.client_name(job, company) if user.role == "it_student" else company.name, "title": job.title, "location": job.location,
+         "description": job.description, "skills": job.skills, "closes_on": job.closes_on} for job, company in rows  # pob-011 V3: masked for students only
     ]
 
 
@@ -2194,7 +2195,7 @@ async def all_jobs(user: User = Depends(get_current_user), db: AsyncSession = De
     # ADM-008: HR Team's own "manages hiring requirements and shortlists" needs to pick
     # a requirement (any status, not just currently-open ones) to review its shortlist.
     _require(user, {"placement_team", "hr_team", "it_admin"}, "it")
-    rows = (await db.execute(select(Job, Company).join(Company).order_by(Job.created_at.desc()))).all()
+    rows = (await db.execute(select(Job, Company).join(Company, Company.id == Job.company_id).order_by(Job.created_at.desc()))).all()
     return [{"id": job.id, "company": company.name, "title": job.title, "status": job.status, "status_label": requirements.STATUS_LABELS[job.status]} for job, company in rows]
 
 

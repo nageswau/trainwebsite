@@ -57,3 +57,15 @@ describe("rec-007 requirement helpers", () => {
     expect(requirementBody({ ...values, salary_min: "" }, values)).toEqual({ salary_min: null });
   });
 });
+
+// pob-011 (DEC-SCOPE-427 V2/V3): the vendor a requirement came through and the end client's disclosure
+describe("pob-011 vendor fields", () => {
+  it("reads the vendor and disclosure, defaults to external, and sends a cleared vendor as null", () => {
+    expect(valuesOf().end_client_disclosure).toBe("external");
+    const values = valuesOf({ ...base, via_vendor: { id: "V1", code: "CO-V1", name: "TalentBridge" }, end_client_disclosure: "internal" });
+    expect(values.via_vendor_id).toBe("V1");
+    expect(values.end_client_disclosure).toBe("internal");
+    expect(requirementBody({ ...values, via_vendor_id: "" }, values)).toEqual({ via_vendor_id: null });
+    expect(requirementBody({ ...values, end_client_disclosure: "external" }, values)).toEqual({ end_client_disclosure: "external" });
+  });
+});

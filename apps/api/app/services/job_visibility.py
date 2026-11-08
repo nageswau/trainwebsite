@@ -9,10 +9,16 @@ from uuid import UUID
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Candidate, Job, TalentPool, User
+from app.models import Candidate, Company, Job, TalentPool, User
 from app.services import candidate_search, talent_pools
 
 PORTAL = ("portal", "public")  # every student; plus the segments they belong to
+CONFIDENTIAL_CLIENT = "Confidential client"  # pob-011 (DEC-SCOPE-427 V3)
+
+
+def client_name(job: Job, company: Company) -> str:
+    """pob-011 V3: the end client's name as a public visitor or a student sees it; staff readers use `company.name` directly."""
+    return CONFIDENTIAL_CLIENT if job.end_client_disclosure == "internal" else company.name
 
 
 def public_filter():

@@ -4,6 +4,8 @@
 import { REQUIREMENTS_URL } from "@/lib/recruiterRequirements";
 
 export type ShareChannel = "email" | "whatsapp" | "portal" | "other";
+export type ShareRecipient = "client" | "vendor"; // pob-011 (DEC-SCOPE-427 V4)
+export type ShareDetail = "named" | "anonymised" | "full"; // pob-011 V6: a client always gets the named summary
 export type ShareResponse = "pending" | "interested" | "not_interested" | "interview_requested";
 export type Person = { id: string; full_name: string };
 export type ShareItem = {
@@ -14,6 +16,7 @@ export type Share = {
   id: string; channel: ShareChannel; channel_label: string; requirement: { id: string; code: string; title: string }; company_id: string;
   contact: { id: string; name: string } | null; note: string | null; message: { id: string; delivery_status: string | null } | null;
   shared_by: Person; created_at: string; items: ShareItem[]; can_respond: boolean;
+  recipient?: ShareRecipient; detail?: ShareDetail; detail_label?: string; consent_reference?: string | null; // pob-011 V10
 };
 export type SharePage = { items: Share[]; total: number; limit: number; offset: number };
 export type Duplicate = { id: string; name: string; code: string };
@@ -38,6 +41,12 @@ export const CHANNELS: { key: ShareChannel; label: string; hint: string }[] = [
   { key: "portal", label: "Portal", hint: "Shown to the company's employer portal users under “Shared with you”." },
   { key: "other", label: "Other", hint: "Recorded only — for profiles shared another way." },
 ];
+/** pob-011 V6/V7: what a vendor receives. */
+export const VENDOR_DETAILS: { key: Exclude<ShareDetail, "named">; label: string; hint: string }[] = [
+  { key: "anonymised", label: "Anonymised", hint: "Candidate code and profile only: no name, current company or resume." },
+  { key: "full", label: "Full details", hint: "Name, email, mobile and resume. Needs the candidates' consent." },
+];
+export const CONSENT_MAX = 300;
 export const RESPONSES: { key: ShareResponse; label: string }[] = [
   { key: "pending", label: "Pending" },
   { key: "interested", label: "Interested" },

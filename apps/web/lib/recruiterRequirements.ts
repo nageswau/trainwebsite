@@ -48,7 +48,15 @@ export type Requirement = RequirementRow & {
   // pob-002 (DEC-SCOPE-407 R6/R7/R9): the hiring process, the terms (absent without commercials.client.view) and the backup owner
   backup_owner?: Person | null; interview_rounds?: string[]; screening_steps?: string[]; decision_maker?: DecisionMaker | null;
   expected_tat_days?: number | null; commercial_terms?: CommercialTerms;
+  // pob-011 (DEC-SCOPE-427 V2/V3): the vendor the requirement came through (the company stays the end client) and who may see its name
+  via_vendor?: VendorRef | null; end_client_disclosure?: EndClientDisclosure;
 };
+export type VendorRef = { id: string; code: string; name: string };
+export type EndClientDisclosure = "external" | "internal";
+export const DISCLOSURE_OPTIONS: { id: EndClientDisclosure; name: string }[] = [
+  { id: "external", name: "Can be shown to candidates" },
+  { id: "internal", name: "Staff only (candidates see “Confidential client”)" },
+];
 export type DecisionMaker = { id: string; name: string; designation: string | null; active: boolean };
 export type PaymentTrigger = "on_joining" | "days_after_joining" | "on_invoice";
 export const PAYMENT_TRIGGER_OPTIONS: { id: PaymentTrigger; name: string }[] = [
@@ -206,6 +214,8 @@ export const FORM_FIELDS = [
   // pob-002 (R6/R7/R9)
   "interview_rounds", "screening_steps", "decision_maker_contact_id", "expected_tat_days", "payment_trigger", "payment_days", "payment_terms",
   "replacement_terms", "backup_owner_user_id",
+  // pob-011 (V2/V3)
+  "via_vendor_id", "end_client_disclosure",
 ] as const;
 const LIST_FIELDS = new Set<string>(["interview_rounds", "screening_steps"]);
 const NUMBER_FIELDS = new Set<string>(["vacancies", "expected_tat_days", "payment_days"]);
@@ -237,6 +247,7 @@ export function valuesOf(r?: Requirement): FormValues {
     payment_terms: terms && !terms.payment_terms.inherited ? text(terms.payment_terms.value) : "",
     replacement_terms: terms && !terms.replacement_terms.inherited ? text(terms.replacement_terms.value) : "",
     backup_owner_user_id: text(r?.backup_owner?.id),
+    via_vendor_id: text(r?.via_vendor?.id), end_client_disclosure: r?.end_client_disclosure ?? "external", // pob-011
   };
 }
 
@@ -273,6 +284,16 @@ export async function companySearch(q: string, signal: AbortSignal): Promise<Loo
   if (q) query.set("q", q);
   const response = await fetch(`${COMPANIES_URL}?${query}`, { signal });
   if (!response.ok) throw new Error(`Company search failed (${response.status})`);
+  const page = (await response.json()) as { items: { id: string; code: string; name: string }[]; total: number };
+  return { items: page.items.map((c) => ({ id: c.id, label: c.name, detail: c.code })), truncated: page.total > page.items.length };
+}
+
+/** pob-011 (V2): the vendor picker -- the caller's vendor companies (pob-010 `relationship=vendor` includes client-and-vendor ones). */
+export async function vendorSearch(q: string, signal: AbortSignal): Promise<LookupPage> {
+  const query = new URLSearchParams({ limit: "20", relationship: "vendor" });
+  if (q) query.set("q", q);
+  const response = await fetch(`${COMPANIES_URL}?${query}`, { signal });
+  if (!response.ok) throw new Error(`Vendor search failed (${response.status})`);
   const page = (await response.json()) as { items: { id: string; code: string; name: string }[]; total: number };
   return { items: page.items.map((c) => ({ id: c.id, label: c.name, detail: c.code })), truncated: page.total > page.items.length };
 }
