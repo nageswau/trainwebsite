@@ -72,7 +72,7 @@ export function feeSourceText(fee: RevenueFee): string {
 export function revenueConflict(detail: unknown): string | null {
   const d = detail as { code?: unknown; message?: unknown } | null;
   if (!d || typeof d !== "object" || typeof d.message !== "string" || typeof d.code !== "string") return null;
-  return ["invoice_number_taken", "invoice_cancelled", "invoice_has_payments"].includes(d.code) ? d.message : null;
+  return ["invoice_number_taken", "invoice_cancelled", "invoice_has_payments", "bill_number_taken", "bill_cancelled", "bill_has_payments"].includes(d.code) ? d.message : null;
 }
 
 export function isRequirementRevenue(data: unknown): data is RequirementRevenue {

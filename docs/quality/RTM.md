@@ -1881,3 +1881,10 @@ half.
 | `pob-024-AC4` | A due-date notice is sent once | `::test_due_and_overdue_notices_are_sent_once`, `::test_an_issued_invoice_re_arms_and_a_paid_one_sends_nothing`, `::test_the_worker_task_imports_in_a_fresh_interpreter` | Built |
 | `pob-024-E1` | Did Not Join after a draft cancels the draft | `::test_did_not_join_discards_an_open_draft`, `::test_a_draft_can_be_discarded_with_a_reason`, `::test_did_not_join_leaves_no_draft_and_a_read_only_placement` | Built |
 | `pob-024-SEC` | Scope, commercial gate, confirmations and PO owner rights | `::test_scope_and_the_commercial_gate`, `::test_candidate_and_client_confirmations_are_kept_separately`, `::test_only_a_team_lead_changes_the_po_owner`; rec-038 rows | Built |
+
+| `pob-012` | Requirement: `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-012` → `DEC-SCOPE-433`; migration `0314_vendor_bills`; `API_CONTRACT.md` §12LZ; `RBAC_MATRIX.md` §2.324; spec `docs/superpowers/specs/2026-11-08-pob-012-vendor-commercials-performance-design.md`; tests `apps/api/tests/test_pob_012_vendor_commercials.py`, `apps/web/tests/lib/vendorCommercials.test.ts`, `apps/web/tests/components/RecruiterVendorCommercials.test.tsx`, `apps/web/tests/e2e/pob-012-vendor-commercials.spec.ts` | | Built |
+| `pob-012-AC1` | Each metric ties out to its drill-down | `::test_metrics_tie_out_to_the_drill_down`; e2e | Built |
+| `pob-012-AC2` | Payables appear in the ledger (Q-09 yes) | `::test_bill_payments_feed_the_ledger` | Built |
+| `pob-012-E1` | A vendor with no submissions shows "—" rates, not 0% | `::test_a_vendor_with_no_submissions_shows_null_rates`; vitest `rateText`; e2e | Built |
+| `pob-012-W2` | Bills and payments: rules, cap, cancel | `::test_a_payable_is_recorded_paid_in_part_and_totalled`, `::test_bill_rules`, `::test_cancel_only_unpaid_and_no_payment_after`, `::test_payment_dates_and_an_archived_vendor`; vitest; e2e | Built |
+| `pob-012-SEC` | Grant first, then company scope; audit without notes | `::test_grants_and_scope`; rec-038 rows | Built |

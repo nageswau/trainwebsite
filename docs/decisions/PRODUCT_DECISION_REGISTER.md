@@ -12479,3 +12479,15 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - P12/P13: a daily sweep (08:45 IST) sends `it.recruitment.invoice_due` once and `it.recruitment.invoice_overdue` once per due date, for a draft or an issued invoice still owed, to the recruiter and PO owners and their Team Leads (all active Team Leads when none). The accountant role has no recruiter access, so it is not notified (`NEEDS_CONFIRMATION`).
   - P14: read scope = the requirement's (rec-007); audit `placement.*` with ids, field names and amounts only.
 - **Not built:** commission tracking for recruiters, GST/PDF invoices (R9), accountant access to placements.
+
+### DEC-SCOPE-433 — Vendor commercials, payables and performance (pob-012)
+- **Date:** 2026-11-08. **Status:** built; W1-W10 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions. Q-09 answered "yes, feed the ledger" as the backlog item proposes.
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-012-vendor-commercials-performance-design.md`. Migration `0314_vendor_bills`; API §12LZ; RBAC §2.324.
+- **Calls:**
+  - W1: the fee model is the pob-010 vendor agreement (direction, fee, payment terms = milestones, replacement policy); no new agreement columns.
+  - W2/W3: `vendor_bills` (payable / receivable, recorded by hand, cancelled with a reason while unpaid, number unique per vendor ignoring case) and append-only `vendor_bill_payments` (capped at the bill amount under the bill lock). Vendor-type companies only; an archived or merged vendor takes no new bill (409).
+  - W4: reads `commercials.vendor.view`, writes `commercials.vendor.edit`; the vendor through the company scope (404 outside it).
+  - W5 (Q-09): a payable payment is a `vendor_payment` expense and a receivable payment a `vendor_receipt` income in the management ledger, vertical Recruitment, computed on read; the description carries the bill number only.
+  - W6/W7: per vendor, all time: average response time (requirement created → first share to the vendor), submitted, interview conversion, placements, joining rate and payment history, each computed from the drill-down rows it lists; a zero denominator is null ("—", never 0%).
+  - W8/W9: API §12LZ; a "Vendor commercials" section on a vendor's company page and a "Vendor performance" report with a drill-down page.
+- **Not built:** vendor-supplied candidates (we only have submissions *to* vendors), GST/PDF bills, automatic bills from joinings, a period filter.

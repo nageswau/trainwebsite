@@ -19,7 +19,7 @@ export type LedgerEntry = {
 };
 export type LedgerEntryDetail = LedgerEntry & { events: LedgerEvent[] };
 // mgmt-005 (MA1-MA11): a read-only line computed from another module's money row (`include=auto`); `id` is that row's id.
-export type LedgerSource = "payment" | "agent_commission" | "trip_expense" | "recruiter_payment" | "university_commission" | "salary" | "fee_refund"; // mgmt-011 adds salary; itc-015 fee_refund
+export type LedgerSource = "payment" | "agent_commission" | "trip_expense" | "recruiter_payment" | "university_commission" | "salary" | "fee_refund" | "vendor_payment" | "vendor_receipt"; // mgmt-011 adds salary; itc-015 fee_refund; pob-012 vendor bills
 export type LedgerAutoLine = {
   source: LedgerSource; id: string; entry_date: string; kind: LedgerKind; vertical: string; category_label: string; amount: string; currency: string;
   description: string; counted: boolean;
@@ -46,7 +46,7 @@ export const EVENT_LABEL: Record<string, string> = {
 
 export const SOURCE_LABEL: Record<LedgerSource, string> = {
   payment: "Student payment", agent_commission: "Agent commission", trip_expense: "BDM trip expense", recruiter_payment: "Recruiter payment",
-  university_commission: "University commission", salary: "Salaries", fee_refund: "IT fee refund",
+  university_commission: "University commission", salary: "Salaries", fee_refund: "IT fee refund", vendor_payment: "Vendor bill payment", vendor_receipt: "Vendor bill receipt",
 };
 
 const FILTER_KEYS = ["month", "kind", "category", "vertical", "status", "include"] as const;

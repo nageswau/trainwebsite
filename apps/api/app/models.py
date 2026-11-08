@@ -8929,6 +8929,61 @@ class Placement(Base, TimestampMixin):
     overdue_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
 
+
+# pob-012 (DEC-SCOPE-433 W2/W3): vendor payables and receivables, recorded by hand like rec-031's invoices. Migration 0314 repeats these
+# strings (test_pob_012_vendor_commercials). services/vendor_commercials.py owns every rule; the CHECKs are the backstop.
+VENDOR_BILL_KINDS = ("payable", "receivable")
+VENDOR_BILL_CHECKS = {
+    "ck_vendor_bills_kind": "kind IN ('payable', 'receivable')",
+    "ck_vendor_bills_amount": "amount > 0",
+    "ck_vendor_bills_due": "due_date >= bill_date",
+    "ck_vendor_bills_cancel": "(cancelled_at IS NULL) = (cancelled_by_user_id IS NULL) AND (cancelled_at IS NULL) = (cancel_reason IS NULL)",
+}
+VENDOR_BILL_PAYMENT_CHECKS = {"ck_vendor_bill_payments_amount": "amount > 0"}
+
+
+class VendorBill(Base, TimestampMixin):
+    """pob-012 W2: an amount we owe a vendor (`payable`) or a vendor owes us (`receivable`). Never edited or deleted: a mistake is cancelled
+    with a reason while unpaid. The number is unique per vendor, ignoring case."""
+
+    __tablename__ = "vendor_bills"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in VENDOR_BILL_CHECKS.items()),
+        Index("uq_vendor_bills_number", "company_id", text("lower(bill_number)"), unique=True),
+        Index("ix_vendor_bills_company", "company_id", "bill_date"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    job_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"), nullable=True)
+    kind: Mapped[str] = mapped_column(String(12))
+    bill_number: Mapped[str] = mapped_column(String(40))
+    bill_date: Mapped[date] = mapped_column(Date)
+    due_date: Mapped[date] = mapped_column(Date)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    milestone: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class VendorBillPayment(Base):
+    """pob-012 W3: money paid (payable) or received (receivable) against a bill. Append-only; the total never exceeds the bill amount."""
+
+    __tablename__ = "vendor_bill_payments"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in VENDOR_BILL_PAYMENT_CHECKS.items()),
+        Index("ix_vendor_bill_payments_bill", "bill_id", "paid_on"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    bill_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("vendor_bills.id", ondelete="RESTRICT"))
+    paid_on: Mapped[date] = mapped_column(Date)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
 # rec-029 (DEC-SCOPE-178, DR1-DR7): campus recruitment drives (§21). Migration 0148 repeats the statuses and checks
 # (test_rec_029_migration). Labels live in services/recruitment_drives.py and the web client.
 RECRUITMENT_DRIVE_STATUSES = ("planned", "completed", "cancelled")

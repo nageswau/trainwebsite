@@ -4081,3 +4081,12 @@ A placement officer has no company scope, but answering Missing still creates th
 - **Confirmations:** the requirement's writers (placement_team, super_admin); placement_manager and bdm 403.
 - **PO owner:** placement_manager and super_admin only (403 otherwise).
 - **Issue / discard the draft:** placement_team, placement_manager, super_admin with `commercials.client.view` (pob-001); bdm 403.
+
+### 2.324 Vendor commercials, payables and performance *(added 2026-11-08 — `DEC-SCOPE-433`, pob-012)*
+
+| Action | placement_team | placement_manager | super_admin | everyone else |
+|---|---|---|---|---|
+| Read a vendor's bills, the performance report and drill-down | `commercials.vendor.view` + company scope | `commercials.vendor.view` + team scope | ✓ | 403 |
+| Record a bill / payment, cancel an unpaid bill | `commercials.vendor.edit` + company scope | `commercials.vendor.edit` + team scope | ✓ | 403 |
+
+Grant first (403, logged with actor/role/route only), then the company scope (404, the same as an unknown id). The ledger lines follow the management ledger's finance gate (§ mgmt-004). Audit `vendor_commercials.*`: ids, kind and amounts only. rec-038 matrix rows cover all six routes.

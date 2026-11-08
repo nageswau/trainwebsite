@@ -453,6 +453,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** high (data sharing).
 
 #### pob-012: Vendor commercials, payables and performance
+- **Status:** built (`DEC-SCOPE-433`, 2026-11-08; migration `0314_vendor_bills`, API §12LZ, RBAC §2.324); Q-09 answered "yes" and W1-W10 are the builder's calls (`NEEDS_CONFIRMATION`). The design is in `docs/superpowers/specs/2026-11-08-pob-012-vendor-commercials-performance-design.md`.
 - **Business requirement:** §5 bullets 5–6; §13.2 "Placements by … vendor"; §15 "Performance … by vendor".
 - **Existing behavior:** none.
 - **Expected behavior:**

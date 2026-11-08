@@ -2494,3 +2494,9 @@ The downgrade refuses while a vendor or an NDA exists.
 ### pob-024 — placement closure record (`DEC-SCOPE-432`, migration `0312_placements`)
 
 - `placements`: one row per accepted offer (`offer_id` unique) with application, requirement, candidate, client and vendor company, role, recruiter and PO owner, `expected_fee`, the candidate and client confirmations (`*_confirmed_by/on/via`), `invoice_status` (none/draft/issued/discarded), `draft_amount`, `draft_due_date`, `draft_created_at`, `draft_discard_reason`, `invoice_id` (→ `recruiter_invoices`), the notice markers `due_notified_at` / `overdue_notified_at`, `created_by_user_id`. CHECKs in `PLACEMENT_RECORD_CHECKS` (frozen in 0312). No backfill.
+
+### pob-012 — vendor bills (`DEC-SCOPE-433`, migration `0314_vendor_bills`)
+
+- `vendor_bills`: `company_id` → companies RESTRICT (a vendor-type company), `job_id` → jobs RESTRICT (nullable; a requirement via the vendor), `kind` payable|receivable (CHECK), `bill_number` ≤40 (unique per company on `lower(bill_number)`), `bill_date`, `due_date` (CHECK ≥ bill_date), `amount` numeric(12,2) > 0, `milestone` ≤120, `note` ≤500, `created_by_user_id`, `cancelled_at` / `cancelled_by_user_id` / `cancel_reason`, timestamps. Never edited or deleted.
+- `vendor_bill_payments`: `bill_id` → vendor_bills RESTRICT, `paid_on`, `amount` > 0, `reference` ≤100, `created_by_user_id`, `created_at`. Append-only; the sum never exceeds the bill amount (enforced under the bill row lock).
+- Ledger: both feed `ledger.lines()` on read (`vendor_payment` expense / `vendor_receipt` income); nothing is copied.

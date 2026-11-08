@@ -6379,3 +6379,15 @@ Audit actions `recruiter_template.approve|archive|restore|copy`.
 - `POST /recruiter/placements/{id}/invoice-draft/cancel` `{reason (2-500)}` → `{placement}`; 409 `no_invoice_draft`.
 - `GET /recruiter/applications/{id}/offer` and the offer routes: the offer gains `placement_id` (null until Accepted).
 - Notices: `it.recruitment.invoice_due`, `it.recruitment.invoice_overdue` (entity `placement`, fixed text, `action_url` `/recruiter/placements/{id}`); beat `pob024-invoice-notices` daily 03:15 UTC.
+
+## 12LZ. Vendor commercials, payables and performance (pob-012) — addendum, 2026-11-08
+
+`DEC-SCOPE-433`. Migration `0314_vendor_bills`. Reads need `commercials.vendor.view`, writes `commercials.vendor.edit` (403 first); the vendor resolves through the company scope (404).
+
+- `GET /recruiter/companies/{id}/vendor-bills` → `{items[bill], totals{payable|receivable: {billed, paid, outstanding, last_paid_on}}, can_edit}`; 422 when the company is not a vendor. `bill` = `{id, kind, kind_label, bill_number, bill_date, due_date, amount, milestone, note, paid, outstanding, payment_status, payment_status_label, overdue, cancelled_at, cancel_reason, requirement|null, created_by, payments[{id, paid_on, amount, reference, created_by, created_at}], permissions{can_pay, can_cancel}, created_at}`. Totals count open bills only.
+- `POST /recruiter/companies/{id}/vendor-bills` `{kind: payable|receivable, bill_number (≤40), bill_date (not future), due_date (≥ bill date), amount (>0), milestone? (≤120), requirement_id? (one via this vendor), note? (≤500)}` → 201 `{bill}`. 409 `bill_number_taken`; 409 an archived/merged vendor.
+- `POST /recruiter/vendor-bills/{id}/payments` `{paid_on (not future, not before the bill date), amount (≤ outstanding), reference? (≤100)}` → 201 `{bill}`. 409 `bill_cancelled`.
+- `POST /recruiter/vendor-bills/{id}/cancel` `{reason}` → `{bill}`. 409 `bill_cancelled`, `bill_has_payments`.
+- `GET /recruiter/vendors/performance?limit (1-100)&offset` → `{items[{vendor{id, code, name}, vendor_status_label, metrics}], total, limit, offset}`; `metrics` = `{requirements, responded_requirements, avg_response_hours|null, submitted, interviewed, placed, joined, interview_rate|null, joining_rate|null, payments{payable|receivable}}`.
+- `GET /recruiter/vendors/{id}/performance` → the row plus `requirements[{requirement, created_at, first_submission_at|null, response_hours|null}]` and `submissions[{application_id, candidate, requirement, submitted_at, interviewed, placed, joined}]` — the rows every figure is counted from.
+- Management ledger `GET /management/ledger/lines`: new automatic sources `vendor_payment` (expense) and `vendor_receipt` (income), vertical `recruitment`.

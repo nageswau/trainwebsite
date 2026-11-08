@@ -33,6 +33,7 @@ from app.models import (
     RecruiterPlanItem,
     RecruiterTargetCompany,
     RecruitmentDrive,
+    VendorBill,
 )
 from app.services import bdm_organizations as orgs
 from app.services import recruiter_contracts as contracts
@@ -48,6 +49,8 @@ CREATORS = ("rec", "rec_out", "mgr", "mgr_out", "super")  # rec-003 `require_cre
 TEMPLATE_WRITERS = ("mgr", "mgr_out", "super")  # MS3 / R13: the placement manager's global library
 REVENUE = ("rec", "mgr", "super")  # rec-031 READERS with the requirement in scope; bdm 403 first (RV10)
 REVENUE_OUT = ("rec_out", "mgr_out")  # a revenue reader without the requirement in scope: 404
+VENDOR_COMM = ("rec", "mgr", "super")  # pob-012 W4: `commercials.vendor` holders (bdm 403 first) with the vendor in the company scope
+VENDOR_COMM_OUT = ("rec_out", "mgr_out")  # a holder without the vendor in scope: 404
 METRICS = ("mgr", "mgr_out", "super", "it_admin")  # rec-033 PF1 / rec-035 MG1 (it_admin reads: recruiters are IT staff)
 COLLEGE_READERS = ("rec", "rec_out", "mgr", "mgr_out", "super", "bdm", "bdm_out")  # pob-013 P3 (both BDMs are of the college module)
 COLLEGE_WRITERS = ("rec", "rec_out", "super", "bdm")  # pob-013 P4: `bdm` is the college's assigned BDM
@@ -178,6 +181,14 @@ ROWS = [
     R("post", "/recruiter/invoices", _invoice, **allow(201, *REVENUE), **allow(404, *REVENUE_OUT)),
     R("post", "/recruiter/invoices/{activity_invoice}/cancel", {"reason": "Raised in error"}, **allow(200, *REVENUE), **allow(404, *REVENUE_OUT)),
     R("post", "/recruiter/invoices/{activity_invoice}/payments", lambda w: {"received_on": w["today"], "amount": "1000"}, **allow(201, *REVENUE), **allow(404, *REVENUE_OUT)),
+    # pob-012 vendor commercials (§2.324): the `commercials.vendor` grant first (bdm 403), then the vendor's company scope (404)
+    R("get", "/recruiter/companies/{activity_vendor}/vendor-bills", **allow(200, *VENDOR_COMM), **allow(404, *VENDOR_COMM_OUT)),
+    R("post", "/recruiter/companies/{activity_vendor}/vendor-bills", lambda w: {"kind": "payable", "bill_number": tag("VB-"), "bill_date": w["today"], "due_date": w["today"],
+      "amount": "5000"}, **allow(201, *VENDOR_COMM), **allow(404, *VENDOR_COMM_OUT)),  # fmt: skip
+    R("post", "/recruiter/vendor-bills/{activity_vendor_bill}/cancel", {"reason": "Raised in error"}, **allow(200, *VENDOR_COMM), **allow(404, *VENDOR_COMM_OUT)),
+    R("post", "/recruiter/vendor-bills/{activity_vendor_bill}/payments", lambda w: {"paid_on": w["today"], "amount": "1000"}, **allow(201, *VENDOR_COMM), **allow(404, *VENDOR_COMM_OUT)),
+    R("get", "/recruiter/vendors/performance", **allow(200, *VENDOR_COMM, *VENDOR_COMM_OUT)),
+    R("get", "/recruiter/vendors/{activity_vendor}/performance", **allow(200, *VENDOR_COMM), **allow(404, *VENDOR_COMM_OUT)),
     # rec-032 dashboard (§2.106), narrowed to `rec`: another recruiter naming them 403; a manager's non-report 404
     R("get", "/recruiter/dashboard?recruiter={rec_id}", **allow(200, "rec", "mgr", "super"), rec_out=403, mgr_out=404),
     # rec-033 performance (§2.108, PF1) and its CSV, rec-034 per recruiter (§2.109, own row only; it_admin 403), rec-035 management (§2.110)
@@ -286,6 +297,11 @@ async def build(client, db, w) -> None:
                                              size_bytes=len(PDF), storage_key=_DOC["key"], uploaded_by_user_id=rec.id))  # fmt: skip
     invoice = await add(db, RecruiterInvoice(job_id=job_id, invoice_number=tag("INV-"), invoice_date=now().date() - timedelta(days=1),
                                              due_date=now().date() + timedelta(days=30), amount=Decimal("150000.00"), created_by_user_id=rec.id))  # fmt: skip
+    vendor = await add(db, Company(name=f"R38 Vendor {tag()}", partner_type="vendor", vendor_status="active", assigned_recruiter_user_id=rec.id,
+                                   assigned_bdm_user_id=users["bdm"].id, created_by_user_id=rec.id))  # fmt: skip  # pob-012
+    vendor_bill = await add(db, VendorBill(company_id=vendor.id, kind="payable", bill_number=tag("VB-"), bill_date=now().date() - timedelta(days=1),
+                                           due_date=now().date() + timedelta(days=30), amount=Decimal("50000.00"), created_by_user_id=rec.id))  # fmt: skip
+    w.update({"activity_vendor": str(vendor.id), "activity_vendor_bill": str(vendor_bill.id)})
     college = await _college(db, users["bdm"])
     share = await add(db, InstitutionVacancyShare(organization_id=UUID(college["college"]), job_id=job_id, shared_on=now().date(), channel="visit",
                                                   shared_by_user_id=rec.id))  # fmt: skip  # pob-015

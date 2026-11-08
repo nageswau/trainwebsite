@@ -39,6 +39,8 @@ from app.models import (
     University,
     UniversityCommissionReceipt,
     User,
+    VendorBill,
+    VendorBillPayment,
 )
 from app.services import management_audit
 from app.services.agent_deposits import REFERENCE_TYPE as AGENT_DEPOSIT
@@ -456,7 +458,24 @@ def lines():
         description=func.concat("Fee refund · ", FeeAdjustment.document_no),
         created_at=FeeAdjustment.created_at,
     ).where(FeeAdjustment.kind == "refund")
-    return union_all(manual, payments, commissions, trips, recruiter, universities, salaries, refunds).subquery("ledger_lines")
+    vendors = [  # pob-012 (DEC-SCOPE-433 W5, Q-09): a vendor bill payment; the bill number only, never the vendor's name (like rec-031)
+        _auto(
+            source,
+            id=VendorBillPayment.id,
+            entry_date=VendorBillPayment.paid_on,
+            kind=kind,
+            vertical=literal("recruitment", String),
+            label=literal("Recruitment", String),
+            amount=VendorBillPayment.amount,
+            currency=literal(CURRENCY, String),  # vendor bills are in rupees
+            description=func.concat("Vendor bill ", VendorBill.bill_number, " payment"),
+            created_at=VendorBillPayment.created_at,
+        )
+        .join(VendorBill, VendorBill.id == VendorBillPayment.bill_id)
+        .where(VendorBill.kind == bill_kind)
+        for source, kind, bill_kind in (("vendor_payment", "expense", "payable"), ("vendor_receipt", "income", "receivable"))
+    ]
+    return union_all(manual, payments, commissions, trips, recruiter, universities, salaries, refunds, *vendors).subquery("ledger_lines")
 
 
 async def lines_totals(db: AsyncSession, table, where: list) -> dict:
