@@ -905,6 +905,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** low.
 
 #### pob-028: Placement Officer dashboard
+- **Status:** built (`DEC-SCOPE-437`, 2026-11-08; no migration, API §12MD); P1-P10 are the builder's calls (`NEEDS_CONFIRMATION`). A sixth hrc-033 board, `po`, with pob-025's replacement deadlines. The per-dimension performance breakdowns for pob-029.
 - **Business requirement:** §15 (9 widgets); §18 AC "Dashboards show BD activity, requirement pipeline, sourcing, interviews and placements".
 - **Existing behavior:** 18 recruiter tiles, the pipeline board and performance by recruiter exist.
 - **Expected behavior:** nine widgets:

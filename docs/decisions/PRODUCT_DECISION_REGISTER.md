@@ -12539,3 +12539,20 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - S11: a manual Closed on `POST /recruiter/requirements/{id}/status` needs a note (422 `note` "Enter a reason for closing"); the joining auto-close and the employer / IT-jobs legacy words are unchanged.
   - S12: a public page `/feedback/[token]` (noindex, no-referrer) and a Satisfaction section on the placement.
 - **Not built:** a template editor, multi-question/NPS forms, WhatsApp, a reporting roll-up (pob-029), an in-app notice on a response.
+
+### DEC-SCOPE-437 — Placement Officer dashboard (pob-028)
+- **Date:** 2026-11-08. **Status:** built; P1-P9 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions. pob-025 (replacement guarantee) landed first, so its deadlines are on the board (P10).
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-028-po-dashboard-design.md`. No migration; API §12MD; no new grant (hrc-033's `reports.recruitment`).
+- **Calls:**
+  - P1: the dashboard is a sixth hrc-033 board, `po` ("PO dashboard"): the same routes, filters, drill-down, export and scope. Each figure is one predicate, so it equals its drill-down (the AC).
+  - P2: the PO is `placement_team`, the Team Lead `placement_manager`. Company and follow-up figures use `recruiter_companies.caller_scope` (an officer: the companies of their requirements; management: everything); the owner filter is the company's recruiter there and the requirement owner elsewhere.
+  - P3: nine sections: BD pipeline, follow-ups, requirements, sourcing funnel, candidate actions, TPO partnerships, interview tracker, offers and joinings, invoicing and collections. Figures are counts; amounts stay on the pob-024 / rec-031 screens.
+  - P4: the invoicing section is left out (and its drill is 403) unless the caller passes the rec-031 revenue gate (placement_team / placement_manager / super_admin with pob-001 `commercials.client.view`). Offers and joinings are not commercial.
+  - P5: the BD pipeline groups the pob-004 stages (Targets = Target Identified + Research Completed; Meetings = Meeting Booked + Requirement Discussion + Vendor Registration; Clients = client status beyond Prospect) and leaves out vendors, lost and inactive companies.
+  - P6: a follow-up stores no channel, so "split by channel" is the outreach follow-ups (`first_outreach`, `cadence_step`) beside the rest; Today/Overdue use rec-024 FU2's definitions.
+  - P7: candidate actions: awaiting contact / consent (pob-018 outreach status on an active application), screening (still Sourced), submission (screened or shortlisted, never submitted, pob-021), interview confirmation (scheduled or rescheduled, in the future).
+  - P8: TPO = requirements shared with an institution in the period and those still awaiting its reply (pob-015).
+  - P9: queues are snapshots; flows use the period (this IST month by default).
+  - P10: a "Replacement guarantee (now)" section: guarantees ending today or within 7 days IST on a Joined placement with no dropout (pob-025 G10's alert rule) and replacements owed (G11: a dropout on or before the end with no replacement filled). Not commercial, so not behind P4's gate.
+  - P11: the PO board's Employer filter offers the caller's company scope (prospects have no requirement yet); the other boards keep companies with requirements.
+- **Not built:** performance by PO/recruiter/company/vendor/source/role (the existing performance pages; pob-029 builds the breakdowns), per-widget lazy loading (one statement of sub-selects per board already).
