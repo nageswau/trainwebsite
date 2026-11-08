@@ -12505,6 +12505,24 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - I10: `/recruiter/manager/automation` (Team Lead and super_admin) and a Tasks section on the requirement page. I11: migration 0317 is additive. I12: logs and audit carry ids, kinds and counts only.
 - **Not built:** round-robin distribution, hand-made requirement tasks, per-user settings, a rule cap.
 
+### DEC-SCOPE-436 — Replacement guarantee, early dropouts and expiry alerts (pob-025)
+- **Date:** 2026-11-08. **Status:** built; G1-G12 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions. Answers recruiter Q-22 ("replacement guarantee out of scope") for this item only. Dependency pob-024 (`DEC-SCOPE-432`) is built.
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-025-replacement-guarantee-design.md`. Migration `0318_placement_guarantee`; API §12MC; RBAC §2.327.
+- **Calls:**
+  - G1: `guarantee_days` (whole days 1-365, optional) on the client contract and the requirement, behind pob-001 `commercials.client` like the other terms; a requirement's null inherits the current client contract's (shown as inherited).
+  - G2: on Joined the placement stores the days (the requirement's, else the contract's) and `guarantee_end_date` = actual joining date + days, once; later term edits do not move it. No days = no guarantee.
+  - G3: a derived status (never stored): No guarantee / In guarantee / Guarantee ended / Dropped out, with days left while active.
+  - G4: `POST /placements/{id}/dropout` -- the writers; Joined only and once (409); the date from the joining date to today (IST, 422); a reason of 2-500 characters. The offer, application, requirement and invoice are unchanged.
+  - G5: a replacement is owed when the dropout is on or before the end date; after it (or with no guarantee) nothing is owed (the edge).
+  - G6: `POST /placements/{id}/replacement` -- the writers link an open requirement of the same client in their scope (422 otherwise); changeable until filled; 409 when nothing is owed.
+  - G7: the next placement created on the linked requirement fills the oldest unfilled dropout (row lock + recheck; unique column backstop); it records `expected_fee = 0` and gets no invoice draft. ⚠ On a multi-vacancy requirement the next accepted offer is taken as the replacement.
+  - G8: a replacement that does not join clears the link (the request is again in progress).
+  - G9: the replacement's own guarantee follows G2 in full (some clients give only the remainder: `NEEDS_CONFIRMATION`).
+  - G10: a daily beat sweep (`pob025-guarantee-alerts`, 03:45 UTC = 09:15 IST) sends `it.recruitment.guarantee_expiring` once (`guarantee_alerted_at`) to a Joined placement with no dropout ending today or within 7 days; a guarantee already past is never alerted. pob-024's recipients; fixed text with no name or date.
+  - G11: the placement read gains `guarantee` and `can_record_dropout` / `can_request_replacement`; the list gains a `replacements` view.
+  - G12: no credit note or invoice change on a dropout; audit rows carry ids, dates and flags, never the reason.
+- **Not built:** automatic requirement creation or reopening, a client-facing notice, a pro-rated guarantee for the replacement, a reporting roll-up (pob-029).
+
 ### DEC-SCOPE-435 — Client and candidate satisfaction feedback (pob-026)
 - **Date:** 2026-11-08. **Status:** built; S1-S12 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions. Dependency pob-024 (`DEC-SCOPE-432`) is built.
 - **Spec:** `docs/superpowers/specs/2026-11-08-pob-026-satisfaction-survey-design.md`. Migration `0316_placement_surveys`; API §12MB; RBAC §2.326.

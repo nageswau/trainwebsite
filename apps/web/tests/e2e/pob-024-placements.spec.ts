@@ -83,7 +83,7 @@ test("placement: accept -> record, confirm, join -> draft, issue -> receivables;
   await page.context().clearCookies();
   await signIn(page, "admin", "placement.manager@edusphere.local");
   await page.goto(`/recruiter/placements/${placementId}`);
-  await expect(page.getByRole("region", { name: "Placement" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Placement", exact: true })).toBeVisible(); // pob-025 adds "Replacement guarantee"
   await expect(page.getByRole("button", { name: "Record confirmation" })).toHaveCount(0);
   await page.setViewportSize({ width: 375, height: 800 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);

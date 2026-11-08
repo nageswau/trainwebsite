@@ -50,7 +50,7 @@ dropout; a fee or an invoice draft on a replacement hire; an alert for a guarant
   alerted. Recipients are pob-024's (recruiter owner, PO owner, their Team Leads; every active Team Lead when none). Fixed preview-safe
   text (no name, no date). Bounded `FOR UPDATE SKIP LOCKED` batches; the marker is written in the notice's transaction.
 - **G11 Read.** `GET /placements/{id}` gains `guarantee` (any placement reader, P14 scope): `{days, end_date, status, status_label,
-  days_left, dropout: {on, reason} | null, replacement: {status, status_label, requirement, placement} | null, replaces: {id, code} | null}`
+  days_left, dropout: {on, reason} | null, replacement: {status, status_label, requirement, placement: {id, candidate}} | null, replaces: {id, candidate} | null}`
   and `permissions.can_record_dropout` / `can_request_replacement`. Replacement status: `open` "Replacement owed", `requested`
   "Replacement in progress", `filled` "Replaced". The list gains a `replacements` view (owed and not yet filled).
 - **G12 Commercials.** The dropout does not change the invoice or the draft; the replacement's zero fee shows as "No fee (replacement)".

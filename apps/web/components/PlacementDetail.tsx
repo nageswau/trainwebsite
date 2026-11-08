@@ -269,7 +269,7 @@ function ReplacementForm({ placement, onChanged, onCancel }: { placement: Placem
         {loadFailed && <p className="form-error" role="alert" style={{ margin: 0 }}>The requirements could not be loaded. Try again.</p>}
         {options?.length === 0 && <p className="muted" style={{ margin: 0 }}>This client has no open requirement. Reopen the original or create a new one first.</p>}
         {!!options?.length && (
-          <select id={fid} value={jobId} onChange={(e) => setJobId(e.target.value)} aria-invalid={errors.job_id ? true : undefined}
+          <select id={fid} autoFocus value={jobId} onChange={(e) => setJobId(e.target.value)} aria-invalid={errors.job_id ? true : undefined}
             aria-describedby={errors.job_id ? `${fid}-error` : undefined}>
             <option value="">Choose a requirement</option>
             {options.map((o) => <option key={o.id} value={o.id}>{o.title} ({o.code})</option>)}
@@ -339,7 +339,7 @@ function GuaranteeCard({ placement, onChanged }: { placement: Placement; onChang
           }}>
           <div className="form-grid">
             <Field id={fid("dropout_on")} label="Left on" error={dropout.errors.dropout_on}>
-              <input id={fid("dropout_on")} type="date" min={placement.joining.actual_joining_date ?? undefined} max={indiaToday()} value={v.on}
+              <input id={fid("dropout_on")} autoFocus type="date" min={placement.joining.actual_joining_date ?? undefined} max={indiaToday()} value={v.on}
                 onChange={(e) => setV({ ...v, on: e.target.value })} {...invalid("dropout_on")} />
             </Field>
             <Field id={fid("reason")} label="Why did the candidate leave?" error={dropout.errors.reason}>
@@ -435,7 +435,7 @@ export default function PlacementDetail({ initial }: { initial: Placement }) {
         <section className="action-card" style={{ gap: 8 }} aria-label="Invoice">
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>
             <strong>Invoice</strong>
-            <span className="badge">{c.invoice.status_label}</span>
+            <span className="badge">{replacementHire && c.invoice.status === "none" ? "Not invoiced" : c.invoice.status_label}</span>
           </div>
           <Facts rows={[
             ["Expected fee", replacementHire ? "No fee (replacement)" : c.expected_fee === null ? "Not priced" : inr(c.expected_fee)],

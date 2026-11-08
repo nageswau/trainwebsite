@@ -126,9 +126,10 @@ async def _fill_replacement(db: AsyncSession, actor: User | None, placement: Pla
     audit(db, actor, "replacement_filled", original, {"replacement_placement_id": str(placement.id)})
 
 
-async def _replaces(db: AsyncSession, placement_id) -> Placement | None:
+async def _replaces(db: AsyncSession, placement_id, *, lock: bool = False) -> Placement | None:
     """G7: the dropout this placement replaces, if any."""
-    return await db.scalar(select(Placement).where(Placement.replaced_by_placement_id == placement_id).execution_options(populate_existing=True))
+    stmt = select(Placement).where(Placement.replaced_by_placement_id == placement_id).execution_options(populate_existing=True)
+    return await db.scalar(stmt.with_for_update() if lock else stmt)
 
 
 async def _snapshot_guarantee(db: AsyncSession, placement: Placement, offer: JobOffer, job: Job) -> None:
@@ -167,7 +168,7 @@ async def on_did_not_join(db: AsyncSession, actor: User, offer: JobOffer) -> Non
     placement = await _fresh(db, Placement, placement_id, lock=True)
     if placement.invoice_status == "draft":
         _discard(db, actor, placement, DID_NOT_JOIN)
-    original = await db.scalar(select(Placement).where(Placement.replaced_by_placement_id == placement.id).with_for_update().execution_options(populate_existing=True))
+    original = await _replaces(db, placement.id, lock=True)
     if original is not None:  # pob-025 G8: the replacement did not join, so the original is again "in progress"
         original.replaced_by_placement_id = None
         audit(db, actor, "replacement_cleared", original, {"replacement_placement_id": str(placement.id)})

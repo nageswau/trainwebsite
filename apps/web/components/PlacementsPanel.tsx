@@ -11,7 +11,7 @@ import { getPage } from "@/lib/telecallerCatalogue";
 
 const EMPTY: Record<PlacementView, string> = {
   pending: "No accepted offers are waiting to join.", joined: "No placements have joined yet.", invoice_drafts: "No invoice drafts to review.",
-  did_not_join: "No placements marked Did not join.",
+  did_not_join: "No placements marked Did not join.", replacements: "No replacements owed.", // pob-025 G11
 };
 
 function Row({ item: i }: { item: PlacementItem }) {

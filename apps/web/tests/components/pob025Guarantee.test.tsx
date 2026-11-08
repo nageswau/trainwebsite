@@ -91,6 +91,21 @@ describe("PlacementDetail guarantee (pob-025)", () => {
     expect(within(panel()).getByRole("link", { name: "Anil Shah (CAN-000000)" })).toHaveAttribute("href", "/recruiter/placements/P0");
     expect(screen.getByText("No fee (replacement)")).toBeInTheDocument();
     expect(screen.getByText("A replacement hire gets no invoice draft.")).toBeInTheDocument();
+    expect(screen.queryByText("No draft yet")).not.toBeInTheDocument(); // QA-02: no draft is coming
+    expect(within(screen.getByRole("region", { name: "Invoice" })).getByText("Not invoiced")).toBeInTheDocument();
+  });
+
+  it("moves focus into each form when it opens, so Escape closes it (QA-01)", async () => {
+    render(<PlacementDetail initial={placement()} />);
+    fireEvent.click(within(panel()).getByRole("button", { name: "Record dropout" }));
+    expect(screen.getByLabelText("Left on")).toHaveFocus();
+    fireEvent.keyDown(screen.getByLabelText("Left on"), { key: "Escape" });
+    expect(screen.queryByRole("form", { name: "Record dropout" })).not.toBeInTheDocument();
+    cleanup();
+    fetchMock.mockResolvedValueOnce(res({ items: [{ id: "J2", code: "REQ-000002", title: "Java Developer II", status: "open" }], total: 1 }));
+    render(<PlacementDetail initial={placement({ guarantee: owed, permissions: { ...placement().permissions, can_record_dropout: false, can_request_replacement: true } })} />);
+    fireEvent.click(within(panel()).getByRole("button", { name: "Link replacement requirement" }));
+    expect(await screen.findByLabelText("Replacement requirement")).toHaveFocus();
   });
 
   it("lists a Replacements tab", () => {
