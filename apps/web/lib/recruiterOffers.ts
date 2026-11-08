@@ -43,6 +43,7 @@ export type RecOffer = {
   letter_url: string | null; application: { id: string; status: string; status_label: string }; candidate: { id: string; code: string; name: string };
   requirement: { id: string; code: string; title: string }; company: { id: string; name: string }; history: OfferEvent[];
   allowed_statuses: { key: string; label: string }[]; can_edit: boolean; can_upload: boolean; joining: Joining | null;
+  placement_id?: string | null; // pob-024: the placement made when the offer was accepted
 };
 export type JoiningItem = {
   id: string; position: string | null; offered_on: string; application: { id: string; status: string; status_label: string };

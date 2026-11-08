@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AuditLog, Candidate, Company, Job, JobApplication, JobOffer, User
 from app.schemas import RecJoiningUpdate
-from app.services import applications, company_pipeline, offers
+from app.services import applications, company_pipeline, offers, placements
 from app.services import recruiter_requirements as requirements
 from app.services.interviews import field_error
 
@@ -89,16 +89,17 @@ async def update(db: AsyncSession, user: User, offer: JobOffer, application: Job
     if target != current:
         offer.joining_status = target
         offers.record_event(db, offer, user, target, note=values["reason"])
-        await _side_effects(db, user, application, job, target)
+        await _side_effects(db, user, offer, application, job, target)
     audit(db, user, "update", offer, {"fields": changed, "status": target, **({"from": current} if target != current else {})})
     return {"fields": changed, "from": current, "to": target}
 
 
-async def _side_effects(db: AsyncSession, user: User, application: JobApplication, job: Job, target: str) -> None:
+async def _side_effects(db: AsyncSession, user: User, offer: JobOffer, application: JobApplication, job: Job, target: str) -> None:
     """JN7 / JN8: Joined -> the application Joined, rec-005 `candidate_joined`, and the requirement Closed once its vacancies are filled;
     Did Not Join -> the application Withdrawn (when that move is allowed)."""
     if target == "did_not_join":
         applications.follow(db, user, application, "withdrawn", "Did not join")
+        await placements.on_did_not_join(db, user, offer)  # pob-024 (P11)
         return
     await applications.change_status(db, user, application, "joined", "Joined")
     job = await db.scalar(select(Job).where(Job.id == job.id).with_for_update().execution_options(populate_existing=True))
@@ -107,6 +108,7 @@ async def _side_effects(db: AsyncSession, user: User, application: JobApplicatio
     await db.flush()  # this application's Joined is in the count below
     if job.vacancies is not None and job.status not in requirements.ENDED and await requirements.joined_count(db, job.id) >= job.vacancies:
         await requirements.change_status(db, user, job, "closed", VACANCIES_FILLED)
+    await placements.on_joined(db, user, offer, application, job)  # pob-024 (P8): the invoice draft
 
 
 # --- the proof (JN4) ----------------------------------------------------------------------------------------------------------------

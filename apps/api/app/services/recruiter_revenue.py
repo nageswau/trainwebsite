@@ -17,6 +17,7 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy import and_, exists, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
@@ -144,6 +145,23 @@ async def number_taken(db: AsyncSession, number: str) -> bool:
     return bool(await db.scalar(select(RecruiterInvoice.id).where(func.lower(RecruiterInvoice.invoice_number) == number.lower())))
 
 
+async def add_invoice(db: AsyncSession, user: User, job: Job, number: str, invoice_date: date, due_date: date, amount: Decimal, note: str | None) -> RecruiterInvoice:
+    """RV6 (and pob-024's issued draft): the dates, the number unique ignoring case (the unique index is the backstop for two people
+    typing it at once), the row and its audit. The caller commits."""
+    check_invoice_dates(invoice_date, due_date, requirements.ist_today())
+    if await number_taken(db, number):
+        raise HTTPException(409, NUMBER_TAKEN)
+    invoice = RecruiterInvoice(job_id=job.id, invoice_number=number, invoice_date=invoice_date, due_date=due_date, amount=money(amount), note=note, created_by_user_id=user.id)
+    db.add(invoice)
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, NUMBER_TAKEN) from None
+    audit(db, user, "invoice_created", "recruiter_invoice", invoice.id, {"job_id": str(job.id), "amount": str(invoice.amount)})
+    return invoice
+
+
 async def received_total(db: AsyncSession, invoice_id: UUID) -> Decimal:
     return money(await db.scalar(select(func.sum(RecruiterPayment.amount)).where(RecruiterPayment.invoice_id == invoice_id)))
 
@@ -176,6 +194,12 @@ def _hire_fee(fee: dict, compensation, currency: str | None) -> Decimal | None:
     if fee["basis"] == "percent_of_ctc" and compensation is not None and currency == "INR":
         return money(Decimal(compensation) * fee["value"] / 100)
     return None
+
+
+async def offer_fee(db: AsyncSession, job: Job, compensation, currency: str | None, on: date) -> Decimal | None:
+    """pob-024 (P8): one hire's fee by the RV1/RV2 rules -- None when there is no fee or it can't be priced."""
+    fee = _fee(job, (await _contract_fees(db, {job.company_id})).get(job.company_id), on)
+    return _hire_fee(fee, compensation, currency) if fee["basis"] else None
 
 
 async def _selected(db: AsyncSession, job_ids: list[UUID]) -> dict[UUID, int]:
