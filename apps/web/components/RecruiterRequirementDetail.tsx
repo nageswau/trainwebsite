@@ -225,6 +225,7 @@ function CommercialTermsCard({ terms, id }: { terms: CommercialTerms; id: string
         ["Payment trigger", trigger],
         ["Payment terms", term(terms.payment_terms)],
         ["Replacement terms", term(terms.replacement_terms)],
+        ["Guarantee", terms.guarantee_days?.value ? <>{terms.guarantee_days.value} days {terms.guarantee_days.inherited && FROM_CONTRACT}</> : "—"], // pob-025 G1
       ]} />
     </section>
   );

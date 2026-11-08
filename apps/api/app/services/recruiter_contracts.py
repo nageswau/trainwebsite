@@ -31,9 +31,12 @@ LABELS = {
     "active": "Active",
     "expired": "Expired",
 }
-FIELDS = ("agreement_type", "start_date", "end_date", "fee_basis", "fee_value", "payment_terms", "replacement_policy", "direction", "confidentiality_terms")
+FIELDS = (
+    "agreement_type", "start_date", "end_date", "fee_basis", "fee_value", "payment_terms", "replacement_policy", "direction", "confidentiality_terms",
+    "guarantee_days",  # pob-025 (DEC-SCOPE-436 G1)
+)  # fmt: skip
 VENDOR_TERMS = ("direction", "confidentiality_terms")  # pob-010 V8: a vendor agreement's alone
-TERMS = ("fee_basis", "fee_value", "payment_terms", "replacement_policy", *VENDOR_TERMS)  # pob-001 C5: behind `commercials.client`; pob-010 V9: `commercials.vendor` for a vendor agreement
+TERMS = ("fee_basis", "fee_value", "payment_terms", "replacement_policy", "guarantee_days", *VENDOR_TERMS)  # pob-001 C5: behind `commercials.client`; pob-010 V9: `commercials.vendor` for a vendor agreement
 CLIENT, VENDOR = "client", "vendor"
 DOCUMENT_KINDS = ("contract", "mou")
 RENEWABLE = ("signed", "active", "expired")  # CT7: a renewal follows a concluded contract

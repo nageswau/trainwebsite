@@ -1116,6 +1116,8 @@ JOB_VENDOR_CHECKS = {
     "ck_jobs_end_client_disclosure": "end_client_disclosure IN ('external', 'internal')",
     "ck_jobs_via_vendor_not_self": "via_vendor_id IS NULL OR via_vendor_id <> company_id",
 }
+# pob-025 (DEC-SCOPE-436 G1): the structured replacement guarantee in whole days. Migration 0317 repeats these (test_pob_025_migration).
+JOB_GUARANTEE_CHECKS = {"ck_jobs_guarantee_days": "guarantee_days IS NULL OR guarantee_days BETWEEN 1 AND 365"}
 # hrc-005 V4: the duplicate check's keys, spelled exactly as ix_jobs_company_title_key so the planner can use it.
 JOB_TITLE_KEY_SQL = r"lower(regexp_replace(btrim(title), '\s+', ' ', 'g'))"
 JOB_PLACE_KEY_SQL = r"lower(regexp_replace(btrim(coalesce(city, location)), '\s+', ' ', 'g'))"
@@ -1129,7 +1131,7 @@ class Job(Base, TimestampMixin):
     __tablename__ = "jobs"
     __table_args__ = (
         UniqueConstraint("requirement_code", name="uq_jobs_requirement_code"),
-        *(CheckConstraint(sql, name=name) for name, sql in {**JOB_CHECKS, **JOB_FEE_CHECKS, **JOB_PAY_CHECKS, **JOB_TERMS_CHECKS, **JOB_VENDOR_CHECKS}.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in {**JOB_CHECKS, **JOB_FEE_CHECKS, **JOB_PAY_CHECKS, **JOB_TERMS_CHECKS, **JOB_VENDOR_CHECKS, **JOB_GUARANTEE_CHECKS}.items()),
         CheckConstraint(JOB_SOURCE_CHECK, name="ck_jobs_source"),
         CheckConstraint(JOB_VISIBILITY_CHECK, name="ck_jobs_visibility"),
         CheckConstraint(JOB_SEGMENT_POOL_CHECK, name="ck_jobs_segment_pool"),
@@ -1205,6 +1207,7 @@ class Job(Base, TimestampMixin):
     payment_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     payment_terms: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     replacement_terms: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    guarantee_days: Mapped[int | None] = mapped_column(Integer, nullable=True)  # pob-025 G1: null inherits the current contract's
     # pob-002 R9: an active recruiter with the primary's owner rights (Q-02: always, not only while the primary is away)
     backup_owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     match_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # hrc-032 (DEC-SCOPE-413 N7): candidates told once
@@ -8570,6 +8573,7 @@ RECRUITER_CONTRACT_VENDOR_CHECKS = {
     "ck_recruiter_contracts_direction": "direction IS NULL OR direction IN ('vendor_pays_us', 'we_pay_vendor')",
     "ck_recruiter_contracts_vendor_terms": "party = 'vendor' OR (direction IS NULL AND confidentiality_terms IS NULL)",
 }
+RECRUITER_CONTRACT_GUARANTEE_CHECKS = {"ck_recruiter_contracts_guarantee_days": "guarantee_days IS NULL OR guarantee_days BETWEEN 1 AND 365"}  # pob-025 G1
 
 
 class RecruiterContract(Base, TimestampMixin):
@@ -8580,6 +8584,7 @@ class RecruiterContract(Base, TimestampMixin):
     __table_args__ = (
         *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_CONTRACT_CHECKS.items()),
         *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_CONTRACT_VENDOR_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_CONTRACT_GUARANTEE_CHECKS.items()),
         Index("uq_recruiter_contracts_current", "company_id", "party", unique=True, postgresql_where=text("is_current")),  # pob-010 V8: per party
         Index("ix_recruiter_contracts_company", "company_id", "created_at"),
     )
@@ -8595,6 +8600,7 @@ class RecruiterContract(Base, TimestampMixin):
     fee_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     payment_terms: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     replacement_policy: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    guarantee_days: Mapped[int | None] = mapped_column(Integer, nullable=True)  # pob-025 G1: the structured guarantee period
     contract_document_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
     contract_document_content_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     contract_document_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -8890,6 +8896,13 @@ PLACEMENT_RECORD_CHECKS = {
     "ck_placements_draft": "invoice_status = 'none' OR draft_due_date IS NOT NULL",
     "ck_placements_discarded": "(invoice_status = 'discarded') = (draft_discard_reason IS NOT NULL)",
 }
+# pob-025 (DEC-SCOPE-436 G2/G4/G6/G7): the guarantee snapshot, the early dropout and the replacement. Migration 0317 repeats these strings.
+PLACEMENT_GUARANTEE_CHECKS = {
+    "ck_placements_guarantee": "(guarantee_days IS NULL) = (guarantee_end_date IS NULL) AND (guarantee_days IS NULL OR guarantee_days BETWEEN 1 AND 365)",
+    "ck_placements_dropout": "(dropout_on IS NULL) = (dropout_reason IS NULL)",
+    "ck_placements_replacement": "(replacement_job_id IS NULL AND replaced_by_placement_id IS NULL) OR dropout_on IS NOT NULL",
+    "ck_placements_not_self_replaced": "replaced_by_placement_id IS NULL OR replaced_by_placement_id <> id",
+}
 
 
 class Placement(Base, TimestampMixin):
@@ -8898,9 +8911,12 @@ class Placement(Base, TimestampMixin):
 
     __tablename__ = "placements"
     __table_args__ = (
-        *(CheckConstraint(sql, name=name) for name, sql in PLACEMENT_RECORD_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in {**PLACEMENT_RECORD_CHECKS, **PLACEMENT_GUARANTEE_CHECKS}.items()),
         Index("ix_placements_job", "job_id"),
         Index("ix_placements_invoice_status", "invoice_status"),
+        Index("ix_placements_guarantee_end_date", "guarantee_end_date"),  # pob-025 G10: the daily sweep
+        Index("ix_placements_replacement_job", "replacement_job_id"),  # pob-025 G7: the fill
+        UniqueConstraint("replaced_by_placement_id", name="uq_placements_replaced_by"),  # G7: one original per replacement
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     offer_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_offers.id", ondelete="RESTRICT"), unique=True)
@@ -8928,6 +8944,16 @@ class Placement(Base, TimestampMixin):
     due_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     overdue_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    # pob-025 (DEC-SCOPE-436): G2 the guarantee set once on joining, G10 the expiry alert marker, G4 the dropout, G6/G7 the replacement
+    guarantee_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    guarantee_end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    guarantee_alerted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dropout_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    dropout_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    replacement_job_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"), nullable=True)
+    replaced_by_placement_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("placements.id", ondelete="RESTRICT"), nullable=True
+    )
 
 
 # pob-026 (DEC-SCOPE-435 S2): one satisfaction survey per placement and respondent. Migration 0316 repeats these strings

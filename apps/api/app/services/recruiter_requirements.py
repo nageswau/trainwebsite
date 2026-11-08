@@ -481,7 +481,11 @@ async def commercial_terms(db: AsyncSession, job: Job, company: Company) -> dict
     contract = await contracts.load_current(db, company)
     own_fee = job.fee_basis is not None
     fee_basis, fee_value = (job.fee_basis, job.fee_value) if own_fee else ((contract.fee_basis, contract.fee_value) if contract else (None, None))
-    inherited = {"payment_terms": contract.payment_terms if contract else None, "replacement_terms": contract.replacement_policy if contract else None}
+    inherited = {
+        "payment_terms": contract.payment_terms if contract else None,
+        "replacement_terms": contract.replacement_policy if contract else None,
+        "guarantee_days": contract.guarantee_days if contract else None,  # pob-025 G1
+    }
 
     def term(key: str) -> dict:
         own = getattr(job, key)
@@ -494,6 +498,7 @@ async def commercial_terms(db: AsyncSession, job: Job, company: Company) -> dict
         "payment_days": job.payment_days,
         "payment_terms": term("payment_terms"),
         "replacement_terms": term("replacement_terms"),
+        "guarantee_days": term("guarantee_days"),
     }
 
 

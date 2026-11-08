@@ -11319,10 +11319,11 @@ REC_REQUIREMENT_FIELDS = (  # the `jobs` columns a create or edit may write; cod
     # pob-002 (DEC-SCOPE-407 R6/R7/R9): the hiring process, the per-requirement terms and the backup owner
     "interview_rounds", "screening_steps", "decision_maker_contact_id", "expected_tat_days", "payment_trigger", "payment_days",
     "payment_terms", "replacement_terms", "backup_owner_user_id",
+    "guarantee_days",  # pob-025 (DEC-SCOPE-436 G1)
     # pob-011 (DEC-SCOPE-427 V2/V3): the vendor the requirement came through and the end client's disclosure
     "via_vendor_id", "end_client_disclosure",
 )
-REC_REQUIREMENT_TERMS = ("payment_trigger", "payment_days", "payment_terms", "replacement_terms")  # pob-002 R8: behind commercials.client
+REC_REQUIREMENT_TERMS = ("payment_trigger", "payment_days", "payment_terms", "replacement_terms", "guarantee_days")  # pob-002 R8 (+ pob-025 G1): behind commercials.client
 
 
 def _rec_requirement_text(value: str | None, info: ValidationInfo) -> str | None:
@@ -11418,6 +11419,7 @@ class RecRequirementUpdate(BaseModel):
     payment_days: RecDays = None
     payment_terms: _rec_requirement_text_type(2000, multiline=True) = None
     replacement_terms: _rec_requirement_text_type(2000, multiline=True) = None
+    guarantee_days: RecDays = None  # pob-025 G1: null inherits the current contract's
     backup_owner_user_id: UUID | None = None
     via_vendor_id: UUID | None = None  # pob-011 V2: a vendor-type company in the caller's scope (services/recruiter_requirements)
     end_client_disclosure: Literal[JOB_END_CLIENT_DISCLOSURES] = None  # pob-011 V3; null is refused (the column always has a value)
@@ -13395,6 +13397,7 @@ class RecContractCreate(BaseModel):
     fee_value: RecContractFee = None
     payment_terms: RecContractTerms = None
     replacement_policy: RecContractTerms = None
+    guarantee_days: RecDays = None  # pob-025 (DEC-SCOPE-436 G1): the structured replacement guarantee
     direction: Literal["vendor_pays_us", "we_pay_vendor"] | None = None  # pob-010 V8: a vendor agreement's alone
     confidentiality_terms: RecContractTerms = None
 
@@ -13445,6 +13448,7 @@ class RecContractOut(BaseModel):
     fee_value: Decimal | None = None
     payment_terms: str | None = None
     replacement_policy: str | None = None
+    guarantee_days: int | None = None  # pob-025 G1
     direction: str | None = None  # pob-010 V9: absent without `commercials.vendor.view`, as the terms above
     confidentiality_terms: str | None = None
     contract_document: RecContractDocumentOut | None
@@ -14039,6 +14043,19 @@ class PlacementInvoiceIssue(BaseModel):
     due_date: Annotated[date, BeforeValidator(_trip_date("due date"))]
     amount: RecRevenueAmount
     note: RecRevenueText = None
+
+
+class PlacementDropout(RecInvoiceCancel):
+    """pob-025 G4: an early dropout -- the date (from the joining date to today: the service's check) and rec-031's reason (2-500)."""
+
+    dropout_on: Annotated[date, BeforeValidator(_trip_date("dropout date"))]
+
+
+class PlacementReplacementRequest(BaseModel):
+    """pob-025 G6: the requirement (the original, reopened, or a new one of the same client) that will fill the owed replacement."""
+
+    model_config = ConfigDict(extra="forbid")
+    job_id: UUID
 
 
 class PlacementSurveyAnswer(BaseModel):
