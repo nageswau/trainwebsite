@@ -5,7 +5,7 @@ outside the caller's scope is the same 404 as a missing one (the rec-003 pattern
 status and skills functions, so every writer records history and keeps the `jobs.skills` mirror in step (J3, J7)."""
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -44,6 +44,7 @@ from app.services import company_pipeline
 from app.services import recruiter_companies as companies
 from app.services import recruiter_contracts as contracts
 from app.services import requirement_checklist as checklist
+from app.services import requirement_intake as intake
 from app.services import requirement_owners as owners
 from app.services import skills as skills_master
 from app.services.bdm_appointments import IST
@@ -244,10 +245,13 @@ async def fill_when_complete(db: AsyncSession, user: User | None, job_id: UUID) 
 
 
 async def record_created(db: AsyncSession, user: User, job: Job, note: str = "Created") -> None:
-    """Every create path (recruiter, employer, legacy): the first status row and, hrc-006 (O2), the primary owner's history row."""
+    """Every create path (recruiter, employer, legacy): the first status row and, hrc-006 (O2), the primary owner's history row. pob-027
+    (I1/I2/I5): the owner is settled first (the company's recruiter, when eligible), then told, with the template's tasks."""
     db.add(JobStatusHistory(job_id=job.id, from_status=None, to_status=job.status, note=note, changed_by_user_id=user.id))
+    await intake.settle_owner(db, job)
     owners.record_primary(db, user, job)
     await drive_company_stage(db, user, job)
+    await intake.after_created(db, user, job, datetime.now(UTC))
 
 
 async def drive_company_stage(db: AsyncSession, user: User | None, job: Job) -> None:

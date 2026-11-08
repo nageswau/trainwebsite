@@ -3,6 +3,7 @@
 Every `{requirement_id}` resolves through `services.recruiter_requirements.load_scoped` (out of scope = 404); every write is one
 transaction -- scope, row lock, change, history/audit, one commit here. Lists are {items, total, limit, offset}, newest first."""
 
+from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -37,6 +38,7 @@ from app.services import job_revisions as revisions
 from app.services import recruiter_companies as companies
 from app.services import recruiter_contracts as contracts
 from app.services import recruiter_requirements as svc
+from app.services import requirement_intake as intake
 from app.services import requirement_owners as owners
 from app.services.interviews import field_error
 from app.services.recruiter import ROLE, recruiter_context
@@ -447,6 +449,7 @@ async def assign_requirement(requirement_id: UUID, payload: RecRequirementAssign
     previous = job.assigned_recruiter_user_id
     await owners.set_primary(db, user, job, target.id)  # hrc-006 (O7): history; a collaborator promoted gives up that role
     job.updated_by_user_id = user.id
+    await intake.after_assigned(db, user, job, datetime.now(UTC))  # pob-027 (I2/I5): the notice, and the tasks moved or copied once
     svc.audit(db, user, "assign", job.id, {"from_user_id": str(previous) if previous else None, "to_user_id": str(target.id),
                                            "changes": {"recruiter": [await svc.recruiter_name(db, previous), target.full_name]}})
     await db.commit()

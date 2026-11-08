@@ -20,12 +20,14 @@ from app.models import (
     CandidateRoutingRule,
     CandidateSkill,
     CandidateTask,
+    EscalationRule,
     Job,
     JobAssignment,
     JobRevision,
     JobSkill,
     Program,
     RecCandidateSource,
+    RequirementTask,
     SavedCandidateSearch,
     Skill,
     TalentPool,
@@ -93,6 +95,16 @@ ROWS = [
     # pob-017 (DEC-SCOPE-429, §2.320): the record's readers read the plan and funnel; its writers save it
     R("get", "/recruiter/requirements/{requirement}/sourcing", **OWN),
     R("put", "/recruiter/requirements/{requirement}/sourcing", {"target_found": 3}, **allow(200, "rec", "super"), **OWN_OUT),
+    # pob-027 (DEC-SCOPE-434, §2.325): the record's readers list its tasks; the assignee (rec) or a writer completes one; the template and
+    # the escalation rules are the Team Lead's and super_admin's
+    R("get", "/recruiter/requirements/{requirement}/tasks", **OWN),
+    R("post", "/recruiter/requirements/{requirement}/tasks/{requirement_task}/complete", **allow(200, "rec", "super"), **OWN_OUT),
+    R("get", "/recruiter/intake-automation/settings", **allow(200, "mgr", "mgr_out", "super")),
+    R("put", "/recruiter/intake-automation/settings", {"task_template": [{"kind": "sourcing", "title": "Prepare the sourcing plan", "due_in_hours": 24},
+      {"kind": "screening", "title": "Screen the first shortlisted profiles", "due_in_hours": 72}]}, **allow(200, "mgr", "mgr_out", "super")),
+    R("get", "/recruiter/escalation-rules", **allow(200, "mgr", "mgr_out", "super")),
+    R("post", "/recruiter/escalation-rules", {"event_type": "follow_up_overdue", "after_hours": 24, "notify": "reporting_manager"}, **allow(201, "mgr", "mgr_out", "super")),
+    R("patch", "/recruiter/escalation-rules/{escalation_rule}", {"active": False}, **allow(200, "mgr", "mgr_out", "super")),
     R("get", "/recruiter/requirements/{requirement}/revisions/{candidates_revision}", **OWN),
     R("patch", "/recruiter/requirements/{requirement}", {"location": "Bengaluru"}, **allow(200, "rec", "super"), **OWN_OUT),
     R("post", "/recruiter/requirements/{requirement}/assign", lambda w: {"recruiter_user_id": w["rec2_id"]}, **allow(200, "mgr", "super"), **OUT),
@@ -263,9 +275,13 @@ async def build(client, db, w) -> None:
     task = await add(db, CandidateTask(candidate_id=UUID(w["candidate"]), task_type="follow_up", title="Call back", due_at=func.now() + timedelta(days=1),
                                        assignee_user_id=rec.id, created_by_user_id=rec.id))  # fmt: skip
     rule = await add(db, CandidateRoutingRule(kind="location", location=tag("R38 City "), recruiter_user_id=rec.id))  # hrc-024
+    # pob-027: an open task for the recruiter on the world's requirement, and a switched-off escalation rule
+    requirement_task = await add(db, RequirementTask(job_id=job.id, kind="sourcing", title="R38 task", due_at=func.now() + timedelta(days=1), assignee_user_id=rec.id))
+    escalation_rule = await add(db, EscalationRule(event_type="follow_up_overdue", after_hours=24, notify="reporting_manager", active=False, created_by_user_id=mgr.id))
     saved = await add(db, SavedCandidateSearch(owner_user_id=rec.id, name=tag("R38 Saved "), filters={"all": ["Java"]}, shared=True))  # hrc-020
     await db.commit()
     w.update({
+        "requirement_task": str(requirement_task.id), "escalation_rule": str(escalation_rule.id),
         "candidates_task": str(task.id), "candidates_routing_rule": str(rule.id), "candidates_saved_search": str(saved.id),
         "candidates_source": str(source.id), "candidates_java": str(java.id), "candidates_spare": str(spare.id), "candidates_archived": str(archived.id),
         "candidates_cv": str(cv.id), "candidates_document": str(document.id), "candidates_request": str(request.id), "candidates_skill": str(skill.id), "candidates_job_skill": str(job_skill.id), "candidates_jd_version": str(jd.version),

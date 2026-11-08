@@ -19,6 +19,7 @@ import { OwnersCard, OwnershipHistory } from "@/components/RequirementOwners";
 import RequirementChecklist from "@/components/RequirementChecklist";
 import RequirementRevisions from "@/components/RequirementRevisions";
 import RequirementSourcing from "@/components/RequirementSourcing";
+import RequirementTasks from "@/components/RequirementTasks";
 import RequirementVisibility from "@/components/RequirementVisibility";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
@@ -354,6 +355,8 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
       <RecruiterRequirementJd requirement={r} initial={initialJd} onRequirementChanged={changed} />
       {/* pob-016: what must be known before sourcing starts; read again when the status moves */}
       {!showEditor && <RequirementChecklist requirementId={r.id} status={r.status} onSaved={() => setChecklistSaves((n) => n + 1)} />}
+      {/* pob-027: the tasks the owner started with; re-read when the requirement changes (an assignment moves the open ones) */}
+      {!showEditor && <RequirementTasks requirementId={r.id} version={r.updated_at} />}
       {/* pob-017: the sourcing plan and its funnel by source; re-read when the requirement, its shortlist or its shares change */}
       {!showEditor && <RequirementSourcing requirementId={r.id} version={`${r.updated_at}-${shortlists}-${shares}`} team={sourcingTeam(r)} skills={r.skills} />}
       {/* hrc-007: send for approval, or (an approver) decide; the pending state is shown to every reader */}

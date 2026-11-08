@@ -225,6 +225,7 @@ export const RECRUITER_MANAGER_NAV: NavItem[] = withResources([
   { label: "Campus calendar", href: "/recruiter/campus-calendar" }, // pob-015: the team's colleges, read only
   { label: "Message templates", href: "/recruiter/manager/templates" }, // rec-026
   { label: "Outreach cadences", href: "/recruiter/manager/cadences" }, // pob-008: the Team Lead's cadences
+  { label: "Intake automation", href: "/recruiter/manager/automation" }, // pob-027: new requirement tasks and escalation rules
   { label: "Screening Bank", href: "/recruiter/manager/screening-bank" }, // pob-020: questions and form templates
   { label: "Report library", href: "/recruiter/manager/report-library" }, // nehn-016: students completing soon, the placement report
   MANAGEMENT_TASKS_NAV, // mgmt-028 (MT14)

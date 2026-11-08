@@ -12492,6 +12492,19 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - W8/W9: API §12LZ; a "Vendor commercials" section on a vendor's company page and a "Vendor performance" report with a drill-down page.
 - **Not built:** vendor-supplied candidates (we only have submissions *to* vendors), GST/PDF bills, automatic bills from joinings, a period filter.
 
+### DEC-SCOPE-434 — Intake automations and an escalation framework (pob-027)
+- **Date:** 2026-11-08. **Status:** built; I1-I12 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions. Q-18 answered "the company owner by default" as the backlog item proposes; the hrc-024-style distributor is not built. **Evidence:** backlog pob-027 (§16 rows "New requirement received", "Requirement assigned to recruiter", "Feedback overdue → escalation rules"); the source is `UNVERIFIED`.
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-027-intake-automation-design.md`. Migration `0317_intake_automation`; API §12MA; RBAC §2.325.
+- **Calls:**
+  - I1/I2: every create path settles the owner (the company's recruiter when the requirement has none; an inactive or non-recruiter owner is dropped) and notifies the owner (`it.requirement.assigned`, not when self-created) or, with none, every active Team Lead (`it.requirement.unowned`), in the create's transaction. The assign route now notifies the new primary.
+  - I3: one `requirement_automation_settings` row: a task template of 0-10 `{kind sourcing|screening, title, due_in_hours 1-720}`, seeded with two tasks; read and written by the Team Lead and super_admin; audited with item counts.
+  - I4/I5: `requirement_tasks` (not rec-024 follow-ups: company-scoped with no assignee; not hrc-016 candidate tasks: a candidate is required). Copied once, under the job row, when a requirement first gets a primary owner; a reassignment moves the open tasks.
+  - I6: tasks are read in the requirement scope and completed by the assignee or a requirement writer (409 when closed).
+  - I7/I8: `escalation_rules` {requirement_unowned, requirement_task_overdue, follow_up_overdue; after 1-720 h; the owner's Team Lead or every Team Lead; switched off, never deleted}; the `pob027-escalations` beat (every 15 minutes) notifies `it.recruiter.escalated` once per rule and item (`escalation_events`, unique, ON CONFLICT DO NOTHING), only for items whose threshold passed after the rule was created.
+  - I9: pob-022's interview-feedback escalation keeps its own settings (moving it onto the rules is a follow-up, `NEEDS_CONFIRMATION`); pob-025 can add an event type later.
+  - I10: `/recruiter/manager/automation` (Team Lead and super_admin) and a Tasks section on the requirement page. I11: migration 0317 is additive. I12: logs and audit carry ids, kinds and counts only.
+- **Not built:** round-robin distribution, hand-made requirement tasks, per-user settings, a rule cap.
+
 ### DEC-SCOPE-435 — Client and candidate satisfaction feedback (pob-026)
 - **Date:** 2026-11-08. **Status:** built; S1-S12 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions. Dependency pob-024 (`DEC-SCOPE-432`) is built.
 - **Spec:** `docs/superpowers/specs/2026-11-08-pob-026-satisfaction-survey-design.md`. Migration `0316_placement_surveys`; API §12MB; RBAC §2.326.

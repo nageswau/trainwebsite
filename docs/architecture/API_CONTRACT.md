@@ -6392,6 +6392,21 @@ Audit actions `recruiter_template.approve|archive|restore|copy`.
 - `GET /recruiter/vendors/{id}/performance` → the row plus `requirements[{requirement, created_at, first_submission_at|null, response_hours|null}]` and `submissions[{application_id, candidate, requirement, submitted_at, interviewed, placed, joined}]` — the rows every figure is counted from.
 - Management ledger `GET /management/ledger/lines`: new automatic sources `vendor_payment` (expense) and `vendor_receipt` (income), vertical `recruitment`.
 
+## 12MA. Intake automation and escalation rules (pob-027) — addendum, 2026-11-08
+
+`DEC-SCOPE-434`. Migration `0317_intake_automation`. Settings and rules are the Team Lead's (`placement_manager`, super_admin: 403 otherwise). Tasks follow rec-007's requirement scope, placement officers included (404 outside it).
+
+- Every requirement create path (`POST /recruiter/requirements`, the employer portal's `POST /employer/jobs`, the legacy `POST /workflows/it/jobs`): a requirement created without an owner takes the company's recruiter when that user is an active `placement_team` user; an ineligible owner is dropped (the requirement is then unassigned). The owner gets `it.requirement.assigned` (unless they created it) and the template's tasks; with no owner every active Team Lead gets `it.requirement.unowned`. All in the create's transaction. Response shapes unchanged.
+- `POST /recruiter/requirements/{id}/assign` additionally notifies the new primary (`it.requirement.assigned`), moves the open tasks to them, or copies the template when the requirement has no tasks. Response unchanged.
+- `GET /recruiter/intake-automation/settings` → `{task_template: [{kind: sourcing|screening, title, due_in_hours}]}`.
+- `PUT /recruiter/intake-automation/settings` `{task_template: [≤10 × {kind, title (1-200, trimmed), due_in_hours (1-720)}]}` → the settings. 422 per item.
+- `GET /recruiter/escalation-rules` → `{items: [rule]}`; `rule` = `{id, event_type: requirement_unowned|requirement_task_overdue|follow_up_overdue, after_hours, notify: reporting_manager|all_team_leads, active, created_at}`.
+- `POST /recruiter/escalation-rules` `{event_type, after_hours (1-720), notify}` → 201 `{rule}`.
+- `PATCH /recruiter/escalation-rules/{id}` `{after_hours?, notify?, active?}` → `{rule}`; 404 unknown id. Rules are never deleted.
+- `GET /recruiter/requirements/{id}/tasks` → `{items: [{id, kind, title, due_at, status: open|done|cancelled, completed_at, assignee{id, full_name}, can_complete}]}`, by due time.
+- `POST /recruiter/requirements/{id}/tasks/{task_id}/complete` → `{task}`. 404 another requirement's task; 409 not open; 403 neither the assignee nor a requirement writer.
+- Worker beat `pob027-escalations` (every 15 minutes): each active rule notifies `it.recruiter.escalated` once per item (unique per rule and item), only for items whose threshold passed after the rule was created.
+
 ## 12MB. Client and candidate satisfaction surveys (pob-026) — addendum, 2026-11-08
 
 `DEC-SCOPE-435`. Migration `0316_placement_surveys`. The public routes take no session: the signed link is the credential.

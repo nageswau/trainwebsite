@@ -4091,6 +4091,16 @@ A placement officer has no company scope, but answering Missing still creates th
 
 Grant first (403, logged with actor/role/route only), then the company scope (404, the same as an unknown id). The ledger lines follow the management ledger's finance gate (§ mgmt-004). Audit `vendor_commercials.*`: ids, kind and amounts only. rec-038 matrix rows cover all six routes.
 
+### 2.325 Intake automation and escalation rules *(added 2026-11-08 — `DEC-SCOPE-434`, pob-027)*
+
+| Action | placement_team | placement_officer | placement_manager | super_admin | everyone else |
+|---|---|---|---|---|---|
+| Read / change the task template; list, add, change escalation rules | 403 | 403 | ✓ | ✓ | 403 |
+| List a requirement's tasks | requirement scope | as an assignee (hrc-006) | team scope | ✓ | 403 (an assigned BDM reads its company's) |
+| Complete a task | the assignee, or a writer in scope | a writer in scope | 403 unless the assignee | ✓ | 403 |
+
+Role first (403), then the requirement scope (404, the same as an unknown id; another requirement's task is 404). Audit `requirement_automation.settings` (item counts), `escalation_rule.create|update` (values) and `requirement_task.complete` (job id, kind) — never a title. rec-038 matrix rows cover all seven routes.
+
 ### 2.326 Client and candidate satisfaction surveys *(added 2026-11-08 — `DEC-SCOPE-435`, pob-026)*
 
 | Action | placement_team | placement_manager | super_admin | anyone with the link | everyone else |
