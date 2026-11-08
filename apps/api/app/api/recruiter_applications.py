@@ -93,7 +93,7 @@ SKIPS = {  # pob-019 (DEC-SCOPE-437 T8): why a bulk shortlist left a candidate o
 }
 
 
-def skip(candidate_id: UUID, reason: str) -> dict:
+def _skip(candidate_id: UUID, reason: str) -> dict:
     return {"candidate_id": candidate_id, "reason": reason, "message": SKIPS[reason]}
 
 
@@ -114,11 +114,11 @@ async def bulk_shortlist(requirement_id: UUID, payload: RecBulkShortlistIn, user
     for candidate_id in payload.candidate_ids:
         candidate = found.get(candidate_id)
         if candidate is None or candidate.archived_at is not None:
-            skipped.append(skip(candidate_id, "unavailable"))
+            skipped.append(_skip(candidate_id, "unavailable"))
         elif candidate_id in there:
-            skipped.append(skip(candidate_id, "already_added"))
+            skipped.append(_skip(candidate_id, "already_added"))
         elif candidate.status == "do_not_contact":
-            skipped.append(skip(candidate_id, "do_not_contact"))
+            skipped.append(_skip(candidate_id, "do_not_contact"))
         else:
             application = await svc.create(db, user, job, candidate, "shortlisted", payload.note)
             svc.audit(db, user, "add", application, {"job_id": str(job.id), "candidate_id": str(candidate.id), "status": "shortlisted", "bulk": True})
