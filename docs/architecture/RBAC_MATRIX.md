@@ -4090,3 +4090,13 @@ A placement officer has no company scope, but answering Missing still creates th
 | Record a bill / payment, cancel an unpaid bill | `commercials.vendor.edit` + company scope | `commercials.vendor.edit` + team scope | ✓ | 403 |
 
 Grant first (403, logged with actor/role/route only), then the company scope (404, the same as an unknown id). The ledger lines follow the management ledger's finance gate (§ mgmt-004). Audit `vendor_commercials.*`: ids, kind and amounts only. rec-038 matrix rows cover all six routes.
+
+### 2.326 Client and candidate satisfaction surveys *(added 2026-11-08 — `DEC-SCOPE-435`, pob-026)*
+
+| Action | placement_team | placement_manager | super_admin | anyone with the link | everyone else |
+|---|---|---|---|---|---|
+| Read the survey's role/company, answer it once | — | — | — | ✓ (signed token, scoped to one survey) | 404 / 410 |
+| Read the results on a placement | placement scope (§2.322) | placement scope | ✓ | — | 403 / 404 |
+| Close a requirement by hand (with a reason) | as rec-007 `can_change_status` | as rec-007 | ✓ | — | 403 |
+
+The token is not a session (`type` = `placement_survey`; `get_current_user` refuses it) and names only the survey id. Refused lookups are audited with the IP and throttled (429). Audit `placement_survey.responded`: ids and the rating, never the comment.

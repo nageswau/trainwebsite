@@ -1888,3 +1888,10 @@ half.
 | `pob-012-E1` | A vendor with no submissions shows "—" rates, not 0% | `::test_a_vendor_with_no_submissions_shows_null_rates`; vitest `rateText`; e2e | Built |
 | `pob-012-W2` | Bills and payments: rules, cap, cancel | `::test_a_payable_is_recorded_paid_in_part_and_totalled`, `::test_bill_rules`, `::test_cancel_only_unpaid_and_no_payment_after`, `::test_payment_dates_and_an_archived_vendor`; vitest; e2e | Built |
 | `pob-012-SEC` | Grant first, then company scope; audit without notes | `::test_grants_and_scope`; rec-038 rows | Built |
+| `pob-026` | Requirement: `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-026` → `DEC-SCOPE-435`; migration `0316_placement_surveys`; `API_CONTRACT.md` §12MB; `RBAC_MATRIX.md` §2.326; spec `docs/superpowers/specs/2026-11-08-pob-026-satisfaction-survey-design.md`; tests `apps/api/tests/test_pob_026_surveys.py`, `apps/api/tests/test_pob_026_migration.py`, `apps/web/tests/components/pob026Surveys.test.tsx`, `apps/web/tests/e2e/pob-026-satisfaction.spec.ts` | | Built |
+| `pob-026-AC1` | A survey is sent once per respondent and one response is recorded | `::test_a_joined_placement_gets_one_survey_per_side_sent_once`, `::test_one_response_is_recorded_and_the_token_then_returns_410`, `::test_not_due_until_the_days_after_joining_have_passed`, `::test_a_side_with_no_address_is_skipped_once_with_a_reason`, `::test_an_unanswered_survey_is_resent_once`; vitest | Built |
+| `pob-026-AC2` | Reusing the token returns 410 | `::test_one_response_is_recorded_and_the_token_then_returns_410`, `::test_bad_foreign_and_expired_tokens`; vitest | Built |
+| `pob-026-E1` | The client contact has left → the primary contact | `::test_the_submitted_contact_is_used_unless_they_have_left` | Built |
+| `pob-026-SEC` | Signed token, no PII in the URL, refused lookups throttled | `::test_bad_foreign_and_expired_tokens`, `::test_refused_lookups_from_one_ip_are_throttled`; e2e (unknown link) | Built |
+| `pob-026-S10` | Results attach to the placement | `::test_the_placement_shows_both_surveys`; vitest | Built |
+| `pob-026-S11` | A manual close needs a reason | `::test_a_manual_close_needs_a_reason`; e2e | Built |

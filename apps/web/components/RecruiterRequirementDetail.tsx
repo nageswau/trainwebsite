@@ -22,6 +22,7 @@ import RequirementSourcing from "@/components/RequirementSourcing";
 import RequirementVisibility from "@/components/RequirementVisibility";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
+import { fieldErrors } from "@/lib/bdmTravel";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
 import { formatCalendarDate } from "@/lib/formatDate";
 import type { PickOption } from "@/lib/lookups";
@@ -52,25 +53,32 @@ function sourcingTeam(r: Requirement) {
   return people.filter((p, i) => people.findIndex((q) => q.id === p.id) === i).map((p) => ({ id: p.id, full_name: p.full_name }));
 }
 
+const CLOSE_REASON = "Enter a reason for closing";
+
 function StatusChange({ requirement, onChanged }: { requirement: Requirement; onChanged: Changed }) {
   const [status, setStatus] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [noteError, setNoteError] = useState<string | null>(null);
   const id = `requirement-${requirement.id}-status-change`;
+  const closing = status === "closed"; // pob-026 (DEC-SCOPE-435 S11): a manual close needs a reason
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!status || busy) return;
-    setBusy(true);
     setFailure(null);
+    setNoteError(null);
+    if (closing && !note.trim()) return setNoteError(CLOSE_REASON);
+    setBusy(true);
     const outcome = await sendJson(`${REQUIREMENTS_URL}/${requirement.id}/status`, "POST", { status, ...(note.trim() ? { note: note.trim() } : {}) });
     setBusy(false);
     if (outcome.ok && isRequirementBody(outcome.data)) {
       setStatus("");
       setNote("");
       onChanged(outcome.data.requirement, `Status changed to ${outcome.data.requirement.status_label}.`);
-    } else setFailure(outcome.ok ? "Unable to change the status." : outcome.message);
+    } else if (!outcome.ok && fieldErrors(outcome.detail).note) setNoteError(fieldErrors(outcome.detail).note);
+    else setFailure(outcome.ok ? "Unable to change the status." : outcome.message);
   }
 
   return (
@@ -90,8 +98,10 @@ function StatusChange({ requirement, onChanged }: { requirement: Requirement; on
             </select>
           </div>
           <div className="field">
-            <label htmlFor={`${id}-note`}>Note (optional)</label>
-            <input id={`${id}-note`} type="text" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
+            <label htmlFor={`${id}-note`}>{closing ? "Reason for closing" : "Note (optional)"}</label>
+            <input id={`${id}-note`} type="text" value={note} maxLength={500} aria-required={closing || undefined} onChange={(e) => setNote(e.target.value)}
+              aria-invalid={noteError ? true : undefined} aria-describedby={noteError ? `${id}-note-error` : undefined} />
+            {noteError && <p id={`${id}-note-error`} className="form-error">{noteError}</p>}
           </div>
         </div>
         <div className="actions">

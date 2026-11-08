@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { type FormEvent, type ReactNode, useId, useMemo, useRef, useState } from "react";
 
+import LocalTime from "@/components/LocalTime";
 import RecruiterInvoiceCard from "@/components/RecruiterInvoiceCard";
 import ReturnToLoginLink from "@/components/ReturnToLoginLink";
 import SearchableSelect from "@/components/SearchableSelect";
@@ -11,7 +12,7 @@ import { SAVE_FAILED, SESSION_ENDED, writeFailure } from "@/lib/bdmTasks";
 import { fieldErrors, indiaToday } from "@/lib/bdmTravel";
 import { formatCalendarDate } from "@/lib/formatDate";
 import type { PickOption } from "@/lib/lookups";
-import { type Confirmation, type Placement, placementOf, placementUrl, VIA_OPTIONS } from "@/lib/placements";
+import { type Confirmation, type Placement, placementOf, placementUrl, SURVEY_AFTER_DAYS, type Survey, VIA_OPTIONS } from "@/lib/placements";
 import { recruiterSearch, RECRUITER_SIGN_IN } from "@/lib/recruiterCompanies";
 import { inr } from "@/lib/recruiterRevenue";
 
@@ -232,6 +233,31 @@ function DraftReview({ placement, onChanged }: { placement: Placement; onChanged
   );
 }
 
+/** pob-026 (S10): one side's survey -- not due yet, not sent (why), sent / reminded, or the answer. */
+function SurveyCard({ title, survey }: { title: string; survey: Survey }) {
+  return (
+    <section className="action-card" style={{ gap: 6 }} aria-label={title}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>
+        <strong>{title}</strong>
+        {survey && <span className="badge">{survey.status_label}</span>}
+      </div>
+      {!survey && <p className="muted" style={{ margin: 0 }}>Sent {SURVEY_AFTER_DAYS} days after joining.</p>}
+      {survey?.status === "skipped" && <p className="muted" style={{ margin: 0 }}>{survey.skip_reason_label}</p>}
+      {survey?.status === "sent" && (
+        <p className="muted" style={{ margin: 0 }}>
+          Sent <LocalTime value={survey.sent_at} />{survey.resent_at && <>; reminder sent <LocalTime value={survey.resent_at} /></>}. No answer yet.
+        </p>
+      )}
+      {survey?.status === "responded" && (
+        <>
+          <p style={{ margin: 0 }}><strong>{survey.rating} / 5</strong> <span className="muted">· <LocalTime value={survey.responded_at} /></span></p>
+          <p style={{ margin: 0, overflowWrap: "anywhere", whiteSpace: "pre-line" }}>{survey.comment ?? <span className="muted">No comment.</span>}</p>
+        </>
+      )}
+    </section>
+  );
+}
+
 /** pob-024: one placement -- the record, the candidate and client confirmations, the PO owner and the invoice draft review. */
 export default function PlacementDetail({ initial }: { initial: Placement }) {
   const [p, setP] = useState(initial);
@@ -269,6 +295,15 @@ export default function PlacementDetail({ initial }: { initial: Placement }) {
         <ConfirmationCard placement={p} side="candidate" title="Candidate confirmation" onChanged={changed} />
         <ConfirmationCard placement={p} side="client" title="Client confirmation" onChanged={changed} />
       </div>
+      {p.satisfaction && (
+        <section aria-labelledby={`${p.id}-satisfaction`} style={{ display: "grid", gap: 8 }}>
+          <h3 id={`${p.id}-satisfaction`} style={{ margin: 0, fontSize: 16 }}>Satisfaction</h3>
+          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 18rem), 1fr))" }}>
+            <SurveyCard title="Client survey" survey={p.satisfaction.client} />
+            <SurveyCard title="Candidate survey" survey={p.satisfaction.candidate} />
+          </div>
+        </section>
+      )}
       {c && (
         <section className="action-card" style={{ gap: 8 }} aria-label="Invoice">
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>

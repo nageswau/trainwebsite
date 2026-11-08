@@ -57,6 +57,7 @@ async def _history(db, job_id):
 
 
 async def _set_status(client, requirement_id, status, note=None):
+    note = note or ("Client paused hiring" if status == "closed" else None)  # pob-026 S11: a manual close needs a reason
     return await client.post(f"{BASE}/{requirement_id}/status", json={"status": status, **({"note": note} if note else {})})
 
 
