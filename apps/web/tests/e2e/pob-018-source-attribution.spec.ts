@@ -24,7 +24,7 @@ test("a recruiter records where a candidate came from, verifies them and records
   const vendorSource = sources.find((s) => s.name === "Vendor");
   expect(vendorSource, "A1: the Vendor source is seeded").toBeTruthy();
   const made = await page.request.post("/api/v1/recruiter/candidates", {
-    data: { name: `POB18 Asha ${tag}`, email: `pob18-${tag}@example.com`, source_id: vendorSource!.id, source_detail: "Vendor shortlist", lawful_basis: "provided_for_placement" },
+    data: { name: `POB18 Asha ${tag}`, email: `pob18-${tag}@example.com`, location: "Pune", source_id: vendorSource!.id, source_detail: "Vendor shortlist", lawful_basis: "provided_for_placement" },
   });
   expect(made.status(), await made.text()).toBe(201);
   const candidate = await made.json();
@@ -37,7 +37,8 @@ test("a recruiter records where a candidate came from, verifies them and records
   if (requirement.status === "new") {
     expect((await page.request.post(`/api/v1/recruiter/requirements/${requirement.id}/status`, { data: { status: "requirement_received" } })).ok()).toBeTruthy();
   }
-  const share = () => page.request.post("/api/v1/recruiter/shares", { data: { requirement_id: requirement.id, candidate_ids: [candidate.id], channel: "other" } });
+  const share = () => page.request.post("/api/v1/recruiter/shares", { data: { requirement_id: requirement.id, candidate_ids: [candidate.id], channel: "other",
+    consent_confirmed: true, consent_reference: "Call", interest_confirmed: true } }); // pob-021 B3/B4
   const refused = await share();
   expect(refused.status()).toBe(422);
   expect(await refused.text()).toContain(candidate.candidate_code);

@@ -2485,3 +2485,8 @@ The downgrade refuses while a vendor or an NDA exists.
 - `job_sourcing_channels` (PK `job_id`, `source_id` → rec_candidate_sources RESTRICT).
 - `job_sourcing_searches` (PK `job_id`, `saved_search_id` → saved_candidate_searches CASCADE; index on `saved_search_id`).
 - `job_applications.submitted_source_id` (nullable → rec_candidate_sources RESTRICT): the candidate's source at the first submission, set once by `services/applications`; backfilled for applications already submitted.
+
+### pob-021 — submission record (`DEC-SCOPE-430`, migration `0311_submissions`)
+- `profile_share_items`: `submission_code` varchar(20) NOT NULL UNIQUE (default `'SUB-' || lpad(nextval('profile_share_item_submission_seq'), 6, '0')`), `status` (8 values, CHECK, default `submitted`), `status_changed_at`, `rejection_reason` (10 values; set iff rejected, CHECK), `next_action` ≤ 300, `next_action_on` date, `consent_reference` ≤ 300, `match` JSON, `acknowledged_at`.
+- `profile_shares`: `compensation_included` bool default false; `follow_up_id` → recruiter_follow_ups SET NULL; `ck_profile_shares_recipient_detail` widened (client named|anonymised, vendor anonymised|full).
+- `companies.submission_sla_hours` int 1-720 (CHECK), NULL = 48.

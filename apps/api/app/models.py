@@ -675,6 +675,7 @@ COMPANY_NAME_KEY_SQL = r"lower(regexp_replace(btrim(name), '\s+', ' ', 'g'))"
 COMPANY_CHECKS = {
     "ck_companies_priority": "priority IS NULL OR priority IN ('hot', 'warm', 'cold')",
     "ck_companies_employee_count": "employee_count IS NULL OR employee_count BETWEEN 0 AND 10000000",
+    "ck_companies_submission_sla": "submission_sla_hours IS NULL OR submission_sla_hours BETWEEN 1 AND 720",  # pob-021 B10 (migration 0311)
 }
 # rec-005 (DEC-SCOPE-127): the pipeline stage and the Lost flag (both or neither); migration 0108 keeps a frozen copy.
 # pob-010 (DEC-SCOPE-420 V2/V3): migration 0300 keeps a frozen copy.
@@ -769,6 +770,8 @@ class Company(Base, TimestampMixin):
     vendor_specialisations: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
     vendor_service_categories: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
     vendor_locations: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    # pob-021 (DEC-SCOPE-430 B10): hours from a submission to its client follow-up; NULL = SUBMISSION_SLA_DEFAULT_HOURS
+    submission_sla_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)
     territory: Mapped[str | None] = mapped_column(String(120), nullable=True)  # pob-009 T4: free text, filterable case-insensitively
 
 
@@ -8738,10 +8741,26 @@ PROFILE_SHARE_ITEM_CHECKS = {
 PROFILE_SHARE_VENDOR_CHECKS = {
     "ck_profile_shares_recipient": "recipient IN ('client', 'vendor')",
     "ck_profile_shares_detail": "detail IN ('named', 'anonymised', 'full')",
-    "ck_profile_shares_recipient_detail": "(recipient = 'client') = (detail = 'named')",
+    # pob-021 (DEC-SCOPE-430 B8, migration 0311): a client summary is named or anonymised; a vendor's anonymised or full
+    "ck_profile_shares_recipient_detail": "(recipient = 'client' AND detail IN ('named', 'anonymised')) OR (recipient = 'vendor' AND detail IN ('anonymised', 'full'))",
     "ck_profile_shares_vendor_channel": "recipient = 'client' OR channel <> 'portal'",
     "ck_profile_shares_consent": "(detail = 'full') = (consent_reference IS NOT NULL) AND (consent_reference IS NULL OR char_length(consent_reference) <= 300)",
 }
+SUBMISSION_SEQ = Sequence("profile_share_item_submission_seq", maxvalue=999999, metadata=Base.metadata)
+# pob-021 (DEC-SCOPE-430 B1-B13): each item is a submission. `draft` is the wizard's unsaved state, never stored (B2). Migration 0311 repeats these.
+SUBMISSION_STATUSES = ("submitted", "client_reviewing", "shortlisted", "interview", "rejected", "on_hold", "selected", "withdrawn")
+SUBMISSION_CLOSED = ("rejected", "selected", "withdrawn")
+SUBMISSION_REJECTION_REASONS = (
+    "skills_mismatch", "experience_mismatch", "compensation_mismatch", "location_mismatch", "notice_period", "duplicate_submission",
+    "position_filled", "client_not_interested", "candidate_withdrew", "other",
+)  # fmt: skip
+SUBMISSION_CHECKS = {
+    "ck_profile_share_items_status": _in_list("status", SUBMISSION_STATUSES),
+    "ck_profile_share_items_rejection": f"(status = 'rejected') = (rejection_reason IS NOT NULL) AND (rejection_reason IS NULL OR {_in_list('rejection_reason', SUBMISSION_REJECTION_REASONS)})",
+    "ck_profile_share_items_next_action": "next_action IS NULL OR char_length(next_action) <= 300",
+    "ck_profile_share_items_consent": "consent_reference IS NULL OR char_length(consent_reference) <= 300",
+}
+SUBMISSION_SLA_DEFAULT_HOURS = 48  # B10: a company without its own setting
 
 
 class ProfileShare(Base, TimestampMixin):
@@ -8766,6 +8785,9 @@ class ProfileShare(Base, TimestampMixin):
     recipient: Mapped[str] = mapped_column(String(10), default="client", server_default=text("'client'"))
     detail: Mapped[str] = mapped_column(String(12), default="named", server_default=text("'named'"))
     consent_reference: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # pob-021 (DEC-SCOPE-430 B9, B10): the salary line was sent (granted and ticked); the client follow-up created at the SLA
+    compensation_included: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    follow_up_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_follow_ups.id", ondelete="SET NULL"), nullable=True)
 
 
 class ProfileShareItem(Base, TimestampMixin):
@@ -8775,8 +8797,9 @@ class ProfileShareItem(Base, TimestampMixin):
 
     __tablename__ = "profile_share_items"
     __table_args__ = (
-        *(CheckConstraint(sql, name=name) for name, sql in PROFILE_SHARE_ITEM_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in {**PROFILE_SHARE_ITEM_CHECKS, **SUBMISSION_CHECKS}.items()),
         UniqueConstraint("share_id", "candidate_id", name="uq_profile_share_items_candidate"),
+        UniqueConstraint("submission_code", name="uq_profile_share_items_submission_code"),
         Index("ix_profile_share_items_candidate", "candidate_id"),
         Index("uq_profile_share_items_token", "token_hash", unique=True, postgresql_where=text("token_hash IS NOT NULL")),
     )
@@ -8791,6 +8814,17 @@ class ProfileShareItem(Base, TimestampMixin):
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
     responded_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # pob-021 (DEC-SCOPE-430 B1): the submission. `submission_code` comes from a sequence (server default); `match` is the skills-match
+    # block as sent; `consent_reference` is the candidate's consent, required on every new submission (legacy rows have none).
+    submission_code: Mapped[str] = mapped_column(String(20), server_default=text("'SUB-' || lpad(nextval('profile_share_item_submission_seq')::text, 6, '0')"))
+    status: Mapped[str] = mapped_column(String(20), default="submitted", server_default=text("'submitted'"))
+    status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    next_action: Mapped[str | None] = mapped_column(Text, nullable=True)
+    next_action_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    consent_reference: Mapped[str | None] = mapped_column(Text, nullable=True)
+    match: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 # rec-031 (DEC-SCOPE-176, RV6-RV8): manually recorded invoices and payments per requirement (track only, R9). Migration 0147 repeats

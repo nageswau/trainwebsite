@@ -49,6 +49,7 @@ const TEXT: Record<(typeof TEXT_FIELDS)[number], Text> = {
   description: { label: "Company description", max: 2000, multiline: true },
   employee_count: { label: "Number of employees", max: 9 },
   territory: { label: "Territory", max: 120, hint: "The sales territory, for target lists" }, // pob-009 T4
+  submission_sla_hours: { label: "Submission follow-up (hours)", max: 3, hint: "When to chase feedback on submitted profiles: 1–720 hours; blank = 48" }, // pob-021 B10
 };
 
 /** FastAPI's 422 list -> errors at the form's fields; null when any item is about something else (then one message shows it all). */
@@ -157,6 +158,8 @@ export default function RecruiterCompanyForm({
     if (!values.name.trim()) found.name = "Company name is required";
     const count = values.employee_count.trim();
     if (count && !/^\d+$/.test(count)) found.employee_count = "Number of employees must be a whole number";
+    const sla = values.submission_sla_hours.trim();
+    if (sla && !(/^\d+$/.test(sla) && Number(sla) >= 1 && Number(sla) <= 720)) found.submission_sla_hours = "Submission follow-up must be 1–720 hours";
     const contactName = askContact && !contact.name.trim();
     setErrors(found);
     setContactErrors(contactName ? { name: "Contact name is required" } : {});
@@ -237,7 +240,7 @@ export default function RecruiterCompanyForm({
         {spec.multiline ? (
           <textarea {...common} rows={3} />
         ) : (
-          <input {...common} type="text" inputMode={key === "employee_count" ? "numeric" : spec.type === "url" ? "url" : undefined} autoComplete="off" required={key === "name"} />
+          <input {...common} type="text" inputMode={key === "employee_count" || key === "submission_sla_hours" ? "numeric" : spec.type === "url" ? "url" : undefined} autoComplete="off" required={key === "name"} />
         )}
         {spec.hint && (
           <p className="muted field-help" id={`${idPrefix}-${key}-hint`}>
@@ -311,6 +314,7 @@ export default function RecruiterCompanyForm({
           {textField("country")}
           {textField("head_office")}
           {textField("territory")}
+          {textField("submission_sla_hours")}
         </div>
         {textField("branches")}
         {textField("description")}

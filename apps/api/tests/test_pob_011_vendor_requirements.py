@@ -12,7 +12,7 @@ from app import models
 from app.models import AuditLog, Company, CompanyContact, CompanyDocument, Job, RecruiterContract, RecruiterMessage
 from tests.rec001_helpers import make_recruiter
 from tests.test_rec_017_tracking import _candidate, _requirement, _tag, _team
-from tests.test_rec_019_shares import _upload, permitted, published, smtp_on  # noqa: F401  (fixtures)
+from tests.test_rec_019_shares import SUBMIT, _upload, permitted, published, smtp_on  # noqa: F401  (fixtures)
 
 SHARES = "/api/v1/recruiter/shares"
 REQ = "/api/v1/recruiter/requirements"
@@ -55,7 +55,7 @@ def _vendor_body(s, channel="email", **over) -> dict:
     body = {"requirement_id": str(s["job"].id), "candidate_ids": [str(c.id) for c in s["candidates"]], "channel": channel, "recipient": "vendor"}
     if channel in ("email", "whatsapp"):
         body["contact_id"] = str(s["vendor_contact"].id)
-    return body | over
+    return body | SUBMIT | over  # pob-021 B3/B4
 
 
 # --- V2/V3/V10: the requirement ------------------------------------------------------------------------------------------------------
@@ -141,11 +141,11 @@ async def test_a_vendor_share_is_anonymised_by_default(client, db_session):
 @pytest.mark.usefixtures("smtp_on", "published")
 async def test_full_details_need_consent_and_carry_contact_details(client, db_session):
     s = await _setup(client, db_session)
-    refused = await client.post(SHARES, json=_vendor_body(s, detail="full"))
+    refused = await client.post(SHARES, json=_vendor_body(s, detail="full", consent_confirmed=False))
     assert refused.status_code == 409 and "consent" in refused.json()["detail"].lower()
-    half = await client.post(SHARES, json=_vendor_body(s, detail="full", consent_confirmed=True))
+    half = await client.post(SHARES, json=_vendor_body(s, detail="full", consent_reference=None))
     assert half.status_code == 409
-    response = await client.post(SHARES, json=_vendor_body(s, detail="full", consent_confirmed=True, consent_reference="Call on 8 Nov"))
+    response = await client.post(SHARES, json=_vendor_body(s, detail="full", consent_reference="Call on 8 Nov"))
     assert response.status_code == 201, response.text
     share = response.json()["share"]
     assert share["detail"] == "full" and share["consent_reference"] == "Call on 8 Nov"
@@ -173,8 +173,8 @@ async def test_vendor_share_shape_rules(client, db_session):
     assert portal.status_code == 422
     wrong_contact = await client.post(SHARES, json=_vendor_body(s, channel="other", contact_id=str(s["client_contact"].id)))
     assert wrong_contact.status_code == 422
-    client_with_detail = await client.post(SHARES, json=_vendor_body(s, channel="other", recipient="client", detail="anonymised"))
-    assert client_with_detail.status_code == 422
+    client_with_full = await client.post(SHARES, json=_vendor_body(s, channel="other", recipient="client", detail="full"))
+    assert client_with_full.status_code == 422  # pob-021 B8: a client gets named or anonymised, never full
     s["job"].via_vendor_id = None
     await db_session.commit()
     no_vendor = await client.post(SHARES, json=_vendor_body(s, channel="other"))
@@ -186,7 +186,7 @@ async def test_vendor_share_shape_rules(client, db_session):
 async def test_a_vendor_share_after_a_direct_share_to_the_same_end_client_warns(client, db_session):
     s = await _setup(client, db_session, n=1)
     direct_job = await _requirement(db_session, s["recruiter"], company=await db_session.get(Company, s["job"].company_id))
-    first = await client.post(SHARES, json={"requirement_id": str(direct_job.id), "candidate_ids": [str(s["candidates"][0].id)], "channel": "other"})
+    first = await client.post(SHARES, json={"requirement_id": str(direct_job.id), "candidate_ids": [str(s["candidates"][0].id)], "channel": "other"} | SUBMIT)
     assert first.status_code == 201, first.text
     warned = await client.post(SHARES, json=_vendor_body(s, channel="other"))
     assert warned.status_code == 409, warned.text
@@ -195,20 +195,22 @@ async def test_a_vendor_share_after_a_direct_share_to_the_same_end_client_warns(
     assert again.status_code == 201, again.text
     # and a direct share after the vendor share warns too
     third_job = await _requirement(db_session, s["recruiter"], company=await db_session.get(Company, s["job"].company_id))
-    back = await client.post(SHARES, json={"requirement_id": str(third_job.id), "candidate_ids": [str(s["candidates"][0].id)], "channel": "other"})
+    back = await client.post(SHARES, json={"requirement_id": str(third_job.id), "candidate_ids": [str(s["candidates"][0].id)], "channel": "other"} | SUBMIT)
     assert back.status_code == 409
 
 
 @pytest.mark.asyncio
-async def test_direct_shares_across_requirements_stay_unwarned(client, db_session):
+async def test_direct_shares_across_requirements_of_one_client_now_warn(client, db_session):
+    """pob-021 B7 widens V8: the same end client on another requirement warns whatever the route."""
     _, recruiter = await _team(client, db_session)
     first_job = await _requirement(db_session, recruiter)
     second_job = await _requirement(db_session, recruiter, company=await db_session.get(Company, first_job.company_id))
-    person = await _candidate(db_session, recruiter, **permitted(recruiter))  # pob-018 AC3
-    for job in (first_job, second_job):
-        response = await client.post(SHARES, json={"requirement_id": str(job.id), "candidate_ids": [str(person.id)], "channel": "other"})
-        assert response.status_code == 201, response.text
-        assert response.json()["share"]["recipient"] == "client" and response.json()["share"]["detail"] == "named"
+    person = await _candidate(db_session, recruiter, location="Pune", **permitted(recruiter))  # pob-018 AC3
+    body = {"candidate_ids": [str(person.id)], "channel": "other"} | SUBMIT
+    first = await client.post(SHARES, json=body | {"requirement_id": str(first_job.id)})
+    assert first.status_code == 201, first.text
+    assert first.json()["share"]["recipient"] == "client" and first.json()["share"]["detail"] == "named"
+    assert (await client.post(SHARES, json=body | {"requirement_id": str(second_job.id)})).status_code == 409
 
 
 # --- V11: the migration -----------------------------------------------------------------------------------------------------------
@@ -219,4 +221,5 @@ def test_the_migration_chains_and_freezes_the_checks():
     spec.loader.exec_module(migration)
     assert migration.revision == "0308_vendor_requirements" and migration.down_revision == "0307_institution_vacancy_shares"
     assert migration.JOB_CHECKS == models.JOB_VENDOR_CHECKS
-    assert migration.SHARE_CHECKS == models.PROFILE_SHARE_VENDOR_CHECKS
+    # pob-021's 0311 widened the recipient/detail rule; 0308 keeps the frozen original, which 0311's downgrade restores
+    assert migration.SHARE_CHECKS == models.PROFILE_SHARE_VENDOR_CHECKS | {"ck_profile_shares_recipient_detail": "(recipient = 'client') = (detail = 'named')"}

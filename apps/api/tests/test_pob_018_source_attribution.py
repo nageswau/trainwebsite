@@ -12,7 +12,7 @@ from app.models import AuditLog, Candidate, Company, RecCandidateSource
 from app.services import candidate_privacy
 from tests.rec001_helpers import as_role, login, make_recruiter
 from tests.test_rec_017_tracking import _candidate, _requirement, _tag, _team
-from tests.test_rec_019_shares import _contact
+from tests.test_rec_019_shares import SUBMIT, _contact
 
 URL = "/api/v1/recruiter/candidates"
 SHARES = "/api/v1/recruiter/shares"
@@ -175,8 +175,8 @@ async def test_ac3_without_an_outreach_permission_the_candidate_cannot_be_shared
     _, recruiter = await _team(client, db_session)
     job = await _requirement(db_session, recruiter)
     contact = await _contact(db_session, job.company_id)
-    created = (await _create(client, db_session)).json()
-    body = {"requirement_id": str(job.id), "candidate_ids": [created["id"]], "channel": "other"}
+    created = (await _create(client, db_session, location="Pune")).json()
+    body = {"requirement_id": str(job.id), "candidate_ids": [created["id"]], "channel": "other"} | SUBMIT  # pob-021 B3-B5
     refused = await client.post(SHARES, json=body)
     assert refused.status_code == 422 and created["candidate_code"] in refused.text and "permission" in refused.text.lower()
     await client.put(f"{URL}/{created['id']}/outreach", json={"status": "consented", "method": "email", "given_on": _today().isoformat()})
@@ -188,8 +188,8 @@ async def test_ac3_without_an_outreach_permission_the_candidate_cannot_be_shared
 async def test_a_candidate_who_opted_in_themselves_needs_no_staff_permission(client, db_session):
     _, recruiter = await _team(client, db_session)
     job = await _requirement(db_session, recruiter)
-    person = await _candidate(db_session, recruiter, opted_in=True)  # the website / portal consent sets opted_in (hrc-023, hrc-022)
-    shared = await client.post(SHARES, json={"requirement_id": str(job.id), "candidate_ids": [str(person.id)], "channel": "other"})
+    person = await _candidate(db_session, recruiter, opted_in=True, location="Pune")  # the website / portal consent sets opted_in (hrc-023, hrc-022)
+    shared = await client.post(SHARES, json={"requirement_id": str(job.id), "candidate_ids": [str(person.id)], "channel": "other"} | SUBMIT)
     assert shared.status_code == 201, shared.text
 
 

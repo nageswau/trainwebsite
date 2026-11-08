@@ -720,6 +720,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** large. **Risk:** medium.
 
 #### pob-021: Submission record (client or vendor) with skills match, consent and SLA
+- **Status:** built (`DEC-SCOPE-430`, 2026-11-08; migration `0311_submissions`, API §12LW, RBAC §2.321); B1–B14 are the builder's calls (`NEEDS_CONFIRMATION`). Not built: the redacted resume (Q-16), relevant projects.
 - **Business requirement:** §11.1 (7 groups); §11.2 workflow; §9 "Flag potential duplicate submissions"; §16 "Candidate selected for submission → Check consent, duplicate submission and required profile fields", "Candidate submitted → Log submission and create client follow-up task"; §17 resume-share gate; §18 AC "Candidate submission produces a summary with skills match and logs recipient/date/status".
 - **Existing behavior:** `ProfileShare`/`Item` holds the recipient contact, channel, resume version, link token, response and feedback, and prompts on a same-job duplicate. The summary uses the real name and has no compensation. There is no submission ID, vendor, anonymisation, match block, consent, full status set, rejection reason, acknowledgement or SLA task.
 - **Expected behavior:** extend `ProfileShareItem` into a **Submission**:

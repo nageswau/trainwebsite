@@ -8,26 +8,37 @@ export type ShareRecipient = "client" | "vendor"; // pob-011 (DEC-SCOPE-427 V4)
 export type ShareDetail = "named" | "anonymised" | "full"; // pob-011 V6: a client always gets the named summary
 export type ShareResponse = "pending" | "interested" | "not_interested" | "interview_requested";
 export type Person = { id: string; full_name: string };
+// pob-021 (DEC-SCOPE-430): each shared candidate is a submission
+export type SubmissionStatus = "submitted" | "client_reviewing" | "shortlisted" | "interview" | "rejected" | "on_hold" | "selected" | "withdrawn";
+export type MatchBlock = {
+  score: number; required_matched: string[]; required_missing: string[]; preferred_matched: string[]; preferred_missing: string[];
+  explanation: { label: string; text: string; matched: boolean }[];
+};
 export type ShareItem = {
   id: string; candidate: { id: string; code: string; name: string }; application_id: string; has_resume: boolean; link_expires_at: string | null;
   response: ShareResponse; response_label: string; feedback: string | null; responded_by: Person | null; responded_at: string | null;
+  submission_code?: string; status?: SubmissionStatus; status_label?: string; status_changed_at?: string | null; rejection_reason?: string | null;
+  rejection_reason_label?: string | null; next_action?: string | null; next_action_on?: string | null; acknowledged_at?: string | null;
+  consent_reference?: string | null; match?: MatchBlock | null;
 };
 export type Share = {
   id: string; channel: ShareChannel; channel_label: string; requirement: { id: string; code: string; title: string }; company_id: string;
   contact: { id: string; name: string } | null; note: string | null; message: { id: string; delivery_status: string | null } | null;
   shared_by: Person; created_at: string; items: ShareItem[]; can_respond: boolean;
   recipient?: ShareRecipient; detail?: ShareDetail; detail_label?: string; consent_reference?: string | null; // pob-011 V10
+  compensation_included?: boolean; follow_up?: { id: string; due_at: string; status: string } | null; // pob-021 B9, B10
 };
 export type SharePage = { items: Share[]; total: number; limit: number; offset: number };
 export type Duplicate = { id: string; name: string; code: string };
 export type SharedSummary = {
-  code: string; name: string; qualification: string | null; college: string | null; passing_year: number | null; experience_months: number | null;
+  code: string; name: string | null; qualification: string | null; college: string | null; passing_year: number | null; experience_months: number | null;
   current_company: string | null; location: string | null; preferred_locations: string[]; preferred_role: string | null; notice_days: number | null;
-  skills: string[];
+  skills: string[]; expected_salary?: string | null;
 };
 export type PortalItem = {
   id: string; shared_at: string; requirement: { code: string; title: string }; candidate: SharedSummary; has_resume: boolean;
   response: ShareResponse; response_label: string;
+  submission_code?: string; match?: MatchBlock | null; status?: SubmissionStatus; status_label?: string; // pob-021
 };
 export type PortalPage = { items: PortalItem[]; total: number; limit: number; offset: number };
 
@@ -47,6 +58,38 @@ export const VENDOR_DETAILS: { key: Exclude<ShareDetail, "named">; label: string
   { key: "full", label: "Full details", hint: "Name, email, mobile and resume. Needs the candidates' consent." },
 ];
 export const CONSENT_MAX = 300;
+/** pob-021 B8: what a client receives. */
+export const CLIENT_DETAILS: { key: "named" | "anonymised"; label: string; hint: string }[] = [
+  { key: "named", label: "Named", hint: "Name, profile summary and resume." },
+  { key: "anonymised", label: "Anonymised", hint: "Candidate code and profile only: no name, current company or resume." },
+];
+export const STATUSES: { key: SubmissionStatus; label: string }[] = [
+  { key: "submitted", label: "Submitted" }, { key: "client_reviewing", label: "Client reviewing" }, { key: "shortlisted", label: "Shortlisted" },
+  { key: "interview", label: "Interview" }, { key: "on_hold", label: "On hold" }, { key: "rejected", label: "Rejected" },
+  { key: "selected", label: "Selected" }, { key: "withdrawn", label: "Withdrawn" },
+];
+export const CLOSED_STATUSES: SubmissionStatus[] = ["rejected", "selected", "withdrawn"];
+export const REJECTION_REASONS: { key: string; label: string }[] = [
+  { key: "skills_mismatch", label: "Skills mismatch" }, { key: "experience_mismatch", label: "Experience mismatch" },
+  { key: "compensation_mismatch", label: "Compensation mismatch" }, { key: "location_mismatch", label: "Location mismatch" },
+  { key: "notice_period", label: "Notice period" }, { key: "duplicate_submission", label: "Duplicate submission" },
+  { key: "position_filled", label: "Position filled" }, { key: "client_not_interested", label: "Client not interested" },
+  { key: "candidate_withdrew", label: "Candidate withdrew" }, { key: "other", label: "Other" },
+];
+export const NEXT_ACTION_MAX = 300;
+
+/** B14: "1 of 2 required · 0 of 1 preferred · gaps: Kafka" -- the API's wording in the email, without the score. */
+export function matchSummary(match: MatchBlock | null | undefined): string | null {
+  if (!match) return null;
+  const required = match.required_matched.length + match.required_missing.length;
+  const preferred = match.preferred_matched.length + match.preferred_missing.length;
+  const parts = [];
+  if (required) parts.push(`${match.required_matched.length} of ${required} required`);
+  if (preferred) parts.push(`${match.preferred_matched.length} of ${preferred} preferred`);
+  const gaps = [...match.required_missing, ...match.preferred_missing];
+  if (gaps.length) parts.push(`gaps: ${gaps.join(", ")}`);
+  return parts.length ? parts.join(" · ") : null;
+}
 export const RESPONSES: { key: ShareResponse; label: string }[] = [
   { key: "pending", label: "Pending" },
   { key: "interested", label: "Interested" },

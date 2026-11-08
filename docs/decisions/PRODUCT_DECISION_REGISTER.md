@@ -12447,3 +12447,19 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - S8: the source owner is the primary, the backup owner or an assignee of the requirement.
   - S9/S10: the requirement's readers read; its writers save (cancelled = 409); a save is audited with field names only.
 - **Not built:** a dashboard widget (pob-028), breach reminders, external-site integrations (copy only, Q-13).
+
+### DEC-SCOPE-430 — Submission record (client or vendor) with skills match, consent and SLA (pob-021)
+- **Date:** 2026-11-08. **Status:** built; B1-B14 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions. **Evidence:** backlog pob-021 (§11.1, §11.2, §9 duplicate flag, §16 two triggers, §17 share gate, §18 AC 9).
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-021-submission-record-design.md`. Migration `0311_submissions`; API §12LW; RBAC §2.321.
+- **Calls:**
+  - B1/B2: each shared candidate (`profile_share_items`) is a submission with a `SUB-NNNNNN` code from a sequence; existing items are backfilled in creation order with the status `submitted`. `draft` is the wizard's unsaved state and is never stored.
+  - B3/B4: every new submission needs the candidates' consent (`consent_confirmed` + `consent_reference` ≤ 300, stored per item) and confirmed interest/availability, else 409. This replaces pob-011's consent stub.
+  - B5/B6: a current location is required (422 naming each candidate); the requirement's switched-on hrc-018 hard filters gate eligibility (422).
+  - B7: the duplicate warning covers the same end client across every requirement and route (widening pob-011 V8; direct shares across requirements of one client now warn).
+  - B8: a client gets named (default) or anonymised; anonymised drops the name, current company and resume. There is no redacted rendition until Q-16.
+  - B9: the expected salary only when ticked and with `candidates.compensation` (else 403); `profile_shares.compensation_included`.
+  - B10: on submit, one `profile_feedback` follow-up at `companies.submission_sla_hours` (1-720; NULL = 48 h) of the recipient company.
+  - B11/B12: status submitted → client_reviewing → shortlisted → interview → rejected/on_hold/selected/withdrawn; closed statuses stay closed (409); rejected needs a reason from a 10-entry catalogue; each change is audited as `submission.status` {from, to}; the acknowledgement moves submitted → client_reviewing; next action and date per item.
+  - B13: a client response (portal or recorded) maps onto an open submission: interested → shortlisted, interview requested → interview, not interested → rejected (client_not_interested).
+  - B14: the skills-match block (hrc-018, candidate audience, ungated) is stored per item and shown in the email/WhatsApp text, the recruiter list and the employer portal.
+- **Not built:** the redacted resume (Q-16), "relevant projects" (no candidate projects record), pob-023 templates for the submission email, a client acknowledgement link.

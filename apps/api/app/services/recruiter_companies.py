@@ -473,6 +473,7 @@ async def company_out(db: AsyncSession, user: User, company: Company, *, refresh
         **await context_out(db, company),  # pob-003
         "merged_into": await merged_into_out(db, company),  # pob-006 M6
         "vendor": await vendor_out(db, user, company),  # pob-010
+        "submission_sla_hours": company.submission_sla_hours,  # pob-021 B10
         "archived_at": company.archived_at,
         "created_at": company.created_at,
         "updated_at": company.updated_at,

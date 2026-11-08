@@ -5,13 +5,14 @@ import { sendJson } from "@/lib/apiErrors";
 import { contactsOf, isContactList, type Contact } from "@/lib/recruiterContacts";
 import { REQUIREMENTS_URL, type VendorRef } from "@/lib/recruiterRequirements";
 import {
-  CHANNELS, CONSENT_MAX, duplicatesOf, type Duplicate, isShareBody, needsContact, NOTE_MAX, type Share, type ShareChannel, SHARE_LIMIT, type ShareRecipient,
+  CHANNELS, CLIENT_DETAILS, CONSENT_MAX, duplicatesOf, type Duplicate, isShareBody, needsContact, NOTE_MAX, type Share, type ShareChannel, SHARE_LIMIT, type ShareRecipient,
   SHARES_URL, VENDOR_DETAILS,
 } from "@/lib/recruiterShares";
 
 export type ShareCandidate = { id: string; name: string; code: string };
 type Done = { share: Share; whatsappUrl: string | null };
 type VendorDetail = "anonymised" | "full";
+type ClientDetail = "named" | "anonymised";
 
 /** rec-019 (spec §5; S1-S5): share the selected candidates with the requirement's company -- channel, contact (only the company's active
  *  ones), an internal note. A repeat share comes back as a 409 listing who was already shared; "Share again" resends with `repeat`. A
@@ -31,8 +32,11 @@ export default function RecruiterShareDialog({ requirement, companyId, vendor, c
   const [channel, setChannel] = useState<ShareChannel>("email");
   const [contactId, setContactId] = useState("");
   const [detail, setDetail] = useState<VendorDetail>("anonymised");
+  const [clientDetail, setClientDetail] = useState<ClientDetail>("named");
   const [consent, setConsent] = useState(false);
   const [consentReference, setConsentReference] = useState("");
+  const [interest, setInterest] = useState(false); // pob-021 B4
+  const [compensation, setCompensation] = useState(false); // pob-021 B9
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -88,7 +92,7 @@ export default function RecruiterShareDialog({ requirement, companyId, vendor, c
     ? channel === "email" && !contact.email ? "This contact has no email address." : channel === "whatsapp" && !contact.mobile ? "This contact has no mobile number." : null
     : null;
   const tooMany = candidates.length > SHARE_LIMIT;
-  const consentReady = !toVendor || detail === "anonymised" || (consent && consentReference.trim() !== "");
+  const consentReady = consent && consentReference.trim() !== "" && interest; // pob-021 B3/B4: every submission
   const ready = candidates.length > 0 && !tooMany && (!needsContact(channel) || (!!contact && !missing)) && consentReady;
 
   async function submit(event: FormEvent | null, repeat = false) {
@@ -100,8 +104,9 @@ export default function RecruiterShareDialog({ requirement, companyId, vendor, c
       requirement_id: requirement.id, candidate_ids: candidates.map((c) => c.id), channel,
       ...(contactId ? { contact_id: contactId } : {}),
       ...(note.trim() ? { note: note.trim() } : {}), ...(repeat ? { repeat: true } : {}),
-      ...(toVendor ? { recipient: "vendor", detail } : {}),
-      ...(toVendor && detail === "full" ? { consent_confirmed: true, consent_reference: consentReference.trim() } : {}),
+      ...(toVendor ? { recipient: "vendor", detail } : { detail: clientDetail }),
+      consent_confirmed: true, consent_reference: consentReference.trim(), interest_confirmed: true,
+      ...(compensation ? { include_compensation: true } : {}),
     });
     setBusy(false);
     if (outcome.ok && isShareBody(outcome.data)) {
@@ -184,26 +189,46 @@ export default function RecruiterShareDialog({ requirement, companyId, vendor, c
           ))}
         </fieldset>
       )}
-      {toVendor && detail === "full" && (
-        <div style={{ display: "grid", gap: 6 }}>
-          <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-            <span>The candidates agreed to share their full details with this vendor</span>
-          </label>
-          <label htmlFor={`${id}-consent`} style={{ display: "grid", gap: 4 }}>
-            How and when they agreed (required)
-            <input id={`${id}-consent`} type="text" maxLength={CONSENT_MAX} value={consentReference} autoComplete="off" onChange={(e) => setConsentReference(e.target.value)}
-              placeholder="For example: phone call on 8 Nov" />
-          </label>
-        </div>
+      {!toVendor && (
+        <fieldset style={{ border: 0, padding: 0, margin: 0, display: "grid", gap: 4 }}>
+          <legend style={{ fontWeight: 600, marginBottom: 4 }}>Summary</legend>
+          {CLIENT_DETAILS.map((d) => (
+            <label key={d.key} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <input type="radio" name={`${id}-client-detail`} value={d.key} checked={clientDetail === d.key} onChange={() => setClientDetail(d.key)} />
+              <span>{d.label} <span className="muted" style={{ fontSize: 13 }}>— {d.hint}</span></span>
+            </label>
+          ))}
+        </fieldset>
       )}
+      <fieldset style={{ border: 0, padding: 0, margin: 0, display: "grid", gap: 6 }}>
+        <legend style={{ fontWeight: 600, marginBottom: 4 }}>Before submitting</legend>
+        <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+          <span>The candidates agreed to this submission{toVendor && detail === "full" ? ", including their full details to this vendor" : ""}</span>
+        </label>
+        <label htmlFor={`${id}-consent`} style={{ display: "grid", gap: 4 }}>
+          How and when they agreed (required)
+          <input id={`${id}-consent`} type="text" maxLength={CONSENT_MAX} value={consentReference} autoComplete="off" onChange={(e) => setConsentReference(e.target.value)}
+            placeholder="For example: phone call on 8 Nov" required />
+        </label>
+        <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+          <input type="checkbox" checked={interest} onChange={(e) => setInterest(e.target.checked)} />
+          <span>The candidates confirmed their interest and availability for this requirement</span>
+        </label>
+        <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+          <input type="checkbox" checked={compensation} onChange={(e) => setCompensation(e.target.checked)} />
+          <span>Include expected salary <span className="muted" style={{ fontSize: 13 }}>— needs the salary permission</span></span>
+        </label>
+      </fieldset>
       <label htmlFor={`${id}-note`} style={{ display: "grid", gap: 4 }}>
         Internal note (optional, never sent)
         <textarea id={`${id}-note`} rows={2} maxLength={NOTE_MAX} value={note} onChange={(e) => setNote(e.target.value)} />
       </label>
       <p className="muted" style={{ margin: 0, fontSize: 13 }}>
         {!toVendor
-          ? <>The company sees each candidate&apos;s profile summary and resume — never their phone number, email or salary.</>
+          ? clientDetail === "anonymised"
+            ? "The company sees each candidate's code, profile summary and skills match — no name, current company, contact details or resume."
+            : <>The company sees each candidate&apos;s profile summary, skills match and resume — never their phone number or email{compensation ? "" : ", nor their salary"}.</>
           : detail === "anonymised"
             ? "The vendor sees each candidate's code and profile summary — no name, current company, contact details or resume."
             : "The vendor sees each candidate's name, email, mobile, profile summary and resume. The vendor's NDA must be on file."}

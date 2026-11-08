@@ -66,7 +66,8 @@ ROWS = [
     R("post", "/recruiter/applications/{application}/screening-sessions", {"form_version": 1, "answers": [], "recommendation": "hold"}, **allow(409, *WRITE), **allow(404, *OUT)),
     # rec-019 -- profile sharing (§2.86): share / respond are the writers'; the employer reads its company's Portal shares; the public
     # resume link needs no session (the token is the credential, S7), so every caller -- anonymous too -- gets the file
-    R("post", "/recruiter/shares", lambda w: {"requirement_id": w["requirement"], "candidate_ids": [w["candidate"]], "channel": "other", "note": tag("R38 ")},
+    R("post", "/recruiter/shares", lambda w: {"requirement_id": w["requirement"], "candidate_ids": [w["candidate"]], "channel": "other", "note": tag("R38 "),
+                                             "consent_confirmed": True, "consent_reference": "R38 call", "interest_confirmed": True},  # pob-021 B3/B4
       **allow(201, *WRITE), **allow(404, *OUT)),
     R("patch", "/recruiter/shares/{hiring_share}/items/{hiring_share_item}", lambda w: {"feedback": tag("Strong fit ")}, **allow(200, *WRITE), **allow(404, *OUT)),
     R("get", "/recruiter/companies/{company}/shares", **allow(200, *READ), **allow(404, *OUT)),  # rec-003 company scope (out of scope 404)
