@@ -1,4 +1,4 @@
-"""pob-025 -- migration 0317_placement_guarantee (DEC-SCOPE-436): the chain, the frozen checks and the round trip, in a throwaway database
+"""pob-025 -- migration 0318_placement_guarantee (DEC-SCOPE-436): the chain, the frozen checks and the round trip, in a throwaway database
 (the pob-024 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.models import JOB_GUARANTEE_CHECKS, PLACEMENT_GUARANTEE_CHECKS, RECRUITER_CONTRACT_GUARANTEE_CHECKS
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_pob_025_migration", VERSIONS / "0317_placement_guarantee.py")
+_spec = importlib.util.spec_from_file_location("_pob_025_migration", VERSIONS / "0318_placement_guarantee.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 

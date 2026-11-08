@@ -1,8 +1,8 @@
 """pob-025 -- the replacement guarantee: `guarantee_days` on the contract and the requirement; the placement's guarantee snapshot, expiry
 alert marker, early dropout and replacement link (DEC-SCOPE-436 G1/G2/G4/G6/G7/G10).
 
-Revision ID: 0317_placement_guarantee
-Revises: 0316_placement_surveys
+Revision ID: 0318_placement_guarantee
+Revises: 0317_intake_automation
 
 docs/superpowers/specs/2026-11-08-pob-025-replacement-guarantee-design.md. Additive only. 0001 builds a fresh database from the current models,
 which already carry these columns, so each table's step runs only when its columns are missing. The CHECK strings are frozen copies of
@@ -15,8 +15,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0317_placement_guarantee"
-down_revision = "0316_placement_surveys"
+revision = "0318_placement_guarantee"
+down_revision = "0317_intake_automation"
 branch_labels = None
 depends_on = None
 

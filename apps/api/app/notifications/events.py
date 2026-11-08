@@ -77,6 +77,9 @@ EVENTS: dict[str, Event] = {
     "it.recruitment.invoice_overdue": Event("placement", "Placement invoice overdue", "A placement invoice is past its due date. Open EduSphere for the details."),
     # pob-025 (DEC-SCOPE-436 G10): a placement's replacement guarantee ends within a week -- never a name or a date
     "it.recruitment.guarantee_expiring": Event("placement", "Replacement guarantee ending", "A placement's replacement guarantee ends soon. Open EduSphere for the details."),
+    # pob-027 (DEC-SCOPE-434 I2/I8): the Team Leads, when a new vacancy has no eligible owner; and an escalation rule firing -- never a name
+    "it.requirement.unowned": Event("job", "Vacancy needs an owner", "A new vacancy has no eligible recruiter. Open EduSphere to assign it."),
+    "it.recruiter.escalated": Event("escalation", "Escalation", "An item is overdue past its escalation time. Open EduSphere to act on it."),
 }
 COUNT = "{count}"
 
@@ -86,7 +89,7 @@ RECRUITMENT_EVENTS: dict[str, str] = {
     **{key: EVENTS[key].title for key in (
         "it.candidate.assigned", "it.candidate.unassigned", "it.candidate.task_assigned", "it.requirement.review_needed", "it.application.new", "it.application.updated",
         "it.requirement.changed", "it.requirement.assigned", "it.requirement.approval_needed", "it.interview.feedback_overdue", "it.interview.result_published", "it.job.new_match",
-        "it.interview.feedback_escalated", "it.recruiter.follow_up_due",
+        "it.interview.feedback_escalated", "it.recruiter.follow_up_due", "it.requirement.unowned", "it.recruiter.escalated",
     )},
     "it.application.received": "Application received",
     "it.interview.scheduled": "Interview scheduled",

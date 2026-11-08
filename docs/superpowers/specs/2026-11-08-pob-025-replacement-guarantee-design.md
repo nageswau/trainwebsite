@@ -64,7 +64,7 @@ dropout; a fee or an invoice draft on a replacement hire; an alert for a guarant
 - Contracts: `guarantee_days` in create / update / read (behind `commercials.client`).
 - Requirements: `guarantee_days` in create / update; `commercial_terms.guarantee_days = {value, inherited}`.
 
-## DB — migration `0317_placement_guarantee` (guarded, additive; after `0316_placement_surveys`)
+## DB — migration `0318_placement_guarantee` (guarded, additive; after `0317_intake_automation`)
 - `recruiter_contracts.guarantee_days` int null, CHECK 1–365.
 - `jobs.guarantee_days` int null, CHECK 1–365.
 - `placements`: `guarantee_days`, `guarantee_end_date`, `guarantee_alerted_at`, `dropout_on`, `dropout_reason` (500),
