@@ -146,7 +146,7 @@ test("share: portal + repeat + email from the board, the employer answers, phone
   await expect(page.getByRole("heading", { name: "2 candidates found" })).toBeVisible();
   await page.getByRole("combobox", { name: "Shortlist into requirement" }).fill(`Java Developer ${stamp}`);
   await page.getByRole("option", { name: new RegExp(`Java Developer ${stamp}`) }).click();
-  await page.getByRole("checkbox", { name: `Select Priya ${stamp} to share` }).check();
+  await page.getByRole("checkbox", { name: `Select Priya ${stamp}`, exact: true }).check(); // pob-019: one select box for every bulk action
   await page.getByRole("button", { name: "Share selected (1)" }).click();
   await page.getByLabel(/^Other/).check();
   await confirm(page);
@@ -154,7 +154,7 @@ test("share: portal + repeat + email from the board, the employer answers, phone
   await page.getByRole("button", { name: "Share again" }).click();
   await expect(page.getByText(new RegExp(`Shared 1 profile for Java Developer ${stamp} .*by Other with Meera Iyer\\.`))).toBeVisible();
   await expect(page.getByRole("listitem", { name: new RegExp(`^Priya ${stamp}`) })).toBeVisible(); // QA-03: the card is named by the candidate
-  await expect(page.getByRole("checkbox", { name: `Select Priya ${stamp} to share` })).not.toBeChecked();
+  await expect(page.getByRole("checkbox", { name: `Select Priya ${stamp}`, exact: true })).not.toBeChecked();
   await page.goto(`/recruiter/requirements/${requirement.id}`);
 
   // Phone width: no sideways scroll on the requirement page with the dialog open.

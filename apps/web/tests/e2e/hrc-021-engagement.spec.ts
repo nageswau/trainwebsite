@@ -52,7 +52,7 @@ test("engagement: uncontacted on add, contacted after a call, a manual flag over
 
   // AC2: the manual flag (stored status Do not contact) overrides the derived value.
   await page.goto(detailUrl);
-  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click(); // pob-018/pob-019 added "Edit source details" and "Edit tags"
   await page.locator("#cand-status").selectOption("do_not_contact");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Engagement: Do not contact")).toBeVisible();

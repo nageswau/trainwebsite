@@ -15,6 +15,7 @@ import RecruiterCandidateDocuments from "@/components/RecruiterCandidateDocument
 import RecruiterCandidateResumes from "@/components/RecruiterCandidateResumes";
 import RecruiterCandidateSourcing from "@/components/RecruiterCandidateSourcing";
 import RecruiterCandidateSkills from "@/components/RecruiterCandidateSkills";
+import RecruiterCandidateTags from "@/components/RecruiterCandidateTags";
 import RecruiterCandidateTasks from "@/components/RecruiterCandidateTasks";
 import RecruiterMessages from "@/components/RecruiterMessages";
 import RecruiterRecordHistory from "@/components/RecruiterRecordHistory";
@@ -189,6 +190,8 @@ export default function RecruiterCandidateDetail({ initial, merged }: { initial:
       <RecruiterCandidateSourcing candidate={candidate} canEdit={canEdit} onSaved={(saved) => { setCandidate(saved); touched(); }} />
       {/* rec-011: re-keyed on archive/restore, so the card re-reads can_edit (an archived candidate's skills are read only). */}
       <RecruiterCandidateSkills key={`skills-${candidate.id}-${archived}-${skillsVersion}`} candidateId={candidate.id} />
+      {/* pob-019: free tags; re-keyed on archive/restore so `can_edit` is re-read */}
+      <RecruiterCandidateTags key={`tags-${candidate.id}-${archived}`} candidateId={candidate.id} />
       {/* rec-036: lead → IT student → trained → recruiter candidate → placed (read only). */}
       <RecruiterCandidateJourney candidateId={candidate.id} />
       {/* nehn-016: the student's training progress, read only -- the recruiter roles' (can_edit); HR's access is nehn-017's. */}

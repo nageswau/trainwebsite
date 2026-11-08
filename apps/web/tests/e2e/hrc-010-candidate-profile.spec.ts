@@ -22,7 +22,7 @@ test("recruiter adds a degree and two jobs; experience is derived and completene
   const id = await newCandidate(page);
   await page.goto(`/recruiter/candidates/${id}`);
   await expect(page.getByRole("meter", { name: "Profile 0% complete" })).toBeVisible();
-  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
 
   await page.getByRole("button", { name: "+ Add education" }).click();
   const degree = page.getByRole("group", { name: "Education 1" });
@@ -53,7 +53,7 @@ test("recruiter adds a degree and two jobs; experience is derived and completene
   await expect(page.getByRole("meter", { name: "Profile 45% complete" })).toBeVisible(); // education 15 + experience 15 + preferences 15
 
   // − an end date before the start is refused, naming the row; nothing is saved
-  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByRole("group", { name: "Employment history 2" }).getByLabel("End date").fill("2019-06-30");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Employment 2: the end date must be on or after the start date" })).toBeVisible();
@@ -63,7 +63,7 @@ test("recruiter adds a degree and two jobs; experience is derived and completene
   await signIn(page, "hr@edusphere.local");
   await page.goto(`/recruiter/candidates/${id}`);
   await expect(page.getByRole("region", { name: "Profile" }).getByText("B.Tech · JNTU Hyderabad · 2018")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Edit" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
 });
 
 test("the profile form fits a phone without sideways scrolling", async ({ page }) => {
@@ -71,7 +71,7 @@ test("the profile form fits a phone without sideways scrolling", async ({ page }
   await signIn(page, "placement@edusphere.local");
   const id = await newCandidate(page);
   await page.goto(`/recruiter/candidates/${id}`);
-  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByRole("button", { name: "+ Add employment" }).click();
   await expect(page.getByRole("group", { name: "Employment history 1" })).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
