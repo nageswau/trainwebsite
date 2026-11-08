@@ -604,6 +604,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** small. **Risk:** low.
 
 #### pob-017: Per-requirement sourcing plan and source funnel
+- **Status:** built (`DEC-SCOPE-429`, 2026-11-08); S1–S12 (stage definitions, attribution at first submission, breach rule, owner = the requirement's team) are the builder's calls (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §8 sourcing plan table (7 fields); §18 AC "Each requirement supports a role-specific sourcing plan and saved search keywords"; §15 "Sourcing funnel … by source".
 - **Existing behavior:** nothing per requirement. Talent pools are global saved skill rules; results are only the application status funnel.
 - **Expected behavior:** a sourcing plan per requirement with:

@@ -1238,6 +1238,47 @@ class JobChecklistOverride(Base, TimestampMixin):
     overridden_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
+# pob-017 (DEC-SCOPE-429 S1-S3): a requirement's sourcing plan, its planned channels and its linked saved searches. Migration 0310 repeats the checks.
+JOB_SOURCING_PLAN_CHECKS = {
+    "ck_job_sourcing_plans_targets": " AND ".join(f"({c} IS NULL OR {c} BETWEEN 0 AND 10000)" for c in ("target_found", "target_screened", "target_submitted")),
+    "ck_job_sourcing_plans_profile": "target_profile IS NULL OR char_length(target_profile) <= 2000",
+}
+
+
+class JobSourcingPlan(Base, TimestampMixin):
+    """pob-017 (S1): one per requirement, written by its first save; no row = an empty plan. `boolean_strings` is a list of {label, query} kept as
+    text for external sites (copy only). The source owner is one of the requirement's team (S8)."""
+
+    __tablename__ = "job_sourcing_plans"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in JOB_SOURCING_PLAN_CHECKS.items())
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), primary_key=True)
+    target_profile: Mapped[str | None] = mapped_column(Text, nullable=True)
+    boolean_strings: Mapped[list] = mapped_column(JSON, default=list)
+    target_found: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    target_screened: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    target_submitted: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    source_owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class JobSourcingChannel(Base):
+    """pob-017 (S2): a planned channel -- a candidate source the requirement will be sourced from."""
+
+    __tablename__ = "job_sourcing_channels"
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), primary_key=True)
+    source_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_candidate_sources.id", ondelete="RESTRICT"), primary_key=True)
+
+
+class JobSourcingSearch(Base):
+    """pob-017 (S3): an hrc-020 saved search linked to the requirement; deleting the search removes the link."""
+
+    __tablename__ = "job_sourcing_searches"
+    __table_args__ = (Index("ix_job_sourcing_searches_search", "saved_search_id"),)
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), primary_key=True)
+    saved_search_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("saved_candidate_searches.id", ondelete="CASCADE"), primary_key=True)
+
+
 class RequirementChecklistSetting(Base, TimestampMixin):
     """pob-016 (C6): one row (`id = 1`) holding the global rule; no row means off. A company's `checklist_blocks_sourcing` wins over it."""
 
@@ -1501,6 +1542,9 @@ class JobApplication(Base, TimestampMixin):
     owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     candidate_status: Mapped[str] = mapped_column(String(30), default=lambda ctx: _visible_status(ctx.get_current_parameters().get("status")), server_default=text("'sourced'"))
     rejection_reason: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # pob-017 (DEC-SCOPE-429 S6): the candidate's source when the application was first submitted; set once (services/applications), so the
+    # funnel keeps counting it there when the candidate's source later changes.
+    submitted_source_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_candidate_sources.id", ondelete="RESTRICT"), nullable=True)
 
 
 class JobApplicationStatusHistory(Base):

@@ -18,6 +18,7 @@ import { ApprovalDecision, SubmitForApproval, SubmittedLine } from "@/components
 import { OwnersCard, OwnershipHistory } from "@/components/RequirementOwners";
 import RequirementChecklist from "@/components/RequirementChecklist";
 import RequirementRevisions from "@/components/RequirementRevisions";
+import RequirementSourcing from "@/components/RequirementSourcing";
 import RequirementVisibility from "@/components/RequirementVisibility";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
@@ -44,6 +45,12 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 // Every write re-renders from the requirement the API returns (no refetch). The JD section is rec-008's, Candidates is rec-017's,
 // Matching candidates is rec-016's (a shortlist there re-reads Candidates); the Interviews tab arrives with rec-020.
 type Changed = (r: Requirement, notice: string) => void;
+
+/** pob-017 (S8): who may own sourcing -- the primary, the backup owner and the co-owners, each once. */
+function sourcingTeam(r: Requirement) {
+  const people = [r.assigned_recruiter, r.backup_owner, ...r.owners.map((o) => o.user)].filter((p): p is NonNullable<typeof p> => !!p);
+  return people.filter((p, i) => people.findIndex((q) => q.id === p.id) === i).map((p) => ({ id: p.id, full_name: p.full_name }));
+}
 
 function StatusChange({ requirement, onChanged }: { requirement: Requirement; onChanged: Changed }) {
   const [status, setStatus] = useState("");
@@ -337,6 +344,8 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
       <RecruiterRequirementJd requirement={r} initial={initialJd} onRequirementChanged={changed} />
       {/* pob-016: what must be known before sourcing starts; read again when the status moves */}
       {!showEditor && <RequirementChecklist requirementId={r.id} status={r.status} onSaved={() => setChecklistSaves((n) => n + 1)} />}
+      {/* pob-017: the sourcing plan and its funnel by source; re-read when the requirement, its shortlist or its shares change */}
+      {!showEditor && <RequirementSourcing requirementId={r.id} version={`${r.updated_at}-${shortlists}-${shares}`} team={sourcingTeam(r)} skills={r.skills} />}
       {/* hrc-007: send for approval, or (an approver) decide; the pending state is shown to every reader */}
       {r.approval.can_submit && !showEditor && <SubmitForApproval requirement={r} onDone={changed} />}
       {r.status === "pending_approval" && (

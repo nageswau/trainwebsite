@@ -11477,6 +11477,32 @@ class RecChecklistCompanyRule(BaseModel):
     block_sourcing: StrictBool | None
 
 
+SourcingTarget = Annotated[StrictInt, Field(ge=0, le=10000)]
+
+
+class RecSourcingString(BaseModel):
+    """pob-017 (S1): a Boolean search string for an external site, kept as text (copy only)."""
+
+    model_config = ConfigDict(extra="forbid")
+    label: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
+    query: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+
+
+class RecSourcingPlanIn(BaseModel):
+    """pob-017 (S1-S3, S8): the whole plan; a save replaces it. Ids are checked by the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    target_profile: Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)] | None, AfterValidator(lambda v: v or None)] = None
+    boolean_strings: list[RecSourcingString] = Field(default_factory=list, max_length=10)
+    channel_ids: list[UUID] = Field(default_factory=list, max_length=20)
+    saved_search_ids: list[UUID] = Field(default_factory=list, max_length=10)
+    target_found: SourcingTarget | None = None
+    target_screened: SourcingTarget | None = None
+    target_submitted: SourcingTarget | None = None
+    deadline: date | None = None
+    source_owner_user_id: UUID | None = None
+
+
 class RecRequirementVisibility(BaseModel):
     """hrc-008 (DEC-SCOPE-385 V1/V7): who sees the job; a segment names its talent pool and nothing else does."""
 

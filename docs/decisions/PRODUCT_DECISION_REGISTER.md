@@ -12432,3 +12432,18 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - A7 (AC3): a profile share (today's only submission; pob-021 will reuse `candidate_sourcing.permitted`) needs a recorded permission, the candidate's own opt-in (student, portal, website) or an institution permission (pob-014).
   - A9: the anonymiser clears the referrer name, the portal reference and the permission note.
 - **Not built:** search filters/enrichment (pob-019); per-submission consent (pob-021); an import column for source date or permission; merge field choice for attribution (the survivor keeps its own).
+
+### DEC-SCOPE-429 — Per-requirement sourcing plan and source funnel (pob-017)
+- **Date:** 2026-11-08. **Status:** built; S1-S12 are the builder's calls (`NEEDS_CONFIRMATION`): the owner asked for recommended answers instead of questions. **Evidence:** backlog pob-017 (§8 sourcing plan, §18 AC 5, §15 funnel by source, Appendix B source conversion).
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-017-sourcing-plan-design.md`. Migration `0310_sourcing_plans`; API §12LV; RBAC §2.320.
+- **Calls:**
+  - S1: one plan per requirement (target profile ≤ 2000, ≤ 10 Boolean strings {label, query} kept as text with a copy button, targets to find/screen/submit 0-10 000, deadline, source owner); no row = an empty plan.
+  - S2: planned channels are candidate-source catalogue entries (new ones active; inactive ones already planned are kept); every planned channel is a funnel row.
+  - S3: linked hrc-020 saved searches (≤ 10): only a candidate reader links, only searches they can see; others' private links are counted, not shown, and survive their saves.
+  - S4: must-have/alternative skills are the requirement's own required/preferred skills (shown, not copied).
+  - S5: found = every application; screened = reached Screened or later, or a screening saved; suitable = reached Shortlisted or later; submitted = reached Profile Shared/Interview/Selected/Joined, or shared; rejected = currently rejected. Conversion = submitted ÷ found.
+  - S6: `job_applications.submitted_source_id` freezes the candidate's source at the first submission; the funnel counts by it, else the current source. Existing submitted applications are backfilled with today's source.
+  - S7: progress `no_targets | met | on_track | breached` (deadline before today, IST, with a set target short).
+  - S8: the source owner is the primary, the backup owner or an assignee of the requirement.
+  - S9/S10: the requirement's readers read; its writers save (cancelled = 409); a save is audited with field names only.
+- **Not built:** a dashboard widget (pob-028), breach reminders, external-site integrations (copy only, Q-13).

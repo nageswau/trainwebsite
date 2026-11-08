@@ -90,6 +90,9 @@ ROWS = [
     R("post", "/recruiter/requirements/{requirement}/checklist/override", {"reason": "Client is away"}, **allow(409, "mgr", "super"), **OWN_OUT),
     R("put", "/recruiter/companies/{company}/checklist-rule", {"block_sourcing": None}, **allow(200, "mgr", "super"), mgr_out=404),
     R("put", "/recruiter/requirement-checklist/settings", {"block_sourcing": False}, super=200),
+    # pob-017 (DEC-SCOPE-429, §2.320): the record's readers read the plan and funnel; its writers save it
+    R("get", "/recruiter/requirements/{requirement}/sourcing", **OWN),
+    R("put", "/recruiter/requirements/{requirement}/sourcing", {"target_found": 3}, **allow(200, "rec", "super"), **OWN_OUT),
     R("get", "/recruiter/requirements/{requirement}/revisions/{candidates_revision}", **OWN),
     R("patch", "/recruiter/requirements/{requirement}", {"location": "Bengaluru"}, **allow(200, "rec", "super"), **OWN_OUT),
     R("post", "/recruiter/requirements/{requirement}/assign", lambda w: {"recruiter_user_id": w["rec2_id"]}, **allow(200, "mgr", "super"), **OUT),

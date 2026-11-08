@@ -4061,3 +4061,9 @@ A placement officer has no company scope, but answering Missing still creates th
 - **Read (`sourcing` on the candidate):** every candidate reader (placement_team, placement_manager, super_admin, hr_team); institution students stay pob-014-scoped (404).
 - **Change attribution / verify / outreach:** candidate writers (placement_team, placement_manager, super_admin); hr_team 403. A vendor link needs the vendor in the caller's company scope; a referrer link needs the referrer in the caller's pool (422 otherwise, one message).
 - **Profile share:** additionally refused (422) for a candidate without an outreach permission.
+
+### 2.320 Per-requirement sourcing plan and source funnel *(added 2026-11-08 — `DEC-SCOPE-429`, pob-017)*
+
+- **Read (plan and funnel):** every reader of the requirement (placement_team, placement_manager, super_admin, the company's assigned bdm, an assigned placement_officer); out of scope 404. The funnel holds counts only.
+- **Save:** the requirement's writers (placement_team, an assigned placement_officer, super_admin); placement_manager and bdm 403; cancelled 409.
+- **Link saved searches:** additionally a candidate reader (`candidates.READERS`), and only searches the caller can see (own or shared); other users' private links are counted, never shown.
