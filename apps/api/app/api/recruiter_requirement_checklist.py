@@ -82,3 +82,9 @@ async def set_global_rule(payload: RecChecklistGlobalRule, user: User = Depends(
     await svc.set_global_rule(db, user, payload.block_sourcing)
     await db.commit()
     return {"block_sourcing": payload.block_sourcing}
+
+
+# pob-017 (DEC-SCOPE-429 S12): the sourcing plan and funnel share this router, so main.py is unchanged
+from app.api.recruiter_requirement_sourcing import router as _sourcing_router  # noqa: E402
+
+router.include_router(_sourcing_router)
