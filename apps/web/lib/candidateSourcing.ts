@@ -1,4 +1,4 @@
-// pob-018 (DEC-SCOPE-427): where a candidate came from and when, when the details were last checked, how far outreach has got and
+// pob-018 (DEC-SCOPE-428): where a candidate came from and when, when the details were last checked, how far outreach has got and
 // how the candidate agreed to be represented. Labels are display only; the API decides every rule (A3-A7).
 import type { LookupPage } from "@/lib/lookups";
 import type { PersonRef } from "@/lib/telecallerLeads";

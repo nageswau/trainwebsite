@@ -1107,6 +1107,12 @@ JOB_TERMS_CHECKS = {
     "ck_jobs_payment_days": "(payment_trigger IS NOT DISTINCT FROM 'days_after_joining') = (payment_days IS NOT NULL) AND (payment_days IS NULL OR payment_days BETWEEN 1 AND 365)",
     "ck_jobs_expected_tat_days": "expected_tat_days IS NULL OR expected_tat_days BETWEEN 1 AND 365",
 }
+# pob-011 (DEC-SCOPE-427 V2/V3): a requirement via a vendor, and whether the end client is named outside the staff. Migration 0308 repeats these.
+JOB_END_CLIENT_DISCLOSURES = ("external", "internal")
+JOB_VENDOR_CHECKS = {
+    "ck_jobs_end_client_disclosure": "end_client_disclosure IN ('external', 'internal')",
+    "ck_jobs_via_vendor_not_self": "via_vendor_id IS NULL OR via_vendor_id <> company_id",
+}
 # hrc-005 V4: the duplicate check's keys, spelled exactly as ix_jobs_company_title_key so the planner can use it.
 JOB_TITLE_KEY_SQL = r"lower(regexp_replace(btrim(title), '\s+', ' ', 'g'))"
 JOB_PLACE_KEY_SQL = r"lower(regexp_replace(btrim(coalesce(city, location)), '\s+', ' ', 'g'))"
@@ -1120,7 +1126,7 @@ class Job(Base, TimestampMixin):
     __tablename__ = "jobs"
     __table_args__ = (
         UniqueConstraint("requirement_code", name="uq_jobs_requirement_code"),
-        *(CheckConstraint(sql, name=name) for name, sql in {**JOB_CHECKS, **JOB_FEE_CHECKS, **JOB_PAY_CHECKS, **JOB_TERMS_CHECKS}.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in {**JOB_CHECKS, **JOB_FEE_CHECKS, **JOB_PAY_CHECKS, **JOB_TERMS_CHECKS, **JOB_VENDOR_CHECKS}.items()),
         CheckConstraint(JOB_SOURCE_CHECK, name="ck_jobs_source"),
         CheckConstraint(JOB_VISIBILITY_CHECK, name="ck_jobs_visibility"),
         CheckConstraint(JOB_SEGMENT_POOL_CHECK, name="ck_jobs_segment_pool"),
@@ -1129,6 +1135,7 @@ class Job(Base, TimestampMixin):
         Index("ix_jobs_assigned_recruiter", "assigned_recruiter_user_id"),
         Index("ix_jobs_closes_on", "closes_on"),
         Index("ix_jobs_company_title_key", "company_id", text(JOB_TITLE_KEY_SQL)),  # hrc-005 V4: the duplicate check
+        Index("ix_jobs_via_vendor", "via_vendor_id"),  # pob-011
     )
     __mapper_args__ = {"eager_defaults": True}  # INSERT ... RETURNING requirement_code
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -1198,7 +1205,10 @@ class Job(Base, TimestampMixin):
     # pob-002 R9: an active recruiter with the primary's owner rights (Q-02: always, not only while the primary is away)
     backup_owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     match_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # hrc-032 (DEC-SCOPE-413 N7): candidates told once
-    company = relationship("Company")
+    # pob-011 (DEC-SCOPE-427 V1-V3): `company_id` stays the end client; the vendor it came through, and whether outsiders see the client's name
+    via_vendor_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"), nullable=True)
+    end_client_disclosure: Mapped[str] = mapped_column(String(10), default="external", server_default=text("'external'"))
+    company = relationship("Company", foreign_keys=[company_id])
 
 
 # pob-016 (DEC-SCOPE-419): the requirement validation checklist; migration 0299 repeats the check.
@@ -7185,7 +7195,7 @@ CANDIDATE_INSTITUTION_CHECKS = {
     "ck_candidates_institution_notice": "institution_notice_status IS NULL OR institution_notice_status IN ('notice_sent', 'consented')",
     "ck_candidates_institution_pair": "(institution_permission_id IS NULL) = (institution_org_id IS NULL)",
 }
-# pob-018 (DEC-SCOPE-427 A4/A5): how far outreach has got and how the candidate agreed to be represented. Migration 0308 keeps a frozen
+# pob-018 (DEC-SCOPE-428 A4/A5): how far outreach has got and how the candidate agreed to be represented. Migration 0309 keeps a frozen
 # copy of the checks (test_pob_018_migration asserts they stay identical).
 CANDIDATE_OUTREACH_STATUSES = ("not_contacted", "contacted", "responded", "consented", "declined")
 CANDIDATE_PERMISSION_METHODS = ("call", "email", "whatsapp", "linkedin", "in_person", "form", "other")
@@ -7300,7 +7310,7 @@ class Candidate(Base, TimestampMixin):
     institution_org_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"), nullable=True, index=True)
     institution_permission_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("institution_data_permissions.id", ondelete="RESTRICT"), nullable=True)
     institution_notice_status: Mapped[str | None] = mapped_column(String(12), nullable=True)
-    # pob-018 (DEC-SCOPE-427 A2-A6): when and through whom the candidate was sourced, when the details were last checked, how far outreach
+    # pob-018 (DEC-SCOPE-428 A2-A6): when and through whom the candidate was sourced, when the details were last checked, how far outreach
     # has got and -- while `consented` -- how and when the candidate agreed to be represented (services/candidate_sourcing).
     source_date: Mapped[date] = mapped_column(Date, default=_ist_today, server_default=func.current_date())
     referrer_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
@@ -8680,6 +8690,14 @@ PROFILE_SHARE_ITEM_CHECKS = {
     "ck_profile_share_items_token": "(token_hash IS NULL) = (token_expires_at IS NULL)",
     "ck_profile_share_items_feedback": "feedback IS NULL OR char_length(feedback) <= 1000",
 }
+# pob-011 (DEC-SCOPE-427 V4-V7): a share to the requirement's vendor, anonymised or (with the consent stub) full. Migration 0308 repeats these.
+PROFILE_SHARE_VENDOR_CHECKS = {
+    "ck_profile_shares_recipient": "recipient IN ('client', 'vendor')",
+    "ck_profile_shares_detail": "detail IN ('named', 'anonymised', 'full')",
+    "ck_profile_shares_recipient_detail": "(recipient = 'client') = (detail = 'named')",
+    "ck_profile_shares_vendor_channel": "recipient = 'client' OR channel <> 'portal'",
+    "ck_profile_shares_consent": "(detail = 'full') = (consent_reference IS NOT NULL) AND (consent_reference IS NULL OR char_length(consent_reference) <= 300)",
+}
 
 
 class ProfileShare(Base, TimestampMixin):
@@ -8688,7 +8706,7 @@ class ProfileShare(Base, TimestampMixin):
 
     __tablename__ = "profile_shares"
     __table_args__ = (
-        *(CheckConstraint(sql, name=name) for name, sql in PROFILE_SHARE_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in {**PROFILE_SHARE_CHECKS, **PROFILE_SHARE_VENDOR_CHECKS}.items()),
         Index("ix_profile_shares_job", "job_id", "created_at"),
         Index("ix_profile_shares_company", "company_id", "created_at"),
     )
@@ -8700,6 +8718,10 @@ class ProfileShare(Base, TimestampMixin):
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     message_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_messages.id", ondelete="RESTRICT"), nullable=True)
     shared_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    # pob-011 V4-V7: `company_id` is the recipient company (the vendor on a vendor share); the consent stub is confirmed by the sharer
+    recipient: Mapped[str] = mapped_column(String(10), default="client", server_default=text("'client'"))
+    detail: Mapped[str] = mapped_column(String(12), default="named", server_default=text("'named'"))
+    consent_reference: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class ProfileShareItem(Base, TimestampMixin):

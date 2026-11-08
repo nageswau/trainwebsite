@@ -10,7 +10,7 @@ export type CandidateItem = {
   source: SourceRef; source_detail: string | null; status: CandidateStatus; archived: boolean; created_at: string;
   owner?: OwnerRef | null; // hrc-012: the primary recruiter; null = unassigned
   engagement?: CandidateEngagement | null; // hrc-021: derived by the API from activity, applications and the manual flags
-  source_date?: string; // pob-018 (DEC-SCOPE-427 A2)
+  source_date?: string; // pob-018 (DEC-SCOPE-428 A2)
 };
 // hrc-021 (DEC-SCOPE-397 E2): the derived engagement status -- never sent, only read and filtered on. In the design's precedence order.
 export const ENGAGEMENTS = [
@@ -136,7 +136,7 @@ export type CandidateDetail = CandidateItem & Package & {
   employment_types?: string[]; shifts?: string[]; available_from?: string | null; willing_to_relocate?: boolean | null;
   education?: EducationRow[]; employment?: EmploymentRow[]; certifications?: CertificationRow[]; is_fresher?: boolean | null; completeness?: Completeness | null;
   ownership?: CandidateOwnership; // hrc-012
-  sourcing?: CandidateSourcing; // pob-018 (DEC-SCOPE-427 A10)
+  sourcing?: CandidateSourcing; // pob-018 (DEC-SCOPE-428 A10)
 };
 /** Q-07: one existing candidate of the duplicate panel -- never their mobile or email. */
 export type CandidateMatch = { id: string; candidate_code: string; name: string; source_name: string; status: CandidateStatus; archived: boolean; matched_on: ("mobile" | "email")[] };

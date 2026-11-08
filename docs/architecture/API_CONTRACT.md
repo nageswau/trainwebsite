@@ -6334,9 +6334,17 @@ Audit actions `recruiter_template.approve|archive|restore|copy`.
 - `GET /recruiter/campus-calendar?from&to&college_id` → `{from, to, items[{kind(drive|event|batch), id, date, end_date, title, code, status, event_kind, student_count, college{id, code, name}}], truncated}`; default the current month (IST); `to < from` or more than 92 days 422. `GET /recruiter/campus-calendar.ics` returns the same as all-day `text/calendar` events (attachment).
 - `GET /recruiter/campus-summary` → `{colleges, shared_30d, awaiting, upcoming_30d, upcoming_truncated, outcomes{…}}` over the caller's colleges.
 
-## 12LT. Source attribution, verification and outreach permission (pob-018) — addendum, 2026-11-08
+## 12LT. Vendor requirements and vendor submissions (pob-011) — addendum, 2026-11-08
 
-`DEC-SCOPE-427`. Migration `0308_candidate_sourcing`.
+`DEC-SCOPE-427`. Migration `0308_vendor_requirements`.
+
+- `POST /recruiter/requirements` and `PATCH /recruiter/requirements/{id}` take `via_vendor_id` (uuid|null) and `end_client_disclosure` (`external`|`internal`; null 422). A vendor that is not a vendor-type company in the caller's company scope, is suspended or archived, or is the requirement's own company is 422. The detail gains `via_vendor{id, code, name}|null` and `end_client_disclosure`; list rows gain `end_client_disclosure`. Revisions and the audit diff show `via_vendor` (by name) and `end_client_disclosure`.
+- `POST /recruiter/shares` takes `recipient` (`client` default | `vendor`), `detail` (`anonymised` default | `full`; vendor only), `consent_confirmed` and `consent_reference` (≤ 300; vendor only). Detail or consent on a client share is 422. A vendor share without a vendor on the requirement, or on the Portal channel, is 422. A contact of another company is 422. A vendor that is not active, has no current signed or active agreement, or has no NDA is 409. Full details without the consent stub are 409. The repeat 409 (`{message, duplicates}`) also lists candidates shared for another requirement of the same end client when either share went through a vendor.
+- A share (list and create) gains `recipient`, `detail` (`named`|`anonymised`|`full`), `detail_label` and `consent_reference`; `company_id` is the recipient company.
+- Public `GET /public/jobs`, the student `GET /workflows/it/jobs/open`, the candidate job board, and the student's applications and interviews show `company: "Confidential client"` for an `internal` requirement.
+## 12LU. Source attribution, verification and outreach permission (pob-018) — addendum, 2026-11-08
+
+`DEC-SCOPE-428`. Migration `0309_candidate_sourcing`.
 
 - `POST`/`PATCH /recruiter/candidates[/{id}]` accept `source_date` (not in the future; omitted on create = today IST; null on PATCH 422), `referrer_name` (≤ 160), `referrer_candidate_id` (another pool candidate the caller can see, else 422), `vendor_id` (a live vendor company in the caller's company scope, else 422), `portal_import_reference` (≤ 120). Audited by the existing `candidate.create|update` diff.
 - `GET /recruiter/candidates` rows add `source_date`. The candidate detail adds `sourcing {source_date, referrer_name, referrer{id, candidate_code, name}|null ("Restricted record" with null id/code when the viewer cannot see it), vendor{id, name}|null, institution{id, name}|null, portal_import_reference, last_verified_on, last_verified_by, outreach_status, outreach_status_changed_at, permission{method, given_on, note, recorded_by}|null, permitted}`.

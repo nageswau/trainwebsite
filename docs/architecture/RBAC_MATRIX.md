@@ -4051,7 +4051,12 @@ A placement officer has no company scope, but answering Missing still creates th
 - **Read (vacancies view, campus calendar and its ICS, TPO widget):** every pob-013 college reader (placement_team, placement_manager, the college BDMs in bdm-002 scope, super_admin); others 403, out of scope 404. Outcomes never count institution students outside the caller's active pob-014 permission.
 - **Share a vacancy / record the reply / the share form's options:** the college's pob-013 writers (placement_team, super_admin, the college's assigned BDM); both managers and another BDM 403 after scope. Sharing also needs the requirement in the caller's requirement scope (404 otherwise).
 
-### 2.318 Source attribution, verification and outreach permission *(added 2026-11-08 — `DEC-SCOPE-427`, pob-018)*
+### 2.318 Vendor requirements and vendor submissions *(added 2026-11-08 — `DEC-SCOPE-427`, pob-011)*
+
+- **No new grants.** Setting `via_vendor_id` and `end_client_disclosure` follows the requirement edit rules (rec-007/hrc-006). The vendor must be in the caller's company scope; roles outside the company CRM get 422.
+- **Vendor shares** follow the rec-019 share rules (the requirement's writers, `require_writer`). The vendor gate (V5) and the consent stub (V7) are server-side and apply to every role, super_admin included.
+- **Disclosure:** staff readers always see the end client's name. Public visitors and students see "Confidential client" when it is `internal`.
+### 2.319 Source attribution, verification and outreach permission *(added 2026-11-08 — `DEC-SCOPE-428`, pob-018)*
 
 - **Read (`sourcing` on the candidate):** every candidate reader (placement_team, placement_manager, super_admin, hr_team); institution students stay pob-014-scoped (404).
 - **Change attribution / verify / outreach:** candidate writers (placement_team, placement_manager, super_admin); hr_team 403. A vendor link needs the vendor in the caller's company scope; a referrer link needs the referrer in the caller's pool (422 otherwise, one message).

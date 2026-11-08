@@ -41,6 +41,7 @@ from app.models import (
 from app.notifications.events import notify
 from app.schemas import REC_REQUIREMENT_TERMS
 from app.services import company_pipeline
+from app.services import recruiter_companies as companies
 from app.services import recruiter_contracts as contracts
 from app.services import requirement_checklist as checklist
 from app.services import requirement_owners as owners
@@ -573,6 +574,25 @@ def deadline_filter(state: str) -> list:
     return [Job.status.in_(JOB_OPEN_STATUSES), Job.closes_on >= today, Job.closes_on <= today + timedelta(days=EXPIRING_DAYS)]
 
 
+# --- pob-011 (DEC-SCOPE-427 V2): the vendor a requirement came through ----------------------------------------------------------------
+VENDOR_INVALID = "Choose an active vendor from your companies, other than this requirement's own company"
+
+
+async def check_vendor(db: AsyncSession, user: User, values: dict, stored: Job | None, company_id: UUID) -> None:
+    """A vendor set or changed is a vendor-type company in the caller's company scope, not archived or suspended and not the end client
+    itself (FOR SHARE); keeping one suspended since is allowed, and clearing is always allowed."""
+    if not _sent_change(values, stored, "via_vendor_id") or values["via_vendor_id"] is None:
+        return
+    target = values["via_vendor_id"]
+    try:
+        scope = await companies.caller_scope(db, user)
+    except HTTPException:  # a role outside the company CRM (an HR officer editing) has no vendors to choose from
+        raise HTTPException(422, VENDOR_INVALID) from None
+    vendor = await db.scalar(select(Company).where(Company.id == target, *scope).with_for_update(read=True))
+    if vendor is None or target == company_id or not companies.is_vendor(vendor) or vendor.vendor_status == "suspended" or vendor.archived_at is not None:
+        raise HTTPException(422, VENDOR_INVALID)
+
+
 def _company(company: Company) -> dict:
     return {"id": company.id, "code": company.company_code, "name": company.name}
 
@@ -590,6 +610,7 @@ def row_out(user: User, job: Job, company: Company, recruiter: User | None) -> d
         "phase_label": PHASE_LABELS[PHASES[job.status]],
         "source": job.source,
         "visibility": job.visibility,  # hrc-008
+        "end_client_disclosure": job.end_client_disclosure,  # pob-011 V3
         "priority": job.priority,
         "vacancies": job.vacancies,
         "closes_on": job.closes_on,
@@ -615,6 +636,7 @@ async def requirement_out(db: AsyncSession, user: User, job: Job, *, refresh: bo
     category = await db.get(RecJobCategory, job.job_category_id) if job.job_category_id else None
     lead_source = await db.get(RecLeadSource, job.lead_source_id) if job.lead_source_id else None
     segment_pool = await db.get(TalentPool, job.segment_pool_id) if job.segment_pool_id else None
+    vendor = await db.get(Company, job.via_vendor_id) if job.via_vendor_id else None
     required = job.status in SUBMITTABLE and await approval_required(db, job)
     allowed = [s for s in TRANSITIONS[job.status] if not (required and s in _ACTIVE)]  # A7
     return {
@@ -653,6 +675,7 @@ async def requirement_out(db: AsyncSession, user: User, job: Job, *, refresh: bo
         "decision_maker": {"id": decision_maker.id, "name": decision_maker.name, "designation": decision_maker.designation, "active": decision_maker.active}
         if decision_maker else None,
         "expected_tat_days": job.expected_tat_days,
+        "via_vendor": _company(vendor) if vendor else None,  # pob-011 V2/V10
         # pob-002 R7/R8: absent (not null) without commercials.client.view
         **({"commercial_terms": {**await commercial_terms(db, job, company), "can_edit": edit_terms and permissions(user, job)["can_edit"]}} if view_terms else {}),
         "skills": [
@@ -709,7 +732,8 @@ async def audited_values(db: AsyncSession, job: Job, fields, *, skills: bool = F
     """hrc-004 B5: the values an edit's audit diff compares -- the category by name, and the skill lists as text when `skills`."""
     values = {k: getattr(job, k) for k in fields}
     references = (("job_category_id", RecJobCategory, "name"), ("lead_source_id", RecLeadSource, "name"), ("hiring_manager_user_id", User, "full_name"),
-                  ("decision_maker_contact_id", CompanyContact, "name"), ("backup_owner_user_id", User, "full_name"))  # fmt: skip  # pob-002
+                  ("decision_maker_contact_id", CompanyContact, "name"), ("backup_owner_user_id", User, "full_name"),
+                  ("via_vendor_id", Company, "name"))  # fmt: skip  # pob-002, pob-011
     for column, model, name in references:
         if column in values:  # hrc-005: by name, like the category
             row_id = values.pop(column)

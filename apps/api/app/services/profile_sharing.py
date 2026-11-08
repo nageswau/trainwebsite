@@ -16,7 +16,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -27,6 +27,7 @@ from app.models import (
     CandidateSkill,
     Company,
     CompanyContact,
+    CompanyDocument,
     EmployerProfile,
     InstitutionDataPermission,
     Job,
@@ -40,6 +41,7 @@ from app.models import (
 from app.notifications.phone import wa_number
 from app.schemas import RecShareCreate
 from app.services import applications, candidate_sourcing, candidates, company_pipeline, contact_status, mailer, recruiter_companies
+from app.services import recruiter_contracts as contracts
 from app.services import recruiter_messages as messages
 from app.services import recruiter_requirements as requirements
 
@@ -61,6 +63,15 @@ NOT_IN_POOL = "Choose active candidates from the pool"
 NO_PERMISSION = "Record each candidate's permission to be represented (Source and outreach) before sharing"
 LINK_GONE = "This link has expired or is no longer available"
 ITEM_NOT_FOUND = "Shared profile not found"
+# pob-011 (DEC-SCOPE-427 V4-V8): shares to the requirement's vendor
+VENDOR_CONTACT_UNUSABLE = "Choose an active contact of this requirement's vendor"
+NO_VENDOR = "This requirement did not come through a vendor"
+VENDOR_NO_PORTAL = "A vendor has no employer portal. Share by email, WhatsApp or Other"
+VENDOR_NOT_ACTIVE = "Profiles can be shared with this vendor only while it is active"
+VENDOR_NO_AGREEMENT = "The vendor agreement must be signed or active before sharing profiles with this vendor"
+VENDOR_NO_NDA = "Upload the vendor's signed NDA before sharing profiles with it"
+CONSENT_MISSING = "Confirm the candidates' consent and say how it was given before sharing their full details with a vendor"
+DETAIL_LABELS = {"named": "Named", "anonymised": "Anonymised", "full": "Full details"}
 
 
 # --- tokens (S7) --------------------------------------------------------------------------------------------------------------------
@@ -116,8 +127,23 @@ def summary(candidate: Candidate, skills: list[str]) -> dict:
     }
 
 
+def vendor_summary(candidate: Candidate, skills: list[str], detail: str) -> dict:
+    """pob-011 V6: what a vendor sees. Anonymised drops the name and current company (and the share gets no resume link); full adds the
+    contact details, which only a share with the consent stub, an NDA and a current agreement reaches."""
+    base = summary(candidate, skills)
+    if detail == "anonymised":
+        return base | {"name": None, "current_company": None}
+    return base | {"email": candidate.email, "mobile": candidate.mobile}
+
+
+def _who(s: dict) -> str:
+    return f"{s['name']} ({s['code']})" if s["name"] else f"Candidate {s['code']}"
+
+
 def _lines(s: dict) -> list[str]:
     fields = (
+        ("Email", s.get("email")),
+        ("Mobile", s.get("mobile")),
         ("Qualification", " · ".join(str(v) for v in (s["qualification"], s["college"], s["passing_year"]) if v)),
         ("Experience", experience(s["experience_months"])),
         ("Current company", s["current_company"]),
@@ -137,7 +163,7 @@ def _resume_line(token: str | None, expires_at: datetime) -> str:
 def email_text(job: Job, company: Company, contact: CompanyContact, sender: User, entries: list[tuple[dict, str | None]], expires_at: datetime) -> tuple[str, str]:
     lines = [f"Dear {contact.name},", "", f"Please find {len(entries)} candidate profile{'s' if len(entries) != 1 else ''} for {job.title} ({job.requirement_code}) at {company.name}.", ""]
     for number, (s, token) in enumerate(entries, 1):
-        lines += [f"{number}. {s['name']} ({s['code']})", *_lines(s), f"   {_resume_line(token, expires_at)}", ""]
+        lines += [f"{number}. {_who(s)}", *_lines(s), f"   {_resume_line(token, expires_at)}", ""]
     lines += ["Please reply with your feedback on each profile.", "", "Regards,", sender.full_name]
     return f"Candidate profiles: {job.title}"[:200], "\n".join(lines)
 
@@ -145,8 +171,8 @@ def email_text(job: Job, company: Company, contact: CompanyContact, sender: User
 def whatsapp_text(job: Job, contact: CompanyContact, sender: User, entries: list[tuple[dict, str | None]], expires_at: datetime) -> str:
     lines = [f"Hi {contact.name}, candidate profiles for {job.title} ({job.requirement_code}):", ""]
     for number, (s, token) in enumerate(entries, 1):
-        facts = ", ".join(v for v in (experience(s["experience_months"]), s["location"], ", ".join(s["skills"][:5])) if v)
-        lines += [f"{number}. {s['name']} ({s['code']}){f' – {facts}' if facts else ''}", f"   {_resume_line(token, expires_at)}"]
+        facts = ", ".join(v for v in (s.get("email"), s.get("mobile"), experience(s["experience_months"]), s["location"], ", ".join(s["skills"][:5])) if v)
+        lines += [f"{number}. {_who(s)}{f' – {facts}' if facts else ''}", f"   {_resume_line(token, expires_at)}"]
     lines += ["", f"– {sender.full_name}"]
     return "\n".join(lines)
 
@@ -156,14 +182,15 @@ def wa_url(mobile: str | None, text: str) -> str:
 
 
 # --- create (S1-S5, S11) ------------------------------------------------------------------------------------------------------------
-async def _contact(db: AsyncSession, job: Job, payload: RecShareCreate) -> CompanyContact | None:
+async def _contact(db: AsyncSession, company_id: UUID, payload: RecShareCreate) -> CompanyContact | None:
+    """A contact of the recipient company: the requirement's own (the end client) or, on a vendor share, the vendor's (pob-011 V4)."""
     if payload.contact_id is None:
         if payload.channel in MESSAGE_CHANNELS:
             raise HTTPException(422, CONTACT_REQUIRED)
         return None
     contact = await db.get(CompanyContact, payload.contact_id)
-    if contact is None or contact.company_id != job.company_id:
-        raise HTTPException(422, CONTACT_UNUSABLE)
+    if contact is None or contact.company_id != company_id:
+        raise HTTPException(422, VENDOR_CONTACT_UNUSABLE if payload.recipient == "vendor" else CONTACT_UNUSABLE)
     if not contact.active:
         raise HTTPException(409, messages.CONTACT_INACTIVE)
     contact_status.refuse_do_not_contact(contact)  # pob-005 D6
@@ -202,24 +229,50 @@ async def _candidates(db: AsyncSession, ids: list[UUID], user: User) -> list[Can
         barred = [c for c in rows if c.institution_permission_id is not None and c.institution_permission_id not in allowed]
         if barred:
             raise HTTPException(422, f"Their institution's permission does not cover the placement purpose: {_names(barred)}")
-    # pob-018 (DEC-SCOPE-427 A7, AC3): under the same FOR SHARE lock, so a concurrent withdrawal waits for this share's commit
+    # pob-018 (DEC-SCOPE-428 A7, AC3): under the same FOR SHARE lock, so a concurrent withdrawal waits for this share's commit
     unpermitted = [found[i] for i in ids if not candidate_sourcing.permitted(found[i])]
     if unpermitted:
         raise HTTPException(422, f"{NO_PERMISSION}: {_names(unpermitted)}")
     return [found[i] for i in ids]
 
 
-async def _repeats(db: AsyncSession, job: Job, people: list[Candidate]) -> list[Candidate]:
-    shared = set(
-        (
-            await db.scalars(
-                select(ProfileShareItem.candidate_id)
-                .join(ProfileShare, ProfileShare.id == ProfileShareItem.share_id)
-                .where(ProfileShare.job_id == job.id, ProfileShareItem.candidate_id.in_([c.id for c in people]))
-            )
-        ).all()
-    )
-    return [c for c in people if c.id in shared]
+async def _vendor(db: AsyncSession, job: Job, payload: RecShareCreate) -> Company | None:
+    """pob-011 V4-V7: the vendor a vendor share goes to, after its gate (read-locked so a concurrent suspension waits); None for a client
+    share. Every refusal happens before anything is written."""
+    if payload.recipient == "client":
+        return None
+    if job.via_vendor_id is None:
+        raise HTTPException(422, NO_VENDOR)
+    if payload.channel == "portal":
+        raise HTTPException(422, VENDOR_NO_PORTAL)
+    vendor = await db.scalar(select(Company).where(Company.id == job.via_vendor_id).with_for_update(read=True))
+    if vendor.vendor_status != "active":
+        raise HTTPException(409, VENDOR_NOT_ACTIVE)
+    agreement = await contracts.company_contract_ref(db, vendor, "vendor")
+    if agreement is None or agreement["status"] not in ("signed", "active"):
+        raise HTTPException(409, VENDOR_NO_AGREEMENT)
+    if await db.scalar(select(CompanyDocument.id).where(CompanyDocument.company_id == vendor.id, CompanyDocument.kind == "nda").limit(1)) is None:
+        raise HTTPException(409, VENDOR_NO_NDA)
+    if payload.detail == "full" and not (payload.consent_confirmed and payload.consent_reference):
+        raise HTTPException(409, CONSENT_MISSING)
+    return vendor
+
+
+async def _repeats(db: AsyncSession, job: Job, people: list[Candidate], to_vendor: bool) -> tuple[list[Candidate], bool]:
+    """The candidates already shared for this requirement or (pob-011 V8) for another requirement of the same end client when this share
+    or the earlier one went through a vendor. The flag says whether any repeat is only of the second kind (the wording names the route)."""
+    other_route = and_(Job.company_id == job.company_id, true() if to_vendor else ProfileShare.recipient == "vendor")
+    rows = (
+        await db.execute(
+            select(ProfileShareItem.candidate_id, ProfileShare.job_id)
+            .join(ProfileShare, ProfileShare.id == ProfileShareItem.share_id)
+            .join(Job, Job.id == ProfileShare.job_id)
+            .where(or_(ProfileShare.job_id == job.id, other_route), ProfileShareItem.candidate_id.in_([c.id for c in people]))
+        )
+    ).all()
+    same_job = {cid for cid, job_id in rows if job_id == job.id}
+    shared = {cid for cid, _ in rows}
+    return [c for c in people if c.id in shared], bool(shared - same_job)
 
 
 async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: datetime) -> tuple[ProfileShare, str | None]:
@@ -229,7 +282,9 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
     applications.require_writer(user, job.id, "create_profile_share")
     if job.status in requirements.ENDED:
         raise HTTPException(409, "Profiles cannot be shared for a closed or cancelled requirement")
-    contact = await _contact(db, job, payload)
+    vendor = await _vendor(db, job, payload)
+    detail = (payload.detail or "anonymised") if vendor else "named"
+    contact = await _contact(db, vendor.id if vendor else job.company_id, payload)
     await _check_channel(db, job, payload.channel, contact)
     people = await _candidates(db, payload.candidate_ids, user)
     existing = {
@@ -238,12 +293,13 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
     closed = [c for c in people if c.id in existing and existing[c.id].status in REFUSED]
     if closed:
         raise HTTPException(422, f"Rejected, withdrawn or joined candidates cannot be shared for this requirement: {_names(closed)}")
-    repeats = await _repeats(db, job, people)
+    repeats, across = await _repeats(db, job, people, vendor is not None)
     if repeats and not payload.repeat:
+        where = "for this requirement or with its end client through another route" if across else "for this requirement"  # pob-011 V8
         raise HTTPException(
             409,
             {
-                "message": f"{len(repeats)} of these candidates {'was' if len(repeats) == 1 else 'were'} already shared for this requirement. Share again?",  # QA-02
+                "message": f"{len(repeats)} of these candidates {'was' if len(repeats) == 1 else 'were'} already shared {where}. Share again?",  # QA-02
                 "duplicates": [{"id": str(c.id), "name": c.name, "code": c.candidate_code} for c in repeats],
             },
         )
@@ -266,8 +322,10 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
     )
     skills = await skill_names(db, payload.candidate_ids)
     expires_at = now + LINK_TTL
-    tokens = {c.id: secrets.token_urlsafe(32) if payload.channel in MESSAGE_CHANNELS and c.id in resumes else None for c in people}
-    entries = [(summary(c, skills[c.id]), tokens[c.id]) for c in people]
+    linked = payload.channel in MESSAGE_CHANNELS and detail != "anonymised"  # pob-011 V6: an anonymised share never carries a resume link
+    tokens = {c.id: secrets.token_urlsafe(32) if linked and c.id in resumes else None for c in people}
+    entries = [(vendor_summary(c, skills[c.id], detail) if vendor else summary(c, skills[c.id]), tokens[c.id]) for c in people]
+    recipient_id = vendor.id if vendor else company.id
 
     message, url = None, None
     if payload.channel in MESSAGE_CHANNELS:
@@ -277,7 +335,7 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
             subject, body = None, whatsapp_text(job, contact, user, entries, expires_at)
             url = wa_url(contact.mobile, body)
         message = RecruiterMessage(
-            company_id=company.id,
+            company_id=recipient_id,
             contact_id=contact.id,
             sender_user_id=user.id,
             channel=payload.channel,
@@ -288,11 +346,14 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
         )
         db.add(message)
         await db.flush()
-        await recruiter_companies.refresh_last_contact(db, company.id)  # pob-003 D4
+        await recruiter_companies.refresh_last_contact(db, recipient_id)  # pob-003 D4
 
     share = ProfileShare(
         job_id=job.id,
-        company_id=company.id,
+        company_id=recipient_id,
+        recipient=payload.recipient,
+        detail=detail,
+        consent_reference=payload.consent_reference if detail == "full" else None,  # pob-011 V7: confirmed by the sharer
         contact_id=contact.id if contact else None,
         channel=payload.channel,
         note=payload.note,
@@ -321,14 +382,16 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
             )
         )
     await db.flush()
-    await company_pipeline.apply_event(db, await db.scalar(select(Company).where(Company.id == company.id).with_for_update().execution_options(populate_existing=True)), "profiles_shared", user)
+    if vendor is None:  # pob-011 V9: the end client did not receive a vendor share from us, so its BD pipeline stays
+        await company_pipeline.apply_event(db, await db.scalar(select(Company).where(Company.id == company.id).with_for_update().execution_options(populate_existing=True)), "profiles_shared", user)
     db.add(
         AuditLog(
             user_id=user.id,
             action="profile_share.create",
             entity_type="profile_share",
             entity_id=str(share.id),
-            metadata_json={"job_id": str(job.id), "channel": share.channel, "candidate_ids": [str(c.id) for c in people], "repeat": bool(repeats)},
+            metadata_json={"job_id": str(job.id), "channel": share.channel, "candidate_ids": [str(c.id) for c in people], "repeat": bool(repeats),
+                          "recipient": share.recipient, "detail": share.detail},  # fmt: skip  # pob-011: never the consent text
         )
     )
     return share, url
@@ -506,6 +569,10 @@ def share_out(share: ProfileShare, job: Job, sender: User, contact: CompanyConta
         "channel_label": CHANNEL_LABELS[share.channel],
         "requirement": {"id": job.id, "code": job.requirement_code, "title": job.title},
         "company_id": share.company_id,
+        "recipient": share.recipient,  # pob-011 V10
+        "detail": share.detail,
+        "detail_label": DETAIL_LABELS[share.detail],
+        "consent_reference": share.consent_reference,
         "contact": {"id": contact.id, "name": contact.name} if contact else None,
         "note": share.note,
         "message": {"id": message.id, "delivery_status": message.delivery_status} if message else None,

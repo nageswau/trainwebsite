@@ -326,7 +326,7 @@ def item_out(candidate: Candidate, source: RecCandidateSource) -> dict:
         "status": candidate.status,
         "archived": candidate.archived_at is not None,
         "created_at": candidate.created_at,
-        "source_date": candidate.source_date,  # pob-018 (DEC-SCOPE-427 A2)
+        "source_date": candidate.source_date,  # pob-018 (DEC-SCOPE-428 A2)
     }
 
 
@@ -389,7 +389,7 @@ async def detail_out(db: AsyncSession, user: User, candidate: Candidate) -> dict
         "ownership": ownership,
         "consent": await candidate_privacy.latest_consent(db, candidate.id),  # hrc-035 (DEC-SCOPE-396 K2)
         "engagement": candidate_engagement.out((await candidate_engagement.of(db, [candidate.id])).get(candidate.id)),  # hrc-021
-        "sourcing": await candidate_sourcing.out(db, user, candidate),  # pob-018 (DEC-SCOPE-427 A10)
+        "sourcing": await candidate_sourcing.out(db, user, candidate),  # pob-018 (DEC-SCOPE-428 A10)
     }
 
 

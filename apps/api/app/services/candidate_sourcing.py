@@ -1,4 +1,4 @@
-"""pob-018 (DEC-SCOPE-427, spec docs/superpowers/specs/2026-11-08-pob-018-source-attribution-outreach-design.md): where a candidate came
+"""pob-018 (DEC-SCOPE-428, spec docs/superpowers/specs/2026-11-08-pob-018-source-attribution-outreach-design.md): where a candidate came
 from and when (A2/A3), when the details were last checked (A6), how far outreach has got and -- while `consented` -- how and when the
 candidate agreed to be represented (A4/A5), and whether they may be put forward to a client (A7).
 

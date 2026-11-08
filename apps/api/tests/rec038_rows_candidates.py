@@ -138,7 +138,7 @@ ROWS = [
     R("get", "/recruiter/candidates/{candidate}", **allow(200, *READERS)),
     R("get", "/recruiter/candidates/{candidate}/history", **allow(200, *READERS)),  # hrc-004 B1
     R("patch", "/recruiter/candidates/{candidate}", {"location": "Pune"}, **allow(200, *WRITERS)),
-    # pob-018 (§2.318): verify and the outreach status are the writers'; readers see them on the candidate
+    # pob-018 (§2.319): verify and the outreach status are the writers'; readers see them on the candidate
     R("post", "/recruiter/candidates/{candidate}/verify", **allow(200, *WRITERS)),
     R("put", "/recruiter/candidates/{candidate}/outreach", {"status": "contacted"}, **allow(200, *WRITERS)),
     R("get", "/recruiter/candidates/{candidate}/applications", **allow(200, *READERS)),  # rec-017: every candidate reader sees every row

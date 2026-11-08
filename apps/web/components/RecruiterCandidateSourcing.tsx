@@ -20,7 +20,7 @@ type Props = {
 type Mode = "outreach" | "source" | null;
 const GRID = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))", gap: "8px 16px" } as const;
 
-// pob-018 (DEC-SCOPE-427 A12): where the candidate came from and when, who referred or supplied them, when the details were last checked,
+// pob-018 (DEC-SCOPE-428 A12): where the candidate came from and when, who referred or supplied them, when the details were last checked,
 // how far outreach has got and how they agreed to be represented -- a profile is shared only with that permission (AC3). The Ownership
 // card's conventions: one open editor at a time, the group takes focus, Escape cancels, an error takes focus. The API re-checks every rule.
 export default function RecruiterCandidateSourcing({ candidate, canEdit, onSaved }: Props) {

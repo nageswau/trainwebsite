@@ -1,4 +1,4 @@
-"""pob-018 -- source attribution, verification and outreach permission (DEC-SCOPE-427 A1-A12; AC1-AC3). The shared test database is
+"""pob-018 -- source attribution, verification and outreach permission (DEC-SCOPE-428 A1-A12; AC1-AC3). The shared test database is
 never truncated, so every value is unique per test."""
 
 import uuid

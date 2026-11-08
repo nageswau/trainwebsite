@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// pob-018 (DEC-SCOPE-427): the seeded recruiter adds a candidate (AC1: a source and today's source date), cannot share them with a client
+// pob-018 (DEC-SCOPE-428): the seeded recruiter adds a candidate (AC1: a source and today's source date), cannot share them with a client
 // before recording the permission to be represented (AC3), verifies the details (AC2), records the permission and then shares. The card
 // stays on the page after a reload, and a phone shows it without sideways scroll.
 const RECRUITER = "placement@edusphere.local";

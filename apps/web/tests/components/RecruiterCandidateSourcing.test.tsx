@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import RecruiterCandidateSourcing from "@/components/RecruiterCandidateSourcing";
 import type { CandidateSourcing } from "@/lib/candidateSourcing";
 
-// pob-018 (DEC-SCOPE-427): the Source and outreach card -- source, date, referrer, vendor, institution, portal reference, last verified,
+// pob-018 (DEC-SCOPE-428): the Source and outreach card -- source, date, referrer, vendor, institution, portal reference, last verified,
 // the outreach status and the permission to be represented; Verify details, Update outreach and Edit source details for writers.
 const sourcing: CandidateSourcing = {
   source_date: "2026-03-01", referrer_name: "Kiran", referrer: { id: "c9", candidate_code: "CAN-000009", name: "Meena" },

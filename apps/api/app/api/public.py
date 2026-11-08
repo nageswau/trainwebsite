@@ -259,8 +259,8 @@ async def jobs(db: AsyncSession = Depends(get_db)):
     # EMP-002-AC02: a posting past its own closing date is not shown as open, even if
     # the Employer never explicitly closed it -- `status` alone was previously trusted. hrc-008 (V5): public jobs only.
     open_now = (Job.status.in_(JOB_OPEN_STATUSES), or_(Job.closes_on.is_(None), Job.closes_on >= date.today()), job_visibility.public_filter())
-    rows = (await db.execute(select(Job, Company).join(Company).where(*open_now).order_by(Job.created_at.desc()))).all()
-    return [{"id": j.id, "title": j.title, "company": c.name, "location": j.location, "skills": j.skills, "closes_on": j.closes_on} for j, c in rows]
+    rows = (await db.execute(select(Job, Company).join(Company, Company.id == Job.company_id).where(*open_now).order_by(Job.created_at.desc()))).all()
+    return [{"id": j.id, "title": j.title, "company": job_visibility.client_name(j, c), "location": j.location, "skills": j.skills, "closes_on": j.closes_on} for j, c in rows]
 
 
 @router.get("/events")

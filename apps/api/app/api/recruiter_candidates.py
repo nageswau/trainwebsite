@@ -418,7 +418,7 @@ async def change_ownership(candidate_id: UUID, payload: dict = Body(...), user: 
 
 @router.post("/{candidate_id}/verify", response_model=CandidateDetail, response_model_exclude_unset=True)
 async def verify_candidate(candidate_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """pob-018 (DEC-SCOPE-427 A6, AC2): "Verify details" -- today (IST) and who; an archived candidate 409."""
+    """pob-018 (DEC-SCOPE-428 A6, AC2): "Verify details" -- today (IST) and who; an archived candidate 409."""
     svc.require_writer(user)
     candidate = await svc.load(db, candidate_id, lock=True, viewer_id=user.id)
     sourcing.verify(db, user, candidate)

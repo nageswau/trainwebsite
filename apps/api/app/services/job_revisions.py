@@ -62,6 +62,8 @@ LABELS = {
     "decision_maker_contact": "Decision-maker",
     "expected_tat_days": "Expected turnaround (days)",
     "backup_owner": "Backup owner",
+    "via_vendor": "Via vendor",  # pob-011 (DEC-SCOPE-427 V2/V3)
+    "end_client_disclosure": "End client disclosure",
     "fee_basis": "Fee basis",
     "fee_value": "Fee",
     "payment_trigger": "Payment trigger",

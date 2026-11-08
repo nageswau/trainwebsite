@@ -91,6 +91,7 @@ from app.models import (
     INVESTMENT_VERTICALS,
     JOB_CHECKLIST_ITEM_STATUSES,
     JOB_EMPLOYMENT_TYPES,
+    JOB_END_CLIENT_DISCLOSURES,
     JOB_FEE_BASES,
     JOB_PAYMENT_TRIGGERS,
     JOB_PRIORITIES,
@@ -10591,7 +10592,7 @@ CANDIDATE_FIELD_LABELS = {
     "tools": "Tools", "languages": "Languages", "preferred_roles": "Preferred roles", "work_modes": "Work modes", "employment_types": "Employment types",
     "shifts": "Shifts", "available_from": "Available from", "willing_to_relocate": "Willing to relocate", "education": "Education",
     "employment": "Employment history", "certifications": "Certifications",
-    # pob-018 (DEC-SCOPE-427)
+    # pob-018 (DEC-SCOPE-428)
     "source_date": "Source date", "referrer_name": "Referrer name", "referrer_candidate_id": "Referrer candidate", "vendor_id": "Vendor",
     "portal_import_reference": "Portal import reference", "method": "Permission method", "given_on": "Permission date",
     "note": "Note",
@@ -10888,7 +10889,7 @@ class _CandidateFields(BaseModel):
     education: _rows(CandidateEducationRow, "Education", "education rows", 10) = Field(default_factory=list)
     employment: _rows(CandidateEmploymentRow, "Employment", "employment rows", 20) = Field(default_factory=list)
     certifications: _rows(CandidateCertificationRow, "Certification", "certifications", 20) = Field(default_factory=list)
-    # pob-018 (DEC-SCOPE-427 A2/A3): an omitted source date is today (IST); the links are checked by services/candidate_sourcing
+    # pob-018 (DEC-SCOPE-428 A2/A3): an omitted source date is today (IST); the links are checked by services/candidate_sourcing
     source_date: Annotated[date | None, _past_day("Source date")] = None
     referrer_name: _candidate_text("Referrer name", 160) = None
     referrer_candidate_id: UUID | None = None
@@ -10953,7 +10954,7 @@ class CandidateItem(BaseModel):
     archived: bool
     created_at: datetime
     owner: RecPersonRef | None = None  # hrc-012 (DEC-SCOPE-382 O2): the primary recruiter; None = unassigned
-    source_date: date | None = None  # pob-018 (DEC-SCOPE-427 A2)
+    source_date: date | None = None  # pob-018 (DEC-SCOPE-428 A2)
     engagement: CandidateEngagement | None = None  # hrc-021 (DEC-SCOPE-397 E7): derived from activity, applications and the manual flags
 
 
@@ -11067,10 +11068,10 @@ class CandidateDetail(CandidateItem):
     completeness: dict | None = None
     ownership: "CandidateOwnershipOut | None" = None  # hrc-012 (DEC-SCOPE-382)
     consent: "CandidateConsentOut | None" = None  # hrc-035 (DEC-SCOPE-396 K2): the latest recorded basis, null = none recorded
-    sourcing: "CandidateSourcing | None" = None  # pob-018 (DEC-SCOPE-427 A10)
+    sourcing: "CandidateSourcing | None" = None  # pob-018 (DEC-SCOPE-428 A10)
 
 
-# --- pob-018 (DEC-SCOPE-427): source attribution, verification and outreach permission -----------------------------------------------
+# --- pob-018 (DEC-SCOPE-428): source attribution, verification and outreach permission -----------------------------------------------
 CandidateOutreachStatus = Literal[CANDIDATE_OUTREACH_STATUSES]
 
 
@@ -11314,6 +11315,8 @@ REC_REQUIREMENT_FIELDS = (  # the `jobs` columns a create or edit may write; cod
     # pob-002 (DEC-SCOPE-407 R6/R7/R9): the hiring process, the per-requirement terms and the backup owner
     "interview_rounds", "screening_steps", "decision_maker_contact_id", "expected_tat_days", "payment_trigger", "payment_days",
     "payment_terms", "replacement_terms", "backup_owner_user_id",
+    # pob-011 (DEC-SCOPE-427 V2/V3): the vendor the requirement came through and the end client's disclosure
+    "via_vendor_id", "end_client_disclosure",
 )
 REC_REQUIREMENT_TERMS = ("payment_trigger", "payment_days", "payment_terms", "replacement_terms")  # pob-002 R8: behind commercials.client
 
@@ -11412,6 +11415,8 @@ class RecRequirementUpdate(BaseModel):
     payment_terms: _rec_requirement_text_type(2000, multiline=True) = None
     replacement_terms: _rec_requirement_text_type(2000, multiline=True) = None
     backup_owner_user_id: UUID | None = None
+    via_vendor_id: UUID | None = None  # pob-011 V2: a vendor-type company in the caller's scope (services/recruiter_requirements)
+    end_client_disclosure: Literal[JOB_END_CLIENT_DISCLOSURES] = None  # pob-011 V3; null is refused (the column always has a value)
     revision_reason: _rec_requirement_text_type(500, multiline=True) = None
 
     @model_validator(mode="after")
@@ -12050,6 +12055,17 @@ class RecShareCreate(BaseModel):
     contact_id: UUID | None = None
     note: _rec_requirement_text_type(500, multiline=True) = None
     repeat: bool = False
+    # pob-011 (DEC-SCOPE-427 V4-V7): to the requirement's vendor, anonymised unless `full` (which needs the consent stub; checked in the service)
+    recipient: Literal["client", "vendor"] = "client"
+    detail: Literal["anonymised", "full"] | None = None
+    consent_confirmed: bool = False
+    consent_reference: _rec_requirement_text_type(300) = None
+
+    @model_validator(mode="after")
+    def _vendor_only(self):
+        if self.recipient == "client" and (self.detail is not None or self.consent_confirmed or self.consent_reference is not None):
+            raise ValueError("Detail and consent apply only to a share with a vendor")
+        return self
 
     @field_validator("candidate_ids")
     @classmethod

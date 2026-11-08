@@ -12,7 +12,7 @@ import {
   type CriteriaSkill, HARD_FILTER_LABEL, HARD_FILTER_NEEDS, HARD_FILTERS, type HardFilterKey, type HardFilters, isMatches, MATCH_PAGE_SIZE, type Matches,
   type MatchRow, matchesUrl, minLevelText, WEIGHT_MAX, WEIGHT_MIN, weightsUrl,
 } from "@/lib/recruiterMatching";
-import { isRequirementBody, type Requirement } from "@/lib/recruiterRequirements";
+import { isRequirementBody, type Requirement, type VendorRef } from "@/lib/recruiterRequirements";
 import { UNSHAREABLE } from "@/lib/recruiterShares";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
@@ -171,8 +171,9 @@ function MatchItem({ m, writes, canShortlist, busy, selected, onSelect, onShortl
  *  this requirement. Shortlist is rec-017's add at Shortlisted (one per candidate); writers adjust the skill weights. `version` (the
  *  requirement's updated_at) re-reads the ranking after the requirement's skills change. rec-019: writers select rows (kept across pages)
  *  and share them with the company. */
-export default function RecruiterRequirementMatches({ requirementId, requirementLabel = "this requirement", companyId, version, onShortlisted, onShared, onRequirementChanged }: {
+export default function RecruiterRequirementMatches({ requirementId, requirementLabel = "this requirement", companyId, vendor, version, onShortlisted, onShared, onRequirementChanged }: {
   requirementId: string; requirementLabel?: string; companyId?: string; version?: string; onShortlisted?: () => void; onShared?: () => void;
+  vendor?: VendorRef | null; // pob-011: the share dialog offers the vendor the requirement came through
   onRequirementChanged?: (r: Requirement) => void;
 }) {
   const [data, setData] = useState<Matches | null>(null);
@@ -253,7 +254,7 @@ export default function RecruiterRequirementMatches({ requirementId, requirement
         {notice && <p className={notice.failed ? "form-error" : "form-message"} style={{ margin: "6px 0 0", fontSize: 13 }}>{notice.text}</p>}
       </div>
       {sharing && (
-        <RecruiterShareDialog requirement={{ id: requirementId, label: requirementLabel }} companyId={companyId} candidates={sharing}
+        <RecruiterShareDialog requirement={{ id: requirementId, label: requirementLabel }} companyId={companyId} vendor={vendor} candidates={sharing}
           onClose={() => setSharing(null)} onShared={() => { setSelected(new Map()); reload(); onShared?.(); }} />
       )}
       {editing && data && (

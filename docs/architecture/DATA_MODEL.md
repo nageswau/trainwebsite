@@ -2465,6 +2465,17 @@ The downgrade refuses while a vendor or an NDA exists.
 
 **`institution_vacancy_shares`:** (`organization_id` → bdm_organizations, `job_id` → jobs, `shared_on` date, `channel` (CHECK: meeting, call, email, whatsapp, visit, other), `template_id` → recruiter_message_templates nullable, `notes` ≤ 500, `response` (CHECK: awaiting, interested, declined, no_response; default awaiting), `response_note` ≤ 500, `responded_at`, `responded_by_user_id`, `shared_by_user_id`, timestamps); unique (`organization_id`, `job_id`, `shared_on`, `channel`); indexes (`organization_id`, `shared_on`) and (`job_id`). All FKs `ON DELETE RESTRICT`.
 
-### pob-018 — source attribution and outreach permission (`DEC-SCOPE-427`, migration `0308_candidate_sourcing`)
+### pob-011 — vendor requirements and vendor submissions (`DEC-SCOPE-427`, migration `0308_vendor_requirements`)
+
+**`jobs`:**
+- `via_vendor_id` → companies (nullable, `ON DELETE RESTRICT`, index `ix_jobs_via_vendor`; CHECK `ck_jobs_via_vendor_not_self`: never the job's own company).
+- `end_client_disclosure` (CHECK `external` | `internal`; default `external`).
+
+**`profile_shares`:**
+- `recipient` (CHECK `client` | `vendor`; default `client`). `company_id` is the recipient company.
+- `detail` (CHECK `named` | `anonymised` | `full`; default `named`; `named` exactly when the recipient is the client).
+- `consent_reference` (text ≤ 300; set exactly when `detail = 'full'`).
+- A vendor share is never on the `portal` channel (CHECK).
+### pob-018 — source attribution and outreach permission (`DEC-SCOPE-428`, migration `0309_candidate_sourcing`)
 
 **`candidates`** gains `source_date` date NOT NULL (default today IST; backfilled to `created_at` in IST), `referrer_name` ≤ 160, `referrer_candidate_id` → candidates, `vendor_id` → companies (partial index where not null), `portal_import_reference` ≤ 120, `last_verified_on`, `last_verified_by_user_id` → users, `outreach_status` NOT NULL default `not_contacted` (CHECK: not_contacted, contacted, responded, consented, declined), `outreach_status_changed_at`, `outreach_permission_method` (CHECK: call, email, whatsapp, linkedin, in_person, form, other), `outreach_permission_on`, `outreach_permission_note` ≤ 500, `outreach_permission_by_user_id` → users. CHECKs: `consented` ⇔ method, date and recorder all set; the referrer is not the candidate itself. All FKs `ON DELETE RESTRICT`. `rec_candidate_sources` gains Vendor, Website (hrc-023's value), Community, Institution when missing.

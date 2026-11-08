@@ -1,4 +1,4 @@
-"""pob-018 -- migration 0308_candidate_sourcing (DEC-SCOPE-427): the chain, the frozen CHECK copies, the round trip and the
+"""pob-018 -- migration 0309_candidate_sourcing (DEC-SCOPE-428): the chain, the frozen CHECK copies, the round trip and the
 AC1 backfill, in a throwaway database (the pob-014 0306 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,11 +13,11 @@ from app.core.config import settings
 from app.models import CANDIDATE_SOURCING_CHECKS
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_pob_018_migration_0308", VERSIONS / "0308_candidate_sourcing.py")
+_spec = importlib.util.spec_from_file_location("_pob_018_migration_0309", VERSIONS / "0309_candidate_sourcing.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD = "0308_candidate_sourcing"
+HEAD = "0309_candidate_sourcing"
 BASE = _migration.down_revision
 COLUMNS = {
     "source_date", "referrer_name", "referrer_candidate_id", "vendor_id", "portal_import_reference", "last_verified_on", "last_verified_by_user_id",
@@ -65,7 +65,7 @@ def test_upgrade_backfills_seeds_and_round_trips(isolated_db):
     cfg, url = isolated_db["cfg"], isolated_db["url"]
     command.upgrade(cfg, HEAD)  # 0001's create_all already built today's columns: the guarded upgrade skips them
     assert COLUMNS <= _columns(url)
-    command.downgrade(cfg, BASE)  # back to the pre-0308 shape
+    command.downgrade(cfg, BASE)  # back to the pre-0309 shape
     assert not COLUMNS & _columns(url)
     source = _sql(url, "SELECT id FROM rec_candidate_sources ORDER BY sort_order LIMIT 1")[0][0]
     cid = uuid.uuid4()

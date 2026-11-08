@@ -1,7 +1,7 @@
-"""pob-018 -- source attribution, verification and outreach permission (DEC-SCOPE-427 A1-A6).
+"""pob-018 -- source attribution, verification and outreach permission (DEC-SCOPE-428 A1-A6).
 
-Revision ID: 0308_candidate_sourcing
-Revises: 0307_institution_vacancy_shares
+Revision ID: 0309_candidate_sourcing
+Revises: 0308_vendor_requirements
 
 docs/superpowers/specs/2026-11-08-pob-018-source-attribution-outreach-design.md. Additive: thirteen columns on `candidates` (all nullable
 except `source_date` and `outreach_status`, which get a value for every existing row), four CHECKs, one partial index and four candidate
@@ -16,8 +16,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0308_candidate_sourcing"
-down_revision = "0307_institution_vacancy_shares"
+revision = "0309_candidate_sourcing"
+down_revision = "0308_vendor_requirements"
 branch_labels = None
 depends_on = None
 

@@ -1,6 +1,6 @@
 # pob-018 — Source attribution, verification and outreach permission (design)
 
-- **Feature:** `pob-018` (`docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md`), decision `DEC-SCOPE-427`.
+- **Feature:** `pob-018` (`docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md`), decision `DEC-SCOPE-428`.
 - **Source:** backlog §8.1 channel rules (LinkedIn URL + source date + outreach status; portal imports through approved tools;
   referrals/vendors recorded); "All candidate records must retain source attribution, consent/permission status where required and a
   date last verified"; §17 LinkedIn/portal terms. Source classified `UNVERIFIED`; every call below is the builder's (`NEEDS_CONFIRMATION`).

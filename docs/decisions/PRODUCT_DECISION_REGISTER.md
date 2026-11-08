@@ -12404,9 +12404,25 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - V11 (Q-12): drives stay one company at one college; a vacancy for several colleges is one share per college. Extra drive statuses stay open.
 - **Not built:** sending the message from the share form (the pob-023 composer sends); new drive statuses; multi-college drives; changes to the bdm-021 college business metric. The "org timeline" is the college's "Vacancies shared" list (newest first), not the BDM activity timeline, so BDM metrics are unchanged (`NEEDS_CONFIRMATION`).
 
-### DEC-SCOPE-427 — Source attribution, verification and outreach permission (pob-018)
+### DEC-SCOPE-427 — Vendor requirements, vendor submissions and candidate-visibility control (pob-011)
+- **Date:** 2026-11-08. **Status:** built; V1-V12 are the builder's calls (`NEEDS_CONFIRMATION`). **Evidence:** backlog pob-011 (§5 bullets 3, 4, 7; §17).
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-011-vendor-requirements-submissions-design.md`. Migration `0308_vendor_requirements`; API §12LT; RBAC §2.318 (no new grants).
+- **Dependency:** pob-021 is not built; the owner chose on 2026-11-08 to build with a consent stub (backlog wave P2: "after pob-021 or stubbed").
+- **Calls:**
+  - V1: the requirement's company stays the end client (pob-010 V10). The backlog's `end_client_name`/`id` are dropped: an end client is always a CRM company.
+  - V2: `jobs.via_vendor_id`: a vendor-type company in the caller's company scope; not suspended, not archived, not the end client (422).
+  - V3: `jobs.end_client_disclosure` is `external` (default) or `internal`. With `internal`, public visitors and students see "Confidential client" (public jobs, the student job board, the student's applications and interviews). Staff see the name.
+  - V4: a share's `recipient` is `client` (default) or `vendor`. A vendor share goes to the requirement's vendor and its contacts; there is no Portal (422) and no vendor on the requirement means 422.
+  - V5: a vendor share needs the vendor `active`, a current vendor agreement (Signed/Active, expiry read here) and an `nda` document; otherwise 409.
+  - V6: vendors get anonymised profiles by default: code only, no name, current company or resume link. Full details add name, email, mobile and resume link.
+  - V7: full details need the consent stub (`consent_confirmed` plus `consent_reference` ≤ 300, confirmed by the sharer); otherwise 409. pob-021 replaces the stub.
+  - V8: the repeat warning also covers another requirement of the same end client when either share went through a vendor. Direct-to-direct shares across requirements stay unwarned.
+  - V9: a vendor share does not move the end client's BD pipeline; the vendor's contact status and last contact move.
+  - V10-V12: the output gains `via_vendor`, `end_client_disclosure`, a share's `recipient`/`detail`/`consent_reference`. The audit carries recipient and detail, never the consent text. No new grants.
+- **Not built:** per-candidate consent records, SUB- codes, statuses, the SLA and the redacted resume (pob-021); vendor payables and performance (pob-012); anonymised shares to clients.
+### DEC-SCOPE-428 — Source attribution, verification and outreach permission (pob-018)
 - **Date:** 2026-11-08. **Status:** built; A1-A12 are the builder's calls (`NEEDS_CONFIRMATION`). **Evidence:** backlog pob-018 (§8.1, §17).
-- **Spec:** `docs/superpowers/specs/2026-11-08-pob-018-source-attribution-outreach-design.md`. Migration `0308_candidate_sourcing`; API §12LT; RBAC §2.318.
+- **Spec:** `docs/superpowers/specs/2026-11-08-pob-018-source-attribution-outreach-design.md`. Migration `0309_candidate_sourcing`; API §12LU; RBAC §2.319.
 - **Calls:**
   - A1: catalogue adds Vendor, Website (the hrc-023 name, so "Website registration" stays one entry), Community, Institution.
   - A2: `source_date` required, default today (IST), never future; existing candidates backfilled to their `created_at` date (IST).

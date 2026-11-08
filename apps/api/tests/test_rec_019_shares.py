@@ -53,7 +53,7 @@ async def _employer(db, company_id) -> User:
 
 
 def permitted(user) -> dict:
-    """pob-018 (DEC-SCOPE-427 AC3): a staff-added candidate is shared only with a recorded permission to be represented."""
+    """pob-018 (DEC-SCOPE-428 AC3): a staff-added candidate is shared only with a recorded permission to be represented."""
     return {"outreach_status": "consented", "outreach_permission_method": "email", "outreach_permission_on": datetime(2026, 1, 5).date(),
             "outreach_permission_by_user_id": user.id}  # fmt: skip
 
