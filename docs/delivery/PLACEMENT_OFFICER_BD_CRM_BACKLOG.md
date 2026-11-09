@@ -965,6 +965,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** low.
 
 #### pob-030: Data controls (resume-share gate, communication audit, sync alerts)
+- **Status:** built (`DEC-SCOPE-440`, 2026-11-09; no migration, API §12MG, RBAC §2.330); G1-G8 are the builder's calls (`NEEDS_CONFIRMATION`). The design is in `docs/superpowers/specs/2026-11-09-pob-030-share-gate-design.md`.
 - **Business requirement:** §17 bullets 6–9; §18 AC "Permissions prevent unauthorised users from accessing candidate data, resumes or commercial information" and "Audit history shows who changed key records and when".
 - **Existing behavior:**
   - The audit log covers most writes, with field names only.

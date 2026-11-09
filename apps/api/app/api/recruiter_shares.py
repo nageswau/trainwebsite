@@ -17,7 +17,7 @@ from app.core.database import get_db
 from app.models import AuditLog, ProfileShare, ProfileShareItem, User
 from app.notifications.dispatch import enqueue_recruiter_email
 from app.schemas import RecShareCreate, RecShareItemUpdate
-from app.services import applications, candidates
+from app.services import applications, candidates, share_gate
 from app.services import profile_sharing as svc
 from app.services import recruiter_companies as companies
 from app.services import recruiter_requirements as requirements
@@ -73,10 +73,10 @@ async def update_share_item(share_id: UUID, item_id: UUID, payload: RecShareItem
 
 @public_router.get("/shared-resume/{token}")
 async def shared_resume(token: str, db: AsyncSession = Depends(get_db)):
-    """S7: no session; the audit row is committed before any byte leaves."""
+    """S7: no session; the audit row is committed before any byte leaves. pob-030 G4: a candidate no longer shareable is the same 404."""
     found = await svc.item_by_token(db, token, await db_now(db))
     data = None
-    if found:
+    if found and await share_gate.deliverable(db, found[1]):
         item, candidate, resume = found
         try:
             data = candidates.read_file(resume)

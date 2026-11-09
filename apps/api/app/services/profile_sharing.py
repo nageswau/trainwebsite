@@ -29,9 +29,7 @@ from app.models import (
     CandidateSkill,
     Company,
     CompanyContact,
-    CompanyDocument,
     EmployerProfile,
-    InstitutionDataPermission,
     Job,
     JobApplication,
     ProfileShare,
@@ -43,8 +41,7 @@ from app.models import (
 )
 from app.notifications.phone import wa_number
 from app.schemas import RecShareCreate, RecShareItemUpdate
-from app.services import applications, candidate_sourcing, candidates, company_pipeline, contact_status, mailer, matching, recruiter_companies
-from app.services import recruiter_contracts as contracts
+from app.services import applications, candidates, company_pipeline, contact_status, mailer, matching, recruiter_companies, share_gate
 from app.services import recruiter_messages as messages
 from app.services import recruiter_requirements as requirements
 
@@ -62,21 +59,12 @@ RESPONSE_LABELS = {"pending": "Pending", "interested": "Interested", "not_intere
 CONTACT_REQUIRED = "Choose the company contact to send the profiles to"
 CONTACT_UNUSABLE = "Choose an active contact of this requirement's company"
 NO_PORTAL_USERS = "This company has no employer portal account yet. Share by email, WhatsApp or Other"
-NOT_IN_POOL = "Choose active candidates from the pool"
-NO_PERMISSION = "Record each candidate's permission to be represented (Source and outreach) before sharing"
 LINK_GONE = "This link has expired or is no longer available"
 ITEM_NOT_FOUND = "Shared profile not found"
 # pob-011 (DEC-SCOPE-427 V4-V8): shares to the requirement's vendor
 VENDOR_CONTACT_UNUSABLE = "Choose an active contact of this requirement's vendor"
-NO_VENDOR = "This requirement did not come through a vendor"
-VENDOR_NO_PORTAL = "A vendor has no employer portal. Share by email, WhatsApp or Other"
-VENDOR_NOT_ACTIVE = "Profiles can be shared with this vendor only while it is active"
-VENDOR_NO_AGREEMENT = "The vendor agreement must be signed or active before sharing profiles with this vendor"
-VENDOR_NO_NDA = "Upload the vendor's signed NDA before sharing profiles with it"
 DETAIL_LABELS = {"named": "Named", "anonymised": "Anonymised", "full": "Full details"}
 # pob-021 (DEC-SCOPE-430 B3-B14): the submission record
-CONSENT_MISSING = "Confirm the candidates' consent to this submission and say how and when they gave it"
-INTEREST_MISSING = "Confirm the candidates' interest in and availability for this requirement before submitting them"
 NO_LOCATION = "Record the candidate's current location before submitting"
 NOT_ELIGIBLE = "Not eligible for this requirement (its hard filters)"
 SUBMISSION_CLOSED_MSG = "This submission is closed (rejected, selected or withdrawn)"
@@ -256,47 +244,12 @@ async def _check_channel(db: AsyncSession, job: Job, channel: str, contact: Comp
         raise HTTPException(409, NO_PORTAL_USERS)
 
 
-def _names(people) -> str:
-    return ", ".join(f"{c.name} ({c.candidate_code})" for c in people)
-
-
-async def _candidates(db: AsyncSession, ids: list[UUID], user: User) -> list[Candidate]:
-    """Pool members only (a student who has not opted in is not one, S4), read-locked, in the order chosen. pob-014 (DEC-SCOPE-425 S9):
-    an institution's student only while the sharer is on its active permission, and only when that permission allows placement."""
-    rows = (await db.scalars(select(Candidate).where(Candidate.id.in_(ids), *candidates.pool_filter(user.id)).with_for_update(read=True))).all()
-    found = {c.id: c for c in rows}
-    archived = [c for c in rows if c.archived_at is not None]
-    if len(found) != len(ids) or archived:
-        raise HTTPException(422, f"{NOT_IN_POOL}{f': {_names(archived)} is archived' if archived else ''}")
-    permission_ids = {c.institution_permission_id for c in rows} - {None}
-    if permission_ids:
-        # FOR SHARE: a concurrent revoke or purpose change waits for this share's commit
-        permissions = (await db.scalars(select(InstitutionDataPermission).where(InstitutionDataPermission.id.in_(permission_ids)).with_for_update(read=True))).all()
-        allowed = {p.id for p in permissions if "placement" in p.purposes}
-        barred = [c for c in rows if c.institution_permission_id is not None and c.institution_permission_id not in allowed]
-        if barred:
-            raise HTTPException(422, f"Their institution's permission does not cover the placement purpose: {_names(barred)}")
-    # pob-018 (DEC-SCOPE-428 A7, AC3): under the same FOR SHARE lock, so a concurrent withdrawal waits for this share's commit
-    unpermitted = [found[i] for i in ids if not candidate_sourcing.permitted(found[i])]
-    if unpermitted:
-        raise HTTPException(422, f"{NO_PERMISSION}: {_names(unpermitted)}")
-    return [found[i] for i in ids]
-
-
-def _check_submission(payload: RecShareCreate) -> None:
-    """pob-021 B3/B4: the candidates' consent (how and when) and their confirmed interest, before anything is read or written."""
-    if not (payload.consent_confirmed and payload.consent_reference):
-        raise HTTPException(409, CONSENT_MISSING)
-    if not payload.interest_confirmed:
-        raise HTTPException(409, INTEREST_MISSING)
-
-
 async def _matches(db: AsyncSession, job: Job, people: list[Candidate], today) -> dict[UUID, dict]:
     """pob-021 B5/B6/B14: 422 for a missing location or a failed hard filter (naming each candidate); else each one's match block. The
     candidate audience of hrc-018 keeps salary wording out of what a client sees."""
     no_location = [c for c in people if not (c.location or "").strip()]
     if no_location:
-        raise HTTPException(422, f"{NO_LOCATION}: {_names(no_location)}")
+        raise HTTPException(422, f"{NO_LOCATION}: {share_gate.names(no_location)}")
     spec = await matching.spec(db, job)
     facts = await matching.facts(db, people, spec)
     gaps = {c.id: matching.hard_filter_gaps(spec, facts[c.id]) for c in people}
@@ -309,26 +262,6 @@ async def _matches(db: AsyncSession, job: Job, people: list[Candidate], today) -
         explanation = [{"label": e["label"], "text": e["text"], "matched": e["matched"]} for e in result["explanation"] if e["text"]]
         out[c.id] = {"score": result["score"], **result["skills"], "explanation": explanation}
     return out
-
-
-async def _vendor(db: AsyncSession, job: Job, payload: RecShareCreate) -> Company | None:
-    """pob-011 V4-V7: the vendor a vendor share goes to, after its gate (read-locked so a concurrent suspension waits); None for a client
-    share. Every refusal happens before anything is written."""
-    if payload.recipient == "client":
-        return None
-    if job.via_vendor_id is None:
-        raise HTTPException(422, NO_VENDOR)
-    if payload.channel == "portal":
-        raise HTTPException(422, VENDOR_NO_PORTAL)
-    vendor = await db.scalar(select(Company).where(Company.id == job.via_vendor_id).with_for_update(read=True))
-    if vendor.vendor_status != "active":
-        raise HTTPException(409, VENDOR_NOT_ACTIVE)
-    agreement = await contracts.company_contract_ref(db, vendor, "vendor")
-    if agreement is None or agreement["status"] not in ("signed", "active"):
-        raise HTTPException(409, VENDOR_NO_AGREEMENT)
-    if await db.scalar(select(CompanyDocument.id).where(CompanyDocument.company_id == vendor.id, CompanyDocument.kind == "nda").limit(1)) is None:
-        raise HTTPException(409, VENDOR_NO_NDA)
-    return vendor  # full details need consent, which every submission now needs (pob-021 B3, checked next)
 
 
 async def _repeats(db: AsyncSession, job: Job, people: list[Candidate]) -> tuple[list[Candidate], bool]:
@@ -352,23 +285,18 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
     it after the commit (rec-026 MS7)."""
     job = await requirements.load_scoped(db, user, payload.requirement_id, lock=True)  # serialises shares of one requirement (S5)
     applications.require_writer(user, job.id, "create_profile_share")
-    if job.status in requirements.ENDED:
-        raise HTTPException(409, "Profiles cannot be shared for a closed or cancelled requirement")
-    vendor = await _vendor(db, job, payload)
-    _check_submission(payload)
-    if payload.include_compensation and not await candidates.sees_compensation(db, user):
-        raise HTTPException(403, candidates.NO_COMPENSATION)  # pob-021 B9
+    vendor = await share_gate.request(db, user, job, payload)  # pob-030: purpose, vendor NDA, consent, compensation grant
     detail = payload.detail or ("anonymised" if vendor else "named")
     contact = await _contact(db, vendor.id if vendor else job.company_id, payload)
     await _check_channel(db, job, payload.channel, contact)
-    people = await _candidates(db, payload.candidate_ids, user)
+    people = await share_gate.people(db, payload.candidate_ids, user)  # pob-030: each candidate's permissions
     blocks = await _matches(db, job, people, now.astimezone(IST).date())
     existing = {
         a.candidate_id: a for a in (await db.scalars(select(JobApplication).where(JobApplication.job_id == job.id, JobApplication.candidate_id.in_(payload.candidate_ids)).with_for_update())).all()
     }
     closed = [c for c in people if c.id in existing and existing[c.id].status in REFUSED]
     if closed:
-        raise HTTPException(422, f"Rejected, withdrawn or joined candidates cannot be shared for this requirement: {_names(closed)}")
+        raise HTTPException(422, f"Rejected, withdrawn or joined candidates cannot be shared for this requirement: {share_gate.names(closed)}")
     repeats, across = await _repeats(db, job, people)
     if repeats and not payload.repeat:
         where = "for this requirement or to the same client on another requirement or route" if across else "for this requirement"  # B7
@@ -576,11 +504,14 @@ async def portal_page(db: AsyncSession, company_id: UUID, limit: int, offset: in
     total = await db.scalar(select(func.count()).select_from(_portal(company_id).subquery()))
     rows = (await db.execute(_portal(company_id).order_by(ProfileShare.created_at.desc(), ProfileShareItem.id).limit(limit).offset(offset))).all()
     skills = await skill_names(db, [candidate.id for _, _, candidate, _ in rows]) if rows else {}
-    return {"items": [portal_out(item, share, candidate, job, skills[candidate.id]) for item, share, candidate, job in rows], "total": total or 0, "limit": limit, "offset": offset}
+    shareable = await share_gate.deliverable_ids(db, [candidate for _, _, candidate, _ in rows])
+    items = [portal_out(item, share, candidate, job, skills[candidate.id], candidate.id in shareable) for item, share, candidate, job in rows]
+    return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
 
 
-def portal_out(item: ProfileShareItem, share: ProfileShare, candidate: Candidate, job: Job, skills: list[str]) -> dict:
-    """pob-021: the submission as the client sees it -- named or anonymised (B8), its match block (B14) and, when sent, the salary (B9)."""
+def portal_out(item: ProfileShareItem, share: ProfileShare, candidate: Candidate, job: Job, skills: list[str], shareable: bool) -> dict:
+    """pob-021: the submission as the client sees it -- named or anonymised (B8), its match block (B14) and, when sent, the salary (B9).
+    pob-030 G4: `shareable` (share_gate) decides whether the resume can still be downloaded."""
     return {
         "id": item.id,
         "submission_code": item.submission_code,
@@ -588,7 +519,7 @@ def portal_out(item: ProfileShareItem, share: ProfileShare, candidate: Candidate
         "requirement": {"code": job.requirement_code, "title": job.title},
         "candidate": recipient_summary(candidate, skills, share.detail, salary=share.compensation_included),
         "match": item.match,
-        "has_resume": item.resume_id is not None,
+        "has_resume": item.resume_id is not None and shareable,
         "response": item.response,
         "response_label": RESPONSE_LABELS[item.response],
         "status": item.status,

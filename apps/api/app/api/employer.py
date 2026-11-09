@@ -24,7 +24,7 @@ from app.schemas import (
     UserOut,
 )
 from app.services import application_review as review
-from app.services import applications, candidates, interviews, matching, placement_pool
+from app.services import applications, candidates, interviews, matching, placement_pool, share_gate
 from app.services import profile_sharing as sharing
 from app.services import recruiter_requirements as requirements
 from app.services.bdm_appointments import db_now
@@ -308,16 +308,16 @@ async def respond_to_shared_profile(item_id: UUID, payload: EmployerShareRespons
     await db.commit()
     sharing.log("profile_share_employer_response", user, item.id, response=item.response)
     skills = await sharing.skill_names(db, [candidate.id])
-    return sharing.portal_out(item, share, candidate, job, skills[candidate.id])
+    return sharing.portal_out(item, share, candidate, job, skills[candidate.id], await share_gate.deliverable(db, candidate))
 
 
 @router.get("/shared-profiles/{item_id}/resume")
 async def shared_profile_resume(item_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """rec-019 (S7, S8): the resume version shared, audited before any byte leaves."""
+    """rec-019 (S7, S8): the resume version shared, audited before any byte leaves. pob-030 G4: only while the candidate is shareable."""
     company_id = await sharing.employer_company(db, user)
     item, _share, candidate, _job = await sharing.portal_item(db, company_id, item_id)
     resume = await db.get(CandidateResume, item.resume_id) if item.resume_id else None
-    if resume is None or candidate.archived_at is not None:
+    if resume is None or not await share_gate.deliverable(db, candidate):
         raise HTTPException(404, "Resume not available")
     data = candidates.read_file(resume)
     sharing.download_audit(db, user, item, "portal")
