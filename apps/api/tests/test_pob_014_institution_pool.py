@@ -12,7 +12,7 @@ from sqlalchemy import select, update
 
 from app.models import AuditLog, Candidate, CandidateImportBatch, Company, InstitutionDataPermission, JobApplication, RecCandidateSource
 from app.services import candidates as candidate_svc
-from app.services import profile_sharing
+from app.services import share_gate
 from tests.bdm001_helpers import login, make_manager
 from tests.bdm002_helpers import create_org, make_bdm
 from tests.rec038_helpers import _recruiter, _user, add, make_candidate, make_job
@@ -201,7 +201,7 @@ async def test_ac3_once_the_permission_expires_the_students_are_hidden_and_not_s
     w = await _world(client, db_session)
     permission, [cid] = await _imported(client, db_session, w, _student())
     student = await db_session.get(Candidate, UUID(cid))
-    assert [c.id for c in await profile_sharing._candidates(db_session, [student.id], w["inside"])] == [student.id]
+    assert [c.id for c in await share_gate.people(db_session, [student.id], w["inside"])] == [student.id]
     await _expire(db_session, permission["id"])
     assert (await client.get(f"{CANDIDATES}/{cid}", headers=headers(w["inside"]))).status_code == 404
     pool = (await _pool(client, w, w["inside"])).json()
@@ -209,7 +209,7 @@ async def test_ac3_once_the_permission_expires_the_students_are_hidden_and_not_s
     found = await client.get(CANDIDATES, params={"institution_id": w["oid"]}, headers=headers(w["inside"]))
     assert found.json()["total"] == 0
     with pytest.raises(Exception) as refused:
-        await profile_sharing._candidates(db_session, [student.id], w["inside"])
+        await share_gate.people(db_session, [student.id], w["inside"])
     assert getattr(refused.value, "status_code", None) == 422
 
 
@@ -219,7 +219,7 @@ async def test_sharing_needs_the_placement_purpose(client, db_session):
     permission = await _permit(client, w, w["inside"], purposes=["training"])
     _, [cid] = await _imported(client, db_session, w, _student(), permission=permission)
     with pytest.raises(Exception) as refused:
-        await profile_sharing._candidates(db_session, [UUID(cid)], w["inside"])
+        await share_gate.people(db_session, [UUID(cid)], w["inside"])
     assert refused.value.status_code == 422 and "purpose" in refused.value.detail
 
 

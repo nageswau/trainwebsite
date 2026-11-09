@@ -4142,3 +4142,14 @@ Out-of-scope placements and filters read as zero, never 403. Audit `placement_ou
 | Export the search | `candidates.export` (hrc-020, unchanged) | | | | |
 
 Bulk actions only touch the caller's pool: a candidate outside it, archived or unknown is skipped as `unavailable` (no probing which). Audit rows carry ids only.
+
+### 2.330 The share gate *(added 2026-11-09 — `DEC-SCOPE-440`, pob-030)*
+
+| Path | Gate | Who |
+|---|---|---|
+| Share to a client, vendor or the employer portal (`POST /recruiter/shares`) | requirement open; vendor active + agreement + NDA; consent reference + interest; compensation grant for salary; each candidate in the sharer's pool, institution permission covering placement, permission to be represented | requirement writers (`applications.WRITERS`, unchanged) |
+| Resume link, employer-portal resume, employer panel member's resume | the candidate still shareable now | the link holder / the company's employer users / the assigned employer member |
+| Internal panel interviewer's resume | unchanged (staff) | the assigned interviewer |
+| Candidate search export; staff resume download/link | `candidates.export` / pool readers, pob-001 salary columns, audited (internal, no consent) | unchanged |
+
+Every outward route is listed in `share_gate.OUTWARD`; a new one fails the pob-030 route-inventory test until it is classified.

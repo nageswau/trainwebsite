@@ -28,7 +28,7 @@ from app.models import (
     User,
 )
 from app.notifications.dispatch import queue_deliveries
-from app.services import applications
+from app.services import applications, share_gate
 from app.services import interviews as svc
 from app.services.profile_sharing import skill_names
 
@@ -157,11 +157,17 @@ def can_feedback(interview: Interview, now: datetime) -> bool:
     return interview.status not in svc.CLOSED and interview.scheduled_at <= now
 
 
-def _resume_open(interview: Interview, assignment: InterviewInterviewer, candidate: Candidate, now: datetime) -> bool:
-    return assignment.resume_id is not None and interview.status != "cancelled" and candidate.archived_at is None and now <= _end(interview) + RESUME_WINDOW
+async def _shareable(db: AsyncSession, rows) -> set[UUID]:
+    """pob-030 G4/G7: the candidates an employer panel member may still receive the resume of (internal members are staff)."""
+    return await share_gate.deliverable_ids(db, [row[2] for row in rows if row[1].kind == "employer"])
 
 
-def _out(now: datetime, skills: dict, i: Interview, a: InterviewInterviewer, c: Candidate, job: Job, company: Company, f: InterviewPanelFeedback | None) -> dict:
+def _resume_open(interview: Interview, assignment: InterviewInterviewer, candidate: Candidate, now: datetime, shareable: set[UUID]) -> bool:
+    return (assignment.resume_id is not None and interview.status != "cancelled" and candidate.archived_at is None and now <= _end(interview) + RESUME_WINDOW
+            and (assignment.kind != "employer" or candidate.id in shareable))  # fmt: skip
+
+
+def _out(now: datetime, skills: dict, shareable: set[UUID], i: Interview, a: InterviewInterviewer, c: Candidate, job: Job, company: Company, f: InterviewPanelFeedback | None) -> dict:
     """V6: what the panel member needs to interview -- no contact detail, salary, other members' or the recruiter's feedback."""
     status = svc.unreleased_status(i.status)
     cancelled = i.status == "cancelled"
@@ -174,14 +180,15 @@ def _out(now: datetime, skills: dict, i: Interview, a: InterviewInterviewer, c: 
         "candidate": {"code": c.candidate_code, "name": c.name, "location": c.location, "qualification": c.qualification,
                       "experience_months": c.experience_months, "current_company": c.current_company, "skills": skills.get(c.id, [])},
         "requirement": {"code": job.requirement_code, "title": job.title}, "company": {"name": company.name},
-        "has_resume": _resume_open(i, a, c, now), "feedback": svc.panel_feedback_out(f), "can_feedback": open_feedback,
+        "has_resume": _resume_open(i, a, c, now, shareable), "feedback": svc.panel_feedback_out(f), "can_feedback": open_feedback,
         "feedback_overdue": open_feedback and f is None and _end(i) + OVERDUE_AFTER < now,
     }  # fmt: skip
 
 
 async def _items(db: AsyncSession, now: datetime, rows) -> list[dict]:
     skills = await skill_names(db, list({row[2].id for row in rows})) if rows else {}
-    return [_out(now, skills, *row) for row in rows]
+    shareable = await _shareable(db, rows)
+    return [_out(now, skills, shareable, *row) for row in rows]
 
 
 def views(now: datetime) -> dict:
@@ -217,8 +224,9 @@ async def one(db: AsyncSession, user: User, interview_id: UUID, now: datetime) -
 
 async def resume(db: AsyncSession, user: User, interview_id: UUID, now: datetime) -> tuple[CandidateResume, Candidate]:
     """V4/V5: the version shared with this member, inside the window; audited before any byte leaves (the route commits)."""
-    interview, assignment, candidate, *_ = await _row(db, user, interview_id)
-    if not _resume_open(interview, assignment, candidate, now):
+    row = await _row(db, user, interview_id)
+    interview, assignment, candidate, *_ = row
+    if not _resume_open(interview, assignment, candidate, now, await _shareable(db, [row])):
         raise HTTPException(404, NO_RESUME)
     item = await db.get(CandidateResume, assignment.resume_id)
     db.add(AuditLog(user_id=user.id, action="interviewer.resume_download", entity_type="interview", entity_id=str(interview.id),
