@@ -64,6 +64,6 @@ async def queue(db: AsyncSession, appt: Appointment, change: Change) -> None:
         recipient = await db.get(User, user_id)
         if recipient is None or not recipient.active:
             continue
-        note = Notification(user_id=recipient.id, title=TITLES[change], body=body, read=False, action_url=URLS.get(recipient.role))
+        note = Notification(user_id=recipient.id, title=TITLES[change], body=body, read=False, action_url=URLS["overseas_student"] if recipient.id == appt.student_id else URLS.get(recipient.role))  # ENH-033: not the active portal
         db.add(note)
         await queue_deliveries(db, note, recipient, channels=["email"], context={"kind": KIND, "ics": text, "method": method})

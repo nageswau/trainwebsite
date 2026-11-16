@@ -20,8 +20,11 @@ Two kinds of question exist in the code, and they get different answers:
 
 New helpers in `app/services/student_divisions.py`:
 - `STUDENT_ROLE = {"it": "it_student", "overseas": "overseas_student"}`
-- `student_of(division)` → SQL expression: `User.id.in_(select(URA.user_id).where(URA.division == d, URA.role == STUDENT_ROLE[d], URA.is_active))` for set queries.
-- `async is_student_of(db, user_id, division) -> bool` for subject checks.
+- `student_of(division)` → SQL expression: `(User.role == STUDENT_ROLE[d] AND User.division == d) OR User.id IN (active URA rows for d)`
+  for set queries. The legacy half is required: `_sync_role_assignment` only writes a row at login, so a student created by
+  another path who has never signed in (and most test fixtures) has no assignment row. A dual student's active pair is always
+  one of their own assignments, so the OR never admits anyone who is not a student of `d`.
+- `async is_student_of(db, user, division) -> bool` for subject checks (same rule; short-circuits on the legacy columns).
 - `async held_student_divisions(db, user_id) -> list[str]`.
 
 ## 2. Staff action: add a division (D1, D2, D4, D5, D6)

@@ -95,6 +95,7 @@ from app.services.application_offers import document_view as offer_document_view
 from app.services.bdm_appointments import today_ist
 from app.services.offers import status_label as offer_status_label
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
+from app.services.student_divisions import STUDENT_ROLE, student_of
 from app.visa_status import label as visa_status_label
 
 logger = logging.getLogger("app.portal")
@@ -311,7 +312,7 @@ async def _it_student(db: AsyncSession, user: User, section: str):
         # itc-021 (DEC-SCOPE-349 L7): the shared attended/counted definitions, so the dashboard % follows the leave policy.
         total = await _safe(db, lambda: db.scalar(select(func.count().filter(progress.counted())).where(Attendance.student_id == user.id)), None)
         present = await _safe(db, lambda: db.scalar(select(func.count().filter(progress.attended())).where(Attendance.student_id == user.id)), None)
-        due = await _safe(db, lambda: db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.user_id == user.id, Payment.status.in_(["pending", "overdue"]))), None)
+        due = await _safe(db, lambda: db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.user_id == user.id, Payment.division == "it", Payment.status.in_(["pending", "overdue"]))), None)
         applied_jobs = await _safe(db, lambda: db.scalar(select(func.count()).select_from(JobApplication).where(JobApplication.student_id == user.id)), None)
         counselor = (await it_student_counselors.counselors_of(db, [user.id])).get(user.id)  # itc-003: the student's own link only
         upcoming_assignments: list[Assignment] = []
@@ -1755,7 +1756,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             # section's own convention below, and (RAID.md I-06) the shared dev DB has
             # accumulated thousands of synthetic `it_student` rows over the session, so
             # an alphabetical cap would near-never surface a freshly created student.
-            students = (await db.scalars(select(User).where(User.role == "it_student", User.division == "it").order_by(User.created_at.desc()).limit(500))).all()
+            students = (await db.scalars(select(User).where(student_of("it")).order_by(User.created_at.desc()).limit(500))).all()
             consents = {}
             if agreement:
                 rows = (await db.scalars(select(ConsentRecord).where(ConsentRecord.agreement_id == agreement.id, ConsentRecord.user_id.in_([s.id for s in students])))).all()
@@ -1807,13 +1808,21 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
         role_map = {"users": None, "students": "it_student" if division == "it" else "overseas_student", "trainers": "trainer", "counselors": "counselor"}
         if section in role_map:
             stmt = select(User)
-            stmt = stmt.where(User.division == division) if division else stmt
-            if role_map[section]:
-                stmt = stmt.where(User.role == role_map[section])
+            if section == "students" and division in STUDENT_ROLE:  # ENH-033: a dual student is listed in both divisions
+                stmt = stmt.where(student_of(division))
+            else:
+                in_division = (User.division == division) | student_of(division) if division in STUDENT_ROLE else User.division == division
+                stmt = stmt.where(in_division) if division else stmt
+                if role_map[section]:
+                    stmt = stmt.where(User.role == role_map[section])
             rows = (await db.scalars(stmt.order_by(User.created_at.desc()).limit(500))).all()
+            # ENH-033: shown with this division's student role, so the csc-005 controls below apply whatever portal they are in.
+            members: set = set()
+            if division in STUDENT_ROLE and rows:
+                members = set((await db.scalars(select(User.id).where(User.id.in_([u.id for u in rows]), student_of(division)))).all())
             setup = await provisioning_statuses(db, [u.id for u in rows])  # absent = has set a password
             columns = [("id", "reference"), ("name", "Name"), ("email", "Email"), ("role", "Role"), ("active", "Active"), ("setup", "Setup")]
-            table = [{"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "active": u.active, "setup": _SETUP_LABEL[setup.get(u.id, "active")]} for u in rows]
+            table = [{"id": u.id, "name": u.full_name, "email": u.email, "role": STUDENT_ROLE[division] if u.id in members else u.role, "active": u.active, "setup": _SETUP_LABEL[setup.get(u.id, "active")]} for u in rows]
             if section == "users" and division == "overseas" and user.role == "overseas_admin":
                 # csc-005 (DEC-SCOPE-230): each overseas student's counselor (csc-001 link) and AGN-023's assign/change control, Overseas
                 # Admin only. Here and not on Students, which lists applications (AGN-023 H11): a walk-in with none would be missing there.

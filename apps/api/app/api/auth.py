@@ -3,12 +3,13 @@ import logging
 import math
 import secrets
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 from urllib.parse import urlsplit
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,6 +29,7 @@ from app.services.agent_orgs import ensure_agent_org
 from app.services.integrations import send_notification
 from app.services.mailer import send_password_reset_email
 from app.services.provisioning import ADMIN_PORTAL_ROLES, portal_password_url
+from app.services.student_divisions import DIVISION_LABEL, DIVISION_OF, STUDENT_ROLE, is_student_of
 from app.services.telecaller import parse_self_update
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -97,6 +99,21 @@ async def _sync_role_assignment(db: AsyncSession, user: User, assigned_by_user_i
     return assignment
 
 
+async def _held_student_division(db: AsyncSession, user: User, division: str) -> bool:
+    """ENH-033: `user` is a student whose active portal is another division and who also belongs to `division`."""
+    return user.role in DIVISION_OF and division in STUDENT_ROLE and await is_student_of(db, user, division)
+
+
+async def _switch_student_portal(db: AsyncSession, user: User, division: str) -> None:
+    """ENH-033 (DEC-SCOPE-441 D3/D8): move the active portal. The current pair keeps (or first gets) its assignment row so the student can
+    switch back; role and division always change together -- a mixed pair would pass role-only caller gates in the wrong division."""
+    await _sync_role_assignment(db, user)
+    previous = user.division
+    user.role, user.division = STUDENT_ROLE[division], division
+    db.add(AuditLog(user_id=user.id, action="auth.switch_portal", entity_type="user", entity_id=str(user.id), metadata_json={"from": previous, "to": division}))
+    await db.flush()
+
+
 def _set_auth_cookies(response: Response, user: User):
     access = create_token(str(user.id), user.role, user.division, "access", user.session_version)
     refresh = create_token(str(user.id), user.role, user.division, "refresh", user.session_version)
@@ -110,6 +127,8 @@ async def login(payload: LoginRequest, response: Response, db: AsyncSession = De
     user = await db.scalar(select(User).where(User.email == payload.email.lower(), User.active.is_(True)))
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(401, "Invalid credentials")
+    if payload.division != user.division and await _held_student_division(db, user, payload.division):
+        await _switch_student_portal(db, user, payload.division)  # ENH-033 D8: a dual student's login page decides the portal
     if user.role != "super_admin" and payload.division != user.division:
         # bdm-001 QA-07: BDMs are split across portals by module, so name the right one. Only reached after the password matched.
         raise HTTPException(403, f"Use the correct EduSphere portal for this account: sign in at {PORTAL_SIGN_IN.get(user.division, '/')}")
@@ -288,6 +307,26 @@ async def _register(fields: dict, files: dict, response: Response, db: AsyncSess
     assert loaded is not None
     _set_auth_cookies(response, loaded)
     return {"user": UserOut.model_validate(loaded), "expires_in_minutes": settings.access_token_minutes}
+
+
+class SwitchPortalRequest(BaseModel):
+    division: Literal["it", "overseas"]
+
+
+@router.post("/switch-portal", response_model=LoginResponse)
+async def switch_portal(payload: SwitchPortalRequest, response: Response, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-033 (DEC-SCOPE-441 D3): a dual student moves between the IT and Overseas student portals without signing in again. Every
+    request reloads the user, so other tabs follow; the cookies are re-issued so their claims match."""
+    if payload.division != user.division:
+        if not await _held_student_division(db, user, payload.division):
+            raise HTTPException(403, f"You are not enrolled in {DIVISION_LABEL[payload.division]}")
+        await _switch_student_portal(db, user, payload.division)
+        await db.commit()
+    elif user.role not in DIVISION_OF:
+        raise HTTPException(403, f"You are not enrolled in {DIVISION_LABEL[payload.division]}")
+    _set_auth_cookies(response, user)
+    user = await db.scalar(select(User).where(User.id == user.id).options(selectinload(User.role_assignments)).execution_options(populate_existing=True))
+    return LoginResponse(user=UserOut.model_validate(user), expires_in_minutes=settings.access_token_minutes)
 
 
 @router.post("/refresh", response_model=LoginResponse)

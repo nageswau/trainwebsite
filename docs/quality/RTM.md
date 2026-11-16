@@ -1916,3 +1916,9 @@ half.
 | `pob-028-W` | BD pipeline, follow-ups, candidate queues, TPO, replacement guarantee and invoicing figures | `::test_bd_pipeline_groups_the_stages_and_leaves_out_lost_inactive_and_vendors`, `::test_follow_ups_split_due_today_and_overdue`, `::test_candidate_action_queues`, `::test_tpo_counts_vacancies_shared_with_institutions`, `::test_invoicing_counts_overdue_and_collected`, `::test_guarantee_counts_expiring_and_owed_replacements` | Built |
 | `pob-028-SEC` | Revenue widget behind pob-001; a PO reads only their own companies | `::test_the_invoicing_section_is_for_the_revenue_gate_only`, `::test_a_po_reads_only_their_own_companies`, `::test_the_employer_filter_lists_the_pos_prospects` | Built |
 | `pob-028-PERF` | Fixed query count | `::test_the_po_board_query_count_does_not_grow_with_the_data` | Built |
+
+**Addendum, 2026-11-13 (`ENH-033`)** — dual enrolment, IT ⇄ Overseas on one login.
+
+| ID | Trace | Audit | Status |
+|---|---|---|---|
+| `ENH-033` | Requirement: owner's request and answers D1–D9 (in-session 2026-11-13, `EXPLICIT_APPROVAL`) → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-441` (extends `DEC-ROLE-001`) → design `docs/superpowers/specs/2026-11-13-enh-033-dual-enrolment-design.md` → `ENHANCEMENT_BACKLOG.md` ENH-033 (AC1–AC8); `API_CONTRACT.md` §12MH; `RBAC_MATRIX.md` §2.331 | **Not audited** (an enhancement) | **Built on `feature/enh-033`.** Code: `app/services/student_divisions.py`, `app/services/dual_enrolment.py`, `app/api/dual_enrolment.py`, `app/api/auth.py` (login, switch-portal), subject/set sites per the spec §5; web `PortalSwitcher.tsx`, `DualEnrolmentForm.tsx`, three Enrol Existing pages. No migration. Tests: `apps/api/tests/test_enh_033_dual_enrolment.py`, `apps/web/tests/lib/dualEnrolment.test.ts`. |

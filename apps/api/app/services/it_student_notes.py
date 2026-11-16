@@ -20,6 +20,7 @@ from app.notifications.events import notify
 from app.services import hr_students
 from app.services.audit_changes import audit_change
 from app.services.permissions import user_has_grant
+from app.services.student_divisions import student_of
 
 STAFF_ONLY = "Only the student's IT counselor, trainer, HR or the IT Admin can see these notes"
 STUDENTS_ONLY = "Only an IT student has updates"
@@ -49,7 +50,7 @@ async def _scope(db: AsyncSession, user: User):
 
 
 async def staff_student(db: AsyncSession, user: User, student_id: UUID) -> User:
-    student = await db.scalar(select(User).where(User.id == student_id, User.role == "it_student", User.division == "it", await _scope(db, user)))
+    student = await db.scalar(select(User).where(User.id == student_id, student_of("it"), await _scope(db, user)))
     if student is None:
         raise HTTPException(404, STUDENT_NOT_FOUND)
     return student

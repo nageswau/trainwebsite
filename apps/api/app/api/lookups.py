@@ -25,6 +25,8 @@ from app.services import student_archive
 from app.services.agent_orgs import org_member_ids
 from app.services.agent_students import application_scope, visible_student_user_ids
 from app.services.counselor_students import visible_student_ids
+from app.services.dual_enrolment import counselor_picker_allowed
+from app.services.student_divisions import student_of
 
 logger = logging.getLogger("app.lookups")
 router = APIRouter(prefix="/lookups", tags=["lookups"])
@@ -114,7 +116,7 @@ async def overseas_students(
     """Admin: every overseas student. Counselor: students of their own applications. Agent: students linked to their agency.
     `purpose=link` (agent only, D2 as revised 2026-09-30): search-only (q >= 3 chars), at most 10, masked email, own agency's
     links left out; the email must be typed in full, names match from the start of a word, 30 searches a minute per agent."""
-    stmt = select(User).where(User.role == "overseas_student")
+    stmt = select(User).where(student_of("overseas"))  # ENH-033: a dual student is found whatever portal they are in
     pattern = _pattern(q)
     if purpose == "link":
         if user.role != "agent":
@@ -168,7 +170,8 @@ async def overseas_counselors(
 ):
     """AGN-023 follow-up: the Overseas Admin's Assign counsellor picker -- active overseas counselors by name (name + id only).
     Replaces the picker's read of /admin/users, whose 500-row cap hid older counselors."""
-    _allow(user, {"overseas_admin"}, "overseas")
+    if not counselor_picker_allowed(user, "overseas"):  # ENH-033 D2: the dual-enrolment form's picker
+        _allow(user, {"overseas_admin"}, "overseas")
     stmt = select(User).where(User.role == "counselor", User.division == "overseas", User.active.is_(True))
     pattern = _pattern(q)
     if pattern:
@@ -185,8 +188,8 @@ async def it_counselors(
     db: AsyncSession = Depends(get_db),
 ):
     """itc-003 (DEC-SCOPE-337): the IT Admin's Assign counsellor picker for an IT student -- active IT counselors by name (name + id)."""
-    if user.role != "it_admin" or user.division != "it":  # the reassignment is the IT Admin's only (not super_admin, csc-005 C13)
-        raise HTTPException(403, FORBIDDEN)
+    if (user.role != "it_admin" or user.division != "it") and not counselor_picker_allowed(user, "it"):  # ENH-033 D2: also the dual-enrolment form
+        raise HTTPException(403, FORBIDDEN)  # the reassignment itself stays the IT Admin's only (not super_admin, csc-005 C13)
     stmt = select(User).where(User.role == "counselor", User.division == "it", User.active.is_(True))
     pattern = _pattern(q)
     if pattern:

@@ -4153,3 +4153,14 @@ Bulk actions only touch the caller's pool: a candidate outside it, archived or u
 | Candidate search export; staff resume download/link | `candidates.export` / pool readers, pob-001 salary columns, audited (internal, no consent) | unchanged |
 
 Every outward route is listed in `share_gate.OUTWARD`; a new one fails the pob-030 route-inventory test until it is classified.
+
+### 2.331 Dual enrolment *(added 2026-11-13 — `DEC-SCOPE-441`, ENH-033)*
+
+| Action | Who | Scope |
+|---|---|---|
+| Look up / add Overseas to an existing IT student | Overseas `counselor`, Overseas `telecaller` | active IT students; the chosen counselor must be an active Overseas counselor |
+| Look up / add IT to an existing Overseas student | IT `counselor`, IT `telecaller` | active Overseas students; the chosen counselor must be an active IT counselor |
+| Switch the active student portal | the student | only to a division they hold an active student assignment in |
+| Everyone else (admins, super_admin, other divisions, students) | — | 403 on the add routes |
+
+Caller gates keep reading `User.role`/`User.division` (the active portal); subject checks and set queries use `student_divisions.student_of` / `is_student_of` (legacy pair OR an active assignment). The IT payment lock (`student_access.require`) applies to an IT student by assignment, from either portal.

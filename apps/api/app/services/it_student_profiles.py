@@ -17,6 +17,7 @@ from app.models import AuditLog, Batch, Enrollment, ItStudentCounselor, ItStuden
 from app.schemas import ItEnrollmentOverridePatch, ItStudentProfilePatch
 from app.services import it_lifecycle
 from app.services.audit_changes import audit_change
+from app.services.student_divisions import student_of
 
 STUDENTS_ONLY = "Only an IT student has this profile"
 STAFF_ONLY = "Only the student's IT counselor or the IT Admin can see this profile"
@@ -40,7 +41,7 @@ async def staff_student(db: AsyncSession, user: User, student_id: UUID, *, porta
     admin = portal == "admin"
     if (user.role, user.division) != ("it_admin" if admin else "counselor", "it"):
         raise HTTPException(403, STAFF_ONLY)
-    stmt = select(User).where(User.id == student_id, User.role == "it_student")
+    stmt = select(User).where(User.id == student_id, student_of("it"))
     if not admin:
         stmt = stmt.join(ItStudentCounselor, ItStudentCounselor.student_user_id == User.id).where(ItStudentCounselor.counselor_user_id == user.id)
     student = await db.scalar(stmt)

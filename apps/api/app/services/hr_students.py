@@ -8,6 +8,7 @@ from sqlalchemy import Select, or_, select
 from sqlalchemy.orm import aliased
 
 from app.models import PlacementProfile, User
+from app.services.student_divisions import student_of
 
 HR_ROLES = frozenset({"hr_team"})
 ALLOWED_TYPES = frozenset({"resume", "cv", "curriculum vitae", "portfolio", "certificate", "certificates"})
@@ -15,7 +16,7 @@ ALLOWED_TYPES = frozenset({"resume", "cv", "curriculum vitae", "portfolio", "cer
 
 def in_pool(student, profile) -> list:
     """The pool conditions on a student (User or alias) outer-joined to their placement profile (or alias)."""
-    return [student.role == "it_student", student.division == "it", or_(profile.id.is_(None), profile.withdrawn.is_(False))]
+    return [student_of("it", student), or_(profile.id.is_(None), profile.withdrawn.is_(False))]
 
 
 def population() -> Select:

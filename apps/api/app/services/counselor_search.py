@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import AgentStudent, AuditLog, Enquiry, OverseasApplication, University, User
 from app.services import counselor_students, lead_handover
 from app.services.agent_applications import OWNER_NAME, owned, with_owner
+from app.services.student_divisions import student_of
 
 logger = logging.getLogger("app.counselor_search")
 
@@ -94,7 +95,7 @@ async def search(db: AsyncSession, user: User, text: str, pattern: str) -> dict:
     students = (
         await db.scalars(
             select(User)
-            .where(User.role == "overseas_student", User.id.in_(counselor_students.visible_student_ids(user)),
+            .where(student_of("overseas"), User.id.in_(counselor_students.visible_student_ids(user)),
                    _matches(pattern, digits, (User.full_name, User.email, User.student_code), (User.phone,)))
             .order_by(User.full_name, User.id)
             .limit(GROUP_LIMIT + 1)

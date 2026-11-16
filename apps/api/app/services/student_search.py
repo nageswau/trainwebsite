@@ -17,6 +17,7 @@ from app.core.rbac import agent_denial_reason
 from app.models import AgentOrg, AgentOrgMember, AgentStudent, AuditLog, Batch, Enrollment, OverseasApplication, OverseasCourse, Program, School, SchoolStudent, User
 from app.services import counselor_search, counselor_students
 from app.services.agent_students import student_scope, visible_student_user_ids
+from app.services.student_divisions import student_of
 
 KINDS = ("it_student", "overseas_student", "agency_student", "school_student")
 DIVISION_KINDS = {"it": {"it_student"}, "overseas": {"overseas_student", "agency_student"}, "school": {"school_student"}}
@@ -63,7 +64,7 @@ async def _rows(db: AsyncSession, stmt) -> list:
 async def _it_students(db: AsyncSession, user: User, pattern: str, digits: str | None, program: UUID | None) -> list:
     enrolled = select(Enrollment.student_id).join(Batch, Batch.id == Enrollment.batch_id)
     course_match = User.id.in_(enrolled.join(Program, Program.id == Batch.program_id).where(Program.title.ilike(pattern, escape="\\")))
-    stmt = select(User).where(User.role == "it_student", counselor_search._matches(pattern, digits, (User.full_name, User.email, User.student_code), (User.phone,)) | course_match)
+    stmt = select(User).where(student_of("it"), counselor_search._matches(pattern, digits, (User.full_name, User.email, User.student_code), (User.phone,)) | course_match)
     if program:
         stmt = stmt.where(User.id.in_(enrolled.where(Batch.program_id == program)))
     students = [row[0] for row in await _rows(db, stmt.order_by(User.full_name, User.id))]
@@ -83,7 +84,7 @@ async def _it_students(db: AsyncSession, user: User, pattern: str, digits: str |
 
 async def _overseas_students(db: AsyncSession, user: User, pattern: str, digits: str | None) -> list:
     applied = select(OverseasApplication.student_id).join(OverseasCourse, OverseasCourse.id == OverseasApplication.course_id).where(OverseasCourse.title.ilike(pattern, escape="\\"))
-    stmt = select(User).where(User.role == "overseas_student", counselor_search._matches(pattern, digits, (User.full_name, User.email, User.student_code), (User.phone,)) | User.id.in_(applied))
+    stmt = select(User).where(student_of("overseas"), counselor_search._matches(pattern, digits, (User.full_name, User.email, User.student_code), (User.phone,)) | User.id.in_(applied))
     if user.role == "counselor":
         stmt = stmt.where(User.id.in_(counselor_students.visible_student_ids(user)))
     elif user.role == "agent":

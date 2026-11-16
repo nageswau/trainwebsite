@@ -41,7 +41,7 @@ async def test_excludes_inactive_it_and_non_counselor_users(client, db_session):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("role", ["counselor", "agent", "university_rep", "overseas_student"])
+@pytest.mark.parametrize("role", ["agent", "university_rep", "overseas_student"])  # ENH-033 D2: overseas counselors now use the picker
 async def test_other_roles_are_refused(client, db_session, role):
     user = await mk_user(db_session, role=role)
     await login(client, user.email)
@@ -110,3 +110,12 @@ async def test_empty_q_returns_rows_in_alphabetical_order(client, db_session):
     await admin_client(client, db_session)
     items = (await client.get(URL, params={"limit": 50})).json()["items"]
     assert [item["label"] for item in items if tag in item["label"]] == [f"AAA {tag} {s}" for s in "abc"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("role", "division", "status"), [("counselor", "overseas", 200), ("telecaller", "overseas", 200), ("counselor", "it", 403), ("telecaller", "it", 403)])
+async def test_enh_033_the_dual_enrolment_form_picker(client, db_session, role, division, status):
+    """ENH-033 (DEC-SCOPE-441 D2): the Overseas counselors and telecallers pick an Overseas counselor in the Enrol Existing form."""
+    user = await mk_user(db_session, role=role, division=division)
+    await login(client, user.email, division=division)
+    assert (await client.get(URL)).status_code == status

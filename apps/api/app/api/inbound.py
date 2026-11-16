@@ -19,6 +19,7 @@ from app.models import (
 )
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import InboundUniversityEmailIn
+from app.services.student_divisions import student_of
 
 router = APIRouter(prefix="/inbound", tags=["inbound-integrations"])
 
@@ -41,7 +42,7 @@ async def _match_application(db: AsyncSession, payload: InboundUniversityEmailIn
         if item:
             return item, 100, "matched"
     if metadata.get("student_email"):
-        student = await db.scalar(select(User).where(User.email == str(metadata["student_email"]).lower(), User.role == "overseas_student"))
+        student = await db.scalar(select(User).where(User.email == str(metadata["student_email"]).lower(), student_of("overseas")))
         if student:
             applications = (await db.scalars(select(OverseasApplication).where(OverseasApplication.student_id == student.id).order_by(OverseasApplication.updated_at.desc()).limit(2))).all()
             if len(applications) == 1:
@@ -55,7 +56,7 @@ async def _match_application(db: AsyncSession, payload: InboundUniversityEmailIn
         return matches[0], 95, "matched"
     if len(matches) > 1:
         return None, 0, "ambiguous"
-    students = (await db.scalars(select(User).where(User.role == "overseas_student", User.division == "overseas", User.active.is_(True)).limit(5000))).all()
+    students = (await db.scalars(select(User).where(student_of("overseas"), User.active.is_(True)).limit(5000))).all()
     name_matches = [student for student in students if len(student.full_name) >= 5 and student.full_name.lower() in haystack]
     if len(name_matches) == 1:
         applications = (await db.scalars(select(OverseasApplication).where(OverseasApplication.student_id == name_matches[0].id).order_by(OverseasApplication.updated_at.desc()).limit(2))).all()

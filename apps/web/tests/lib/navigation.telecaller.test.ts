@@ -11,7 +11,7 @@ describe("tel-001 navigation", () => {
   it("has a telecaller nav, a manager nav and the sign-in chooser path", () => {
     // tel-008 adds My Leads after Dashboard, and the manager's Leads after Team; tel-011 Follow-ups after them.
     // tel-020 adds Notifications before Profile.
-    expect(TELECALLER_NAV.map((x) => x.href)).toEqual(["/telecaller/dashboard", "/telecaller/leads", "/telecaller/follow-ups", "/telecaller/meeting-requests", "/telecaller/notifications", "/telecaller/profile", "/account/management-tasks"]); // mgmt-028 (MT14)
+    expect(TELECALLER_NAV.map((x) => x.href)).toEqual(["/telecaller/dashboard", "/telecaller/leads", "/telecaller/enrol-existing", "/telecaller/follow-ups", "/telecaller/meeting-requests", "/telecaller/notifications", "/telecaller/profile", "/account/management-tasks"]); // mgmt-028 (MT14); ENH-033 Enrol Existing
     // tel-002 adds the catalogue pages after Team; tel-022 Targets after Team; tel-007 Lead assignment and Distribution rules after
     // Leads; tel-006 Lead import after them; tel-023 Performance after Targets; tel-024 Reports after it; tel-020 Alert settings after Reports; tel-012 the content
     // library at the end.
