@@ -12596,3 +12596,19 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Owner answers (2026-11-16):** privacy contact `info@edusphere.org.uk`; grievance officer Joseph (at the same address); leads that never enrol are kept 24 months after the last contact (sets the policy wording only; no automatic deletion is built); no UK representative appointed (UK GDPR Art. 27 line removed).
 - **Still open (`apps/web/lib/privacyPolicy.ts`, shown as a highlighted "To be confirmed" placeholder):** the registered legal entity and address. Do not put the URL in an ad or lead form until it is filled.
 - **Not built:** a cookie consent banner. Google Analytics cookies are set without asking, but UK PECR needs consent before non-essential cookies are set. Terms of use.
+
+### DEC-SCOPE-443 — Cookie consent banner for Google Analytics (PUB-027)
+- **Date:** 2026-11-16. **Status:** built at the owner's request ("add the cookie consent banner"), closing the gap DEC-SCOPE-442 left open: Google Analytics cookies were set without consent (UK PECR reg. 6). The rules below are the builder's defaults, `NEEDS_CONFIRMATION`.
+- **Built:**
+  - Google Analytics (`NEXT_PUBLIC_GA_ID`) loads only after "Accept analytics". `components/Analytics.tsx` now only provides the inline script; `components/CookieConsent.tsx`, mounted in the root layout, loads it.
+  - "Accept analytics" and "Reject analytics" look the same, nothing is pre-selected, and the banner links to `/privacy#cookies`.
+  - The choice is kept in the first-party cookie `edusphere_consent` (`granted`/`denied`, 6 months, SameSite=Lax, Secure on https).
+  - The footer's "Cookie settings" reopens the banner on every public page.
+  - Rejecting deletes the `_ga`/`_ga_*` cookies and sets Google's `ga-disable-<id>` flag, so a tag already loaded during this visit stops sending.
+  - With no GA id configured, nothing renders: the site then sets no non-essential cookie.
+  - The privacy page's cookie section describes all of this.
+- No API, migration or RBAC change.
+- **Not built:**
+  - Google Consent Mode v2 signals.
+  - Geo-targeting: the banner shows to every visitor, India included.
+  - A consent log on the server.

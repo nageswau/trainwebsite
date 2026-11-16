@@ -151,10 +151,19 @@ export default function PrivacyPolicy() {
               portals. They are strictly necessary and are set only when you sign in.
             </li>
             <li>
-              <strong>Google Analytics</strong> cookies count visits and show which pages are used. We ask Google to anonymise your IP
+              <strong>Your cookie choice</strong> (<code>edusphere_consent</code>) remembers whether you accepted analytics cookies, for 6
+              months. It is strictly necessary.
+            </li>
+            <li>
+              <strong>Google Analytics</strong> cookies (<code>_ga</code>, <code>_ga_*</code>) count visits and show which pages are used.
+              They are set only if you click &ldquo;Accept analytics&rdquo; on our cookie banner. We ask Google to anonymise your IP
               address, and we never send it the address of password-reset pages.
             </li>
           </ul>
+          <p>
+            You can change your choice at any time with &ldquo;Cookie settings&rdquo; at the bottom of every page. If you reject analytics
+            cookies, we delete the Google Analytics cookies already set.
+          </p>
           <p>We do not use the Meta Pixel or other advertising cookies on this website.</p>
 
           <h2 id="retention">6. How long we keep it</h2>
