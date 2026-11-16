@@ -20,6 +20,7 @@ from app.services import agent_deposits, fee_accounts, it_lifecycle
 from app.services.billing_documents import generate_invoice_pdf, generate_receipt_pdf, receipt_lines
 from app.services.payment import payments
 from app.services.storage import storage
+from app.services.student_divisions import is_student_of
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -58,7 +59,7 @@ async def _ensure_receipt(db: AsyncSession, item: Payment, payer: User) -> Recei
     receipt = Receipt(payment_id=item.id, user_id=item.user_id, division=item.division, receipt_no=receipt_no, amount=item.amount, currency=item.currency, file_url=file_url)
     db.add(receipt)
     await db.flush()
-    if payer.role == "it_student":
+    if item.division == "it" and await is_student_of(db, payer, "it"):  # ENH-033: keyed on the payment, not the active portal
         # itc-002: only a NEW receipt notifies (this function is idempotent); the fixed text carries no amount.
         await notify(db, [payer], "it.fee.payment_received", item.id, action_url=IT_STUDENT_FEES_URL)
     return receipt
@@ -136,7 +137,10 @@ async def mode(user: User = Depends(get_current_user)):
 @router.get("/mine")
 async def mine(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     # AGN-011 D4: a deposit an agent paid for a student is shown on that application, not in the agent's own fees.
-    rows = (await db.scalars(select(Payment).where(Payment.user_id == user.id, Payment.reference_type != agent_deposits.REFERENCE_TYPE).order_by(Payment.created_at.desc()))).all()
+    stmt = select(Payment).where(Payment.user_id == user.id, Payment.reference_type != agent_deposits.REFERENCE_TYPE)
+    if user.role in STUDENT_ROLES:  # ENH-033 D9: a dual student sees only the active portal's payments
+        stmt = stmt.where(Payment.division == user.division)
+    rows = (await db.scalars(stmt.order_by(Payment.created_at.desc()))).all()
     return [
         {
             "id": x.id,
@@ -226,6 +230,8 @@ async def download_receipt(payment_id: UUID, user: User = Depends(get_current_us
     item = await db.get(Payment, payment_id)
     # itc-018 (DEC-SCOPE-353 AC2): another user's payment is the same 404 as a missing one, so a payment id is never disclosed.
     if not item or (item.user_id != user.id and not (user.role in ADMIN_ROLES and (user.role == "super_admin" or item.division == user.division))):
+        raise HTTPException(404, "Payment not found")
+    if user.role in STUDENT_ROLES and item.division != user.division:  # ENH-033 D9: the other portal's receipt is not shown here
         raise HTTPException(404, "Payment not found")
     receipt = await db.scalar(select(Receipt).where(Receipt.payment_id == item.id))
     if not receipt:

@@ -16,6 +16,7 @@ from app.services import candidates, course_skills
 from app.services import skills as skills_master
 from app.services.applications import candidate_for_student
 from app.services.candidate_skills import MAX_SKILLS
+from app.services.student_divisions import student_of
 
 logger = logging.getLogger("app.placement_pool")
 
@@ -42,8 +43,7 @@ def employer_visible() -> list:
     return [
         Candidate.opted_in.is_(True),
         Candidate.archived_at.is_(None),
-        User.role == "it_student",
-        User.division == "it",
+        student_of("it"),  # ENH-033: a dual student stays in the pool from either portal
         User.active.is_(True),
         or_(PlacementProfile.id.is_(None), PlacementProfile.withdrawn.is_(False)),
     ]

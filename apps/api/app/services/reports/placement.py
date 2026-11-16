@@ -18,6 +18,7 @@ from app.services import training_progress as progress
 from app.services.management_training import DROPPED, NOT_TAKEN
 from app.services.reports.registry import Column, Filters, Report, register
 from app.services.reports.training import CERTIFICATE, STUDENT_COLUMNS, Student, Trainer, _choices, _narrow, _on_seat, counted
+from app.services.student_divisions import student_of
 
 ROWS = {"placement_team", "placement_manager", "it_admin", "super_admin"}
 DEFAULT_DAYS = 15  # "complete their course within the next 15 days" (§12 L274); the `days` filter changes it
@@ -26,7 +27,7 @@ NO_PROFILE = {"readiness_status": READINESS_DEFAULT, "resume_status": "pending",
 Later, LaterBatch = aliased(Enrollment), aliased(Batch)
 TODAY = cast(func.timezone("Asia/Kolkata", func.now()), Date)  # the database clock, as an IST calendar day
 POOL = [
-    Candidate.opted_in.is_(True), Candidate.archived_at.is_(None), Student.role == "it_student", Student.division == "it", Student.active.is_(True),
+    Candidate.opted_in.is_(True), Candidate.archived_at.is_(None), student_of("it", Student), Student.active.is_(True),
 ]
 LATEST_SEAT = ~exists().where(
     Later.student_id == Enrollment.student_id, Later.status.not_in(NOT_TAKEN + DROPPED), LaterBatch.id == Later.batch_id,

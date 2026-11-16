@@ -6461,3 +6461,15 @@ Audit actions `recruiter_template.approve|archive|restore|copy`.
 - `GET /public/shared-resume/{token}`: also 404 (the same "expired or no longer available") when the candidate is no longer shareable — permission to be represented withdrawn, institution permission revoked/expired/without placement, archived or anonymised.
 - `GET /employer/shared-profiles/{item_id}/resume`: 404 "Resume not available" in the same cases. `GET /employer/shared-profiles` and `PATCH /employer/shared-profiles/{item_id}`: `has_resume` is false then.
 - `GET /interviewer/interviews/{id}/resume`: 404 for an employer panel member in the same cases; `has_resume` false on `GET /interviewer/interviews` and `/{id}`. Internal interviewers unchanged.
+
+## 12MH. Dual enrolment: IT ⇄ Overseas on one login (ENH-033) — addendum, 2026-11-13
+
+`DEC-SCOPE-441`. No migration. Design: `docs/superpowers/specs/2026-11-13-enh-033-dual-enrolment-design.md`.
+
+- `GET /workflows/{division}/dual-enrolment/lookup?ref=` (`division` = `it|overseas`) — `ref` is an email (case-insensitive) or 8-character Student ID. 200 `{id, full_name, student_code, divisions}` for an active student of the *other* division; 404 "No student found" otherwise; 422 for a malformed `ref`; 403 unless the caller is a `counselor`/`telecaller` of `division`.
+- `POST /workflows/{division}/dual-enrolment` body `{student_id, counselor_id, student_requested}` → 201 `{student_id, division, counselor_id, counselor_name}`. 422 without `student_requested: true` ("Confirm the student asked to enrol") or with a counselor who is not an active `division` counselor; 404 as the lookup; 409 "Already enrolled in <Division>" or "This student's <Division> access was ended; ask an admin"; 403 as the lookup. Writes the `division` student assignment (and the source division's, if missing), the division's student→counselor link, audit `student.dual_enrol`, and notifies the student (in-app + email, no link) and the counselor.
+- `POST /auth/switch-portal` body `{division}` → 200 `LoginResponse` with re-issued cookies. 403 "You are not enrolled in <Division>" for a non-student or a student who does not hold `division`; the current division is a no-op. Audit `auth.switch_portal`.
+- `POST /auth/login`: a student holding `division` signs in on that division's page and lands there (the active portal moves, audited as above). Others unchanged.
+- `GET /lookups/overseas-counselors` and `/lookups/it-counselors`: also open to that division's `counselor` and `telecaller`.
+- `GET /payments/mine` and `GET /payments/{id}/receipt`: a student sees only the active portal's division (D9); the other division's receipt is 404.
+- Staff reads that pick students by division (counselor lists/search/dashboards, notes, profiles, lookups, placement pool and reports, global student search, admin directories, messaging, inbound matching) include a dual student whatever portal they are in.

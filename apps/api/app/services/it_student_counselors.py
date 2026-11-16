@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import AuditLog, Enquiry, ItStudentCounselor, Notification, User
 from app.notifications.dispatch import queue_deliveries
 from app.services.counselor_students import reason_meta, require_reason, with_reason
+from app.services.student_divisions import student_of
 
 logger = logging.getLogger("app.it_student_counselors")
 
@@ -99,7 +100,7 @@ def _mine(counselor: User):
     return (
         select(User, ItStudentCounselor.created_at)
         .join(ItStudentCounselor, ItStudentCounselor.student_user_id == User.id)
-        .where(ItStudentCounselor.counselor_user_id == counselor.id, User.role == "it_student")
+        .where(ItStudentCounselor.counselor_user_id == counselor.id, student_of("it"))
     )
 
 

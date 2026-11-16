@@ -33,6 +33,7 @@ from app.services import counselor_students, lead_handover, student_archive
 from app.services.agent_applications import WITHDRAWN
 from app.services.bdm_appointments import IST, today_ist
 from app.services.counselor_tasks import TASKS_URL
+from app.services.student_divisions import student_of
 from app.visa_status import label as visa_label
 
 LIMIT = 10  # D6
@@ -170,7 +171,7 @@ async def dashboard(db: AsyncSession, user: User, now: datetime) -> dict:
     s["pending_documents"] = await _section(
         db,
         select(User, open_requests, to_verify, next_due)
-        .where(User.role == "overseas_student", User.id.in_(counselor_students.visible_student_ids(user)), student_archive.not_archived(User.id), or_(open_requests > 0, to_verify > 0))
+        .where(student_of("overseas"), User.id.in_(counselor_students.visible_student_ids(user)), student_archive.not_archived(User.id), or_(open_requests > 0, to_verify > 0))
         .order_by(next_due.asc().nulls_last(), User.full_name, User.id),
         pending,
     )

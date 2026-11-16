@@ -126,6 +126,7 @@ from app.services.provisioning import (
 from app.services.provisioning import flush_unique_email as _flush_unique_email
 from app.services.reports import training as training_reports
 from app.services.storage import storage
+from app.services.student_divisions import STUDENT_ROLE, student_of
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 logger = logging.getLogger("app.admin")
@@ -671,7 +672,7 @@ async def reports(user: User = Depends(ensure_admin), db: AsyncSession = Depends
     out = {}
     for d in ds:
         out[d] = {
-            "users": await db.scalar(select(func.count()).select_from(User).where(User.division == d)),
+            "users": await db.scalar(select(func.count()).select_from(User).where((User.division == d) | student_of(d) if d in STUDENT_ROLE else User.division == d)),  # ENH-033
             "leads": await db.scalar(select(func.count()).select_from(Enquiry).where(Enquiry.division == d)),
             "revenue": float(await db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.division == d, Payment.status == "paid")) or 0),
         }

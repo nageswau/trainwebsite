@@ -19,6 +19,7 @@ describe("tel-017 IT counselor navigation", () => {
       { label: "Leads", href: "/it/counselor/leads" },
       { label: "Appointments", href: "/it/counselor/appointments" },
       { label: "Students", href: "/it/counselor/students" }, // itc-003 (DEC-SCOPE-337)
+      { label: "Enrol Existing", href: "/it/counselor/enrol-existing" }, // ENH-033 (DEC-SCOPE-441)
       { label: "Timetable", href: "/it/counselor/timetable" }, // itc-020 (DEC-SCOPE-344)
       { label: "Notifications", href: "/it/counselor/notifications" }, // itc-025 (DEC-SCOPE-348)
       { label: "Management tasks", href: "/account/management-tasks" }, // mgmt-028 (MT14)
@@ -34,7 +35,7 @@ describe("tel-017 IT counselor navigation", () => {
   // ccrm-038 (DEC-SCOPE-274) adds Calendar after Appointments; ccrm-040 (DEC-SCOPE-276) adds Archived Students after Reports.
   it("keeps the overseas counselor nav, plus Tasks and Universities", () => {
     expect(PORTAL_NAV["overseas/counselor"].map((item) => item.href.split("/").pop())).toEqual(
-      ["dashboard", "tasks", "students", "leads", "documents", "applications", "universities", "school-applications", "visa", "appointments", "calendar", "counselor-chat", "reports", "archived-students", "management-tasks"], // mgmt-028 (MT14)
+      ["dashboard", "tasks", "students", "enrol-existing", "leads", "documents", "applications", "universities", "school-applications", "visa", "appointments", "calendar", "counselor-chat", "reports", "archived-students", "management-tasks"], // mgmt-028 (MT14)
     );
   });
 

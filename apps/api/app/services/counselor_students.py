@@ -27,6 +27,7 @@ from app.notifications.dispatch import queue_deliveries
 from app.schemas import CounselorStudentCreate
 from app.services.agent_orgs import retry_after
 from app.services.provisioning import IssuedWelcome, deliver_welcome_link, flush_unique_email, issue_welcome_token, provisioning_statuses, resend_wait_seconds, unusable_password_hash
+from app.services.student_divisions import student_of
 
 logger = logging.getLogger("app.counselor_students")
 
@@ -225,7 +226,7 @@ async def assign_counselor(db: AsyncSession, admin: User, student_id: UUID, coun
     kept in the audit row (the student 360 History shows it) and sent to both counselors."""
     if admin.role != "overseas_admin" or admin.division != "overseas":  # C13: not super_admin, as AGN-023
         raise HTTPException(403, ADMIN_ONLY)
-    student = await db.scalar(select(User).where(User.id == student_id, User.role == "overseas_student").with_for_update())
+    student = await db.scalar(select(User).where(User.id == student_id, student_of("overseas")).with_for_update())
     if student is None:
         raise HTTPException(404, STUDENT_NOT_FOUND)
     counselor = await db.get(User, counselor_id)
@@ -277,7 +278,7 @@ async def page(db: AsyncSession, counselor: User, limit: int, offset: int, sourc
     ).subquery()
     mine = select(reached.c.student_id, func.min(reached.c.since).label("since")).group_by(reached.c.student_id).subquery()
     source_of = _source().label("source")
-    conditions = [User.role == "overseas_student", not_archived(User.id)]
+    conditions = [student_of("overseas"), not_archived(User.id)]
     if source:
         conditions.append(source_of == source)
     pattern = like_pattern(q)

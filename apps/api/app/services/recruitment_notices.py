@@ -12,6 +12,7 @@ from app.core.database import SessionLocal
 from app.models import JOB_OPEN_STATUSES, Interview, InterviewFeedback, InterviewInterviewer, InterviewPanelFeedback, Job, JobApplication, User
 from app.notifications.events import notify
 from app.services import candidate_jobs, interview_panel, interviews, job_visibility, matching
+from app.services.student_divisions import student_of
 
 logger = logging.getLogger("app.recruiter")
 
@@ -74,7 +75,7 @@ async def run_feedback_overdue(now: datetime | None = None) -> dict[str, int]:
 async def _visible_people(db: AsyncSession, job: Job, candidates: list) -> list[User]:
     """The matching candidates' portal users who may see this job (hrc-008): a segment job only reaches its pool's members."""
     ids = [c.user_id for c in candidates]
-    people = {u.id: u for u in (await db.scalars(select(User).where(User.id.in_(ids), User.role.in_(MATCH_URLS)))).all()} if ids else {}
+    people = {u.id: u for u in (await db.scalars(select(User).where(User.id.in_(ids), or_(User.role == "candidate", student_of("it"))))).all()} if ids else {}
     ordered = [people[i] for i in ids if i in people]
     return [u for u in ordered if await job_visibility.visible_to_student(db, u, job)]
 
@@ -82,8 +83,8 @@ async def _visible_people(db: AsyncSession, job: Job, candidates: list) -> list[
 async def _match_one(db: AsyncSession, job: Job, now: datetime) -> int:
     best = await matching.portal_matches(db, job, min_score=candidate_jobs.RECOMMENDED_MIN_SCORE, limit=MATCH_RECIPIENTS_LIMIT)
     people = await _visible_people(db, job, best)
-    for role, url in MATCH_URLS.items():
-        await notify(db, [u for u in people if u.role == role], MATCH_EVENT, job.id, action_url=url)
+    for kind, url in MATCH_URLS.items():  # ENH-033: a dual student is an IT student here whatever portal they are in
+        await notify(db, [u for u in people if (u.role == "candidate") == (kind == "candidate")], MATCH_EVENT, job.id, action_url=url)
     job.match_notified_at = now
     return len(people)
 

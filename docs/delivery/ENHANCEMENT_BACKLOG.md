@@ -3176,6 +3176,49 @@ data-request flow is keyed to the requester's own `users` account, and AGN-004 g
 
 ---
 
+## ENH-033 — Dual Enrolment: an IT Student Joins Overseas (and an Overseas Student Joins IT) on One Login
+
+**Requirement:** the owner, in-session 2026-11-13 (`EXPLICIT_APPROVAL`): "A student registered for IT course. So he become it student. Now he wants to enroll for overseas as well." — and "it should support moving students from overseas to IT". Builds on `DEC-ROLE-001` (2026-09-01: same Student identity, extended). **Decision:** `DEC-SCOPE-441` (D1–D9). **Spec:** `docs/superpowers/specs/2026-11-13-enh-033-dual-enrolment-design.md`.
+
+**Existing behavior.** `UserRoleAssignment` can hold an `it_student` and an `overseas_student` row for one user, but nothing creates the second one: `POST /auth/register` and the csc-002 walk-in create both 409 on the existing email, and no staff action adds a division. Portal access, login (`POST /auth/login` division check) and ~70 student-role checks read the single legacy `User.role` / `User.division`. The only workaround is a second account with a different email, which contradicts `DEC-ROLE-001` and splits the student's record.
+
+**Expected behavior (owner answers D1–D9).**
+- **D1** A **counselor or telecaller of the target division** adds it: an Overseas counselor/telecaller adds Overseas to an IT student; an IT counselor/telecaller adds IT to an Overseas student. Staff stay inside their own division.
+- **D2** The form **always asks for a counselor** of the target division; that counselor is recorded in `overseas_student_counselors` / `it_student_counselors`.
+- **D3** The header gets a **portal switcher** (IT Student ⇄ Overseas Student). The active portal is stored server-side in `User.role` / `User.division`, so existing route checks are unchanged.
+- **D4** **Add only** in both directions — the student keeps the first division, its history and its portal.
+- **D5** **Staff attest, student notified**: a required "Student has asked to enrol in <division>" tick, recorded in the audit log; the student gets an in-app notification and an email.
+- **D6** **Access only** — no program/batch enrolment or overseas application is created; those follow the existing flows.
+- **D7** Removing a division again is **deferred** to a later item.
+- **D8** **The login page decides**: a dual student signing in on the IT page opens IT, on the Overseas page opens Overseas.
+- **D9** **Each portal shows only its own division's** fees and payments.
+
+**User roles affected.** `counselor`, `telecaller` (both divisions) — new action; `it_student`, `overseas_student` — switcher and login; every staff role whose lists, searches or record views pick students by role (the subject/set checks below).
+
+**Frontend impact.** A "Add to <division>" form (student email or Student ID lookup, counselor picker, consent tick) on the counselor and telecaller portals; a portal switcher in `PortalShell.tsx`'s header shown only when the user holds both student assignments; login pages unchanged.
+
+**Backend impact.** New `services/dual_enrolment.py` (lookup, enrol, switch); `auth.login` accepts a held student division; a switch endpoint re-issues the session cookies; `lookups` counselor pickers opened to same-division counselors/telecallers. **Subject and set checks** that ask "is this person a student of division X" (as opposed to "which portal is the caller in") move to an active-assignment test — the site inventory is in the design spec.
+
+**Database impact.** None expected: `user_role_assignments`, `overseas_student_counselors` and `it_student_counselors` already exist. Confirmed in the spec.
+
+**API impact.** New routes in `API_CONTRACT.md` §12MH. **RBAC impact.** `RBAC_MATRIX.md` §2.331 — target-division counselor/telecaller only; a student may only switch to a division they hold.
+
+**Security impact.** Medium — must not let a dual student's active portal open the *other* division's staff-only data, nor let a staff member reach a student outside the lookup's minimal fields (name, Student ID, divisions held). Every enrol and switch is audit-logged.
+
+**Acceptance criteria.**
+- **ENH-033-AC1** An Overseas counselor or telecaller adds Overseas to an active IT student found by email or Student ID; the student gains an active `overseas_student` assignment and the chosen Overseas counselor, keeps the same login and Student ID, and is notified in-app and by email.
+- **ENH-033-AC2** The same works in reverse for an IT counselor or telecaller adding IT to an Overseas student (IT counselor recorded in `it_student_counselors`).
+- **ENH-033-AC3** Refusals: staff of the other division, any other role, a counselor not of the target division, a missing consent tick, a student who already holds the target division, an inactive or non-student account — each with a clear status and message, nothing written.
+- **ENH-033-AC4** A dual student sees a header switcher and moves between portals without signing in again; a single-division student sees no switcher and cannot switch (403).
+- **ENH-033-AC5** A dual student signing in on either division's login page lands in that division; a single-division student keeps today's "use the correct portal" refusal.
+- **ENH-033-AC6** Staff lists, searches, dashboards and record views of a division include a dual student whatever portal the student is currently in, and count them once.
+- **ENH-033-AC7** A dual student's caller-gated routes still only reach the active portal's own data.
+- **ENH-033-AC8** Every enrol and switch writes an audit row (actor, student, division, counselor, attestation).
+
+**Status (2026-11-13):** in design on `feature/enh-033`.
+
+---
+
 ## AGN-002 — Agent Staff Logins: Master Creates, Edits, Activates/Deactivates and Resets Staff
 
 **Title.** An agency's Masters manage staff logins with auto-generated Staff IDs.

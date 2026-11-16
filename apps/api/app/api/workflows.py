@@ -192,6 +192,7 @@ from app.services.bdm_appointments import db_now
 from app.services.certificates import active_signatories, generate_certificate_pdf, require_signatories, signatory_snapshot
 from app.services.keyword_scoring import score_answer
 from app.services.storage import storage
+from app.services.student_divisions import is_student_of, student_of
 from app.services.tabular import MAX_BYTES as TABULAR_MAX_BYTES
 from app.services.tabular import XLSX_TYPE, TabularError, read_tabular, to_xlsx
 from app.visa_status import DECISIONS as VISA_DECISIONS
@@ -513,7 +514,7 @@ async def create_enrollment(payload: EnrollmentCreate, user: User = Depends(get_
     _require(user, {"it_student", "it_admin"}, "it")
     student_id = user.id if user.role == "it_student" else (payload.student_id or 0)
     student = await db.get(User, student_id)
-    if not student or student.role != "it_student" or student.division != "it":
+    if not student or not await is_student_of(db, student, "it"):  # ENH-033: a dual student whatever portal they are in
         raise HTTPException(422, "Valid IT student is required")
     # DEC-WF-002 (slot locked, never client-controlled) and STU-009-AC02 / DATA_MODEL.md §3.4 ("pending_consent" until the student
     # accepts the agreement): itc-011 moved the checks and the insert to `it_enrollments.seat`, shared with the one-step conversion.
@@ -2219,7 +2220,7 @@ async def job_shortlist(job_id: UUID, user: User = Depends(get_current_user), db
 @router.get("/it/placement/candidates")
 async def placement_candidates(q: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"placement_team", "hr_team", "it_admin"}, "it")
-    stmt = select(User).where(User.division == "it", User.role == "it_student", User.active.is_(True))
+    stmt = select(User).where(student_of("it"), User.active.is_(True))
     if q:
         stmt = stmt.where(User.full_name.ilike(f"%{q}%"))
     students = (await db.scalars(stmt.limit(250))).all()
@@ -2399,7 +2400,7 @@ async def update_interview(interview_id: UUID, payload: dict, user: User = Depen
 @router.get("/it/placement/profiles")
 async def placement_profiles(include_withdrawn: bool = False, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"placement_team", "hr_team", "it_admin"}, "it")
-    stmt = select(User, PlacementProfile).outerjoin(PlacementProfile, PlacementProfile.student_id == User.id).where(User.division == "it", User.role == "it_student", User.active.is_(True))
+    stmt = select(User, PlacementProfile).outerjoin(PlacementProfile, PlacementProfile.student_id == User.id).where(student_of("it"), User.active.is_(True))
     # ADM-007-AC02: withdrawn candidates are excluded from the active pool by default --
     # this is "active matching" -- but never truly hidden; `include_withdrawn=true`
     # still surfaces them (their own JobApplication/Interview/JobOffer history was
@@ -2430,7 +2431,7 @@ async def placement_profiles(include_withdrawn: bool = False, user: User = Depen
 async def update_placement_profile(student_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"placement_team", "it_admin"}, "it")
     student = await db.get(User, student_id)
-    if not student or student.role != "it_student" or student.division != "it":
+    if not student or not await is_student_of(db, student, "it"):
         raise HTTPException(404, "IT student not found")
     item = await db.scalar(select(PlacementProfile).where(PlacementProfile.student_id == student_id))
     if not item:
@@ -2526,7 +2527,7 @@ async def create_overseas_application(payload: OverseasApplicationCreate, user: 
     _require(user, {"overseas_student", "counselor", "overseas_admin", "agent"}, "overseas")
     student_id = user.id if user.role == "overseas_student" else payload.student_id
     student = await db.get(User, student_id)
-    if not student or student.role != "overseas_student" or student.division != "overseas":
+    if not student or not await is_student_of(db, student, "overseas"):
         raise HTTPException(422, "Valid overseas student is required")
     if user.role == "counselor":
         # ccrm-046 (DEC-SCOPE-324): only for a student in the caseload -- before the archive guard, so a stranger's archive state stays
@@ -3000,7 +3001,7 @@ async def add_document(payload: StudentDocumentCreate, user: User = Depends(get_
     _require(user, {"overseas_student", "counselor", "overseas_admin", "agent"}, "overseas")
     student_id = user.id if user.role == "overseas_student" else payload.student_id
     student = await db.get(User, student_id)
-    if not student or student.role != "overseas_student":
+    if not student or not await is_student_of(db, student, "overseas"):
         raise HTTPException(422, "Valid overseas student is required")
     if payload.application_id:
         application = await _assigned_application(db, user, payload.application_id)
@@ -3538,7 +3539,7 @@ async def create_appointment(payload: AppointmentCreate, user: User = Depends(ge
     _require(user, {"overseas_student", "counselor", "overseas_admin"}, "overseas")
     student_id = user.id if user.role == "overseas_student" else payload.student_id
     student = await db.get(User, student_id)
-    if not student or student.role != "overseas_student":
+    if not student or not await is_student_of(db, student, "overseas"):
         raise HTTPException(422, "Valid overseas student is required")
     # CNS-001-AC02: a Counselor cannot act on a student who is not assigned to them,
     # even via a direct record ID -- the same assignment check `add_document` (OVS-005)
@@ -3623,7 +3624,7 @@ async def agent_students(user: User = Depends(get_current_user), db: AsyncSessio
 async def add_agent_student(payload: AgentStudentCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"agent"}, "overseas")
     student = await db.get(User, payload.student_id)
-    if not student or student.role != "overseas_student" or student.division != "overseas":
+    if not student or not await is_student_of(db, student, "overseas"):
         raise HTTPException(404, "Overseas student not found")
     if user.agent_membership is not None:
         await lock_org(db, user.agent_membership.org_id)  # AGN-001 (E12): serialise this organisation's links

@@ -15,6 +15,7 @@ from app.schemas import LiveSessionCancel, LiveSessionUpdate, MeetingCreate, Rec
 from app.services.counselor_students import is_visible_student
 from app.services.integrations import send_notification
 from app.services.meetings import MeetingProviderError, create_provider_meeting
+from app.services.student_divisions import STUDENT_ROLE, is_student_of
 
 router = APIRouter(prefix="/communications", tags=["communications"])
 PAID_LIVE_CLASSES = require_paid_feature("live_classes")  # nehn-018 (DEC-SCOPE-304)
@@ -50,10 +51,11 @@ async def send_message(payload: dict, user: User = Depends(get_current_user), db
     recipient = await db.get(User, uuid_reference(payload.get("recipient_id"), "recipient reference"))
     if not recipient or not recipient.active:
         raise HTTPException(404, "Recipient unavailable")
-    if user.role != "super_admin" and recipient.division != user.division:
+    # ENH-033: a dual student is reachable from either division whatever portal they are in.
+    if user.role != "super_admin" and recipient.division != user.division and not (user.division in STUDENT_ROLE and await is_student_of(db, recipient, user.division)):
         raise HTTPException(403, "Cross-division messaging is not allowed")
     # ccrm-044 (DEC-SCOPE-320): an overseas counselor writes only to the students in their caseload (csc-001 link or own application).
-    if user.role == "counselor" and recipient.role == "overseas_student" and not await is_visible_student(db, user, recipient.id):
+    if user.role == "counselor" and user.division == "overseas" and await is_student_of(db, recipient, "overseas") and not await is_visible_student(db, user, recipient.id):
         raise HTTPException(403, "This student is not one of your students")
     item = Message(
         division=recipient.division if user.division == "global" else user.division,

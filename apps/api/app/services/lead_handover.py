@@ -18,6 +18,7 @@ from app.models import LEAD_PRIORITIES, AuditLog, Batch, Enquiry, Enrollment, It
 from app.notifications.dispatch import queue_deliveries
 from app.services import application_filters, bdm_leads, counselor_students, it_student_counselors, lead_appointments, lead_pipeline, telecaller_alerts
 from app.services.bdm_appointments import db_now, today_ist
+from app.services.student_divisions import student_of
 
 logger = logging.getLogger("app.leads")
 
@@ -310,7 +311,7 @@ async def page(db: AsyncSession, filters: list, limit: int, offset: int) -> dict
 
 
 def student_filters(division: str) -> list:
-    return [User.role == f"{division}_student", User.division == division, User.active.is_(True)]
+    return [student_of(division), User.active.is_(True)]
 
 
 def contact_matches(email: str | None, phone: str | None) -> list:

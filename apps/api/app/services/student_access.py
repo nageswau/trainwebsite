@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import STUDENT_ACCESS_FEATURES, STUDENT_PAYMENT_STATES, Enrollment, Payment, StudentAccessRule, User
+from app.services.student_divisions import is_student_of
 
 STATES = STUDENT_PAYMENT_STATES
 FEATURES = STUDENT_ACCESS_FEATURES
@@ -87,8 +88,8 @@ def lock(access: dict, feature: str) -> dict | None:
 async def require(db: AsyncSession, user: User, feature: str) -> None:
     """403 `payment_required` for an IT student whose payment state is below the feature's minimum. Every other role passes: call it
     after the route's own role and ownership checks, so a wrong-batch learner keeps the existing 404."""
-    if user.role != "it_student":
-        return
+    if user.role not in ("it_student", "overseas_student") or not await is_student_of(db, user, "it"):
+        return  # ENH-033: an IT student by assignment stays locked from the overseas portal too (own submission-file download)
     locked = lock(await summary(db, user), feature)
     if locked:
         first_step = "Enrol in a course" if locked["current_state"] == "registered" else "Complete your payment"  # nothing to pay before enrolling

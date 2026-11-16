@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import AuditLog, Country, OverseasStudentEnglishTest, OverseasStudentProfile, OverseasStudentQualification, User
 from app.schemas import INTAKE_MESSAGE, StudentProfileSave, is_intake
 from app.services.counselor_students import STUDENT_NOT_FOUND, is_visible_student
+from app.services.student_divisions import student_of
 
 NOT_ALLOWED = "Only an overseas counselor or the Overseas Admin can see student profiles"
 STUDENTS_ONLY = "Only an overseas student has this profile"
@@ -40,7 +41,7 @@ async def staff_student(db: AsyncSession, user: User, student_id: UUID) -> User:
     admin = _is_admin(user)
     if not admin and (user.role != "counselor" or user.division != "overseas"):  # an IT counselor works leads only (tel-017)
         raise HTTPException(403, NOT_ALLOWED)
-    student = await db.scalar(select(User).where(User.id == student_id, User.role == "overseas_student"))
+    student = await db.scalar(select(User).where(User.id == student_id, student_of("overseas")))
     if student is None or (not admin and not await is_visible_student(db, user, student_id)):
         raise HTTPException(404, STUDENT_NOT_FOUND)
     return student

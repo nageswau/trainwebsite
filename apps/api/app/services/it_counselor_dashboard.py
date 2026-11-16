@@ -17,6 +17,7 @@ from app.models import Batch, Enquiry, Enrollment, HrReviewTask, ItStudentCounse
 from app.services import application_filters, fee_accounts, hr_reviews, it_status_labels, lead_handover
 from app.services.bdm_appointments import IST, today_ist
 from app.services.counselor_dashboard import LIMIT, _item, _section  # ccrm-032's widget shape: the count of the statement its items come from (AC1)
+from app.services.student_divisions import student_of
 
 FORBIDDEN = "Only an IT counselor or the IT Admin has this dashboard"
 BATCH_OUTSIDE = "The batch is not in that course"
@@ -94,7 +95,7 @@ def _leads(s: _Scope) -> list:
 
 def _book(s: _Scope):
     """The student ids of the book: linked IT students (to the owner, or to any counselor for the IT Admin)."""
-    stmt = select(ItStudentCounselor.student_user_id).join(User, User.id == ItStudentCounselor.student_user_id).where(User.role == "it_student")
+    stmt = select(ItStudentCounselor.student_user_id).join(User, User.id == ItStudentCounselor.student_user_id).where(student_of("it"))
     return stmt.where(ItStudentCounselor.counselor_user_id == s.owner) if s.owner else stmt
 
 
