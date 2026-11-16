@@ -39,6 +39,14 @@ describe("privacy policy page (PUB-026)", () => {
     expect(screen.getByRole("link", { name: "Privacy & your data" }).getAttribute("href")).toBe("/account/privacy");
   });
 
+  it("gives the owner's privacy contact, grievance officer and lead retention (2026-11-16)", () => {
+    render(<PrivacyPolicy />);
+    expect(screen.getByRole("link", { name: "info@edusphere.org.uk" }).getAttribute("href")).toBe("mailto:info@edusphere.org.uk");
+    expect(screen.getByText(/Joseph/)).toBeTruthy();
+    expect(screen.getByText(/24 months after our last contact with you/)).toBeTruthy();
+    expect(screen.queryByText(/UK representative/)).toBeNull();
+  });
+
   it("shows each unconfirmed fact as a visible placeholder, never a guess", () => {
     render(<PrivacyPolicy />);
     const marks = document.querySelectorAll("mark.pending");

@@ -16,8 +16,9 @@ export const metadata: Metadata = {
   alternates: { canonical: "/privacy" },
 };
 
-function Fact({ fact }: { fact: PolicyFact }) {
-  return fact.value ? <>{fact.value}</> : <mark className="pending">[To be confirmed: {fact.label.toLowerCase()}]</mark>;
+function Fact({ fact, email = false }: { fact: PolicyFact; email?: boolean }) {
+  if (!fact.value) return <mark className="pending">[To be confirmed: {fact.label.toLowerCase()}]</mark>;
+  return email ? <a href={`mailto:${fact.value}`}>{fact.value}</a> : <>{fact.value}</>;
 }
 
 const SECTIONS = [
@@ -199,9 +200,8 @@ export default function PrivacyPolicy() {
 
           <h2 id="contact">11. Contact and complaints</h2>
           <ul>
-            <li>Privacy questions and requests: <Fact fact={POLICY_FACTS.privacyContact} /></li>
-            <li>Grievance officer: <Fact fact={POLICY_FACTS.grievanceOfficer} /></li>
-            <li>UK representative: <Fact fact={POLICY_FACTS.ukRepresentative} /></li>
+            <li>Privacy questions and requests: <Fact fact={POLICY_FACTS.privacyContact} email /></li>
+            <li>Grievance officer: <Fact fact={POLICY_FACTS.grievanceOfficer} />, at the same address</li>
           </ul>
           <p>
             If you are not satisfied with our reply, you can complain to the Data Protection Board of India or, in the UK, to the
