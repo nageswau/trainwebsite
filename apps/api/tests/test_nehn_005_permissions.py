@@ -86,6 +86,7 @@ def test_the_catalogue_names_the_pilot_resources_and_known_actions():
         "view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage", "refund",  # nehn-031; itc-015
         "publish", "export", "import", "merge", "release",  # hrc-002
         "erase",  # hrc-035
+        "retry",  # hrc-032
     )  # fmt: skip
 
 

@@ -51,6 +51,7 @@ REVENUE = ("rec", "mgr", "super")  # rec-031 READERS with the requirement in sco
 REVENUE_OUT = ("rec_out", "mgr_out")  # a revenue reader without the requirement in scope: 404
 VENDOR_COMM = ("rec", "mgr", "super")  # pob-012 W4: `commercials.vendor` holders (bdm 403 first) with the vendor in the company scope
 VENDOR_COMM_OUT = ("rec_out", "mgr_out")  # a holder without the vendor in scope: 404
+_SUSPEND = {"status": "suspended", "from_status": "active", "reason": "Paused for review"}  # pob-010 V5: the world's vendor is active
 METRICS = ("mgr", "mgr_out", "super", "it_admin")  # rec-033 PF1 / rec-035 MG1 (it_admin reads: recruiters are IT staff)
 COLLEGE_READERS = ("rec", "rec_out", "mgr", "mgr_out", "super", "bdm", "bdm_out")  # pob-013 P3 (both BDMs are of the college module)
 COLLEGE_WRITERS = ("rec", "rec_out", "super", "bdm")  # pob-013 P4: `bdm` is the college's assigned BDM
@@ -181,6 +182,8 @@ ROWS = [
     R("post", "/recruiter/invoices", _invoice, **allow(201, *REVENUE), **allow(404, *REVENUE_OUT)),
     R("post", "/recruiter/invoices/{activity_invoice}/cancel", {"reason": "Raised in error"}, **allow(200, *REVENUE), **allow(404, *REVENUE_OUT)),
     R("post", "/recruiter/invoices/{activity_invoice}/payments", lambda w: {"received_on": w["today"], "amount": "1000"}, **allow(201, *REVENUE), **allow(404, *REVENUE_OUT)),
+    # pob-010 vendor onboarding (§2.312): suspending an active vendor is a manager's or super_admin's; the assigned recruiter and BDM 403
+    R("post", "/recruiter/companies/{activity_vendor}/vendor-status", _SUSPEND, **allow(200, "mgr", "super"), **allow(403, "rec", "bdm"), **allow(404, *OUT)),
     # pob-012 vendor commercials (§2.324): the `commercials.vendor` grant first (bdm 403), then the vendor's company scope (404)
     R("get", "/recruiter/companies/{activity_vendor}/vendor-bills", **allow(200, *VENDOR_COMM), **allow(404, *VENDOR_COMM_OUT)),
     R("post", "/recruiter/companies/{activity_vendor}/vendor-bills", lambda w: {"kind": "payable", "bill_number": tag("VB-"), "bill_date": w["today"], "due_date": w["today"],

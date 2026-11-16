@@ -83,6 +83,7 @@ ROLES: tuple[str, ...] = tuple(PERMISSIONS)
 ACTIONS = (
     "view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage", "refund",
     "publish", "export", "import", "merge", "release", "erase",
+    "retry",  # hrc-032 (DEC-SCOPE-413): notifications.retry -- the action was granted (0291) but missing here, so the matrix screen hid it
 )  # fmt: skip
 CATALOGUE: dict[str, dict] = {
     # itc-015 (DEC-SCOPE-364): `refund` -- an IT enrolment's credit notes, write-offs, refunds and payment corrections (migration 0246).

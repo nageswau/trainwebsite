@@ -134,13 +134,15 @@ MANAGEMENT_EMITTERS = {
 }
 # Agent commission (EduSphere pays the agent, DEC-SCOPE-005/051/054) is another confidential figure with its own rules -- not U2's.
 AGENT_COMMISSION = {"app/services/agent_dashboard.py", "app/services/agent_network.py", "app/services/management_agents.py"}
+# Not emitters: nehn-008's field (column) policy names `commission_expected` only as a docstring example; it removes columns, never adds them.
+NOT_EMITTERS = {"app/services/field_policy.py"}
 APP = Path(__file__).resolve().parents[1]
 
 
 def test_every_commission_serializer_is_swept():
     """AC2 / PX8: the sweep covers every serializer that includes commission."""
     emitters = {p.relative_to(APP).as_posix() for d in ("app/api", "app/services") for p in (APP / d).rglob("*.py") if EMITS.search(p.read_text("utf-8"))}
-    assert emitters - AGENT_COMMISSION == set(SERIALIZERS) | set(MANAGEMENT_EMITTERS), "a commission emitter without a sweep mapping (or a stale mapping)"
+    assert emitters - AGENT_COMMISSION - NOT_EMITTERS == set(SERIALIZERS) | set(MANAGEMENT_EMITTERS), "a commission emitter without a sweep mapping (or a stale mapping)"
     swept = {path.split("?")[0] for path in SWEEP}
     unswept = {(f, e) for f, endpoints in SERIALIZERS.items() for e in endpoints if e not in swept}
     unswept |= {(f, e) for f, endpoints in MANAGEMENT_EMITTERS.items() for e in endpoints if e not in MANAGEMENT_READS}

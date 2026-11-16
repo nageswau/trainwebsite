@@ -12,10 +12,13 @@ from sqlalchemy import select
 from app.models import (
     AgentStudent,
     Agreement,
+    Batch,
     CounselorMessageTemplate,
     DocumentChecklistTemplate,
     DocumentChecklistTemplateItem,
     Enquiry,
+    Enrollment,
+    ItStudentCounselor,
     LeadCall,
     LeadFollowUp,
     LeadLostReason,
@@ -25,6 +28,7 @@ from app.models import (
     OverseasStudentArchive,
     OverseasStudentCounselor,
     Payment,
+    Program,
     TelecallerProfile,
     TelMessageTemplate,
     User,
@@ -34,13 +38,15 @@ from app.models import (
 from app.services.agent_orgs import ensure_agent_org
 from tests.agn003_helpers import mk_university
 from tests.agn009_helpers import mk_doc
-from tests.tel026_helpers import headers
+from tests.tel026_helpers import at, headers
 
 API = "/api/v1"
+PDF = b"%PDF-1.4\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n"
 APPS = API + "/workflows/overseas/applications/{}"
 
 # Who calls. `cns` owns every record of the world (the lead, the student, both applications, the task); `cns_out` is another overseas
 # counselor; `tel` / `mgr` are the lead's telecaller and their manager; `student` is the direct student; `agent` is the agency's Master.
+# `it_cns` owns the IT side: an IT lead handed to them and an IT student linked to them (itc-003).
 ROLES = ("anon", "cns", "cns_out", "it_cns", "ovs_admin", "it_admin", "super", "tel", "mgr", "student", "agent", "partner")
 
 
@@ -145,6 +151,19 @@ async def world(db, client) -> dict:
     # ccrm-049: a manual fee of the direct student, for the Finance tab's payment proof upload (committed with the rest: an open insert
     # would hold the student's row against the routes that lock it)
     payment = await _add(db, Payment(user_id=student.id, division="overseas", reference_type="service_fee", amount=1500, currency="GBP", provider="manual", status="pending", is_manual=True))
+    # The IT side (itc-003/010/011/012/026): an IT lead handed to `it_cns`, and an IT student linked to them, enrolled on an open batch
+    # (the batch the lead's conversion seats into).
+    it_cns = users["it_cns"]
+    it_lead = await _add(db, Enquiry(division="it", name=f"IT Lead {uniq()}", email=f"{uniq('c41-it-')}@example.local", phone=f"9{random.randint(100000000, 999999999)}",
+                                     subject="Python course", message="", source="website", status="qualified", owner_id=it_cns.id))  # fmt: skip
+    tag = uniq()
+    program = await _add(db, Program(slug=f"c41-{tag}", category="Software Development", title=f"C41 Course {tag}", summary="", duration="3 months", eligibility="",
+                                     fees=45000, certification="", curriculum=[], placement_assistance="", trainer_name="T", active=True))  # fmt: skip
+    batch = await _add(db, Batch(program_id=program.id, name=f"C41-{tag}", start_date=today() + timedelta(days=10), end_date=today() + timedelta(days=100),
+                                 schedule="Mon-Fri", capacity=20, enrollment_open=True, status="upcoming"))  # fmt: skip
+    it_student = await _user(db, "it_student", "it")
+    db.add(ItStudentCounselor(student_user_id=it_student.id, counselor_user_id=it_cns.id, assigned_by_user_id=users["it_admin"].id))
+    enrollment = await _add(db, Enrollment(student_id=it_student.id, batch_id=batch.id, enrollment_code=uniq("C41-EN-"), status="active"))
     await db.commit()
     letter = await mk_doc(db, student=student, application=app, document_type="Offer letter")
     document = await mk_doc(db, student=student, application=app, document_type="Passport")
@@ -175,11 +194,19 @@ async def world(db, client) -> dict:
         "outcome": "on_hold", "reason": "Waiting for funds", "review_date": (today() + timedelta(days=10)).isoformat(), "hold_owner_id": str(cns.id)}), 200)  # fmt: skip
     # ccrm-048: a required deposit on the direct application, for the Finance tab's receipt upload
     await _ok(await client.put(APPS.format(app.id) + "/deposit", headers=as_cns, json={"required": True, "payment_status": "pending", "amount": "3000", "currency": "GBP"}), 200)
+    # nehn-037: an admission interview on the direct application
+    interview = (await _ok(await client.post(APPS.format(app.id) + "/interviews", headers=as_cns, json={"scheduled_at": at(days=3), "mode": "online"})))["interview"]
+    # itc-010: one counseling session on the IT lead; itc-026: one resume version of the IT student, both by `it_cns`
+    as_it = headers(it_cns)
+    counseling = await _ok(await client.post(f"{API}/counselor/leads/{it_lead.id}/counseling", headers=as_it, json={"outcome": "interested"}))
+    resume = await _ok(await client.post(f"{API}/counselor/it/students/{it_student.id}/resumes", headers=as_it, files={"file": ("cv.pdf", PDF, "application/pdf")}))
 
     ids = {
         "lead": lead.id, "call": call.id, "follow_up": follow_up.id, "message": message.id, "tel_template": tel_template.id, "lost_reason": lost_reason.id,
         "student": student.id, "lonely": lonely.id, "archived": archived.id, "app": app.id, "agency_app": agency_app.id, "held": held.id, "enrolled": enrolled.id,
         "record": record.id, "payment": payment.id, "visa": visa.id, "template": template.id, "checklist_template": checklist_template.id, "agreement": agreement.id,
         "letter": letter.id, "document": document.id, "enrol_doc": enrol_doc.id, "offer": offer["id"], "condition": condition["id"], "item": item["id"], "request": request["request"]["id"], "task": task["id"], "country": university.country_id, "university": university.id,
+        "interview": interview["id"], "it_lead": it_lead.id, "it_student": it_student.id, "it_batch": batch.id, "enrollment": enrollment.id,
+        "counseling": counseling["id"], "resume": resume["version"],
     }  # fmt: skip
     return {"users": users, **{k: str(v) for k, v in ids.items()}, **{f"{k}_id": str(u.id) for k, u in users.items()}}
