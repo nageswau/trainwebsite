@@ -9,10 +9,13 @@ the owner-approved rules of each item (RBAC_MATRIX §2.14-§2.40); PM2: super_ad
 import re
 import uuid
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 
 import pytest
+from sqlalchemy import select
 
 from app.main import app
+from app.models import Batch, Enquiry, LeadCounselingObjection, Program
 from tests.tel026_helpers import ROLES, at, headers, world
 from tests.test_ccrm_041_matrix import CCRM_ROUTES
 
@@ -27,6 +30,7 @@ class Row:
     body: object = None  # a dict / callable(world) -> dict, sent as JSON
     form: object = None  # callable(world) -> (data, files), sent as multipart
     cells: dict = field(default_factory=dict)
+    keyed: bool = False  # sends a fresh `Idempotency-Key` (a route that requires one)
 
     @property
     def key(self) -> str:
@@ -36,8 +40,8 @@ class Row:
         return self.cells.get(role, 401 if role == "anon" else 403)
 
 
-def R(method: str, path: str, body=None, *, form=None, **cells) -> Row:
-    return Row(method, path, body, form, cells)
+def R(method: str, path: str, body=None, *, form=None, keyed=False, **cells) -> Row:
+    return Row(method, path, body, form, cells, keyed)
 
 
 READ = {"tel": 200, "tel_out": 404, "mgr": 200, "mgr_out": 404, "super": 200}  # a lead read: §2.19 scope
@@ -51,6 +55,8 @@ ADMINS = {"it_admin": 200, "ovs_admin": 200, "super": 200}
 REPORTS = MANAGERS | {"it_admin": 200, "ovs_admin": 200}
 COUNSELOR_READ = {"cns": 200, "cns_out": 404}
 ACTION = {r: 404 for r in ROLES if r != "anon"}  # §2.23: an appointment action outside the session's scope reads as missing
+MERGERS = {"mgr": 200, "mgr_out": 404, "super": 200}  # §2.241: a manager in T23 scope; a telecaller and the admins 403
+ADMIN_MERGERS = {"it_admin": 200, "ovs_admin": 404, "super": 200}  # §2.241: an admin's own division, else 404
 
 
 def _mobile() -> str:
@@ -95,6 +101,16 @@ MATRIX = [
     R("put", "/telecaller/leads/{lead}/qualification", {"qualification": "B.Tech", "city": "Chennai"}, **READ),
     R("post", "/telecaller/leads/{lead}/stage", {"to_stage": "interested"}, **READ),
     R("get", "/telecaller/leads/{lead}/stage-history", **READ),
+    # nehn-012 (§2.209): the list's Excel twin, a manager's or super_admin's -- narrowed to the world's product (the shared database's row cap)
+    R("get", "/telecaller/leads.xlsx?product_id={product}", **MANAGERS),
+    # itc-007 (§2.241) merge duplicate leads: `{fresh}` (same telecaller, same team, open) is the victim, by its Lead ID
+    R("get", "/telecaller/leads/{lead}/merge-preview?victim={fresh_code}", **MERGERS),
+    R("post", "/telecaller/leads/{lead}/merge", lambda w: {"victim": w["fresh_code"]}, **MERGERS),
+    # itc-010 (§2.243) the counseling record's telecaller side (read only) and the objections catalogue
+    R("get", "/telecaller/leads/{lead}/counseling", **READ),
+    R("get", "/telecaller/counseling-objections", **CATALOGUE_READ),
+    R("post", "/telecaller/counseling-objections", lambda w: {"name": f"T26 {uuid.uuid4().hex[:8]}"}, mgr=201, mgr_out=201, super=201),
+    R("patch", "/telecaller/counseling-objections/{objection}", {"active": False}, **MANAGERS),
     # tel-006 import
     R("get", "/telecaller/imports/template", **MANAGERS),
     R("post", "/telecaller/imports", form=_csv, mgr=201, mgr_out=201, super=201),
@@ -109,6 +125,9 @@ MATRIX = [
     R("get", "/telecaller/leads/unassigned", **MANAGERS),
     R("get", "/telecaller/leads/assigned", **MANAGERS),
     R("post", "/telecaller/leads/assign", lambda w: {"lead_ids": [w["lead"]], "telecaller_user_id": w["spare_id"]}, mgr=200, mgr_out=404, super=200),
+    # itc-006 (§2.240) the team's fallback strategy: both managers have a report on the IT team; round robin is the default it is put back to
+    R("get", "/telecaller/distribution-strategy", **MANAGERS),
+    R("put", "/telecaller/distribution-strategy/{team}", {"strategy": "round_robin"}, **MANAGERS),
     # tel-010 calls
     R("get", "/telecaller/calls/day-counts", **TEAM_READ),
     R("get", "/telecaller/leads/{lead}/calls", **READ),
@@ -170,6 +189,12 @@ MATRIX = [
     R("delete", "/admin/leads/{linked}/conversion", it_admin=200, super=200),
     R("get", "/admin/leads/{lead}/stage-history", it_admin=200, super=200),
     R("get", "/admin/leads/{lead}/timeline", it_admin=200, super=200),
+    R("get", "/admin/leads.xlsx?product_id={product}", **ADMINS),  # nehn-012 (§2.209); ovs_admin's own division: an empty file
+    R("get", "/admin/leads/{lead}/merge-preview?victim={fresh_code}", **ADMIN_MERGERS),  # itc-007 (§2.241)
+    R("post", "/admin/leads/{lead}/merge", lambda w: {"victim": w["fresh_code"]}, **ADMIN_MERGERS),
+    # itc-011 (§2.261): the IT Admin only (super_admin included in the 403s); an existing IT student, no fee
+    R("get", "/admin/leads/{handed}/convert-it", it_admin=200),
+    R("post", "/admin/leads/{handed}/convert-it", lambda w: {"student_id": w["student_id"], "batch_id": w["it_batch"], "fee": "0"}, keyed=True, it_admin=201),
     # tel-019 BDM meeting requests (the BDM side's own roles are tel-019's tests; here: who of the matrix reaches it)
     R("get", "/telecaller/meeting-requests/options", **SELF),
     R("post", "/telecaller/meeting-requests", lambda w: {"request_type": "college", "organization_name": "Govt College", "person_name": "Dr Rao",
@@ -246,6 +271,24 @@ PREFIXES = ("/telecaller/", "/counselor/leads", "/counselor/appointments", "/lea
 PATH_VALUES = {"kind": "source", "team": "it", "bad_token": "not-a-token", "nobody": str(uuid.uuid4())}  # the non-id path parameters
 
 
+async def _world(db) -> dict:
+    """tel026_helpers.world plus what only these rows need: an objection, an open IT batch and `{fresh}`'s Lead ID."""
+    w = await world(db)
+    tag = uuid.uuid4().hex[:8]
+    objection = LeadCounselingObjection(name=f"T26 objection {tag}", active=True, sort_order=5000)
+    program = Program(slug=f"t26-{tag}", category="Software Development", title=f"T26 Course {tag}", summary="", duration="3 months", eligibility="",
+                      fees=0, certification="", curriculum=[], placement_assistance="", trainer_name="T", active=True)  # fmt: skip
+    db.add_all([objection, program])
+    await db.flush()
+    batch = Batch(program_id=program.id, name=f"T26-{tag}", start_date=date.today() + timedelta(days=10), end_date=date.today() + timedelta(days=100),
+                  schedule="Mon-Fri", capacity=20, enrollment_open=True, status="upcoming")  # fmt: skip
+    db.add(batch)
+    await db.flush()
+    code = await db.scalar(select(Enquiry.lead_code).where(Enquiry.id == uuid.UUID(w["fresh"])))
+    await db.commit()
+    return w | {"objection": str(objection.id), "it_batch": str(batch.id), "fresh_code": code}
+
+
 def _fill(text: str, w: dict) -> str:
     return text.format(**PATH_VALUES, **w)
 
@@ -259,6 +302,8 @@ async def _call(client, row: Row, w: dict, role: str):
         kwargs |= {"data": data, "files": files, "headers": kwargs["headers"] | {"Idempotency-Key": uuid.uuid4().hex}}
     elif row.method != "get" and row.method != "delete":
         kwargs["json"] = row.body(w) if callable(row.body) else (row.body if row.body is not None else {})
+    if row.keyed:
+        kwargs["headers"] = kwargs["headers"] | {"Idempotency-Key": uuid.uuid4().hex}
     return await client.request(row.method.upper(), url, **kwargs)
 
 
@@ -292,7 +337,7 @@ def test_no_lead_delete_route():
 @pytest.mark.parametrize("row", MATRIX, ids=lambda r: r.key)
 async def test_matrix_row(client, db_session, row):
     """AC1: every route x role cell. Refused / hidden cells first on one world; then every 2xx cell on its own fresh world."""
-    shared = await world(db_session)
+    shared = await _world(db_session)
     wrong = []
     for role in ROLES:
         want = row.expected(role)
@@ -305,7 +350,7 @@ async def test_matrix_row(client, db_session, row):
         want = row.expected(role)
         if want not in OK:
             continue
-        response = await _call(client, row, await world(db_session), role)
+        response = await _call(client, row, await _world(db_session), role)
         if response.status_code != want:
             wrong.append(f"{role}: want {want}, got {response.status_code} {response.text[:200]}")
     assert not wrong, " | ".join(wrong)

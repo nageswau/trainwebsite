@@ -31,6 +31,7 @@ class Row:
     body: object = None  # a dict / callable(world) -> dict, sent as JSON
     form: bool = False  # a multipart upload of one PDF (`body`, when given, is its form fields)
     cells: dict = field(default_factory=dict)
+    keyed: bool = False  # sends a fresh `Idempotency-Key` (a route that requires one)
 
     @property
     def key(self) -> str:
@@ -40,8 +41,8 @@ class Row:
         return self.cells.get(role, 401 if role == "anon" else 403)
 
 
-def R(method: str, path: str, body=None, *, form: bool = False, **cells) -> Row:
-    return Row(method, path, body, form, cells)
+def R(method: str, path: str, body=None, *, form: bool = False, keyed: bool = False, **cells) -> Row:
+    return Row(method, path, body, form, cells, keyed)
 
 
 def day(offset: int = 0) -> str:
@@ -247,6 +248,35 @@ MATRIX = [
     R("get", "/counselor/students/archived", cns=200, cns_out=200, ovs_admin=200),
     R("get", "/overseas/me/consents", student=200),
     R("post", "/overseas/me/consents/{agreement}/accept", student=201),
+    # nehn-033 the student's own Progress page (§2.235)
+    R("get", "/overseas/me/progress", student=200),
+    # itc-010 counseling on the IT lead (§2.243): a counselor reads only their own division's handed-over leads, only an IT counselor writes
+    R("get", "/counselor/leads/{it_lead}/counseling", it_cns=200, cns=404, cns_out=404),
+    R("post", "/counselor/leads/{it_lead}/counseling", {"outcome": "needs_time"}, it_cns=201),
+    R("patch", "/counselor/leads/{it_lead}/counseling/{counseling}", {"outcome": "needs_time"}, it_cns=200),
+    # itc-011 one-step IT conversion (§2.261): the lead's IT counselor only
+    R("get", "/counselor/leads/{it_lead}/convert-it", it_cns=200),
+    R(
+        "post",
+        "/counselor/leads/{it_lead}/convert-it",
+        lambda w: {"student": {"full_name": "IT Convert", "email": f"c41-itc-{uuid.uuid4().hex[:8]}@example.local"}, "batch_id": w["it_batch"], "fee": "0"},
+        keyed=True,
+        it_cns=201,
+    ),
+    # itc-030 IT counselor dashboard (§2.267)
+    R("get", "/counselor/it/dashboard", it_cns=200, it_admin=200),
+    # the IT counselor's linked students: itc-003 (§2.239), itc-012 record (§2.245), itc-031 lifecycle (§2.259), itc-027 HR card (§2.254),
+    # itc-026 resumes (§2.250). The IT Admin and super_admin use their own routes (403 here).
+    R("get", "/counselor/it/students", it_cns=200),
+    R("get", "/counselor/it/students/{it_student}", it_cns=200),
+    R("get", "/counselor/it/students/{it_student}/profile", it_cns=200),
+    R("patch", "/counselor/it/students/{it_student}/profile", {"city": "Pune"}, it_cns=200),
+    R("patch", "/counselor/it/students/{it_student}/enrollments/{enrollment}", {"delivery_mode": "Hybrid"}, it_cns=200),
+    R("get", "/counselor/it/students/{it_student}/lifecycle", it_cns=200),
+    R("get", "/counselor/it/students/{it_student}/hr-review", it_cns=200),
+    R("get", "/counselor/it/students/{it_student}/resumes", it_cns=200),
+    R("post", "/counselor/it/students/{it_student}/resumes", form=True, it_cns=201),
+    R("get", "/counselor/it/students/{it_student}/resumes/{resume}/file", it_cns=200),
 ]
 
 # G1: the counselor CRM surface. A route under these prefixes needs a row here, or is one of the routes that predate ccrm (EARLIER), whose
@@ -309,6 +339,8 @@ async def _call(client, row: Row, w: dict, role: str):
     url = API + _fill(row.path, w)
     user = None if role == "anon" else w["users"][role]
     kwargs = {"headers": headers(user)}
+    if row.keyed:
+        kwargs["headers"] = kwargs["headers"] | {"Idempotency-Key": uuid.uuid4().hex}
     if row.form:
         kwargs["files"] = {"file": ("c41.pdf", PDF, "application/pdf")}
         if row.body is not None:  # ccrm-045: the upload's form fields
@@ -331,14 +363,23 @@ def operations() -> set[str]:
 
 
 CCRM_ROUTES = {_template(row.key) for row in MATRIX}  # tel-026's inventory leaves these to this matrix (G4)
+# nehn-037 admission interviews (§2.207): super_admin is refused by the decision (owner, 2026-11-16) but the routes still admit it. Their
+# rows join MATRIX with super=403 once the routes are fixed; until then they are listed here, not silently pinned to today's behaviour.
+PENDING_FIX = {
+    "GET /workflows/overseas/applications/{}/interviews",
+    "POST /workflows/overseas/applications/{}/interviews",
+    "PATCH /workflows/overseas/applications/{}/interviews/{}",
+}
 
 
 def test_every_counselor_crm_route_has_a_row():
     """G1: a route added to the counselor CRM surface without a matrix row (or a stale row) fails here."""
     surface = {k for k in operations() if k.split(" ", 1)[1].startswith(PREFIXES) or k in NAMED}
-    assert surface - CCRM_ROUTES - EARLIER == set(), "routes without a matrix row"
+    assert surface - CCRM_ROUTES - EARLIER - PENDING_FIX == set(), "routes without a matrix row"
+    assert PENDING_FIX <= surface and not PENDING_FIX & CCRM_ROUTES, "a stale PENDING_FIX entry"
     assert CCRM_ROUTES - surface == set(), "matrix rows without a route"
-    assert len(MATRIX) == len(CCRM_ROUTES), "one row per route"
+    # No row twice. A route may carry a second row for another record's scope (ccrm-053: another division's counselor is 404).
+    assert len(MATRIX) == len({row.key for row in MATRIX}), "a duplicated row"
 
 
 @pytest.mark.asyncio

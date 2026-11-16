@@ -16,6 +16,8 @@ from sqlalchemy import func, select
 from app.models import (
     CandidateDocument,
     CandidateDocumentRequest,
+    CandidateDuplicate,
+    CandidateImportBatch,
     CandidateResume,
     CandidateRoutingRule,
     CandidateSkill,
@@ -50,6 +52,8 @@ READERS = ("rec", "rec_out", "mgr", "mgr_out", "super", "hr")  # rec-009 candida
 WRITERS = ("rec", "rec_out", "mgr", "mgr_out", "super")  # rec-009 candidates.WRITERS; hr_team reads only
 POOL_WRITERS = ("mgr", "mgr_out", "super")  # rec-015 P6: division-global pools
 TAG_EDITORS = ("it_admin", "super")  # rec-036 CI1
+# hrc-014 (§2.276): `candidates.merge` and a candidate writer -- the placement managers by default, super_admin implicitly; a plain recruiter 403
+MERGERS = ("mgr", "mgr_out", "super")
 RESUME = _pdf(SOURCE)  # a real text PDF, so Extract reads skills (rec-012 AC1)
 
 
@@ -73,6 +77,12 @@ def _file(_w):
     return {}, {"file": ("r.pdf", PDF, "application/pdf")}
 
 
+def _import(w):
+    """hrc-013: a one-row candidate file (unique, so a commit creates rather than replays)."""
+    body = f"name,mobile,email\nRahul {tag()},{_mobile()},{tag('c38i-')}@example.com\n".encode()
+    return {"source_id": w["candidates_source"]}, {"file": ("candidates.csv", body, "text/csv")}
+
+
 def _document(_w):
     return {"document_type": "certificate"}, {"file": ("c.pdf", PDF, "application/pdf")}
 
@@ -80,6 +90,8 @@ def _document(_w):
 ROWS = [
     # rec-007 job requirements (§2.55): the manager creates and assigns but never edits or moves the status
     R("get", "/recruiter/requirements/statuses", **allow(200, *REQ_SCOPE, "officer")),
+    # hrc-005 (V2, API_CONTRACT 12): the hiring-manager picker -- `require_creator`, the roles that write requirements
+    R("get", "/recruiter/requirements/hiring-managers", **allow(200, *WRITERS)),
     R("get", "/recruiter/requirements", **allow(200, *REQ_SCOPE, "officer")),
     # rec_out / mgr_out: the world's company is outside their company scope (rec-003 load_scoped, 404 before the create)
     R("post", "/recruiter/requirements", _new_requirement, **allow(201, "rec", "mgr", "super"), rec_out=404, mgr_out=404),
@@ -204,6 +216,20 @@ ROWS = [
     R("patch", "/recruiter/candidate-tasks/{candidates_task}", {"title": "Call again"}, **allow(200, *WRITERS)),
     R("post", "/recruiter/candidate-tasks/{candidates_task}/complete", **allow(200, *WRITERS)),
     R("post", "/recruiter/candidate-tasks/{candidates_task}/cancel", **allow(200, *WRITERS)),
+    # hrc-013 bulk import (§2.285): `candidates.import` and a candidate writer (recruiters and managers by default, super_admin); hr_team
+    # 403. History and reports are the uploader's own (`rec`'s batch: another recruiter 404), or everyone's for a manager and super_admin
+    R("get", "/recruiter/candidate-imports/template", **allow(200, *WRITERS)),
+    R("post", "/recruiter/candidate-imports/preview", form=_import, **allow(200, *WRITERS)),
+    R("post", "/recruiter/candidate-imports", form=_import, **allow(201, *WRITERS)),
+    R("get", "/recruiter/candidate-imports", **allow(200, *WRITERS)),
+    R("get", "/recruiter/candidate-imports/{candidates_import}", **allow(200, "rec", "mgr", "mgr_out", "super"), rec_out=404),
+    R("get", "/recruiter/candidate-imports/{candidates_import}/report.csv", **allow(200, "rec", "mgr", "mgr_out", "super"), rec_out=404),
+    # hrc-014 duplicate queue and merge (§2.276): the pool has no ownership scope, so every merger acts on the world's open pair
+    R("get", "/recruiter/candidate-duplicates", **allow(200, *MERGERS)),
+    R("post", "/recruiter/candidate-duplicates/scan", **allow(200, *MERGERS)),
+    R("post", "/recruiter/candidate-duplicates/{candidates_pair}/dismiss", {"note": "Different people"}, **allow(200, *MERGERS)),
+    R("get", "/recruiter/candidates/{candidates_survivor}/merge?victim={candidates_victim_code}", **allow(200, *MERGERS)),
+    R("post", "/recruiter/candidates/{candidates_survivor}/merge", lambda w: {"victim_code": w["candidates_victim_code"]}, **allow(200, *MERGERS)),
     # rec-013 / rec-014 Find Candidates (§2.77, §2.80): read only, hr_team included
     R("post", "/recruiter/candidates/search", {"all": ["Java"]}, **allow(200, *READERS)),
     # hrc-020 (§2.294): saved searches for every reader; only the owner (rec) or super_admin changes the shared one, others 403. The
@@ -285,10 +311,17 @@ async def build(client, db, w) -> None:
     # pob-027: an open task for the recruiter on the world's requirement, and a switched-off escalation rule
     requirement_task = await add(db, RequirementTask(job_id=job.id, kind="sourcing", title="R38 task", due_at=func.now() + timedelta(days=1), assignee_user_id=rec.id))
     escalation_rule = await add(db, EscalationRule(event_type="follow_up_overdue", after_hours=24, notify="reporting_manager", active=False, created_by_user_id=mgr.id))
+    # hrc-013: one import by `rec`; hrc-014: an open probable pair (ids ordered, as the table requires) that also serves as the merge
+    batch = await add(db, CandidateImportBatch(uploaded_by_user_id=rec.id, source_id=source.id, idempotency_key=tag("r38-"), file_sha256=tag().ljust(64, "0"),
+                                               file_name="candidates.csv"))  # fmt: skip
+    survivor, victim = await make_candidate(db, rec), await make_candidate(db, rec)
+    low, high = sorted((survivor.id, victim.id))
+    pair = await add(db, CandidateDuplicate(candidate_id=low, other_id=high, signals=["name"]))
     saved = await add(db, SavedCandidateSearch(owner_user_id=rec.id, name=tag("R38 Saved "), filters={"all": ["Java"]}, shared=True))  # hrc-020
     await db.commit()
     w.update({
         "requirement_task": str(requirement_task.id), "escalation_rule": str(escalation_rule.id),
+        "candidates_import": str(batch.id), "candidates_pair": str(pair.id), "candidates_survivor": str(survivor.id), "candidates_victim_code": victim.candidate_code,
         "candidates_task": str(task.id), "candidates_routing_rule": str(rule.id), "candidates_saved_search": str(saved.id),
         "candidates_source": str(source.id), "candidates_java": str(java.id), "candidates_spare": str(spare.id), "candidates_archived": str(archived.id),
         "candidates_cv": str(cv.id), "candidates_document": str(document.id), "candidates_request": str(request.id), "candidates_skill": str(skill.id), "candidates_job_skill": str(job_skill.id), "candidates_jd_version": str(jd.version),

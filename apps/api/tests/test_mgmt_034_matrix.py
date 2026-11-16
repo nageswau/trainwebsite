@@ -204,9 +204,14 @@ MATRIX = [
     R("patch", "/management/reviews/{review_month}", {"hiring": "Two trainers"}, **_all(200, *PARTNERS)),
     R("post", "/management/reviews/{review_month}/finalise", **_all(200, *PARTNERS)),
     R("get", "/management/reviews/{review_month}/pdf", **_all(200, *PARTNERS)),
+    # itc-032 IT reports (§2.269): operational reports -- the operational tier and the IT Admin, never the accountant; revenue -- a
+    # partner or an accounts reader (it_admin, accountant, super_admin); the list answers anyone who may open at least one report
+    R("get", "/management/it/reports", **_all(200, *FINANCE, "super", "it_admin")),
+    R("get", "/management/it/reports/{operational_report}", **_all(200, *OPERATIONAL, "it_admin")),
+    R("get", "/management/it/reports/{revenue_report}/export", **_all(200, *FINANCE, "super", "it_admin")),
 ]
 
-PATH_VALUES = {"chain": "abroad"}  # the non-id path parameters
+PATH_VALUES = {"chain": "abroad", "operational_report": "funnel", "revenue_report": "revenue"}  # the non-id path parameters
 
 
 def _fill(text: str, w: dict) -> str:
