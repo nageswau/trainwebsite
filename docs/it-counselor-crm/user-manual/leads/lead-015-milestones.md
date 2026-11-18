@@ -1,5 +1,5 @@
 # Student and milestones panel
-> Doc ID: DOC-ITC-LEAD-015 · Verified on 2026-11-18 against `main` @ `6b61546c` (empty state). Linked student: added in session S6 · Roles: IT Counselor
+> Doc ID: DOC-ITC-LEAD-015 · Verified on 2026-11-18 against `main` @ `6b61546c` · Roles: IT Counselor
 
 ## Purpose
 See, from the lead page, how the student created from this lead is progressing.
@@ -19,7 +19,8 @@ The panel says **No student account is linked yet.**
 ![Student and milestones with no student linked](../../screenshots/leads/13-student-and-milestones.png)
 
 ### Step 2 — After conversion or linking
-VERIFICATION REQUIRED — captured in session S6 after conversion.
+The panel shows **Linked student: {name} ({email})** and each enrolment: **IT enrolment · {batch} — {status} · {enrolment code} · {date}**. Right after conversion the status is **Pending consent** until the student accepts the enrolment agreement.
+![Student and milestones with a linked student](../../screenshots/leads/35-student-and-milestones-linked.png)
 
 ## Related Features
 - [Student account: convert or link](../conversion/conv-001-convert-new-student.md)

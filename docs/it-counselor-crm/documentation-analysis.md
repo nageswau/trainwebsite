@@ -166,4 +166,5 @@ Documented as built, in neutral words; none blocks the docs.
 - **P7** The phone menu has no **Sign out**; use My profile → **Logout** in the public header.
 - **P8** **Phone calls from our team** (itc-033) appears on staff profiles too, with student wording.
 - **P9** Counselling can be booked only by the lead's telecaller before hand-over; the IT counselor cannot book.
+- **P10** IT Admin **Leads** table needs sideways scrolling; **Merge a duplicate** opens inside the narrow Action column.
 - **P6** itc-002 (event catalogue) and itc-016 (reminder schedule) are still `NEEDS_CONFIRMATION` in the backlog; pages describe current defaults.

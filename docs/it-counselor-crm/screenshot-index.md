@@ -77,3 +77,24 @@ All screenshots: Chromium 1440 × 900, light, `en-IN`, `Asia/Kolkata`, `itcdocs`
 | leads/32-messages-list.png | LEAD-010 | Messages: email + WhatsApp | 2026-11-18 | itc-s5-activity | element |
 | leads/33-return-form.png | LEAD-013 | Return to telecaller form | 2026-11-18 | itc-s5-activity | centered |
 | leads/34-returned.png | LEAD-013 | Lead returned (read only) | 2026-11-18 | itc-s5-activity | viewport |
+| conversion/01-convert-form.png | CONV-001 | Convert to IT student form (fee prefilled) | 2026-11-18 | itc-s6b-conversion | element |
+| conversion/02-convert-form-installments.png | CONV-001 | Two installments added | 2026-11-18 | itc-s6b-conversion | element |
+| conversion/03-converted.png | CONV-001/003 | Converted + onboarding checklist 0 of 5 | 2026-11-18 | itc-s6b-conversion | element |
+| conversion/05-student-exists.png | CONV-002 | Student exists, Enrol {name} offered | 2026-11-18 | itc-s6b-conversion | element |
+| conversion/06-enrol-existing-chosen.png | CONV-002 | Existing student chosen | 2026-11-18 | itc-s6b-conversion | element |
+| conversion/07-enrolled-existing.png | CONV-002 | Existing student enrolled | 2026-11-18 | itc-s6b-conversion | element |
+| conversion/08-link-suggestion.png | CONV-004 | Matching student with Link | 2026-11-18 | itc-s6b-conversion | element |
+| conversion/09-link-confirm.png | CONV-004 | Link confirmation | 2026-11-18 | itc-s6b-conversion | element |
+| conversion/09-linked.png | CONV-004 | Student linked | 2026-11-18 | itc-s6b-conversion | element |
+| conversion/10-unlink-confirm.png | CONV-004 | Unlink confirmation | 2026-11-18 | itc-s6b-conversion | element |
+| conversion/11-unlinked.png | CONV-004 | Student unlinked | 2026-11-18 | itc-s6b-conversion | element |
+| conversion/12-enrol-existing-form.png | CONV-005 | Enrol existing Overseas student form | 2026-11-18 | itc-s6b-conversion | viewport |
+| conversion/13-enrol-existing-done.png | CONV-005 | Enrolled in IT | 2026-11-18 | itc-s6b-conversion | viewport |
+| leads/35-student-and-milestones-linked.png | LEAD-015 | Linked student, Pending consent | 2026-11-18 | itc-s6b-conversion | element |
+| admin/10-admin-leads.png | ADM-006 | Manage leads (left part of the table) | 2026-11-18 | itc-s6b-conversion | element |
+| admin/11-admin-leads-actions.png | ADM-006 | Manage leads scrolled to Student/Action | 2026-11-18 | itc-s6b-conversion | element |
+| admin/12-admin-convert-form.png | ADM-006 | Admin convert form (not submitted) | 2026-11-18 | itc-s6b-conversion | element |
+| admin/13-merge-enter-code.png | ADM-007 | Merge: Lead ID entered (Telecaller Manager page) | 2026-11-18 | itc-s6b-conversion | element |
+| admin/14-merge-compare.png | ADM-007 | Compare the two leads | 2026-11-18 | itc-s6b-conversion | element |
+| admin/15-merged.png | ADM-007 | LD-000008 was merged | 2026-11-18 | itc-s6b-conversion | viewport |
+| admin/16-admin-leads-after-merge.png | ADM-007 | Admin leads: LD-000008 Duplicate of LD-000006 | 2026-11-18 | itc-s6b-conversion | element |
