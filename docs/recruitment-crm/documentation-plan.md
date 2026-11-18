@@ -39,7 +39,7 @@
   - Restore the `after-s10` snapshot.
   - Super Admin creates Docs Team Lead and Docs HR Manager; IT Admin creates Docs Recruiter A/B, Docs Placement Officer, Docs HR and Docs Interviewer.
   - Doc IDs: ADM-001, ADM-002, ADM-003 (edit).
-- [ ] **S3 — Account access and navigation.** AUTH-001..005 (deactivated in S16), NAV-001..003, DASH-003..005 (empty state).
+- [x] **S3 — Account access and navigation.** AUTH-001..005 (deactivated in S16), NAV-001..003, DASH-003..005 (empty state).
 - [ ] **S4 — Masters and templates.** MST-001..006, ADM-007, ADM-008, CAN-013 (routing rules).
 - [ ] **S5 — Companies A.** CO-001..009 (Docs Acme Technologies, Docs Beta Systems).
 - [ ] **S6 — Companies B.** CO-010..015, DASH-001/002 (first look).
