@@ -6,7 +6,8 @@
 | S2 Stack, tooling, staff | DONE 2026-11-18 | (this commit) | `REC_ROOT` in `shoot.ts`. Stack `itcdocs` snapshot `rec-start` (IT Counselor final state), then spec `rec-s2-staff-setup` (2 tests): Super Admin created Docs Team Lead (global placement_manager) and Docs HR Manager; IT Admin created Docs Recruiter A/B on Recruiter Staff (manager Docs Team Lead; DOCS-REC-A/B), Docs Placement Officer, Docs HR, Docs Interviewer on Users. All Awaiting setup. 14 PNGs. Snapshot `after-rec-s2`. |
 | S3 Account access and navigation | DONE 2026-11-18 | (this commit) | Spec `rec-s3-account-access` (2 tests). All 7 personas set passwords (DOCS_TEST_PASSWORD); the Team Lead's link opens `/admin/reset-password`. Every sidebar item of the 6 roles opened (headings logged). 27 PNGs. Snapshot `after-rec-s3`. |
 | S4 Masters and templates | DONE 2026-11-18 | (this commit) | Spec `rec-s4-masters`. Recruiter A: shared WhatsApp template "Docs interview reminder (Python)" (Interview reminders), question "Docs: Have you built REST APIs with Python…" (Yes / No), form template "Docs Python developer screening" (3 questions). Team Lead: skill Docs FastAPI (alias Fast API, related Python) with Docs Fast-API merged in; candidate tag Docs Immediate joiner; campaign Docs Q4 IT hiring push (LinkedIn); USD = ₹84; approved the template; Allow collaborators ON; routing rule Website → Docs Recruiter A, Round robin. Super Admin: match weights changed then back to defaults. 26 PNGs. Snapshot `after-rec-s4`. |
-| S5–S18 | not started | | |
+| S5 Companies A | DONE 2026-11-18 | (this commit) | Specs `rec-s5a-companies` (Team Lead adds industry Docs IT Services; Recruiter A adds Docs Acme Technologies CMP-000006 with contact Docs Priya HR Lead, and Docs Beta Systems CMP-000007) and `rec-s5b-company-page` (Acme: edit, contact Docs Rahul Hiring Manager, duplicate warning, call, follow-up, meeting MTG-000001, contract Proposal Sent 8.33%/90 days (terms only), email/WhatsApp (recorded)/LinkedIn, reply; Beta archived by A and restored by the Team Lead). 28 PNGs. Snapshots `after-rec-s5a`, `after-rec-s5`. |
+| S6–S18 | not started | | |
 
 ## Owner decisions
 - R1 Scope: core hiring flow first (Phase 1); vendors, campus, receivables, targets/daily plans/activity reports, business dashboards, insights and report libraries in Phase 2.
@@ -26,6 +27,8 @@
 | DOC-REC-MST-001..006 | DONE (S4) |
 | DOC-REC-ADM-007, ADM-008 | DONE (S4) |
 | DOC-REC-CAN-013 | PARTIAL: routing rules (S4); unassigned queue in S8 |
+| DOC-REC-CO-001..006, CO-008, CO-009 | DONE (S5) |
+| DOC-REC-CO-007 | PARTIAL: scheduling (S5); outcome in S15 |
 | Others | not started |
 
 ## Planned link targets (keep these file names)
@@ -35,6 +38,9 @@
 - `user-manual/candidate-portal/cand-004-profile.md`
 - `user-manual/hiring/hire-002-matching.md`
 - `user-manual/candidates/can-014-website-registrations.md`
+- `user-manual/companies/co-010-pipeline-stage.md`, `co-011-documents-timeline.md`, `co-013-merge.md`, `co-014-pipeline-board.md`, `co-015-outreach-cadences.md`
+- `user-manual/work/work-001-follow-ups.md`, `work-003-meetings.md`
+- `user-manual/requirements/req-010-commercial-terms.md`
 
 ## Discovered functionality
 (none yet)

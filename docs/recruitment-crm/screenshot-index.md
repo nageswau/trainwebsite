@@ -71,3 +71,31 @@ Path: `screenshots/<module>/<file>.png`. Captured by the spec named in each row 
 | masters/23-routing-rule.png | CAN-013 | Rule Website → Docs Recruiter A, Round robin | 2026-11-18 | rec-s4-masters | viewport |
 | masters/24-match-weights-total.png | ADM-008 | Total 105 of 100 | 2026-11-18 | rec-s4-masters | element |
 | masters/25-match-weights-saved.png | ADM-008 | Match weights saved | 2026-11-18 | rec-s4-masters | element |
+| companies/01-companies-empty.png | CO-001 | No companies yet | 2026-11-18 | rec-s5a-companies | viewport |
+| companies/02-add-recruiter-form.png | CO-002 | Add recruiter form (Acme + Priya) | 2026-11-18 | rec-s5a-companies | full page |
+| companies/03-company-created.png | CO-002 | Company CMP-000006 created | 2026-11-18 | rec-s5a-companies | viewport |
+| companies/04-companies-list.png | CO-001 | Your companies | 2026-11-18 | rec-s5a-companies | viewport |
+| companies/05-companies-filter-hot.png | CO-001 | Filtered to Hot | 2026-11-18 | rec-s5a-companies | viewport |
+| companies/06-companies-team-lead.png | CO-001 | Team Lead: team + unassigned | 2026-11-18 | rec-s5a-companies | viewport |
+| companies/10-company-page.png | CO-003 | Company page top | 2026-11-18 | rec-s5b-company-page | viewport |
+| companies/11-company-page-full.png | CO-003 | Whole company page | 2026-11-18 | rec-s5b-company-page | full page |
+| companies/12-company-edited.png | CO-003 | Details after editing | 2026-11-18 | rec-s5b-company-page | element |
+| companies/13-add-contact-form.png | CO-004 | Add contact: Docs Rahul Hiring Manager | 2026-11-18 | rec-s5b-company-page | element |
+| companies/14-contact-duplicate-warning.png | CO-004 | Duplicate mobile warning | 2026-11-18 | rec-s5b-company-page | element |
+| companies/15-contacts.png | CO-004 | Contacts section | 2026-11-18 | rec-s5b-company-page | element |
+| companies/16-log-call-form.png | CO-005 | Log call form | 2026-11-18 | rec-s5b-company-page | element |
+| companies/17-calls.png | CO-005 | Calls list | 2026-11-18 | rec-s5b-company-page | element |
+| companies/18-add-follow-up-form.png | CO-006 | Add follow-up form | 2026-11-18 | rec-s5b-company-page | element |
+| companies/19-follow-ups.png | CO-006 | Follow-ups with Done outcome step | 2026-11-18 | rec-s5b-company-page | element |
+| companies/20-schedule-meeting-form.png | CO-007 | Schedule meeting form | 2026-11-18 | rec-s5b-company-page | element |
+| companies/21-meetings.png | CO-007 | MTG-000001 scheduled | 2026-11-18 | rec-s5b-company-page | element |
+| companies/22-contract-form.png | CO-008 | Start contract form | 2026-11-18 | rec-s5b-company-page | element |
+| companies/23-contract.png | CO-008 | Contract at Proposal Sent | 2026-11-18 | rec-s5b-company-page | element |
+| companies/24-send-email.png | CO-009 | Send email: Company introduction | 2026-11-18 | rec-s5b-company-page | element |
+| companies/25-send-whatsapp.png | CO-009 | WhatsApp composer | 2026-11-18 | rec-s5b-company-page | element |
+| companies/26-whatsapp-confirm.png | CO-009 | Did you send it in WhatsApp? | 2026-11-18 | rec-s5b-company-page | element |
+| companies/27-linkedin.png | CO-009 | LinkedIn connection request | 2026-11-18 | rec-s5b-company-page | element |
+| companies/28-messages.png | CO-009 | Messages list | 2026-11-18 | rec-s5b-company-page | element |
+| companies/29-log-reply-form.png | CO-009 | Reply logged | 2026-11-18 | rec-s5b-company-page | element |
+| companies/30-archive-confirm.png | CO-003 | Archive Docs Beta Systems: confirm | 2026-11-18 | rec-s5b-company-page | viewport |
+| companies/31-archived-company-team-lead.png | CO-003 | Archived company seen by the Team Lead | 2026-11-18 | rec-s5b-company-page | viewport |
