@@ -119,3 +119,64 @@ All screenshots: Chromium 1440 × 900, light, `en-IN`, `Asia/Kolkata`, `itcdocs`
 | notifications/01-notifications.png | NOTIF-001 | Counselor A's notifications | 2026-11-18 | itc-s7-students | viewport |
 | tasks/01-management-tasks.png | TASK-001 | Management tasks: one task | 2026-11-18 | itc-s7-students | viewport |
 | tasks/02-management-task-updated.png | TASK-001 | Status updated to In Progress | 2026-11-18 | itc-s7-students | viewport |
+| admin/30-hr-review-rules.png | ADM-012 | HR reviewer rule for Docs Full Stack Python | 2026-11-18 | itc-s8-fees-resume | – |
+| admin/31-discount-approvals.png | ADM-009 | Discount approvals with two requests | 2026-11-18 | itc-s8-fees-resume | – |
+| admin/32-discount-reject-note.png | ADM-009 | Rejection note typed | 2026-11-18 | itc-s8-fees-resume | – |
+| admin/33-discount-decided.png | ADM-009 | Requests decided | 2026-11-18 | itc-s8-fees-resume | – |
+| admin/34-fee-reminders-invalid.png | ADM-010 | Days after refused | 2026-11-18 | itc-s8-fees-resume | – |
+| admin/35-fee-reminders.png | ADM-010 | Reminder schedule saved | 2026-11-18 | itc-s8-fees-resume | – |
+| admin/36-payments-list.png | ADM-008 | Payments list | 2026-11-18 | itc-s8-fees-resume | – |
+| admin/37-record-payment-form.png | ADM-008 | Record enrolment payment (empty, not submitted) | 2026-11-18 | itc-s8-fees-resume | – |
+| admin/38-fee-adjustment-form.png | ADM-008 | Record fee adjustment (empty, not submitted) | 2026-11-18 | itc-s8-fees-resume | – |
+| admin/39-correct-payment-form.png | ADM-008 | Correct a recorded payment (empty, not submitted) | 2026-11-18 | itc-s8-fees-resume | – |
+| admin/40-create-payment-due-form.png | ADM-008 | Create payment due (empty, not submitted) | 2026-11-18 | itc-s8-fees-resume | – |
+| admin/41-apply-discount-form.png | ADM-008 | Apply discount (empty, not submitted) | 2026-11-18 | itc-s8-fees-resume | – |
+| admin/42-student-access-by-payment.png | ADM-008 | Student access by payment | 2026-11-18 | itc-s8-fees-resume | – |
+| fees/01-fee-summary.png | FEE-001 | Fees and reminders (Arjun) | 2026-11-18 | itc-s8-fees-resume | – |
+| fees/02-discount-request-form.png | FEE-002 | Discount request form | 2026-11-18 | itc-s8-fees-resume | – |
+| fees/03-discount-requested.png | FEE-002 | Waiting for approval | 2026-11-18 | itc-s8-fees-resume | – |
+| fees/04-discount-approved.png | FEE-002 | Approved: total INR 40,000 | 2026-11-18 | itc-s8-fees-resume | – |
+| fees/05-discount-rejected.png | FEE-002 | Rejected with note (Bhavna) | 2026-11-18 | itc-s8-fees-resume | – |
+| resume/01-resume-upload.png | RES-001 | First version, not shared | 2026-11-18 | itc-s8-fees-resume | – |
+| resume/02-resume-new-version-share.png | RES-001 | New version, Share with HR ticked | 2026-11-18 | itc-s8-fees-resume | – |
+| resume/03-resume-versions.png | RES-001 | Two versions | 2026-11-18 | itc-s8-fees-resume | – |
+| resume/04-hr-review-received.png | RES-002 | HR review: Resume received | 2026-11-18 | itc-s8-fees-resume | – |
+| resume/05-hr-review-changes-requested.png | RES-002 | HR review: Changes requested | 2026-11-18 | itc-s8-fees-resume | – |
+| handoffs/10-hr-review-queue.png | HO-004 | HR Review Queue | 2026-11-18 | itc-s8-fees-resume | – |
+| handoffs/11-hr-review-form.png | HO-004 | HR review form | 2026-11-18 | itc-s8-fees-resume | – |
+| handoffs/12-hr-review-changes-requested.png | HO-004 | Changes requested saved | 2026-11-18 | itc-s8-fees-resume | – |
+| admin/50-at-risk-threshold-form.png | ADM-011 | Threshold form | 2026-11-18 | itc-s9a-settings | – |
+| admin/51-at-risk-thresholds.png | ADM-011 | Thresholds saved | 2026-11-18 | itc-s9a-settings | – |
+| admin/52-escalation-hours.png | ADM-014 | IT team escalation 1 h | 2026-11-18 | itc-s9a-settings | – |
+| dashboard/01-dashboard.png | DASH-001 | Counselor dashboard (data setup) | 2026-11-18 | itc-s9b-time-states | – |
+| dashboard/02-dashboard-full.png | DASH-001 | Whole dashboard (data setup) | 2026-11-18 | itc-s9b-time-states | – |
+| dashboard/03-dashboard-filtered.png | DASH-002 | Filtered to Docs FSP Batch 1 | 2026-11-18 | itc-s9b-time-states | – |
+| leads/40-follow-up-overdue.png | LEAD-007 | Overdue follow-up (data setup) | 2026-11-18 | itc-s9b-time-states | – |
+| students/11-lifecycle.png | STU-004 | Lifecycle: HR screening | 2026-11-18 | itc-s9b-time-states | – |
+| students/12-at-risk-status.png | STU-004 | At risk (data setup) | 2026-11-18 | itc-s9b-time-states | – |
+| fees/06-fee-overdue.png | FEE-003 | Installment overdue, reminder sent (data setup) | 2026-11-18 | itc-s9b-time-states | – |
+| fees/07-fee-reminder-due-soon.png | FEE-003 | Due in 3 days, reminder sent (data setup) | 2026-11-18 | itc-s9b-time-states | – |
+| notifications/02-notifications-after-jobs.png | NOTIF-001 | After the daily checks (data setup) | 2026-11-18 | itc-s9b-time-states | – |
+| appointments/02-appointment-past.png | APPT-001 | Past appointment with actions (data setup) | 2026-11-18 | itc-s9b-time-states | – |
+| appointments/03-appointment-complete-form.png | APPT-001 | Mark completed with notes | 2026-11-18 | itc-s9b-time-states | – |
+| appointments/04-appointment-completed.png | APPT-001 | Appointment completed | 2026-11-18 | itc-s9b-time-states | – |
+| admin/53-students-at-risk.png | ADM-011 | Students at risk (data setup) | 2026-11-18 | itc-s9b-time-states | – |
+| admin/54-escalation-notification.png | ADM-014 | Follow-up overdue notice (data setup) | 2026-11-18 | itc-s9b-time-states | – |
+| admin/55-counselor-dashboard-owner.png | ADM-005 | Counselor Dashboard, Owner A (data setup) | 2026-11-18 | itc-s9b-time-states | – |
+| admin/56-status-labels.png | ADM-013 | Status labels | 2026-11-18 | itc-s9b-time-states | – |
+| admin/57-status-label-edit.png | ADM-013 | Editing Nurture | 2026-11-18 | itc-s9b-time-states | – |
+| admin/58-status-label-saved.png | ADM-013 | Nurture renamed (reverted after) | 2026-11-18 | itc-s9b-time-states | – |
+| admin/59-lifecycle-set-by-hand.png | ADM-015 | Set by hand: Closed | 2026-11-18 | itc-s9b-time-states | – |
+| admin/60-lifecycle-closed.png | ADM-015 | Lifecycle closed (cleared after) | 2026-11-18 | itc-s9b-time-states | – |
+| admin/61-audit-log.png | ADM-015 | Audit log of enrolments | 2026-11-18 | itc-s9b-time-states (retaken read only) | – |
+| handoffs/20-student-dashboard.png | HO-003 | Student dashboard | 2026-11-18 | itc-s10-lifecycle | – |
+| handoffs/21-student-profile.png | HO-003 | Student profile | 2026-11-18 | itc-s10-lifecycle | – |
+| handoffs/22-student-updates.png | HO-003 | Student updates (shared note) | 2026-11-18 | itc-s10-lifecycle | – |
+| handoffs/23-student-fees.png | HO-003 | Student fees (Pay Now not clicked) | 2026-11-18 | itc-s10-lifecycle | – |
+| handoffs/24-student-notifications.png | HO-003 | Student notifications | 2026-11-18 | itc-s10-lifecycle | – |
+| handoffs/25-student-timetable.png | HO-003 | Student timetable | 2026-11-18 | itc-s10-lifecycle | – |
+| admin/63-deactivated.png | ADM-002 | Counselor B deactivated | 2026-11-18 | itc-s10-lifecycle | – |
+| admin/64-reactivated.png | ADM-002 | Counselor B reactivated | 2026-11-18 | itc-s10-lifecycle | – |
+| account-access/30-deactivated-session.png | AUTH-006 | Open session after deactivation | 2026-11-18 | itc-s10-lifecycle | – |
+| account-access/31-deactivated-sign-in.png | AUTH-006 | Sign-in with a deactivated account | 2026-11-18 | itc-s10-lifecycle | – |
+| conversion/14-onboarding-item-ticked.png | CONV-003 | Onboarding item ticked | 2026-11-18 | itc-s10b-checklist | – |

@@ -1,5 +1,5 @@
 # Lead appointments
-> Doc ID: DOC-ITC-APPT-001 · Verified on 2026-11-18 against `main` @ `6b61546c` (booking, list, confirm). Complete / no-show: added in session S9 · Roles: IT Counselor, Telecaller
+> Doc ID: DOC-ITC-APPT-001 · Verified on 2026-11-18 against `main` @ `6b61546c` · Roles: IT Counselor, Telecaller
 
 ## Purpose
 Handle the counselling sessions telecallers book with you: confirm them, then mark each one completed or a no-show.
@@ -36,7 +36,14 @@ Select **Confirm**. The message **Appointment confirmed.** appears and the statu
 ![Appointment confirmed](../../screenshots/appointments/03-appointment-confirmed.png)
 
 ### Step 4 — Complete or no-show
-VERIFICATION REQUIRED — captured in session S9.
+After the session time, the card offers **Mark completed**, **Mark no-show**, **Reschedule** and **Cancel appointment**. (State prepared by data setup: the appointment was moved to yesterday 11:00 IST.)
+![A past appointment with its actions](../../screenshots/appointments/02-appointment-past.png)
+
+Select **Mark completed**, optionally fill **Outcome notes (optional)**, and select **Mark completed** again. The message **Appointment completed.** appears and the card shows **Completed** with the outcome notes. The lead moves to **Counselling Completed**.
+![Mark completed with outcome notes](../../screenshots/appointments/03-appointment-complete-form.png)
+![Appointment completed](../../screenshots/appointments/04-appointment-completed.png)
+
+**Mark no-show** works the same way (from code; not captured: there was one demo appointment).
 
 ## Fields
 | Field (booking) | Description | Required | Example |
@@ -56,6 +63,7 @@ The appointment shows on your **Lead appointments** with its current status.
 | Appointment CAP-{number} booked with {counselor}. | Booking saved |
 | Check the highlighted fields. | A required booking field is empty |
 | Appointment confirmed. | Counselor confirmed |
+| Appointment completed. | Marked completed |
 | This lead already has an open counselling appointment | A second booking on the same lead (from code; not captured) |
 
 ## Common Errors

@@ -1,5 +1,5 @@
 # Add and complete follow-ups
-> Doc ID: DOC-ITC-LEAD-007 · Verified on 2026-11-18 against `main` @ `6b61546c` (add, list, done). Overdue and escalation: added in session S9 · Roles: IT Counselor
+> Doc ID: DOC-ITC-LEAD-007 · Verified on 2026-11-18 against `main` @ `6b61546c` · Roles: IT Counselor
 
 ## Purpose
 Plan dated reminders on a lead (for example "share the fee plan tomorrow at 10") and tick them off when done.
@@ -27,7 +27,10 @@ Select **Done**. The message **Marked done.** appears, the follow-up gets a **Do
 ![Follow-up marked done](../../screenshots/leads/18-follow-up-completed.png)
 
 ### Step 4 — Overdue follow-ups
-VERIFICATION REQUIRED — captured in session S9 (overdue list and escalation to the IT Admin).
+A follow-up past its due time shows **Overdue** and keeps **Done**, **Reschedule** and **Cancel follow-up**. It is also listed first under **Follow-ups due today and overdue** on your [Dashboard](../dashboard/dash-001-dashboard.md). (State prepared by data setup: the follow-up was moved to 3 hours ago.)
+![Overdue follow-up](../../screenshots/leads/40-follow-up-overdue.png)
+
+If the IT team's escalation is switched on, a follow-up that stays overdue for the set number of hours is reported once to every IT Admin. See [Overdue follow-up escalation](../../admin-manual/admin/adm-014-escalation.md).
 
 ## Fields
 | Field | Description | Required | Example |

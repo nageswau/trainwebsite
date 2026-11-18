@@ -1,5 +1,5 @@
 # Manage IT counselor users
-> Doc ID: DOC-ITC-ADM-002 · Verified on 2026-11-18 against `main` @ `6b61546c` (edit details, re-send link). Deactivate / reactivate: added in session S10 · Roles: IT Admin, Super Admin
+> Doc ID: DOC-ITC-ADM-002 · Verified on 2026-11-18 against `main` @ `6b61546c` · Roles: IT Admin, Super Admin
 
 ## Purpose
 Keep IT counselor accounts up to date: correct their details, send a new set-password link when the first one was lost or expired, and switch an account off when the counselor leaves.
@@ -29,7 +29,13 @@ Select **Edit details** on the counselor's row. Change **Full name**, **Phone**,
 ![Re-send link confirmation on Docs IT Counselor B](../../screenshots/admin/07-resend-link.png)
 
 ### Step 4 — Deactivate or reactivate
-VERIFICATION REQUIRED — captured in session S10.
+Select **Deactivate** on the counselor's row. The message **{name} deactivated.** appears and the status is **Inactive**, with **Reactivate**. (For accounts with work that would be affected, a **Confirm deactivate** step appears first; it did not for an IT counselor.)
+![Docs IT Counselor B deactivated](../../screenshots/admin/63-deactivated.png)
+
+The counselor is signed out at once and cannot sign in (see [Sign out, ended sessions, deactivated account](../../user-manual/account-access/auth-006-sign-out.md)).
+
+Select **Reactivate** to give access back. The message **{name} reactivated.** appears. The counselor signs in with their old password.
+![Docs IT Counselor B reactivated](../../screenshots/admin/64-reactivated.png)
 
 ## Fields
 | Field | Description | Required | Example |
@@ -48,6 +54,8 @@ VERIFICATION REQUIRED — captured in session S10.
 |---|---|
 | Details updated. | Edit saved |
 | New link created for {name}. A set-password link was emailed and is valid for 72 hours. | Link re-sent |
+| {name} deactivated. | Deactivated |
+| {name} reactivated. | Reactivated |
 
 ## Common Errors
 **Problem:** There is no **Re-send link** button. **Cause:** The counselor has already set a password, or the account is inactive. **Resolution:** If they forgot their password, ask them to use **Forgot password** on the sign-in page. See [Forgot / reset your password](../../user-manual/account-access/auth-003-forgot-password.md).
@@ -55,6 +63,7 @@ VERIFICATION REQUIRED — captured in session S10.
 **Problem:** You cannot see the counselor's name in the row. **Cause:** The table is wider than the card. **Resolution:** Scroll the table sideways, or widen the browser window.
 
 ## Tips
+- Deactivating a counselor does not move their students: they still show the inactive counselor under **EduSphere counsellor** (finding P13). Move them with **Change counsellor** first; see [Assign or change a student's counselor](adm-003-student-counselor.md).
 - The email cannot be changed here. To use a new email, create a new account.
 
 ## Related Features

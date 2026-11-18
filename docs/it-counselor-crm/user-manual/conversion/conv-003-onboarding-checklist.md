@@ -1,5 +1,5 @@
 # Onboarding checklist after conversion
-> Doc ID: DOC-ITC-CONV-003 · Verified on 2026-11-18 against `main` @ `6b61546c` (list as created). Ticking items: VERIFICATION REQUIRED · Roles: IT Counselor
+> Doc ID: DOC-ITC-CONV-003 · Verified on 2026-11-18 against `main` @ `6b61546c` · Roles: IT Counselor
 
 ## Purpose
 Track the first steps a new IT student must complete after enrolment.
@@ -25,7 +25,10 @@ After conversion the checklist shows **0 of 5 done** and five items:
 ![Onboarding checklist, 0 of 5 done](../../screenshots/conversion/03-converted.png)
 
 ### Step 2 — Tick items
-Each item has a tick box. VERIFICATION REQUIRED: who ticks each item (counselor or the system) was not confirmed in this session.
+The student's IT counselor (on the lead page) and the IT Admin tick items as the student completes them. Tick an item's box: the count updates at once (**1 of 5 done**) and the tick is saved. Untick it the same way.
+![Accept the enrolment agreement ticked, 1 of 5 done](../../screenshots/conversion/14-onboarding-item-ticked.png)
+
+Items are not ticked automatically: even after Arjun set his password and accepted the agreement, the list still read **0 of 5 done** until the counselor ticked it (finding P14).
 
 ## Expected Result
 The count (**{n} of 5 done**) shows the student's onboarding progress.

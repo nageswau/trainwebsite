@@ -16,7 +16,7 @@ Keep a student's personal details and emergency contact up to date, and see thei
 
 ## Steps
 ### Step 1 — Check the lifecycle
-**Lifecycle** is "Worked out from the fee, training, certificate, HR review and placement records, so it updates by itself." For each enrolment it shows **Fee**, **Training** and **Placement** stages and a **History** link. **At-risk status** shows the result of the last daily check (see [Risk and lifecycle cards](stu-004-risk-lifecycle.md), S9).
+**Lifecycle** is "Worked out from the fee, training, certificate, HR review and placement records, so it updates by itself." For each enrolment it shows **Fee**, **Training** and **Placement** stages and a **History** link. **At-risk status** shows the result of the last daily check (see [Risk and lifecycle cards](stu-004-risk-lifecycle.md)).
 
 ### Step 2 — Fill in personal details and the emergency contact
 Fill **Date of birth**, **City**, **Address**, **Highest qualification**, **Graduation year**, and under **Emergency contact**: **Emergency contact name**, **Relation**, **Emergency contact phone**. These are "Shown only to the student, their IT counselor and the IT Admin."
@@ -50,7 +50,7 @@ The details show on the [Student 360](stu-002-student-360.md) **Contact** sectio
 | Details saved. | Saved |
 
 ## Tips
-- The lower sections of the page, **Fees and reminders**, **Resume** and **HR review**, are described in [Fee summary](../fees/fee-001-fee-summary.md) and the resume pages (S8).
+- The lower sections of the page, **Fees and reminders**, **Resume** and **HR review**, are described in [Fee summary](../fees/fee-001-fee-summary.md), [Upload a resume](../resume/res-001-upload-resume.md) and [HR review status](../resume/res-002-hr-review-status.md).
 
 ## Related Features
 - [Student 360](stu-002-student-360.md)

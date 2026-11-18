@@ -169,4 +169,6 @@ Documented as built, in neutral words; none blocks the docs.
 - **P10** IT Admin **Leads** table needs sideways scrolling; **Merge a duplicate** opens inside the narrow Action column.
 - **P11** IT Admin **Change counsellor** fails with "Student not found" for a student who joined IT from Overseas (the assign looks up primary IT students only), so their IT counselor cannot be changed.
 - **P12** A counselor opening another counselor's student gets the bare "404 This page could not be found." page, with no portal menu or way back.
+- **P13** Deactivating an IT counselor leaves their students assigned to the inactive account; nothing prompts the IT Admin to reassign them.
+- **P14** The onboarding checklist is never ticked by the system: items the student has done (password set, agreement accepted) stay unticked until a counselor or IT Admin ticks them.
 - **P6** itc-002 (event catalogue) and itc-016 (reminder schedule) are still `NEEDS_CONFIRMATION` in the backlog; pages describe current defaults.

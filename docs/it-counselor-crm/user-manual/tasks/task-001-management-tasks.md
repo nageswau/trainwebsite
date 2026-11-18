@@ -39,7 +39,7 @@ Management sees each status change.
 
 ## Tips
 - Only management can cancel a task.
-- The task form tells management that "The owner is notified". That notification was not captured.
+- You also get a notification **A management task was assigned to you** with the title, deadline and priority.
 
 ## Related Features
 - [Portal tour](../navigation/nav-001-portal-tour.md)
