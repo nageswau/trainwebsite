@@ -98,3 +98,24 @@ All screenshots: Chromium 1440 × 900, light, `en-IN`, `Asia/Kolkata`, `itcdocs`
 | admin/14-merge-compare.png | ADM-007 | Compare the two leads | 2026-11-18 | itc-s6b-conversion | element |
 | admin/15-merged.png | ADM-007 | LD-000008 was merged | 2026-11-18 | itc-s6b-conversion | viewport |
 | admin/16-admin-leads-after-merge.png | ADM-007 | Admin leads: LD-000008 Duplicate of LD-000006 | 2026-11-18 | itc-s6b-conversion | element |
+| admin/20-admin-students.png | ADM-003 | IT Admin Students table | 2026-11-18 | itc-s7-students | element |
+| admin/21-assign-counselor-form.png | ADM-003 | Assign counsellor (Esha → A) | 2026-11-18 | itc-s7-students | element |
+| admin/22-change-counselor-form.png | ADM-003 | Change counsellor with reason (Esha → B) | 2026-11-18 | itc-s7-students | element |
+| admin/22b-change-counselor-dual-student.png | ADM-003 | Student not found for Farah (P11) | 2026-11-18 | itc-s7-students | element |
+| admin/23-counselor-changed.png | ADM-003 | Table after the change | 2026-11-18 | itc-s7-students | element |
+| admin/24-resume-limit-invalid.png | ADM-004 | Limit 11 refused | 2026-11-18 | itc-s7-students | element |
+| admin/25-resume-limit-saved.png | ADM-004 | Limit saved: 8 MB | 2026-11-18 | itc-s7-students | element |
+| students/01-my-students.png | STU-001 | My Students | 2026-11-18 | itc-s7-students | viewport |
+| students/02-my-students-search.png | STU-001 | Searched for Arjun | 2026-11-18 | itc-s7-students | element |
+| students/03-student-360.png | STU-002 | Student 360 of Arjun | 2026-11-18 | itc-s7-students | full page |
+| students/04-student-record-form.png | STU-003 | Personal details filled in | 2026-11-18 | itc-s7-students | element |
+| students/05-student-record.png | STU-003 | Student record after saving | 2026-11-18 | itc-s7-students | full page |
+| students/06-note-new.png | NOTE-001 | New note typed | 2026-11-18 | itc-s7-students | viewport |
+| students/07-notes-shared.png | NOTE-001 | Note shared with the student | 2026-11-18 | itc-s7-students | viewport |
+| students/08-notes-stopped.png | NOTE-001 | Sharing stopped | 2026-11-18 | itc-s7-students | viewport |
+| students/09-not-your-student.png | STU-002 | Another counselor's student: 404 (P12) | 2026-11-18 | itc-s7-students | viewport |
+| students/10-counselor-b-students.png | ADM-003 | Counselor B's Students after the change | 2026-11-18 | itc-s7-students | viewport |
+| timetable/01-timetable.png | TT-001 | Week of 23 Nov | 2026-11-18 | itc-s7-students | viewport |
+| notifications/01-notifications.png | NOTIF-001 | Counselor A's notifications | 2026-11-18 | itc-s7-students | viewport |
+| tasks/01-management-tasks.png | TASK-001 | Management tasks: one task | 2026-11-18 | itc-s7-students | viewport |
+| tasks/02-management-task-updated.png | TASK-001 | Status updated to In Progress | 2026-11-18 | itc-s7-students | viewport |

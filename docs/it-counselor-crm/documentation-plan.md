@@ -42,7 +42,7 @@
 - [x] **S4 — Handoff and leads.** Telecaller creates and hands over five Docs IT leads (HO-001), Telecaller Manager changes one (HO-002). LEAD-001..006, LEAD-015, APPT-001. Snapshot `after-s4`.
 - [x] **S5 — Lead activity.** LEAD-007..014 (follow-ups, calls, WhatsApp, email, meetings, counseling, return, notes/activity). Snapshot `after-s5`.
 - [x] **S6 — Conversion.** CONV-001..005, ADM-006, ADM-007 (merge Deepa). Snapshot `after-s6`.
-- [ ] **S7 — Students.** STU-001..003, NOTE-001, TT-001, NOTIF-001, TASK-001, ADM-003, ADM-004. Snapshot `after-s7`.
+- [x] **S7 — Students.** STU-001..003, NOTE-001, TT-001, NOTIF-001, TASK-001, ADM-003, ADM-004. Snapshot `after-s7`.
 - [ ] **S8 — Fees, resume and HR.** FEE-001, FEE-002, ADM-008 (screens only, no submit), ADM-009, ADM-010, RES-001, RES-002, ADM-012, HO-004. Snapshot `after-s8`.
 - [ ] **S9 — Time states (SQL back-dating, I2).** FEE-003, STU-004, ADM-011, ADM-014, DASH-001, DASH-002, ADM-005, ADM-013, ADM-015. Snapshot `after-s9`.
 - [ ] **S10 — Student view and lifecycle.** HO-003, AUTH-006 (sign out, deactivated account), ADM-002 (deactivate/reactivate).

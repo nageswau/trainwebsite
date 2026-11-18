@@ -167,4 +167,6 @@ Documented as built, in neutral words; none blocks the docs.
 - **P8** **Phone calls from our team** (itc-033) appears on staff profiles too, with student wording.
 - **P9** Counselling can be booked only by the lead's telecaller before hand-over; the IT counselor cannot book.
 - **P10** IT Admin **Leads** table needs sideways scrolling; **Merge a duplicate** opens inside the narrow Action column.
+- **P11** IT Admin **Change counsellor** fails with "Student not found" for a student who joined IT from Overseas (the assign looks up primary IT students only), so their IT counselor cannot be changed.
+- **P12** A counselor opening another counselor's student gets the bare "404 This page could not be found." page, with no portal menu or way back.
 - **P6** itc-002 (event catalogue) and itc-016 (reminder schedule) are still `NEEDS_CONFIRMATION` in the backlog; pages describe current defaults.

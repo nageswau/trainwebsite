@@ -8,7 +8,8 @@
 | S4 Handoff and leads | DONE 2026-11-18 | (this commit) | Specs `itc-s4a-handover` (telecaller creates Arjun, Bhavna, Chirag, Deepa, Esha — Python Full Stack; Esha booked CAP-000001 for tomorrow 11:00 before hand-over; manager moves Chirag B→A) and `itc-s4b-leads` (Arjun: details, next action, Qualified, qualification; CAP-000001 confirmed). 22 PNGs. Snapshots `after-s4a`, `after-s4b`. |
 | S5 Lead activity | DONE 2026-11-18 | (this commit) | Spec `itc-s5-activity`. Arjun: follow-ups (fee details +1 d done; course details +2 d 16:00 open), 1 call kept + 1 deleted, meeting, counseling (Interested, Python Full Stack, ₹45,000, joining +7 d, Parent, objection Fee too high), note. Bhavna: WhatsApp recorded (wa.me blocked in the browser), Course brochure email (Mailpit). Chirag returned to the telecaller. 19 PNGs. Snapshot `after-s5`. |
 | S6 Conversion | DONE 2026-11-18 | (this commit) | Specs `itc-s6a-setup` (IT students Docs IT Student Bhavna/Esha, Docs Overseas Student Farah, duplicate lead LD-000008) and `itc-s6b-conversion`. Arjun → new student, Docs FSP Batch 1, ₹45,000 in 2 installments (₹20,000 at batch start, ₹25,000 +30 d) — fee schedule only, **no payment**. Bhavna → existing student (₹45,000, no installments). Esha linked then unlinked (back to Follow-up). Farah enrolled in IT with A. Telecaller Manager merged LD-000008 into Deepa LD-000006. 21 PNGs. Snapshots `after-s6a`, `after-s6b`. |
-| S7–S12 | not started | | |
+| S7 Students | DONE 2026-11-18 | (this commit) | Specs `itc-s7a-setup` (Arjun sets his password from Mailpit and accepts the enrolment agreement: enrolment **active**, no payment) and `itc-s7-students`. IT Admin: Esha assigned to A then changed to B ("Workload balance"); Farah change fails "Student not found" (P11); resume limit 11 refused, 8 saved, back to 5; Docs FSP Batch 1 slots Mon + Wed 10:00–12:00 Online. A: Arjun record saved (personal + emergency contact), 2 notes (1 shared), timetable week of 23 Nov, notifications. Arjun Partner assigned A the task "Call back the November Python enquiries" (+5 d), A set it In Progress. 21 PNGs. Snapshots `after-s7a`, `after-s7`. |
+| S8–S12 | not started | | |
 
 ## Owner decisions
 - Approach: full verified set (same pipeline as `docs/counselor-crm/`).
@@ -28,6 +29,12 @@
 | DOC-ITC-HO-001, HO-002 | DONE (S4) |
 | DOC-ITC-LEAD-001..006 | DONE (S4) |
 | DOC-ITC-LEAD-015 | DONE (S4, S6) |
+| DOC-ITC-STU-001..003 | DONE (S7) |
+| DOC-ITC-NOTE-001 | DONE (S7) |
+| DOC-ITC-TT-001 | DONE (S7) |
+| DOC-ITC-NOTIF-001 | DONE (S7) |
+| DOC-ITC-TASK-001 | DONE (S7) |
+| DOC-ITC-ADM-003, ADM-004 | DONE (S7) |
 | DOC-ITC-CONV-001, 002, 004, 005 | DONE (S6) |
 | DOC-ITC-CONV-003 | PARTIAL: list (S6); ticking items VERIFICATION REQUIRED |
 | DOC-ITC-ADM-006, ADM-007 | DONE (S6) |
