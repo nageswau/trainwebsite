@@ -58,3 +58,22 @@ All screenshots: Chromium 1440 × 900, light, `en-IN`, `Asia/Kolkata`, `itcdocs`
 | leads/12-qualification-saved.png | LEAD-006 | Qualification saved | 2026-11-18 | itc-s4b-leads | element |
 | leads/13-student-and-milestones.png | LEAD-015 | No student linked yet | 2026-11-18 | itc-s4b-leads | element |
 | leads/14-student-account-not-qualified.png | CONV-001 | Student account before Qualified (Bhavna) | 2026-11-18 | itc-s4b-leads | element |
+| leads/15-follow-up-form.png | LEAD-007 | Add follow-up form | 2026-11-18 | itc-s5-activity | element |
+| leads/16-follow-ups-list.png | LEAD-007 | Two open follow-ups | 2026-11-18 | itc-s5-activity | element |
+| leads/18-follow-up-completed.png | LEAD-007 | Marked done | 2026-11-18 | itc-s5-activity | element |
+| leads/19-log-call-form.png | LEAD-008 | Log call form | 2026-11-18 | itc-s5-activity | element |
+| leads/20-calls-list.png | LEAD-008 | Calls list | 2026-11-18 | itc-s5-activity | element |
+| leads/21-call-edit-form.png | LEAD-008 | Call edit form | 2026-11-18 | itc-s5-activity | element |
+| leads/22-call-delete-confirm.png | LEAD-008 | Delete this call? | 2026-11-18 | itc-s5-activity | element |
+| leads/23-meeting-form.png | LEAD-011 | Record meeting form | 2026-11-18 | itc-s5-activity | element |
+| leads/24-meeting-saved.png | LEAD-011 | Meeting recorded | 2026-11-18 | itc-s5-activity | element |
+| leads/25-counseling-form.png | LEAD-012 | Record counseling form | 2026-11-18 | itc-s5-activity | element |
+| leads/26-counseling-saved.png | LEAD-012 | Counseling recorded | 2026-11-18 | itc-s5-activity | element |
+| leads/27-notes.png | LEAD-014 | Notes | 2026-11-18 | itc-s5-activity | element |
+| leads/28-activity.png | LEAD-014 | Activity timeline | 2026-11-18 | itc-s5-activity | element |
+| leads/29-whatsapp-composer.png | LEAD-009 | WhatsApp composer (Welcome message) | 2026-11-18 | itc-s5-activity | element |
+| leads/30-whatsapp-confirm.png | LEAD-009 | Did you send it in WhatsApp? | 2026-11-18 | itc-s5-activity | element |
+| leads/31-email-form.png | LEAD-010 | Email form (Course brochure) | 2026-11-18 | itc-s5-activity | element |
+| leads/32-messages-list.png | LEAD-010 | Messages: email + WhatsApp | 2026-11-18 | itc-s5-activity | element |
+| leads/33-return-form.png | LEAD-013 | Return to telecaller form | 2026-11-18 | itc-s5-activity | centered |
+| leads/34-returned.png | LEAD-013 | Lead returned (read only) | 2026-11-18 | itc-s5-activity | viewport |

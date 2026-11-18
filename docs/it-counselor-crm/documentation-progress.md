@@ -6,7 +6,8 @@
 | S2 Stack and tooling | DONE 2026-11-18 | (this commit) | `itcdocs` up at `6b61546c`, seeded, migrations at `0319`. `shoot.ts` `ITC_ROOT`. Spec `itc-s2-admin-setup` (2 tests): Docs IT Counselor A/B, Docs IT Telecaller (DOCS-ITC-TEL-1, manager Lakshmi), programme **Docs Full Stack Python** (INR 45000, 12 weeks), batch **Docs FSP Batch 1** (+7 to +91 days, Online). Snapshots `after-seed`, `after-s2` (scratchpad). 9 PNGs. ADM-001 done; ADM-002 edit + re-send done (deactivate in S10). |
 | S3 Account access and navigation | DONE 2026-11-18 | (this commit) | Spec `itc-s3-account-access` (3 tests). A, B and Docs IT Telecaller passwords = DOCS_TEST_PASSWORD. 23 PNGs. AUTH-001..005, NAV-001 done; AUTH-006 sign-out done (deactivated in S10). Snapshot `after-s3`. |
 | S4 Handoff and leads | DONE 2026-11-18 | (this commit) | Specs `itc-s4a-handover` (telecaller creates Arjun, Bhavna, Chirag, Deepa, Esha — Python Full Stack; Esha booked CAP-000001 for tomorrow 11:00 before hand-over; manager moves Chirag B→A) and `itc-s4b-leads` (Arjun: details, next action, Qualified, qualification; CAP-000001 confirmed). 22 PNGs. Snapshots `after-s4a`, `after-s4b`. |
-| S5–S12 | not started | | |
+| S5 Lead activity | DONE 2026-11-18 | (this commit) | Spec `itc-s5-activity`. Arjun: follow-ups (fee details +1 d done; course details +2 d 16:00 open), 1 call kept + 1 deleted, meeting, counseling (Interested, Python Full Stack, ₹45,000, joining +7 d, Parent, objection Fee too high), note. Bhavna: WhatsApp recorded (wa.me blocked in the browser), Course brochure email (Mailpit). Chirag returned to the telecaller. 19 PNGs. Snapshot `after-s5`. |
+| S6–S12 | not started | | |
 
 ## Owner decisions
 - Approach: full verified set (same pipeline as `docs/counselor-crm/`).
@@ -26,6 +27,8 @@
 | DOC-ITC-HO-001, HO-002 | DONE (S4) |
 | DOC-ITC-LEAD-001..006 | DONE (S4) |
 | DOC-ITC-LEAD-015 | PARTIAL: empty state (S4); linked student in S6 |
+| DOC-ITC-LEAD-007 | PARTIAL: add, done (S5); overdue/escalation in S9 |
+| DOC-ITC-LEAD-008..014 | DONE (S5) |
 | DOC-ITC-APPT-001 | PARTIAL: book, list, confirm (S4); complete / no-show in S9 |
 | all others | not started |
 
@@ -39,4 +42,6 @@
 - Telecaller Manager is a `global` account: signs in at `/admin/login`; manager lead page `/telecaller/manager/leads/{id}` has **Change counselor** (no reason asked) and **Merge a duplicate**.
 - The IT telecaller's **Product interest** list also shows Overseas products (UK, USA…).
 - Counselor stage choices: Qualified, Follow-up, Counselling Scheduled, Counselling Completed, Not Interested, Not Eligible, Lost.
+- Follow-up **Done** has no outcome field; follow-ups have **Reschedule** and **Cancel follow-up** too (not captured).
+- After **Return lead** the counselor still sees a read-only page (Student and milestones, Lead details, Activity) until they leave it.
 - Signing in at `/overseas/login` says "Use the correct EduSphere portal for this account: sign in at /it/login".
