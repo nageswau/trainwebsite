@@ -163,4 +163,6 @@ Documented as built, in neutral words; none blocks the docs.
 - **P3** No "Export my leads" for the IT counselor (overseas has it).
 - **P4** Escalation hours for IT follow-ups are set on the telecaller manager's Alerts page, not in the IT Admin portal.
 - **P5** The itc-033 retention policy is a document only; there is no automatic purge.
+- **P7** The phone menu has no **Sign out**; use My profile → **Logout** in the public header.
+- **P8** **Phone calls from our team** (itc-033) appears on staff profiles too, with student wording.
 - **P6** itc-002 (event catalogue) and itc-016 (reminder schedule) are still `NEEDS_CONFIRMATION` in the backlog; pages describe current defaults.
