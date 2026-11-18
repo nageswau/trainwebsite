@@ -65,6 +65,8 @@ test("IT Counselor CRM S7 students", async ({ browser }) => {
   await cf.getByRole("button", { name: "Save" }).click();
   await settle(a, 2500);
   await say(a, "ADM-003 changed");
+  console.log(`VERIFY ADM-003 rows: ${await text(table)}`);
+  await shoot(a, "admin", "23-counselor-changed.png", { root, element: table });
   // Finding P11: a dual (Overseas + IT) student cannot be changed here
   await rowOf("Docs Overseas Student Farah").getByRole("button", { name: "Change counsellor" }).click();
   const ff = a.getByRole("form", { name: "Change counsellor" });
@@ -76,8 +78,6 @@ test("IT Counselor CRM S7 students", async ({ browser }) => {
   await shoot(a, "admin", "22b-change-counselor-dual-student.png", { root, element: rowOf("Docs Overseas Student Farah") });
   await ff.getByRole("button", { name: "Cancel" }).click();
   await settle(a, 800);
-  console.log(`VERIFY ADM-003 rows: ${await text(table)}`);
-  await shoot(a, "admin", "23-counselor-changed.png", { root, element: table });
 
   // Resume upload limit
   const rl = sec(a, "Resume upload limit");

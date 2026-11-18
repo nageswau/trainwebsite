@@ -17,10 +17,10 @@ IT Admin sidebar **At Risk** ("Thresholds per programme, and the students the da
 ### Step 1 — Set a programme's thresholds
 Under **At-risk thresholds** select **Edit** on the programme. Fill any of **Minimum attendance %** ("Leave blank to switch off."), **Sessions before attendance counts** ("Avoids flagging in the first week."), **Minimum assessment average %** ("Best attempt per assessment. Blank = off.") and **Absences in a row** ("Flag after this many. Blank = off."). Select **Save thresholds**: **Thresholds for {programme} saved. The next daily check (07:00 IST) applies them.**
 ![Thresholds for Docs Full Stack Python](../../screenshots/admin/50-at-risk-threshold-form.png)
-![Thresholds saved](../../screenshots/admin/51-at-risk-thresholds.png)
+![Thresholds table after saving](../../screenshots/admin/51-at-risk-thresholds.png)
 
 ### Step 2 — See flagged students
-**Students at risk** lists **Student**, **Programme / Batch**, **Why** and **Since**.
+**Students at risk** lists **Student**, **Programme / batch**, **Why** and **Since**.
 ![Docs IT Lead Arjun at risk (state prepared by data setup)](../../screenshots/admin/53-students-at-risk.png)
 
 ## Fields

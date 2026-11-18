@@ -28,7 +28,8 @@ When an IT counselor's follow-up is overdue by that many hours, every active IT 
 
 ## Expected Result
 - Each follow-up is escalated once. Only follow-ups that became overdue within the last day are escalated, so switching it on does not flood anyone with old work.
-- A telecaller's follow-up goes to their reporting manager instead.
+- A telecaller's follow-up goes to their reporting manager instead (or to the IT Admins if that manager is inactive).
+- Follow-ups on a lead in **Nurture** are never escalated.
 
 ## Tips
 - The check runs every 15 minutes. In this guide the follow-up was moved to 3 hours ago with a data setup and the check was run by hand.

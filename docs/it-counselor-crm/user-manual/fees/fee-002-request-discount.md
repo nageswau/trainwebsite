@@ -24,7 +24,7 @@ Select **Request discount**. The message **Discount requested. It changes the fe
 ![Discount waiting for approval](../../screenshots/fees/03-discount-requested.png)
 
 ### Step 3 — See the decision
-- **Approved**: **Approved discount** and **Total payable** change, and the discount comes off the last installment (Arjun: ₹25,000 → ₹20,000). The request shows **Approved** and "Decided by {approver}".
+- **Approved**: **Approved discount** and **Total payable** change, and the discount comes off the unpaid bills, latest due first (Arjun: installment 2, ₹25,000 → ₹20,000). The request shows **Approved** and "Decided by {approver}".
 ![Discount approved](../../screenshots/fees/04-discount-approved.png)
 - **Rejected**: the fee stays the same and the request shows **Rejected** with the approver's note.
 ![Discount rejected with the approver's note](../../screenshots/fees/05-discount-rejected.png)
@@ -41,6 +41,7 @@ Select **Request discount**. The message **Discount requested. It changes the fe
 | Enter an amount above 0 and no more than INR {balance}, the balance still owed. | Amount empty, 0 or above the balance |
 | Give a reason for the discount. | Reason empty |
 | Discount requested. It changes the fee only once an approver approves it. | Sent |
+| A discount request for this enrolment is already waiting for approval | A second request while one is pending (from code; not captured) |
 
 ## Related Features
 - [Fee summary](fee-001-fee-summary.md)

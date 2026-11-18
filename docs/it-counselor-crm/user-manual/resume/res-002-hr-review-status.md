@@ -26,9 +26,12 @@ When HR asks for changes, the stage is **Changes requested** and **Next action**
 | Stage | Next action shown |
 |---|---|
 | Resume received | HR to start the review |
-| Under review | (HR is reviewing) |
+| Under review | HR is reviewing the resume |
 | Changes requested | Student to upload an updated resume |
-| Screening, Interview ready, Completed, Withdrawn | Later HR stages (not captured) |
+| Screening | HR screening call (from code) |
+| Interview ready | Schedule interviews (from code) |
+| Completed | No action: review complete (from code) |
+| Withdrawn | No action: withdrawn from placement (from code) |
 
 ## Expected Result
 Each HR change also sends you **HR review updated**, and **Changes requested** reviews count in **Pending HR actions** on your [Dashboard](../dashboard/dash-001-dashboard.md).

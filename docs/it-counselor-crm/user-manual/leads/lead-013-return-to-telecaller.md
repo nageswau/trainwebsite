@@ -8,7 +8,7 @@ Give a lead back to its telecaller when it is not ready for counseling, for exam
 - **IT Counselor**, on their own leads.
 
 ## Prerequisites
-- The lead is in your **My leads** and is not converted.
+- The lead is in your **My leads** and has no student linked. If a student is linked, unlink them first ([Link or unlink](../conversion/conv-004-link-student.md)).
 
 ## How to Access
 Lead page → **Return to telecaller**.
@@ -28,8 +28,9 @@ Select **Return lead**. The message **Lead returned to the telecaller.** appears
 | Reason for returning | Why the lead goes back (up to 500 characters; kept in the stage history) | Yes | Wants a weekend batch next quarter… |
 
 ## Expected Result
-- The lead leaves your **My leads**.
-- The telecaller can work it again.
+- The lead leaves your **My leads** and goes back to **Follow-up** with the telecaller, who can work it again.
+- Its open follow-ups and appointments are cancelled and the next action is cleared (from code).
+- The screenshot after returning still shows the old stage in the header until the page is reloaded.
 
 ## Validation Messages
 | Message | When |

@@ -46,8 +46,8 @@
 - [x] **S8 — Fees, resume and HR.** FEE-001, FEE-002, ADM-008 (screens only, no submit), ADM-009, ADM-010, RES-001, RES-002, ADM-012, HO-004. Snapshot `after-s8`.
 - [x] **S9 — Time states (SQL back-dating, I2).** FEE-003, STU-004, ADM-011, ADM-014, DASH-001, DASH-002, ADM-005, ADM-013, ADM-015. Snapshot `after-s9`.
 - [x] **S10 — Student view and lifecycle.** HO-003, AUTH-006 (sign out, deactivated account), ADM-002 (deactivate/reactivate).
-- [ ] **S11 — Guides.** `README.md`, role guides (IT Counselor, IT Admin), `demo-accounts.md`, `faq.md`, `troubleshooting.md`.
-- [ ] **S12 — Review and PDFs.** Link check, every page against the template, screenshot index complete, `node docs/tooling/build-pdfs.mjs it-counselor`, `documentation-review-report.md`.
+- [x] **S11 — Guides.** `README.md`, role guides (IT Counselor, IT Admin), `demo-accounts.md`, `faq.md`, `troubleshooting.md`.
+- [x] **S12 — Review and PDFs.** Link check, every page against the template, screenshot index complete, `node docs/tooling/build-pdfs.mjs it-counselor`, `documentation-review-report.md`.
 
 ## Review Focus
 1. **Same screen, different role** (analysis §5): each such page has a **What each role sees** table and one screenshot per differing role.

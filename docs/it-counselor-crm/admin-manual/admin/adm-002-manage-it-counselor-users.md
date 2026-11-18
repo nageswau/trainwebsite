@@ -34,7 +34,7 @@ Select **Deactivate** on the counselor's row. The message **{name} deactivated.*
 
 The counselor is signed out at once and cannot sign in (see [Sign out, ended sessions, deactivated account](../../user-manual/account-access/auth-006-sign-out.md)).
 
-Select **Reactivate** to give access back. The message **{name} reactivated.** appears. The counselor signs in with their old password.
+Select **Reactivate** to give access back. The message **{name} reactivated.** appears. A counselor who had set a password signs in with it. Deactivating or reactivating cancels any open set-password link, so a counselor who was still **Awaiting setup** shows **Link expired**: use **Re-send link**.
 ![Docs IT Counselor B reactivated](../../screenshots/admin/64-reactivated.png)
 
 ## Fields
@@ -58,12 +58,12 @@ Select **Reactivate** to give access back. The message **{name} reactivated.** a
 | {name} reactivated. | Reactivated |
 
 ## Common Errors
-**Problem:** There is no **Re-send link** button. **Cause:** The counselor has already set a password, or the account is inactive. **Resolution:** If they forgot their password, ask them to use **Forgot password** on the sign-in page. See [Forgot / reset your password](../../user-manual/account-access/auth-003-forgot-password.md).
+**Problem:** There is no **Re-send link** button. **Cause:** The counselor has already set a password, or the account is inactive. **Resolution:** If they forgot their password, ask them to use **Forgot your password?** on the sign-in page. See [Forgot / reset your password](../../user-manual/account-access/auth-003-forgot-password.md).
 
 **Problem:** You cannot see the counselor's name in the row. **Cause:** The table is wider than the card. **Resolution:** Scroll the table sideways, or widen the browser window.
 
 ## Tips
-- Deactivating a counselor does not move their students: they still show the inactive counselor under **EduSphere counsellor** (finding P13). Move them with **Change counsellor** first; see [Assign or change a student's counselor](adm-003-student-counselor.md).
+- Deactivating a counselor does not move their students: they still show the inactive counselor under **EduSphere counsellor** (finding P13). Move them with **Change counsellor** first (a counselor who is already inactive gets no **Student reassigned** notice); see [Assign or change a student's counselor](adm-003-student-counselor.md).
 - The email cannot be changed here. To use a new email, create a new account.
 
 ## Related Features

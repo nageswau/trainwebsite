@@ -43,7 +43,7 @@ Select **Mark completed**, optionally fill **Outcome notes (optional)**, and sel
 ![Mark completed with outcome notes](../../screenshots/appointments/03-appointment-complete-form.png)
 ![Appointment completed](../../screenshots/appointments/04-appointment-completed.png)
 
-**Mark no-show** works the same way (from code; not captured: there was one demo appointment).
+**Mark no-show** asks the same way, but moves the lead back to **Follow-up** (as does cancelling). Not captured: there was one demo appointment.
 
 ## Fields
 | Field (booking) | Description | Required | Example |

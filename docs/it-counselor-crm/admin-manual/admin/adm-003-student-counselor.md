@@ -22,11 +22,12 @@ On a row showing **Not assigned**, select **Assign counsellor**. Type a name in 
 ### Step 2 — Change the counselor
 On a row with a counselor, select **Change counsellor**, pick the new counselor and fill **Reason for the change** (required: **Save** stays disabled until you do). Select **Save**. The message **{counselor} assigned.** appears.
 ![Change counsellor form](../../screenshots/admin/22-change-counselor-form.png)
-![Counselor changed](../../screenshots/admin/23-counselor-changed.png)
+![Table after the change (page reloaded): Esha with Docs IT Counselor B](../../screenshots/admin/23-counselor-changed.png)
 
 ## Expected Result
 - The new counselor gets **Student assigned to you** with the reason, and the student appears in their **Students**.
-- The previous counselor gets **Student reassigned** with the reason. They lose access: the student's pages show **404 This page could not be found.**
+![Docs IT Counselor B's Students after the change](../../screenshots/students/10-counselor-b-students.png)
+- The previous counselor, if still active, gets **Student reassigned** with the reason. They lose access: the student's pages show **404 This page could not be found.**
 
 ## Validation Messages
 | Message | When |

@@ -148,6 +148,8 @@ test("IT Counselor CRM S9b time states", async ({ browser }) => {
   await hand.getByRole("button", { name: "Save stage" }).click().catch(() => undefined);
   await settle(a, 800);
   await say(a, "ADM-015 empty");
+  await a.reload();
+  await settle(a, 2500);
   await hand.locator("select").first().selectOption({ label: "Closed" });
   await hand.getByLabel("Reason").fill("Student paused the course for family reasons");
   await shoot(a, "admin", "59-lifecycle-set-by-hand.png", { root, element: lc });

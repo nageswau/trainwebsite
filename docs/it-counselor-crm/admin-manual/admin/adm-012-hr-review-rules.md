@@ -27,7 +27,7 @@ Under **Review assignment rules**, pick the reviewer in **HR reviewer for {progr
 | {programme}: new reviews go to {HR user}. | Rule saved |
 
 ## Expected Result
-The next resume shared with HR for a student of that programme goes to the chosen reviewer's **Review Queue**.
+New reviews for students of that programme go to the chosen reviewer's **Review Queue**. A student whose review already has an active HR owner keeps that owner when a new version is shared.
 
 ## Related Features
 - [HR works the resume review](../handoffs/ho-004-hr-review.md)

@@ -41,7 +41,7 @@ The message is listed under **Messages** as **WhatsApp sent**, with the template
 | WhatsApp send recorded. | You confirmed the send |
 
 ## Common Errors
-**Problem:** You selected **Yes, record as sent** by mistake. **Resolution:** Select **Delete** on the message in **Messages**.
+**Problem:** You selected **Yes, record as sent** by mistake. **Resolution:** On the same day, select **Delete** on your message in **Messages**. The question "Delete this record? It does not unsend the WhatsApp message." appears; confirm, and **Message deleted.** appears. Emails can't be deleted.
 
 ## Tips
 - EduSphere does not send WhatsApp messages itself; it only records what you sent.

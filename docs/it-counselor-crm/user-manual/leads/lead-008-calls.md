@@ -15,7 +15,7 @@ Lead page → **Calls** → **Log call**.
 
 ## Steps
 ### Step 1 — Log a call
-Select **Log call**. Choose **Outcome (required)**. **Call date and time (IST)** starts at now. Enter the **Duration** (**Minutes**, **Seconds**), **Call type** and **Remarks**. Select **Save call**. The message **Call logged.** appears.
+Select **Log call**. Choose **Outcome (required)**. **Call date and time (IST)** starts at now. Enter the **Duration** (**Minutes**, **Seconds**; up to 4 hours), **Call type** and **Remarks**. For **Connected – Follow-up Required** and **Call Back Requested**, a **Next follow-up (required for this outcome)** block asks for **Follow-up due (IST, required)** and **Follow-up reason**; for other outcomes you can tick **Add a next follow-up**. **Duplicate Lead** needs remarks naming the other lead. Select **Save call**. The message **Call logged.** appears.
 ![Log call form](../../screenshots/leads/19-log-call-form.png)
 
 ### Step 2 — Read the call list
@@ -23,7 +23,7 @@ Each call shows the outcome, date, duration, call type, who logged it and the re
 ![Calls list](../../screenshots/leads/20-calls-list.png)
 
 ### Step 3 — Edit a call
-Select **Edit**, change the fields and save. Select **Cancel** to leave it.
+Select **Edit**, change the date, duration, call type or remarks, and save. The outcome can't be changed: delete the call and log it again. Select **Cancel** to leave it. **Edit** and **Delete** appear only on calls you logged, on the same day (from code).
 ![Editing a call](../../screenshots/leads/21-call-edit-form.png)
 
 ### Step 4 — Delete a call

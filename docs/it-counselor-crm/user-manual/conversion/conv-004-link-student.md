@@ -42,6 +42,7 @@ Select **Unlink student**. The question **Unlink {student}? The lead goes back t
 - Linking does not enrol the student in a batch. To enrol, use **Convert to IT student**.
 - When a linked student's enrolment becomes active, the system moves the lead to **Converted** (checked every 15 minutes).
 - The IT Admin can also **Link student** (by the student's email) and **Unlink** from **Leads**.
+- Once the lead is **Converted**, **Unlink student** is gone: "The student has enrolled, so the lead is converted. Only an admin can unlink it."
 
 ## Related Features
 - [Convert into an existing student account](conv-002-convert-existing-student.md)

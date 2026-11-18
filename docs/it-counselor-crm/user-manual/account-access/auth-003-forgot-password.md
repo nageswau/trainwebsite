@@ -36,13 +36,13 @@ You can sign in with the new password. The old password stops working.
 | Message | When |
 |---|---|
 | If an account exists for that email, we've sent instructions to reset the password. | Always shown, so nobody can test which emails have accounts |
-| Reset token is invalid or expired… | The reset link was used or replaced |
+| Reset token is invalid or expired… | The reset link was already used or is older than 30 minutes |
 
 ## Common Errors
 **Problem:** No email arrives. **Cause:** A typo in the email, or the message is in spam. **Resolution:** Check spam, then try again. If it still does not arrive, ask your IT Admin.
 
 ## Tips
-- Only the newest reset link works.
+- A reset link expires after 30 minutes and works once.
 
 ## Related Features
 - [Change your password](auth-004-change-password.md)

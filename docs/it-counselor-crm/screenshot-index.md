@@ -102,7 +102,7 @@ All screenshots: Chromium 1440 × 900, light, `en-IN`, `Asia/Kolkata`, `itcdocs`
 | admin/21-assign-counselor-form.png | ADM-003 | Assign counsellor (Esha → A) | 2026-11-18 | itc-s7-students | element |
 | admin/22-change-counselor-form.png | ADM-003 | Change counsellor with reason (Esha → B) | 2026-11-18 | itc-s7-students | element |
 | admin/22b-change-counselor-dual-student.png | ADM-003 | Student not found for Farah (P11) | 2026-11-18 | itc-s7-students | element |
-| admin/23-counselor-changed.png | ADM-003 | Table after the change | 2026-11-18 | itc-s7-students | element |
+| admin/23-counselor-changed.png | ADM-003 | Table after the change (retaken read only in S12) | 2026-11-18 | itc-s7-students | element |
 | admin/24-resume-limit-invalid.png | ADM-004 | Limit 11 refused | 2026-11-18 | itc-s7-students | element |
 | admin/25-resume-limit-saved.png | ADM-004 | Limit saved: 8 MB | 2026-11-18 | itc-s7-students | element |
 | students/01-my-students.png | STU-001 | My Students | 2026-11-18 | itc-s7-students | viewport |
@@ -166,7 +166,7 @@ All screenshots: Chromium 1440 × 900, light, `en-IN`, `Asia/Kolkata`, `itcdocs`
 | admin/56-status-labels.png | ADM-013 | Status labels | 2026-11-18 | itc-s9b-time-states | – |
 | admin/57-status-label-edit.png | ADM-013 | Editing Nurture | 2026-11-18 | itc-s9b-time-states | – |
 | admin/58-status-label-saved.png | ADM-013 | Nurture renamed (reverted after) | 2026-11-18 | itc-s9b-time-states | – |
-| admin/59-lifecycle-set-by-hand.png | ADM-015 | Set by hand: Closed | 2026-11-18 | itc-s9b-time-states | – |
+| admin/59-lifecycle-set-by-hand.png | ADM-015 | Set by hand: Closed (retaken in S12, not saved) | 2026-11-18 | itc-s9b-time-states | – |
 | admin/60-lifecycle-closed.png | ADM-015 | Lifecycle closed (cleared after) | 2026-11-18 | itc-s9b-time-states | – |
 | admin/61-audit-log.png | ADM-015 | Audit log of enrolments | 2026-11-18 | itc-s9b-time-states (retaken read only) | – |
 | handoffs/20-student-dashboard.png | HO-003 | Student dashboard | 2026-11-18 | itc-s10-lifecycle | – |

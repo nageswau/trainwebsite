@@ -24,6 +24,8 @@ Select **Convert to IT student**. **Full name**, **Email** and **Phone (optional
 
 ### Step 2 — Add installments (optional)
 Select **Add installment** for each part payment and enter **Installment {n} amount** and **Installment {n} due date**. The line **Planned ₹… of ₹…** shows how much of the fee is planned. **Remove** deletes an installment. Without installments the whole fee is one bill.
+
+If you add installments, each needs an amount above 0 and a due date, together they must add up exactly to the fee, and you can add up to 12. A fee of 0 has no installments.
 ![Two installments added](../../screenshots/conversion/02-convert-form-installments.png)
 
 ### Step 3 — Convert and enrol
@@ -52,6 +54,8 @@ Check the **Onboarding checklist** preview and select **Convert and enrol**. The
 | Student account created and enrolled in {batch} ({code}). A set-password link was emailed to {email}. | Success |
 | An IT student already has this email or mobile. Link the existing student instead. | A student account already matches |
 | Unable to convert the lead. | Unexpected failure (from code; not captured) |
+| Give each installment an amount above 0 and a due date. | An installment is incomplete (from code; not captured) |
+| The installments must add up to the fee. | Installments don't total the fee (from code; not captured) |
 
 ## Common Errors
 **Problem:** "An IT student already has this email or mobile." **Resolution:** Choose **Enrol {name}**. See [Convert into an existing student account](conv-002-convert-existing-student.md).

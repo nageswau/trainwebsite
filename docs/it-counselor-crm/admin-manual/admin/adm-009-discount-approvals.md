@@ -23,7 +23,9 @@ Select **Approve**. The message **Discount approved for {student}. The fee balan
 
 ### Step 3 — Or reject with a note
 Write the reason in **Note for {student}** (required to reject) and select **Reject**. The message **Discount rejected for {student}.** appears. The counselor sees the note.
-![Rejection note typed](../../screenshots/admin/32-discount-reject-note.png)
+![Reject without a note shows "Give a reason for rejecting."; the note is then typed](../../screenshots/admin/32-discount-reject-note.png)
+
+In the screenshot, the red message is from selecting **Reject** before typing a note, and the green one is from approving Arjun's request in Step 2. Select **Reject** again once the note is typed.
 ![Both requests decided](../../screenshots/admin/33-discount-decided.png)
 
 ## Validation Messages

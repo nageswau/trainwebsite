@@ -43,7 +43,7 @@ The new values show in **Lead details**.
 | Details saved. | Success |
 
 ## Tips
-- Name, mobile number, email and source are not editable here; the telecaller entered them. Ask a Telecaller Manager to correct them.
+- Name, mobile number, email, source and product interest are not editable here; the telecaller entered them. Ask a Telecaller Manager to correct them.
 
 ## Related Features
 - [Qualification](lead-006-qualification.md)
