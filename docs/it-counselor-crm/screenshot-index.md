@@ -36,3 +36,25 @@ All screenshots: Chromium 1440 × 900, light, `en-IN`, `Asia/Kolkata`, `itcdocs`
 | navigation/03-management-tasks.png | NAV-001 | Management tasks, nothing assigned | 2026-11-18 | itc-s3-account-access | viewport |
 | navigation/04-mobile-dashboard.png | NAV-001 | Dashboard at 390 px | 2026-11-18 | itc-s3-account-access | 390 px |
 | navigation/05-mobile-menu-open.png | NAV-001 | Phone menu open (no Sign out) | 2026-11-18 | itc-s3-account-access | 390 px |
+| handoffs/01-telecaller-assign-counselor.png | HO-001 | Telecaller Assign to counselor form | 2026-11-18 | itc-s4a-handover | centered |
+| handoffs/02-telecaller-handed-over.png | HO-001 | Handed over; telecaller read-only | 2026-11-18 | itc-s4a-handover | centered |
+| handoffs/03-telecaller-list-after-handover.png | HO-001 | Telecaller My leads after hand-overs | 2026-11-18 | itc-s4a-handover | viewport |
+| handoffs/04-manager-change-counselor.png | HO-002 | Manager Change counselor form | 2026-11-18 | itc-s4a-handover | centered |
+| handoffs/05-manager-counselor-changed.png | HO-002 | Chirag now with Counselor A | 2026-11-18 | itc-s4a-handover | centered |
+| appointments/01-telecaller-book-counselling.png | APPT-001 | Telecaller Book counselling form (Esha) | 2026-11-18 | itc-s4a-handover | centered |
+| appointments/02-lead-appointments.png | APPT-001 | Lead appointments, CAP-000001 Scheduled | 2026-11-18 | itc-s4b-leads | viewport |
+| appointments/03-appointment-confirmed.png | APPT-001 | Appointment confirmed | 2026-11-18 | itc-s4b-leads | viewport |
+| leads/01-my-leads.png | LEAD-001 | My leads (5) | 2026-11-18 | itc-s4b-leads | viewport |
+| leads/02-my-leads-filter-hot.png | LEAD-001 | Filtered Priority Hot | 2026-11-18 | itc-s4b-leads | viewport |
+| leads/03-lead-page-top.png | LEAD-002 | Arjun lead page top | 2026-11-18 | itc-s4b-leads | viewport |
+| leads/04-lead-page-full.png | LEAD-002 | Arjun lead page | 2026-11-18 | itc-s4b-leads | fullPage |
+| leads/05-edit-details-form.png | LEAD-003 | Edit details form | 2026-11-18 | itc-s4b-leads | element |
+| leads/06-lead-details-saved.png | LEAD-003 | Lead details after save | 2026-11-18 | itc-s4b-leads | element |
+| leads/07-next-action-form.png | LEAD-004 | Next action form | 2026-11-18 | itc-s4b-leads | element |
+| leads/08-next-action-saved.png | LEAD-004 | Next action saved | 2026-11-18 | itc-s4b-leads | element |
+| leads/09-change-stage-form.png | LEAD-005 | Change stage to Qualified | 2026-11-18 | itc-s4b-leads | element |
+| leads/10-stage-qualified.png | LEAD-005 | Stage updated, Qualified | 2026-11-18 | itc-s4b-leads | viewport |
+| leads/11-qualification-form.png | LEAD-006 | Qualification form | 2026-11-18 | itc-s4b-leads | element |
+| leads/12-qualification-saved.png | LEAD-006 | Qualification saved | 2026-11-18 | itc-s4b-leads | element |
+| leads/13-student-and-milestones.png | LEAD-015 | No student linked yet | 2026-11-18 | itc-s4b-leads | element |
+| leads/14-student-account-not-qualified.png | CONV-001 | Student account before Qualified (Bhavna) | 2026-11-18 | itc-s4b-leads | element |

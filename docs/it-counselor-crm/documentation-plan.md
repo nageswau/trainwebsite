@@ -39,7 +39,7 @@
 - [x] **S1 — Analysis and plan.** `documentation-analysis.md`, this plan, `documentation-progress.md`.
 - [x] **S2 — Stack and tooling.** Start `itcdocs` (`docker compose -p itcdocs -f docker-compose.yml -f docker-compose.docs.yml up -d`), seed, `docs-env.sh` / `reset-stack.sh` / `restore-snap.sh` in the scratchpad. `shoot.ts`: IT portal root + `/it/login` sign-in. `build-pdfs.mjs`: `it-counselor` mode. IT Admin creates Docs IT Counselor A/B, Docs IT Telecaller, Docs programme + batch. Pages: ADM-001, ADM-002 (create/edit/re-send). Snapshot `after-s2`.
 - [x] **S3 — Account access and navigation.** AUTH-001..005, NAV-001 (desktop + 390 px). Snapshot `after-s3`.
-- [ ] **S4 — Handoff and leads.** Telecaller creates and hands over five Docs IT leads (HO-001), Telecaller Manager changes one (HO-002). LEAD-001..006, LEAD-015, APPT-001. Snapshot `after-s4`.
+- [x] **S4 — Handoff and leads.** Telecaller creates and hands over five Docs IT leads (HO-001), Telecaller Manager changes one (HO-002). LEAD-001..006, LEAD-015, APPT-001. Snapshot `after-s4`.
 - [ ] **S5 — Lead activity.** LEAD-007..014 (follow-ups, calls, WhatsApp, email, meetings, counseling, return, notes/activity). Snapshot `after-s5`.
 - [ ] **S6 — Conversion.** CONV-001..005, ADM-006, ADM-007 (merge Deepa). Snapshot `after-s6`.
 - [ ] **S7 — Students.** STU-001..003, NOTE-001, TT-001, NOTIF-001, TASK-001, ADM-003, ADM-004. Snapshot `after-s7`.
