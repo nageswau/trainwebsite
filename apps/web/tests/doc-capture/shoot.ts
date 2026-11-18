@@ -5,6 +5,8 @@ import type { BrowserContext, Locator, Page } from "@playwright/test";
 
 // Documentation screenshots (docs/documentation-plan.md S2.3). Saved to docs/screenshots/<module>/<file>.
 const ROOT = path.resolve(__dirname, "../../../../docs/screenshots");
+// Recruitment CRM set (docs/recruitment-crm/documentation-plan.md S2): pass `root: REC_ROOT` to shoot().
+export const REC_ROOT = path.resolve(__dirname, "../../../../docs/recruitment-crm/screenshots");
 // School CRM set (docs/school-crm/documentation-plan.md S2.2): pass `root: SCHOOL_ROOT` to shoot().
 export const SCHOOL_ROOT = path.resolve(__dirname, "../../../../docs/school-crm/screenshots");
 // Overseas Counselor CRM set (docs/counselor-crm/documentation-plan.md S2.2): pass `root: COUNSELOR_ROOT` to shoot().

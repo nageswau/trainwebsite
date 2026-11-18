@@ -34,8 +34,8 @@
 
 ## Sessions
 - [x] **S1 — Analysis and plan.** `documentation-analysis.md`, this plan, `documentation-progress.md`.
-- [ ] **S2 — Stack, tooling, staff set-up.**
-  - `REC_ROOT` in `shoot.ts` and a `build-pdfs.mjs recruitment` mode.
+- [x] **S2 — Stack, tooling, staff set-up.**
+  - `REC_ROOT` in `shoot.ts` (placed apart from the IT Counselor branch's `ITC_ROOT` to avoid a merge clash). The `build-pdfs.mjs recruitment` mode is added in S18, because the IT Counselor branch edits the same lines.
   - Restore the `after-s10` snapshot.
   - Super Admin creates Docs Team Lead and Docs HR Manager; IT Admin creates Docs Recruiter A/B, Docs Placement Officer, Docs HR and Docs Interviewer.
   - Doc IDs: ADM-001, ADM-002, ADM-003 (edit).

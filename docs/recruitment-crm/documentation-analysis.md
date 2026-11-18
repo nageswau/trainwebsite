@@ -295,4 +295,4 @@ Records:
 - **P4** The HR Manager sees Website registrations but cannot open the candidate from there.
 - **P5** The Team Lead is a global-division user and gets 403 on the legacy `/it/placement/*` screens that recruiters still use.
 - **P6** Interview platform names are labels only. No meeting is created; the recruiter pastes the link.
-- **P7** `hr_manager` can be created by the Super Admin only ("Only a Super Admin can create HR managers"). The IT Admin's Create user form still lists the role. To verify.
+- ~~P7~~ Checked in S2: the IT Admin's Create user form does **not** offer HR Manager; only the Super Admin creates one. Not a finding.
