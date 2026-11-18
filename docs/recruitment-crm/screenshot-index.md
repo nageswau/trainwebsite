@@ -99,3 +99,34 @@ Path: `screenshots/<module>/<file>.png`. Captured by the spec named in each row 
 | companies/29-log-reply-form.png | CO-009 | Reply logged | 2026-11-18 | rec-s5b-company-page | element |
 | companies/30-archive-confirm.png | CO-003 | Archive Docs Beta Systems: confirm | 2026-11-18 | rec-s5b-company-page | viewport |
 | companies/31-archived-company-team-lead.png | CO-003 | Archived company seen by the Team Lead | 2026-11-18 | rec-s5b-company-page | viewport |
+| companies/32-pipeline-card.png | CO-010 | Pipeline card, Beta at Target Identified | 2026-11-19 | rec-s6a-pipeline | element |
+| companies/33-move-stage-form.png | CO-010 | Move to Outreach Sent with a note | 2026-11-19 | rec-s6a-pipeline | element |
+| companies/34-move-back-reason.png | CO-010 | Moving back: reason required | 2026-11-19 | rec-s6a-pipeline | element |
+| companies/35-mark-lost-form.png | CO-010 | Mark lost form | 2026-11-19 | rec-s6a-pipeline | element |
+| companies/36-marked-lost.png | CO-010 | Marked lost (recruiter: no actions) | 2026-11-19 | rec-s6a-pipeline | element |
+| companies/37-reopen-form.png | CO-010 | Team Lead reopen form | 2026-11-19 | rec-s6a-pipeline | element |
+| companies/38-marked-inactive.png | CO-010 | Marked inactive | 2026-11-19 | rec-s6a-pipeline | element |
+| companies/39-stage-history.png | CO-010 | Stage history | 2026-11-19 | rec-s6a-pipeline | element |
+| companies/40-upload-document.png | CO-011 | Upload company profile linked to MTG-000001 | 2026-11-19 | rec-s6a-pipeline | element |
+| companies/41-documents.png | CO-011 | Documents list | 2026-11-19 | rec-s6a-pipeline | element |
+| companies/42-timeline.png | CO-011 | Company timeline | 2026-11-19 | rec-s6a-pipeline | element |
+| companies/43-pipeline-board.png | CO-014 | Pipeline board (Recruiter A) | 2026-11-19 | rec-s6a-pipeline | full page |
+| companies/44-pipeline-board-stage.png | CO-014 | Board filtered to Meeting Booked | 2026-11-19 | rec-s6a-pipeline | viewport |
+| dashboard/05-recruiter-dashboard.png | DASH-001 | Recruiter dashboard | 2026-11-19 | rec-s6a-pipeline | viewport |
+| dashboard/06-recruiter-dashboard-full.png | DASH-001 | Recruiter dashboard, full | 2026-11-19 | rec-s6a-pipeline | full page |
+| dashboard/07-team-lead-dashboard.png | DASH-002 | Team Lead dashboard, whole team | 2026-11-19 | rec-s6a-pipeline | viewport |
+| dashboard/08-team-lead-dashboard-one-recruiter.png | DASH-002 | Team Lead dashboard, Docs Recruiter A | 2026-11-19 | rec-s6a-pipeline | viewport |
+| companies/45-import-page.png | CO-012 | Import companies page | 2026-11-19 | rec-s6b-import-merge-cadence | viewport |
+| companies/46-import-check.png | CO-012 | Checked rows (new, already here, error) | 2026-11-19 | rec-s6b-import-merge-cadence | element |
+| companies/47-import-result.png | CO-012 | Import result | 2026-11-19 | rec-s6b-import-merge-cadence | element |
+| companies/48-past-imports.png | CO-012 | Past imports | 2026-11-19 | rec-s6b-import-merge-cadence | element |
+| companies/49-imported-company.png | CO-012 | Imported Docs Gamma Labs, unassigned | 2026-11-19 | rec-s6b-import-merge-cadence | viewport |
+| companies/50-merge-company-compare.png | CO-013 | Merge CMP-000009 into CMP-000008: compare | 2026-11-19 | rec-s6b-import-merge-cadence | full page |
+| companies/51-merge-company-done.png | CO-013 | Company merged | 2026-11-19 | rec-s6b-import-merge-cadence | viewport |
+| companies/52-merge-contact-compare.png | CO-013 | Merge contact: compare | 2026-11-19 | rec-s6b-import-merge-cadence | full page |
+| companies/53-merge-contact-done.png | CO-013 | Contact merged | 2026-11-19 | rec-s6b-import-merge-cadence | element |
+| companies/54-add-cadence-form.png | CO-015 | Add a cadence (3 steps) | 2026-11-19 | rec-s6b-import-merge-cadence | element |
+| companies/55-cadences.png | CO-015 | Cadence library | 2026-11-19 | rec-s6b-import-merge-cadence | viewport |
+| companies/56-start-cadence.png | CO-015 | Start a cadence on an email | 2026-11-19 | rec-s6b-import-merge-cadence | element |
+| companies/57-cadence-running.png | CO-015 | Cadence step 1 of 3 running | 2026-11-19 | rec-s6b-import-merge-cadence | element |
+| companies/58-assign-imported-company.png | CO-012 | Team Lead assigns Gamma to Recruiter A | 2026-11-19 | rec-s6b-import-merge-cadence | element |

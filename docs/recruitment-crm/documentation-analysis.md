@@ -296,3 +296,7 @@ Records:
 - **P5** The Team Lead is a global-division user and gets 403 on the legacy `/it/placement/*` screens that recruiters still use.
 - **P6** Interview platform names are labels only. No meeting is created; the recruiter pastes the link.
 - ~~P7~~ Checked in S2: the IT Admin's Create user form does **not** offer HR Manager; only the Super Admin creates one. Not a finding.
+- **P8** (S6) **Start cadence** is offered on every unanswered message, but the API refuses it ("This contact has already replied") when the contact replied to any message or has a meeting booked. The button could be hidden for such contacts.
+- **P9** (S6) Only the Team Lead can reopen a lost or inactive company. Once a recruiter marks their company lost, they see no action on the Pipeline card and must ask the Team Lead.
+- **P10** (S6) Imported companies are unassigned; the Team Lead must assign each one from its company page (no bulk assign on the import result).
+- **P11** (S6) The message composer locks **To** while it is open. Choosing a recipient after opening a composer has no effect, which is easy to miss.

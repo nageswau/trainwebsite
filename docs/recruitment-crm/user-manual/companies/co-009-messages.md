@@ -42,6 +42,7 @@ Every message is listed with type, time, recipient, template and text. **Log rep
 | The mail server didn't accept it yet. It will be retried automatically. | Email delayed (from code; not captured) |
 
 ## Tips
+- Choose the recipient in **To** before opening a composer: **To** is locked while a composer is open.
 - WhatsApp delivery is never reported back; EduSphere only records that you sent it.
 - Templates come from the [Message template library](../masters/mst-004-message-templates.md).
 
