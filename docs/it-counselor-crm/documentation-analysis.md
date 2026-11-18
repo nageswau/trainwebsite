@@ -139,14 +139,14 @@ Doc IDs: `DOC-ITC-<MOD>-NNN`. User-manual pages go to `user-manual/<module>/`, a
 ## 7. External services in the docs stack
 - **Email:** SMTP to local Mailpit only (`itcdocs`, 127.0.0.1:8032). Mailpit is never screenshotted.
 - **WhatsApp/SMS:** no provider; **Send WhatsApp** records the send only.
-- **Razorpay:** not used (owner I3). Online payment is described in text only.
+- **Payments:** none recorded (owner I3). Razorpay online payment is described in text only.
 - **ClamAV:** off (`CLAMAV_HOST` empty), so resume uploads are not scanned.
 
 ## 8. Required Test Data (created through the UI; all `Docs ` prefixed, `@example.test`)
 - IT Admin (seeded) creates **Docs IT Counselor A** and **Docs IT Counselor B**, and **Docs IT Telecaller** (team `it`).
 - Leads: **Docs IT Lead Arjun** (converted, new account), **Docs IT Lead Bhavna** (converted into existing student), **Docs IT Lead Chirag** (returned), **Docs IT Lead Deepa** (duplicate, merged), **Docs IT Lead Esha** (open, counseling recorded).
 - A **Docs** IT programme and batch for conversion and timetable.
-- Fees in fictional INR; manual payment, refund and discount by IT Admin (I3).
+- Fees in fictional INR on the Docs batch. No payments, refunds or corrections are recorded (I3, revised); payment screens are captured unsubmitted.
 - Sample resume PDF/DOCX from the scratchpad files folder.
 
 ## 9. Unknown workflows requiring browser verification

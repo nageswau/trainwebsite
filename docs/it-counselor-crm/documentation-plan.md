@@ -25,7 +25,7 @@
 - **Screenshot path.** `docs/it-counselor-crm/screenshots/<module>/<NN>-<feature>-<step>.png`.
 - **Never show secrets.** Mask passwords, the dev "Demo accounts" card and "Development only" boxes (`shoot()` does this). Never put a reset or welcome URL with a token in a doc or screenshot. Never paste the seed password into a file. Never screenshot Mailpit.
 - **Test data only.** Personas use `*@example.test`; every lead, student, programme, batch and note created for the docs starts with `Docs `. Phones from `+91 90000 2xxxx`. No real people's data.
-- **Fees (owner I3).** Manual IT Admin entries only, fictional INR amounts. Razorpay online payment is described in text, not captured.
+- **Fees (owner I3, revised 2026-11-18).** **Do not make any payments.** No payment, refund or correction is recorded and no gateway is called. Payment screens (Fees and reminders card, IT Admin Payments page, record-payment form) are screenshotted as they are, with forms left unsubmitted; steps that need a saved payment are written as text only. Fee amounts on the Docs batch are fictional INR. Razorpay online payment is described in text only.
 - **Time-dependent states (owner I2).** Overdue follow-ups, escalations, overdue installments/reminders and at-risk flags are prepared by back-dating rows with SQL **on the `itcdocs` database only**, then running the job with `celery call` (`itc009-escalations`, `itc016-fee-reminders`, `itc023-at-risk`). Mark each such PNG "state prepared by data setup" in the index.
 - **VERIFICATION REQUIRED.** Anything not confirmed in the browser is written as **VERIFICATION REQUIRED** and left out of the numbered steps.
 - **As-built.** Document behaviour as built, including findings P1–P6 (analysis §10), in neutral wording.
@@ -37,13 +37,13 @@
 
 ## Sessions
 - [x] **S1 — Analysis and plan.** `documentation-analysis.md`, this plan, `documentation-progress.md`.
-- [ ] **S2 — Stack and tooling.** Start `itcdocs` (`docker compose -p itcdocs -f docker-compose.yml -f docker-compose.docs.yml up -d`), seed, `docs-env.sh` / `reset-stack.sh` / `restore-snap.sh` in the scratchpad. `shoot.ts`: IT portal root + `/it/login` sign-in. `build-pdfs.mjs`: `it-counselor` mode. IT Admin creates Docs IT Counselor A/B, Docs IT Telecaller, Docs programme + batch. Pages: ADM-001, ADM-002 (create/edit/re-send). Snapshot `after-s2`.
+- [x] **S2 — Stack and tooling.** Start `itcdocs` (`docker compose -p itcdocs -f docker-compose.yml -f docker-compose.docs.yml up -d`), seed, `docs-env.sh` / `reset-stack.sh` / `restore-snap.sh` in the scratchpad. `shoot.ts`: IT portal root + `/it/login` sign-in. `build-pdfs.mjs`: `it-counselor` mode. IT Admin creates Docs IT Counselor A/B, Docs IT Telecaller, Docs programme + batch. Pages: ADM-001, ADM-002 (create/edit/re-send). Snapshot `after-s2`.
 - [ ] **S3 — Account access and navigation.** AUTH-001..005, NAV-001 (desktop + 390 px). Snapshot `after-s3`.
 - [ ] **S4 — Handoff and leads.** Telecaller creates and hands over five Docs IT leads (HO-001), Telecaller Manager changes one (HO-002). LEAD-001..006, LEAD-015, APPT-001. Snapshot `after-s4`.
 - [ ] **S5 — Lead activity.** LEAD-007..014 (follow-ups, calls, WhatsApp, email, meetings, counseling, return, notes/activity). Snapshot `after-s5`.
 - [ ] **S6 — Conversion.** CONV-001..005, ADM-006, ADM-007 (merge Deepa). Snapshot `after-s6`.
 - [ ] **S7 — Students.** STU-001..003, NOTE-001, TT-001, NOTIF-001, TASK-001, ADM-003, ADM-004. Snapshot `after-s7`.
-- [ ] **S8 — Fees, resume and HR.** FEE-001, FEE-002, ADM-008..010, RES-001, RES-002, ADM-012, HO-004. Snapshot `after-s8`.
+- [ ] **S8 — Fees, resume and HR.** FEE-001, FEE-002, ADM-008 (screens only, no submit), ADM-009, ADM-010, RES-001, RES-002, ADM-012, HO-004. Snapshot `after-s8`.
 - [ ] **S9 — Time states (SQL back-dating, I2).** FEE-003, STU-004, ADM-011, ADM-014, DASH-001, DASH-002, ADM-005, ADM-013, ADM-015. Snapshot `after-s9`.
 - [ ] **S10 — Student view and lifecycle.** HO-003, AUTH-006 (sign out, deactivated account), ADM-002 (deactivate/reactivate).
 - [ ] **S11 — Guides.** `README.md`, role guides (IT Counselor, IT Admin), `demo-accounts.md`, `faq.md`, `troubleshooting.md`.
