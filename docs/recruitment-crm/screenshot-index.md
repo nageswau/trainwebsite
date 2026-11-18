@@ -45,3 +45,29 @@ Path: `screenshots/<module>/<file>.png`. Captured by the spec named in each row 
 | dashboard/02-hr-manager-dashboard.png | DASH-004 | HR Manager Dashboard | 2026-11-18 | rec-s3-account-access | viewport |
 | dashboard/03-placement-officer-dashboard.png | DASH-005 | Placement Officer Dashboard | 2026-11-18 | rec-s3-account-access | viewport |
 | dashboard/04-interviewer-dashboard.png | INT-001 | Interviewer Dashboard, no interviews yet | 2026-11-18 | rec-s3-account-access | viewport |
+| masters/01-skills-recruiter.png | MST-001 | Skills Master (recruiter, read only) | 2026-11-18 | rec-s4-masters | viewport |
+| masters/02-skills-alias-search.png | MST-001 | Searching J2EE finds Java | 2026-11-18 | rec-s4-masters | viewport |
+| masters/03-template-add.png | MST-004 | Add a template filled in | 2026-11-18 | rec-s4-masters | element |
+| masters/03b-template-unknown-placeholder.png | MST-004 | Unknown placeholder warning | 2026-11-18 | rec-s4-masters | element |
+| masters/04-template-draft.png | MST-004 | Docs template in Draft | 2026-11-18 | rec-s4-masters | element |
+| masters/05-template-preview-versions.png | MST-004 | Versions of Company introduction | 2026-11-18 | rec-s4-masters | viewport |
+| masters/06-screening-bank.png | MST-006 | Question bank and templates | 2026-11-18 | rec-s4-masters | viewport |
+| masters/07-screening-question-form.png | MST-006 | Add a question (Yes / No) | 2026-11-18 | rec-s4-masters | element |
+| masters/08-screening-template-form.png | MST-006 | New form template with 3 questions | 2026-11-18 | rec-s4-masters | element |
+| masters/09-screening-templates.png | MST-006 | Form templates list | 2026-11-18 | rec-s4-masters | element |
+| masters/10-skills-manager.png | MST-002 | Skills page for the Team Lead | 2026-11-18 | rec-s4-masters | viewport |
+| masters/11-create-skill.png | MST-002 | Create skill Docs FastAPI | 2026-11-18 | rec-s4-masters | element |
+| masters/12-manage-skill.png | MST-002 | Manage panel: alias and related skill | 2026-11-18 | rec-s4-masters | element |
+| masters/13-merge-skill-confirm.png | MST-002 | Merge Docs Fast-API: confirm | 2026-11-18 | rec-s4-masters | element (tall) |
+| masters/14-skills-after-merge.png | MST-002 | After the merge | 2026-11-18 | rec-s4-masters | element |
+| masters/15-catalogue-lead-sources.png | MST-003 | Catalogues: Lead sources | 2026-11-18 | rec-s4-masters | viewport |
+| masters/16-catalogue-candidate-tags.png | MST-003 | Candidate tag added | 2026-11-18 | rec-s4-masters | viewport |
+| masters/17-catalogue-campaigns.png | MST-003 | Campaign created | 2026-11-18 | rec-s4-masters | viewport |
+| masters/18-catalogue-exchange-rates.png | MST-003 | USD rate saved | 2026-11-18 | rec-s4-masters | viewport |
+| masters/19-template-awaiting-approval.png | MST-005 | Draft awaiting approval | 2026-11-18 | rec-s4-masters | element |
+| masters/20-template-approved.png | MST-005 | Template approved | 2026-11-18 | rec-s4-masters | element |
+| masters/21-candidate-settings.png | ADM-007 | Allow collaborators switched on | 2026-11-18 | rec-s4-masters | viewport |
+| masters/22-routing-empty.png | CAN-013 | Candidate routing, no rules | 2026-11-18 | rec-s4-masters | viewport |
+| masters/23-routing-rule.png | CAN-013 | Rule Website → Docs Recruiter A, Round robin | 2026-11-18 | rec-s4-masters | viewport |
+| masters/24-match-weights-total.png | ADM-008 | Total 105 of 100 | 2026-11-18 | rec-s4-masters | element |
+| masters/25-match-weights-saved.png | ADM-008 | Match weights saved | 2026-11-18 | rec-s4-masters | element |

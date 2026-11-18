@@ -5,7 +5,8 @@
 | S1 Analysis and plan | DONE 2026-11-18 | (this commit) | 119 Doc IDs in 18 modules (Phase 1, owner R1–R3); findings P1–P7 from code; sessions S2–S18. |
 | S2 Stack, tooling, staff | DONE 2026-11-18 | (this commit) | `REC_ROOT` in `shoot.ts`. Stack `itcdocs` snapshot `rec-start` (IT Counselor final state), then spec `rec-s2-staff-setup` (2 tests): Super Admin created Docs Team Lead (global placement_manager) and Docs HR Manager; IT Admin created Docs Recruiter A/B on Recruiter Staff (manager Docs Team Lead; DOCS-REC-A/B), Docs Placement Officer, Docs HR, Docs Interviewer on Users. All Awaiting setup. 14 PNGs. Snapshot `after-rec-s2`. |
 | S3 Account access and navigation | DONE 2026-11-18 | (this commit) | Spec `rec-s3-account-access` (2 tests). All 7 personas set passwords (DOCS_TEST_PASSWORD); the Team Lead's link opens `/admin/reset-password`. Every sidebar item of the 6 roles opened (headings logged). 27 PNGs. Snapshot `after-rec-s3`. |
-| S4–S18 | not started | | |
+| S4 Masters and templates | DONE 2026-11-18 | (this commit) | Spec `rec-s4-masters`. Recruiter A: shared WhatsApp template "Docs interview reminder (Python)" (Interview reminders), question "Docs: Have you built REST APIs with Python…" (Yes / No), form template "Docs Python developer screening" (3 questions). Team Lead: skill Docs FastAPI (alias Fast API, related Python) with Docs Fast-API merged in; candidate tag Docs Immediate joiner; campaign Docs Q4 IT hiring push (LinkedIn); USD = ₹84; approved the template; Allow collaborators ON; routing rule Website → Docs Recruiter A, Round robin. Super Admin: match weights changed then back to defaults. 26 PNGs. Snapshot `after-rec-s4`. |
+| S5–S18 | not started | | |
 
 ## Owner decisions
 - R1 Scope: core hiring flow first (Phase 1); vendors, campus, receivables, targets/daily plans/activity reports, business dashboards, insights and report libraries in Phase 2.
@@ -22,12 +23,18 @@
 | DOC-REC-AUTH-005 | PARTIAL: sign out (S3); deactivated account in S16 |
 | DOC-REC-NAV-001..003 | DONE (S3) |
 | DOC-REC-DASH-003..005 | DONE (S3, figures from seed data) |
+| DOC-REC-MST-001..006 | DONE (S4) |
+| DOC-REC-ADM-007, ADM-008 | DONE (S4) |
+| DOC-REC-CAN-013 | PARTIAL: routing rules (S4); unassigned queue in S8 |
 | Others | not started |
 
 ## Planned link targets (keep these file names)
 - `user-manual/dashboard/dash-001-recruiter-dashboard.md`
 - `admin-manual/admin/adm-004-team-reassign.md`
 - `user-manual/hr/leg-001-legacy-placement.md`
+- `user-manual/candidate-portal/cand-004-profile.md`
+- `user-manual/hiring/hire-002-matching.md`
+- `user-manual/candidates/can-014-website-registrations.md`
 
 ## Discovered functionality
 (none yet)
