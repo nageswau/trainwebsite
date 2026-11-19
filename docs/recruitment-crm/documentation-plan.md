@@ -47,7 +47,7 @@
 - [x] **S8 — Candidates.** CAN-001..012, CAN-014, STU-001/002, CAND-001..004. The external candidate registers, and Docs IT Lead Arjun joins the pool.
 - [x] **S9 — Search and pools.** SRCH-001..005, HR-006.
 - [x] **S10 — Hiring A.** HIRE-001..005, CAND-005/006 (apply, applications).
-- [ ] **S11 — Hiring B.** HIRE-006..010, INT-001/002, HRM-002, CAND-007, HR-001..003.
+- [x] **S11 — Hiring B.** HIRE-006..010, INT-001/002, HRM-002, CAND-007, HR-001..003.
 - [ ] **S12 — Joining and placement.** HIRE-011..016 (close for real; invoice draft only), HIRE-012.
 - [ ] **S13 — HR and HR Manager.** HR-004/005, HRM-003..005, CAND-008..010, LEG-001.
 - [ ] **S14 — Daily work.** WORK-001..005.

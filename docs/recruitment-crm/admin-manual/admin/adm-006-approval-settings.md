@@ -2,7 +2,7 @@
 > Doc ID: DOC-REC-ADM-006 · Verified on 2026-11-19 against `main` @ `6b61546c` · Roles: Super Admin
 
 ## Purpose
-Decide which job requirements must be approved before they open. (Automatic result release and the retention rule are added to this page in later sessions.)
+Decide which job requirements must be approved before they open, and whether interview results are published to candidates automatically. (The retention rule is added to this page in session S13.)
 
 ## Who Can Use This Feature
 - **Super Admin** only. HR Managers see the settings read only.
@@ -27,6 +27,10 @@ Defaults are from code. Turning **Recruiter jobs** on shows **Recruiter jobs now
 ![Which jobs need approval](../../screenshots/admin/20-approval-sources.png)
 
 Turning it off again shows **Recruiter jobs no longer need approval.** The Docs stack was put back to the defaults after the screenshots.
+
+### Step 2 — How interview results are released
+On **Result approvals** (`/it/hr-manager/results`), **How results are released** has **Publish interview results to candidates automatically, without approval**: "Turning this on never publishes results already waiting." It is off, so every Selected or Rejected decision waits for the HR Manager ([Result approvals](../../user-manual/hr-manager/hrm-002-result-approvals.md)). HR Managers see it read only ("Only a super admin can change this setting."). Not changed in this guide.
+![How results are released](../../screenshots/admin/21-result-release.png)
 
 ## Validation Messages
 | Message | When |

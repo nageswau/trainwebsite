@@ -267,3 +267,35 @@ Path: `screenshots/<module>/<file>.png`. Captured by the spec named in each row 
 | candidate-portal/12-all-open-jobs.png | CAND-005 | All open jobs | 2026-11-19 | rec-s10a-hiring | viewport |
 | candidate-portal/13-applied.png | CAND-005 | Applied · JA-000003 · Received | 2026-11-19 | rec-s10a-hiring | element |
 | candidate-portal/14-my-applications.png | CAND-006 | My applications | 2026-11-19 | rec-s10a-hiring | viewport |
+| hiring/16-schedule-interview.png | HIRE-006 | Schedule a Technical Round for Kiran | 2026-11-19 | rec-s11a-schedule-interviews | element |
+| hiring/17-interview-scheduled.png | HIRE-006 | INT-000002 scheduled | 2026-11-19 | rec-s11a-schedule-interviews | element |
+| hiring/17b-assign-panel.png | HIRE-006 | Assign the interview panel | 2026-11-19 | rec-s11a-schedule-interviews | element |
+| hiring/18-interviews-list.png | HIRE-007 | Interviews: Upcoming | 2026-11-19 | rec-s11a-schedule-interviews | viewport |
+| hiring/19-reschedule.png | HIRE-007 | Reschedule Nisha's HR Round | 2026-11-19 | rec-s11a-schedule-interviews | element |
+| hiring/20-interview-automation.png | HIRE-009 | Interview automation (Team Lead) | 2026-11-19 | rec-s11a-schedule-interviews | element |
+| hiring/21-team-interviews.png | HIRE-009 | Team Lead interviews, read only | 2026-11-19 | rec-s11a-schedule-interviews | viewport |
+| hiring/22-awaiting-update.png | HIRE-008 | Awaiting update (state prepared by data setup) | 2026-11-19 | rec-s11b-feedback-results | viewport |
+| hiring/23-interview-completed.png | HIRE-008 | Mark INT-000002 Completed | 2026-11-19 | rec-s11b-feedback-results | element |
+| hiring/23b-interview-selected.png | HIRE-008 | Mark INT-000002 Selected | 2026-11-19 | rec-s11b-feedback-results | element |
+| hiring/24-interviews-closed.png | HIRE-007 | Closed interviews, result waiting | 2026-11-19 | rec-s11b-feedback-results | viewport |
+| hiring/25-offer-form.png | HIRE-010 | Record offer | 2026-11-19 | rec-s11c-offer | element |
+| hiring/26-offer-recorded.png | HIRE-010 | Offer recorded, Offer Pending | 2026-11-19 | rec-s11c-offer | element |
+| hiring/27-offer-status.png | HIRE-010 | Change offer status to Accepted | 2026-11-19 | rec-s11c-offer | element |
+| hiring/28-offer-accepted.png | HIRE-010 | Offer accepted; joining created | 2026-11-19 | rec-s11c-offer | element |
+| hiring/29-offers.png | HIRE-010 | Sidebar Offers: older Offer Management page | 2026-11-19 | rec-s11c-offer | viewport |
+| interviewer/01-my-interviews-upcoming.png | INT-001 | Interviewer: upcoming | 2026-11-19 | rec-s11a-schedule-interviews | viewport |
+| interviewer/01b-my-interviews-past.png | INT-001 | Interviewer: past (state prepared by data setup) | 2026-11-19 | rec-s11b-feedback-results | viewport |
+| interviewer/02-feedback-form.png | INT-002 | Feedback form | 2026-11-19 | rec-s11b-feedback-results | element |
+| interviewer/03-feedback-submitted.png | INT-002 | Feedback saved | 2026-11-19 | rec-s11b-feedback-results | element |
+| hr-manager/04-result-approvals.png | HRM-002 | Result approvals: 2 waiting | 2026-11-19 | rec-s11b-feedback-results | viewport |
+| hr-manager/05-publish-result.png | HRM-002 | Message and Publish result | 2026-11-19 | rec-s11b-feedback-results | element |
+| hr-manager/06-results-published.png | HRM-002 | Published results | 2026-11-19 | rec-s11b-feedback-results | viewport |
+| admin/21-result-release.png | ADM-006 | How results are released (Super Admin) | 2026-11-19 | rec-s11b-feedback-results | element |
+| candidate-portal/15-interviews-upcoming.png | CAND-007 | Nisha's interview schedule | 2026-11-19 | rec-s11a-schedule-interviews | viewport |
+| candidate-portal/16-my-results.png | CAND-007 | My results: Not selected | 2026-11-19 | rec-s11b-feedback-results | viewport |
+| candidate-portal/17-interviews-after.png | CAND-007 | Interview schedule after the result | 2026-11-19 | rec-s11b-feedback-results | viewport |
+| hr/01-job-requirements.png | HR-001 | HR Job Requirements | 2026-11-19 | rec-s11b-feedback-results | viewport |
+| hr/02-shortlists.png | HR-001 | HR Requirement Shortlists | 2026-11-19 | rec-s11b-feedback-results | viewport |
+| hr/03-candidate-database.png | HR-002 | HR Candidate Database (IT students) | 2026-11-19 | rec-s11b-feedback-results | viewport |
+| hr/04-interviews.png | HR-002 | HR Interviews | 2026-11-19 | rec-s11b-feedback-results | viewport |
+| hr/05-placement-reports.png | HR-003 | HR Placement Reports (before the offer) | 2026-11-19 | rec-s11b-feedback-results | viewport |

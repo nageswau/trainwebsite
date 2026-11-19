@@ -12,7 +12,8 @@
 | S8 Candidates | DONE 2026-11-19 | (this commit) | Specs `rec-s8a-add-candidates` (Recruiter A adds Docs Candidate Kiran CAN-000002 and Meena CAN-000003; a second person with Kiran's mobile is blocked), `rec-s8b-candidate-page` (Kiran: edit + education, source details, verify, outreach Consented by phone call, skills Python/Docs FastAPI/SQL, tag Docs Immediate joiner, resume v1 (generated PDF), Experience letter requested + certificate uploaded, placement officer Docs Placement Officer + collaborator Docs Recruiter B, call, email, WhatsApp (recorded), LinkedIn, note, task; Meena archived and restored), `rec-s8c-import-duplicates` (4 extracted skills saved; import of 4 rows: Ravi CAN-000004 and a second Kiran CAN-000005 added, Meena matched, 1 error; Team Lead merges CAN-000005 into CAN-000002), `rec-s8d-it-student-pool` (Docs IT Lead Arjun joins the pool, CAN-000006, Unassigned; Team Lead assigns him to Recruiter A from the Unassigned Queue) and `rec-s8e-candidate-portal` (Docs Candidate Nisha, @example.com, applies to REQ-000005 on /it/careers, tracks it, registers with the same email, verifies via Mailpit, saves her profile, requests an email change (link not opened); CAN-000007, routed to Recruiter A, on Website registrations). 64 PNGs (candidates 01–44, student 01–08, candidate-portal 01–10). Findings P13–P15. Snapshots `after-rec-s8a`, `after-rec-s8b`, `after-rec-s8c`, `after-rec-s8d`, `after-rec-s8`. |
 | S9 Search and pools | DONE 2026-11-19 | (this commit) | Spec `rec-s9a-search-pools`: Recruiter A searches Python (must) + Docs FastAPI (nice), refines by the 1–3 years band, resume search `"REST APIs" FastAPI`, saves the shared search "Docs Python + FastAPI, Hyderabad", shortlists Docs Candidate Kiran into REQ-000005 and creates a bulk follow-up task; the Team Lead loads the shared search and exports CSV, opens pools and creates pool "Docs FastAPI developers"; Docs HR reads the Candidate Master, Kiran's page, Find Candidates and pools. Share selected not used (profile sharing in the hiring sessions). 19 PNGs (search 01–20, no 11). Finding P16. Snapshot `after-rec-s9`. |
 | S10 Hiring A | DONE 2026-11-19 | (this commit) | Spec `rec-s10a-hiring`: Docs Candidate Nisha applies to REQ-000005 from the portal (JA-000003, Sourced, source Candidate portal); Recruiter A moves her to Screened; creates the screening form from "Docs Python developer screening", records Kiran's session (Pass 13/15) and checklist (Result Shortlisted); shares Kiran by email, named, with Docs Priya HR Lead (SUB-000001, Kiran → Profile Shared); records the response (Shortlisted, Interested, acknowledged); saves match weights (Python 10, min Intermediate) which flags both applications Needs review; confirms Kiran's review (Nisha left Needs review). Nisha's My applications shows Screening. 19 PNGs (hiring 01–15, candidate-portal 11–14). Finding P17. Snapshot `after-rec-s10`. |
-| S11–S18 | not started | | |
+| S11 Hiring B | DONE 2026-11-19 | (this commit) | Specs `rec-s11a-schedule-interviews` (Technical Round INT-000002 for Kiran, HR Round INT-000003 for Nisha after confirming her review, Docs Interviewer on both panels, Nisha's rescheduled 15:00→16:00, Team Lead automation saved), SQL `s11-backdate.sql` (both interviews moved one day back so their time has passed; labelled "state prepared by data setup"), `rec-s11b-feedback-results` (interviewer feedback: Kiran 5/5 Strongly recommend, Nisha 2/5 Do not recommend; Recruiter A: Completed then Selected / Rejected; HR Manager publishes both results with messages; Nisha sees Not selected; Super Admin release setting viewed; HR read-only screens) and `rec-s11c-offer` (Kiran set Selected, offer INR 8,50,000 recorded, letter uploaded, Accepted → joining Pending created). 32 PNGs. Findings P18–P20. Snapshots `after-rec-s11a`, `after-rec-s11a-backdated`, `after-rec-s11b`, `after-rec-s11`. |
+| S12–S18 | not started | | |
 
 ## Owner decisions
 - R1 Scope: core hiring flow first (Phase 1); vendors, campus, receivables, targets/daily plans/activity reports, business dashboards, insights and report libraries in Phase 2.
@@ -37,10 +38,11 @@
 | DOC-REC-CO-010..014, DASH-001, DASH-002 | DONE (S6) |
 | DOC-REC-CO-015 | DONE (S6); a step turning into a follow-up is shown in S15 |
 | DOC-REC-REQ-001..010, PO-001, HRM-001 | DONE (S7) |
-| DOC-REC-ADM-006 | PARTIAL: approval sources (S7); automatic result release in S11, retention rule in S13 |
+| DOC-REC-ADM-006 | PARTIAL: approval sources (S7), result release (S11); retention rule in S13 |
 | DOC-REC-CAN-001..012, CAN-014, STU-001/002, CAND-001..004 | DONE (S8) |
 | DOC-REC-SRCH-001..005, HR-006 | DONE (S9) |
 | DOC-REC-HIRE-001..005, CAND-005/006 | DONE (S10) |
+| DOC-REC-HIRE-006..010, INT-001/002, HRM-002, CAND-007, HR-001..003 | DONE (S11) |
 | Others | not started |
 
 ## Planned link targets (keep these file names)
@@ -63,3 +65,5 @@
 - Docs Candidate Kiran is shortlisted on REQ-000005 from Find Candidates (S9); the hiring sessions continue from there.
 - Saving match weights flags existing applications **Needs review** (eligibility change) until each is confirmed (S10).
 - Sharing a profile moves the application to **Profile Shared** and sets a client follow-up two days later (S10).
+- An interview decision becomes a result held from the candidate until the HR Manager publishes it; Selected selects the application only on a Final or Client round (S11).
+- Accepting an offer creates the joining record (Pending) at once (S11).
