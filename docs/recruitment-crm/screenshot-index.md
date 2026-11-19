@@ -248,3 +248,22 @@ Path: `screenshots/<module>/<file>.png`. Captured by the spec named in each row 
 | search/16-hr-candidate-page.png | HR-006 | HR candidate page, read only | 2026-11-19 | rec-s9a-search-pools | viewport |
 | search/17-hr-find-candidates.png | HR-006 | HR search results, View profile only | 2026-11-19 | rec-s9a-search-pools | element |
 | search/18-hr-pools.png | HR-006 | HR talent pools | 2026-11-19 | rec-s9a-search-pools | viewport |
+| hiring/01-candidates.png | HIRE-001 | Candidates (2) on REQ-000005 | 2026-11-19 | rec-s10a-hiring | element |
+| hiring/02-change-status.png | HIRE-001 | Change status: Nisha to Screened | 2026-11-19 | rec-s10a-hiring | element |
+| hiring/03-history.png | HIRE-001 | Nisha's application history | 2026-11-19 | rec-s10a-hiring | element |
+| hiring/04-screening-form.png | HIRE-003 | Screening form from the Docs template | 2026-11-19 | rec-s10a-hiring | element |
+| hiring/05-screening-session.png | HIRE-003 | Recording Kiran's screening session | 2026-11-19 | rec-s10a-hiring | element |
+| hiring/06-screening-checklist.png | HIRE-003 | Screening checklist | 2026-11-19 | rec-s10a-hiring | element |
+| hiring/07-matching.png | HIRE-002 | Matching candidates | 2026-11-19 | rec-s10a-hiring | element |
+| hiring/08-adjust-weights.png | HIRE-002 | Adjust weights | 2026-11-19 | rec-s10a-hiring | element |
+| hiring/09-share-form.png | HIRE-004 | Share 1 profile by email | 2026-11-19 | rec-s10a-hiring | element |
+| hiring/10-shared-profiles.png | HIRE-005 | Shared profiles: SUB-000001 Submitted | 2026-11-19 | rec-s10a-hiring | element |
+| hiring/11-client-response.png | HIRE-005 | Update submission | 2026-11-19 | rec-s10a-hiring | element |
+| hiring/12-response-recorded.png | HIRE-005 | Response: Interested | 2026-11-19 | rec-s10a-hiring | element |
+| hiring/13-candidates-after.png | HIRE-005 | Kiran Profile Shared | 2026-11-19 | rec-s10a-hiring | element |
+| hiring/14-weights-saved.png | HIRE-002 | Weights saved | 2026-11-19 | rec-s10a-hiring | element |
+| hiring/15-needs-review.png | HIRE-001 | Applications need review | 2026-11-19 | rec-s10a-hiring | element |
+| candidate-portal/11-jobs-recommended.png | CAND-005 | Jobs: no recommendations yet | 2026-11-19 | rec-s10a-hiring | viewport |
+| candidate-portal/12-all-open-jobs.png | CAND-005 | All open jobs | 2026-11-19 | rec-s10a-hiring | viewport |
+| candidate-portal/13-applied.png | CAND-005 | Applied · JA-000003 · Received | 2026-11-19 | rec-s10a-hiring | element |
+| candidate-portal/14-my-applications.png | CAND-006 | My applications | 2026-11-19 | rec-s10a-hiring | viewport |

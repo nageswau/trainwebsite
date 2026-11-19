@@ -34,6 +34,7 @@ Select **Submit application**: **Application submitted for Docs Python Developer
 ## Tips
 - Keep the tracking code: it is needed to [track the application](cand-002-track.md).
 - The applicant joins the Candidate Master and appears on the recruiters' [Website registrations](../candidates/can-014-website-registrations.md), assigned by the routing rules.
+- The application does **not** appear on the requirement's candidate list or in the candidate's portal **My applications**: a recruiter must add the person to the requirement (finding P17). Candidates with an account should apply from the portal instead ([Jobs for you](cand-005-jobs-apply.md)).
 - Use an address that can receive mail; EduSphere refuses addresses ending in `.test`.
 
 ## Related Features
