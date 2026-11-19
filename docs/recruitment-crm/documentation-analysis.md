@@ -301,3 +301,6 @@ Records:
 - **P10** (S6) Imported companies are unassigned; the Team Lead must assign each one from its company page (no bulk assign on the import result).
 - **P11** (S6) The message composer locks **To** while it is open. Choosing a recipient after opening a composer has no effect, which is easy to miss.
 - **P12** (S7) On Add job requirement, **Hiring manager** searches EduSphere staff accounts (only Docs Interviewer was offered), not the company's contacts; the client's person goes in **Decision-maker**. The two labels are easy to confuse.
+- **P13** (S8) Candidate email fields (Add candidate, careers apply, registration) refuse addresses ending in `.test` with "Enter a valid email address", while staff and IT student accounts use `.test`. Not a defect for real use; noted because test data must use another domain.
+- **P14** (S8) Profile completeness item **Contact verified** (10%) is met only when the candidate verifies their own email in the candidate portal. A recruiter's **Verify details** does not count, so recruiter-added candidates stop at 90%.
+- **P15** (S8) Resume extraction filed "REST APIs" from a Python resume under the **Java Technologies** category, and new extracted skills start ticked, so saving without checking adds a mis-categorised skill.

@@ -44,7 +44,7 @@
 - [x] **S5 — Companies A.** CO-001..009 (Docs Acme Technologies, Docs Beta Systems).
 - [x] **S6 — Companies B.** CO-010..015, DASH-001/002 (first look).
 - [x] **S7 — Job requirements.** REQ-001..010, PO-001, HRM-001 (approval), ADM-006 (approval sources).
-- [ ] **S8 — Candidates.** CAN-001..012, CAN-014, STU-001/002, CAND-001..004. The external candidate registers, and Docs IT Lead Arjun joins the pool.
+- [x] **S8 — Candidates.** CAN-001..012, CAN-014, STU-001/002, CAND-001..004. The external candidate registers, and Docs IT Lead Arjun joins the pool.
 - [ ] **S9 — Search and pools.** SRCH-001..005, HR-006.
 - [ ] **S10 — Hiring A.** HIRE-001..005, CAND-005/006 (apply, applications).
 - [ ] **S11 — Hiring B.** HIRE-006..010, INT-001/002, HRM-002, CAND-007, HR-001..003.

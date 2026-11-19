@@ -165,3 +165,67 @@ Path: `screenshots/<module>/<file>.png`. Captured by the spec named in each row 
 | hr-manager/01-vacancy-approvals.png | HRM-001 | Vacancy approvals queue | 2026-11-19 | rec-s7b-requirement-page | viewport |
 | hr-manager/02-vacancy-rejected.png | HRM-001 | REQ-000005 rejected | 2026-11-19 | rec-s7b-requirement-page | viewport |
 | hr-manager/03-vacancy-approve.png | HRM-001 | Approving with a note | 2026-11-19 | rec-s7b-requirement-page | viewport |
+| candidates/01-candidates-empty.png | CAN-001 | Candidate Master, empty | 2026-11-19 | rec-s8a-add-candidates | viewport |
+| candidates/02-add-candidate-form.png | CAN-002 | Add candidate form: Docs Candidate Kiran | 2026-11-19 | rec-s8a-add-candidates | full page |
+| candidates/03-candidate-created.png | CAN-002 | CAN-000002 created | 2026-11-19 | rec-s8a-add-candidates | viewport |
+| candidates/04-duplicate-blocked.png | CAN-002 | Same mobile: already a candidate | 2026-11-19 | rec-s8a-add-candidates | viewport |
+| candidates/05-candidate-page-full.png | CAN-003 | New candidate page, all cards | 2026-11-19 | rec-s8a-add-candidates | full page |
+| candidates/06-candidates-list.png | CAN-001 | Recruiter list with Kiran and Meena | 2026-11-19 | rec-s8a-add-candidates | viewport |
+| candidates/07-candidate-page.png | CAN-003 | Candidate page header | 2026-11-19 | rec-s8b-candidate-page | viewport |
+| candidates/08-edit-candidate.png | CAN-003 | Edit with education | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/09-source-details-form.png | CAN-010 | Edit source details | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/10-outreach-consented.png | CAN-010 | Outreach: Consented, how and when | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/11-source-and-outreach.png | CAN-010 | Permission to represent recorded | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/12-add-skill.png | CAN-005 | Add skill: Python, primary | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/13-skills.png | CAN-005 | Skills table | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/14-tags.png | CAN-005 | Tags saved | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/15-resume.png | CAN-006 | Resume version 1 | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/15b-resume-review.png | CAN-006 | Review extracted details | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/16-documents.png | CAN-007 | Requested and uploaded documents | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/17-change-ownership.png | CAN-004 | Change ownership | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/18-ownership.png | CAN-004 | Ownership updated | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/19-log-call.png | CAN-009 | Log a call | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/20-send-email.png | CAN-009 | Send email | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/21-whatsapp-confirm.png | CAN-009 | WhatsApp: record as sent | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/22-calls.png | CAN-009 | Calls | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/23-messages.png | CAN-009 | Messages: email, WhatsApp, LinkedIn | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/24-notes.png | CAN-008 | Notes | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/25-add-task.png | CAN-008 | Add task | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/26-profile-complete.png | CAN-003 | Profile 90% complete | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/27-timeline.png | CAN-008 | Timeline | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/28-change-history.png | CAN-008 | Change history | 2026-11-19 | rec-s8b-candidate-page | element |
+| candidates/29-archived.png | CAN-003 | Meena archived | 2026-11-19 | rec-s8b-candidate-page | viewport |
+| candidates/30-archived-list.png | CAN-003 | Show archived only | 2026-11-19 | rec-s8b-candidate-page | viewport |
+| candidates/31-review-extracted.png | CAN-006 | Extracted skills ticked | 2026-11-19 | rec-s8c-import-duplicates | element |
+| candidates/32-skills-after-resume.png | CAN-006 | Skills after saving extracted | 2026-11-19 | rec-s8c-import-duplicates | element |
+| candidates/33-import-form.png | CAN-011 | Import form | 2026-11-19 | rec-s8c-import-duplicates | viewport |
+| candidates/34-import-preview.png | CAN-011 | Checked rows | 2026-11-19 | rec-s8c-import-duplicates | element |
+| candidates/35-import-result.png | CAN-011 | Import result | 2026-11-19 | rec-s8c-import-duplicates | element |
+| candidates/36-past-imports.png | CAN-011 | Past imports | 2026-11-19 | rec-s8c-import-duplicates | element |
+| candidates/37-duplicate-review.png | CAN-012 | Duplicate review queue | 2026-11-19 | rec-s8c-import-duplicates | viewport |
+| candidates/38-duplicate-compare.png | CAN-012 | Merge CAN-000005 into CAN-000002: compare | 2026-11-19 | rec-s8c-import-duplicates | full page |
+| candidates/39-duplicate-merged.png | CAN-012 | Merged | 2026-11-19 | rec-s8c-import-duplicates | viewport |
+| candidates/39b-merged-tab.png | CAN-012 | Merged tab | 2026-11-19 | rec-s8c-import-duplicates | viewport |
+| candidates/41-candidates-team-lead.png | CAN-001 | Team Lead Candidate Master | 2026-11-19 | rec-s8c-import-duplicates | viewport |
+| candidates/42-unassigned-queue.png | CAN-013 | Unassigned Queue: Arjun | 2026-11-19 | rec-s8d-it-student-pool | viewport |
+| candidates/43-assign-primary.png | CAN-013 | Assign primary recruiter | 2026-11-19 | rec-s8d-it-student-pool | element |
+| candidates/44-website-registrations.png | CAN-014 | New website registrations: Nisha | 2026-11-19 | rec-s8e-candidate-portal | viewport |
+| student/01-placement-status-before.png | STU-001 | Placement Status before joining | 2026-11-19 | rec-s8d-it-student-pool | viewport |
+| student/02-join-pool.png | STU-001 | Join the pool with consent | 2026-11-19 | rec-s8d-it-student-pool | element |
+| student/03-in-the-pool.png | STU-001 | In the placement pool | 2026-11-19 | rec-s8d-it-student-pool | viewport |
+| student/04-recruiter-search.png | STU-002 | Recruiter finds Arjun | 2026-11-19 | rec-s8d-it-student-pool | viewport |
+| student/05-team-lead-search.png | STU-002 | Team Lead finds Arjun | 2026-11-19 | rec-s8d-it-student-pool | viewport |
+| student/06-student-candidate-page.png | STU-002 | Arjun's candidate page | 2026-11-19 | rec-s8d-it-student-pool | viewport |
+| student/07-journey.png | STU-002 | Journey | 2026-11-19 | rec-s8d-it-student-pool | element |
+| student/08-training-progress.png | STU-002 | Training progress | 2026-11-19 | rec-s8d-it-student-pool | element |
+| candidate-portal/01-careers.png | CAND-001 | Careers page | 2026-11-19 | rec-s8e-candidate-portal | full page |
+| candidate-portal/02-apply-form.png | CAND-001 | Apply for Docs Python Developer | 2026-11-19 | rec-s8e-candidate-portal | element |
+| candidate-portal/03-application-sent.png | CAND-001 | Application submitted with tracking code | 2026-11-19 | rec-s8e-candidate-portal | viewport |
+| candidate-portal/04-track-application.png | CAND-002 | Track an application | 2026-11-19 | rec-s8e-candidate-portal | viewport |
+| candidate-portal/05-register.png | CAND-003 | Create a candidate account | 2026-11-19 | rec-s8e-candidate-portal | viewport |
+| candidate-portal/06-check-email.png | CAND-003 | Check your inbox | 2026-11-19 | rec-s8e-candidate-portal | viewport |
+| candidate-portal/07-verify-email.png | CAND-003 | Verify your email | 2026-11-19 | rec-s8e-candidate-portal | viewport |
+| candidate-portal/07b-email-verified.png | CAND-003 | Email verified | 2026-11-19 | rec-s8e-candidate-portal | viewport |
+| candidate-portal/08-portal-profile.png | CAND-004 | Candidate profile | 2026-11-19 | rec-s8e-candidate-portal | full page |
+| candidate-portal/09-profile-saved.png | CAND-004 | Profile saved | 2026-11-19 | rec-s8e-candidate-portal | viewport |
+| candidate-portal/10-change-email.png | CAND-004 | Change my email | 2026-11-19 | rec-s8e-candidate-portal | element |

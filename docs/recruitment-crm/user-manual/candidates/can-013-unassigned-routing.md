@@ -1,5 +1,5 @@
 # Unassigned queue and routing rules
-> Doc ID: DOC-REC-CAN-013 · Verified on 2026-11-18 against `main` @ `6b61546c` (routing rules). Unassigned queue: added in session S8 · Roles: Team Lead
+> Doc ID: DOC-REC-CAN-013 · Verified on 2026-11-18 (routing rules) and 2026-11-19 (unassigned queue) against `main` @ `6b61546c` · Roles: Team Lead
 
 ## Purpose
 Give every candidate who applies or registers on the website a primary recruiter automatically, and catch the ones no rule fits.
@@ -29,7 +29,12 @@ Under **Add a rule** choose the **Rule type** (**Candidate source**, **Skill cat
 Select **Delete** on the rule and confirm. The message **Rule deleted.** appears (from code; not captured).
 
 ### Step 4 — The unassigned queue
-VERIFICATION REQUIRED — captured in session S8.
+Sidebar **Unassigned Queue** opens the Candidate Master with **Owner = Unassigned** (`/recruiter/candidates?owner=unassigned`): candidates with no primary recruiter. With the Website rule in place, Docs Candidate Nisha went straight to Docs Recruiter A ([Website registrations](can-014-website-registrations.md)). Docs IT Lead Arjun, who joined from the [IT student opt-in](../student/stu-001-join-pool.md), arrived with **Unassigned** as primary recruiter.
+![Unassigned queue](../../screenshots/candidates/42-unassigned-queue.png)
+
+### Step 5 — Give the candidate a primary recruiter
+Open the candidate, select **Change ownership**, pick the **Primary recruiter** (here Docs Recruiter A) and **Save ownership**: **Ownership updated.** The candidate leaves the queue.
+![Assign a primary recruiter](../../screenshots/candidates/43-assign-primary.png)
 
 ## Validation Messages
 | Message | When |
@@ -37,6 +42,8 @@ VERIFICATION REQUIRED — captured in session S8.
 | Routing settings saved. | Settings saved |
 | Rule added. | Rule added |
 | Choose a recruiter. | No recruiter picked (from code; not captured) |
+| Ownership updated. | Primary recruiter given |
 
 ## Related Features
 - [Website registrations](can-014-website-registrations.md)
+- [Ownership](can-004-ownership.md)

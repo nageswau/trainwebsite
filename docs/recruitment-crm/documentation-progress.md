@@ -9,7 +9,8 @@
 | S5 Companies A | DONE 2026-11-18 | (this commit) | Specs `rec-s5a-companies` (Team Lead adds industry Docs IT Services; Recruiter A adds Docs Acme Technologies CMP-000006 with contact Docs Priya HR Lead, and Docs Beta Systems CMP-000007) and `rec-s5b-company-page` (Acme: edit, contact Docs Rahul Hiring Manager, duplicate warning, call, follow-up, meeting MTG-000001, contract Proposal Sent 8.33%/90 days (terms only), email/WhatsApp (recorded)/LinkedIn, reply; Beta archived by A and restored by the Team Lead). 28 PNGs. Snapshots `after-rec-s5a`, `after-rec-s5`. |
 | S6 Companies B | DONE 2026-11-19 | (this commit) | Specs `rec-s6a-pipeline` (Beta: Research Completed → Outreach Sent → back, lost, Team Lead reopens, inactive, Team Lead reopens; Acme: company profile PDF linked to MTG-000001; pipeline board; recruiter and Team Lead dashboards) and `rec-s6b-import-merge-cadence` (Team Lead imports 5 rows: Docs Gamma Labs CMP-000008 with 2 contacts, Docs Gamma Labs Pvt Ltd CMP-000009, an Acme match, an error row; merges CMP-000009 and contact Docs Kiran R into Docs Kiran Talent Lead; assigns Gamma to Recruiter A; adds cadence Docs No-reply follow-up (Day 0 Email, 3 LinkedIn, 7 Call), which Recruiter A starts on an email to Kiran). 31 PNGs (companies 32–58, dashboard 05–08). Findings P8–P11. Snapshots `after-rec-s6a`, `after-rec-s6`. |
 | S7 Job requirements | DONE 2026-11-19 | (this commit) | Specs `rec-s7a-add-requirement` (Recruiter A adds Docs Python Developer REQ-000005 for Docs Acme, decision-maker Docs Rahul) and `rec-s7b-requirement-page` (Super Admin turns Recruiter jobs approval on; A submits, Docs HR Manager rejects, A resubmits, HRM approves; setting back to default off; edit expected joining date; JD-000001 v1 form, v2 openings 3 applied to the requirement, v3 PDF upload; checklist 6 Confirmed / Commercial terms Missing / Joining N/A; task Prepare the sourcing plan done; sourcing plan 20/10/5 with Naukri Boolean string; owners Docs Placement Officer (PO owner) and Docs Recruiter B (collaborator); On Hold by A, back to Requirement Received by the Placement Officer; Team Lead visibility Segment → Candidate portal → Public website; commercial terms viewed only (R3)). 35 PNGs (requirements 01–31, hr-manager 01–03, admin 20). Finding P12. Snapshots `after-rec-s7a`, `after-rec-s7`. |
-| S8–S18 | not started | | |
+| S8 Candidates | DONE 2026-11-19 | (this commit) | Specs `rec-s8a-add-candidates` (Recruiter A adds Docs Candidate Kiran CAN-000002 and Meena CAN-000003; a second person with Kiran's mobile is blocked), `rec-s8b-candidate-page` (Kiran: edit + education, source details, verify, outreach Consented by phone call, skills Python/Docs FastAPI/SQL, tag Docs Immediate joiner, resume v1 (generated PDF), Experience letter requested + certificate uploaded, placement officer Docs Placement Officer + collaborator Docs Recruiter B, call, email, WhatsApp (recorded), LinkedIn, note, task; Meena archived and restored), `rec-s8c-import-duplicates` (4 extracted skills saved; import of 4 rows: Ravi CAN-000004 and a second Kiran CAN-000005 added, Meena matched, 1 error; Team Lead merges CAN-000005 into CAN-000002), `rec-s8d-it-student-pool` (Docs IT Lead Arjun joins the pool, CAN-000006, Unassigned; Team Lead assigns him to Recruiter A from the Unassigned Queue) and `rec-s8e-candidate-portal` (Docs Candidate Nisha, @example.com, applies to REQ-000005 on /it/careers, tracks it, registers with the same email, verifies via Mailpit, saves her profile, requests an email change (link not opened); CAN-000007, routed to Recruiter A, on Website registrations). 64 PNGs (candidates 01–44, student 01–08, candidate-portal 01–10). Findings P13–P15. Snapshots `after-rec-s8a`, `after-rec-s8b`, `after-rec-s8c`, `after-rec-s8d`, `after-rec-s8`. |
+| S9–S18 | not started | | |
 
 ## Owner decisions
 - R1 Scope: core hiring flow first (Phase 1); vendors, campus, receivables, targets/daily plans/activity reports, business dashboards, insights and report libraries in Phase 2.
@@ -28,13 +29,14 @@
 | DOC-REC-DASH-003..005 | DONE (S3, figures from seed data) |
 | DOC-REC-MST-001..006 | DONE (S4) |
 | DOC-REC-ADM-007, ADM-008 | DONE (S4) |
-| DOC-REC-CAN-013 | PARTIAL: routing rules (S4); unassigned queue in S8 |
+| DOC-REC-CAN-013 | DONE (routing rules S4, unassigned queue S8) |
 | DOC-REC-CO-001..006, CO-008, CO-009 | DONE (S5) |
 | DOC-REC-CO-007 | PARTIAL: scheduling (S5); outcome in S15 |
 | DOC-REC-CO-010..014, DASH-001, DASH-002 | DONE (S6) |
 | DOC-REC-CO-015 | DONE (S6); a step turning into a follow-up is shown in S15 |
 | DOC-REC-REQ-001..010, PO-001, HRM-001 | DONE (S7) |
 | DOC-REC-ADM-006 | PARTIAL: approval sources (S7); automatic result release in S11, retention rule in S13 |
+| DOC-REC-CAN-001..012, CAN-014, STU-001/002, CAND-001..004 | DONE (S8) |
 | Others | not started |
 
 ## Planned link targets (keep these file names)
@@ -51,3 +53,6 @@
 - Reopening returns a lost or inactive company to the stage it was at (S6).
 - Marking a requirement checklist item **Missing** adds a follow-up with the requirement's decision-maker, due in two days (S7).
 - Saving a requirement creates two tasks for its owner: Prepare the sourcing plan (1 day) and Screen the first shortlisted profiles (3 days) (S7).
+- Candidate emails refuse addresses ending in `.test` (manual add and public forms); the Docs candidates use `@example.com` (S8).
+- A public application and a later account with the same email share one candidate record (Nisha, CAN-000007) (S8).
+- An IT student who joins the pool arrives with no primary recruiter when no routing rule matches (source Edusphere students) (S8).
