@@ -300,3 +300,4 @@ Records:
 - **P9** (S6) Only the Team Lead can reopen a lost or inactive company. Once a recruiter marks their company lost, they see no action on the Pipeline card and must ask the Team Lead.
 - **P10** (S6) Imported companies are unassigned; the Team Lead must assign each one from its company page (no bulk assign on the import result).
 - **P11** (S6) The message composer locks **To** while it is open. Choosing a recipient after opening a composer has no effect, which is easy to miss.
+- **P12** (S7) On Add job requirement, **Hiring manager** searches EduSphere staff accounts (only Docs Interviewer was offered), not the company's contacts; the client's person goes in **Decision-maker**. The two labels are easy to confuse.

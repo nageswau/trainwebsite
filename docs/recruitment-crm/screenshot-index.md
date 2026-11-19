@@ -130,3 +130,38 @@ Path: `screenshots/<module>/<file>.png`. Captured by the spec named in each row 
 | companies/56-start-cadence.png | CO-015 | Start a cadence on an email | 2026-11-19 | rec-s6b-import-merge-cadence | element |
 | companies/57-cadence-running.png | CO-015 | Cadence step 1 of 3 running | 2026-11-19 | rec-s6b-import-merge-cadence | element |
 | companies/58-assign-imported-company.png | CO-012 | Team Lead assigns Gamma to Recruiter A | 2026-11-19 | rec-s6b-import-merge-cadence | element |
+| admin/20-approval-sources.png | ADM-006 | Super Admin turns on approval for recruiter jobs | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/01-requirements-empty.png | REQ-001 | Recruiter list, empty | 2026-11-19 | rec-s7a-add-requirement | viewport |
+| requirements/02-add-requirement-form.png | REQ-002 | Add job requirement form filled in | 2026-11-19 | rec-s7a-add-requirement | full page |
+| requirements/03-requirement-page.png | REQ-002 | Requirement REQ-000005 created | 2026-11-19 | rec-s7a-add-requirement | viewport |
+| requirements/04-requirement-page-full.png | REQ-003 | Requirement page, all cards | 2026-11-19 | rec-s7a-add-requirement | full page |
+| requirements/05-requirements-list.png | REQ-001 | Recruiter list with REQ-000005 | 2026-11-19 | rec-s7a-add-requirement | viewport |
+| requirements/06-edit-requirement.png | REQ-003 | Edit details | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/07-create-jd.png | REQ-004 | Create JD form | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/08-update-from-jd.png | REQ-004 | Update requirement from JD (2 → 3 vacancies) | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/09-jd-versions.png | REQ-004 | JD-000001 with 3 versions | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/10-checklist.png | REQ-005 | Validation checklist 7 of 8 settled | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/11-tasks.png | REQ-005 | Tasks, one done | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/12-sourcing-plan-form.png | REQ-006 | Sourcing plan form | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/13-sourcing-plan.png | REQ-006 | Sourcing plan saved, results by source | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/14-add-owner.png | REQ-009 | Add Placement officer owner | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/15-owners.png | REQ-009 | Owners: primary, placement officer, collaborator | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/16-ownership-history.png | REQ-009 | Ownership history | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/17-commercial-terms.png | REQ-010 | Commercial terms (Recruiter) | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/18-change-status.png | REQ-003 | Change status to On Hold | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/19-status-history.png | REQ-003 | Status history (Placement Officer view) | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/20-submit-for-approval.png | REQ-007 | Submit for approval | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/21-pending-approval.png | REQ-007 | Sent for approval | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/22-approval-rejected.png | REQ-007 | Approval card after rejection | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/23-approved.png | REQ-007 | Status history after approval | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/24-po-requirements.png | PO-001 | Placement Officer list | 2026-11-19 | rec-s7b-requirement-page | viewport |
+| requirements/25-po-requirement-page.png | PO-001 | Placement Officer requirement page | 2026-11-19 | rec-s7b-requirement-page | viewport |
+| requirements/26-po-change-status.png | PO-001 | Placement Officer changes status | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/27-visibility-segment.png | REQ-008 | Visibility: Segment needs a talent pool | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/28-visibility-saved.png | REQ-008 | Visibility saved: Candidate portal | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/29-assignment.png | REQ-009 | Team Lead Assignment card | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/30-commercial-terms-team-lead.png | REQ-010 | Commercial terms (Team Lead) | 2026-11-19 | rec-s7b-requirement-page | element |
+| requirements/31-requirements-team-lead.png | REQ-001 | Team Lead list with Recruiter filter | 2026-11-19 | rec-s7b-requirement-page | viewport |
+| hr-manager/01-vacancy-approvals.png | HRM-001 | Vacancy approvals queue | 2026-11-19 | rec-s7b-requirement-page | viewport |
+| hr-manager/02-vacancy-rejected.png | HRM-001 | REQ-000005 rejected | 2026-11-19 | rec-s7b-requirement-page | viewport |
+| hr-manager/03-vacancy-approve.png | HRM-001 | Approving with a note | 2026-11-19 | rec-s7b-requirement-page | viewport |
