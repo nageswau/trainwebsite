@@ -13,12 +13,15 @@
 | S9 Search and pools | DONE 2026-11-19 | (this commit) | Spec `rec-s9a-search-pools`: Recruiter A searches Python (must) + Docs FastAPI (nice), refines by the 1–3 years band, resume search `"REST APIs" FastAPI`, saves the shared search "Docs Python + FastAPI, Hyderabad", shortlists Docs Candidate Kiran into REQ-000005 and creates a bulk follow-up task; the Team Lead loads the shared search and exports CSV, opens pools and creates pool "Docs FastAPI developers"; Docs HR reads the Candidate Master, Kiran's page, Find Candidates and pools. Share selected not used (profile sharing in the hiring sessions). 19 PNGs (search 01–20, no 11). Finding P16. Snapshot `after-rec-s9`. |
 | S10 Hiring A | DONE 2026-11-19 | (this commit) | Spec `rec-s10a-hiring`: Docs Candidate Nisha applies to REQ-000005 from the portal (JA-000003, Sourced, source Candidate portal); Recruiter A moves her to Screened; creates the screening form from "Docs Python developer screening", records Kiran's session (Pass 13/15) and checklist (Result Shortlisted); shares Kiran by email, named, with Docs Priya HR Lead (SUB-000001, Kiran → Profile Shared); records the response (Shortlisted, Interested, acknowledged); saves match weights (Python 10, min Intermediate) which flags both applications Needs review; confirms Kiran's review (Nisha left Needs review). Nisha's My applications shows Screening. 19 PNGs (hiring 01–15, candidate-portal 11–14). Finding P17. Snapshot `after-rec-s10`. |
 | S11 Hiring B | DONE 2026-11-19 | (this commit) | Specs `rec-s11a-schedule-interviews` (Technical Round INT-000002 for Kiran, HR Round INT-000003 for Nisha after confirming her review, Docs Interviewer on both panels, Nisha's rescheduled 15:00→16:00, Team Lead automation saved), SQL `s11-backdate.sql` (both interviews moved one day back so their time has passed; labelled "state prepared by data setup"), `rec-s11b-feedback-results` (interviewer feedback: Kiran 5/5 Strongly recommend, Nisha 2/5 Do not recommend; Recruiter A: Completed then Selected / Rejected; HR Manager publishes both results with messages; Nisha sees Not selected; Super Admin release setting viewed; HR read-only screens) and `rec-s11c-offer` (Kiran set Selected, offer INR 8,50,000 recorded, letter uploaded, Accepted → joining Pending created). 32 PNGs. Findings P18–P20. Snapshots `after-rec-s11a`, `after-rec-s11a-backdated`, `after-rec-s11b`, `after-rec-s11`. |
-| S12–S18 | not started | | |
+| S12 Joining and placement | DONE 2026-11-19 | (this commit) | Specs `rec-s12a-joining` (candidate and client confirmations recorded; Kiran Joined 19 Nov 2026 with a joining proof; placement Joined, guarantee 90 days to 17 Feb 2027, invoice draft ₹70,805 created) and `rec-s12b-placement-views` (invoice draft viewed; Discard draft and Record dropout opened and cancelled; Issue invoice never clicked; Satisfaction card). Owner decisions D1/D2 below. 14 PNGs (hiring 30–43). Finding P21. Snapshots `after-rec-s12a`, `after-rec-s12`. |
+| S13–S18 | not started | | |
 
 ## Owner decisions
 - R1 Scope: core hiring flow first (Phase 1); vendors, campus, receivables, targets/daily plans/activity reports, business dashboards, insights and report libraries in Phase 2.
 - R2 Phase 1 also covers the candidate portal, the IT student opt-in and the recruitment-related admin set-up.
 - R3 Placements are closed for real (invoice draft shown); no money, payment, invoice issue or receivable is ever recorded.
+- D1 (2026-11-19, S12) Dropout documented **form only**: Record dropout opened and cancelled, so Kiran stays a successful placement for the later sessions.
+- D2 (2026-11-19, S12) Invoice draft **kept**: Discard draft opened and cancelled; Issue invoice never clicked (R3).
 - Stack: `itcdocs` only (web 3060, api 8060, Mailpit 127.0.0.1:8032), starting from the IT Counselor set's `after-s10` snapshot.
 
 ## Feature status
@@ -43,6 +46,8 @@
 | DOC-REC-SRCH-001..005, HR-006 | DONE (S9) |
 | DOC-REC-HIRE-001..005, CAND-005/006 | DONE (S10) |
 | DOC-REC-HIRE-006..010, INT-001/002, HRM-002, CAND-007, HR-001..003 | DONE (S11) |
+| DOC-REC-HIRE-011..015 | DONE (S12; HIRE-015 dropout form only, D1) |
+| DOC-REC-HIRE-016 | PARTIAL: card before sending (S12); sending and responses in S15 |
 | Others | not started |
 
 ## Planned link targets (keep these file names)
@@ -67,3 +72,4 @@
 - Sharing a profile moves the application to **Profile Shared** and sets a client follow-up two days later (S10).
 - An interview decision becomes a result held from the candidate until the HR Manager publishes it; Selected selects the application only on a Final or Client round (S11).
 - Accepting an offer creates the joining record (Pending) at once (S11).
+- Joining as Joined starts the guarantee (from the contract), creates the invoice draft (fee × package) and schedules the surveys 30 days later (S12).

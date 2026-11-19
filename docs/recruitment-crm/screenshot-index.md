@@ -299,3 +299,17 @@ Path: `screenshots/<module>/<file>.png`. Captured by the spec named in each row 
 | hr/03-candidate-database.png | HR-002 | HR Candidate Database (IT students) | 2026-11-19 | rec-s11b-feedback-results | viewport |
 | hr/04-interviews.png | HR-002 | HR Interviews | 2026-11-19 | rec-s11b-feedback-results | viewport |
 | hr/05-placement-reports.png | HR-003 | HR Placement Reports (before the offer) | 2026-11-19 | rec-s11b-feedback-results | viewport |
+| hiring/30-joinings-due.png | HIRE-012 | Joinings: Joining due | 2026-11-19 | rec-s12a-joining | viewport |
+| hiring/31-placements-pending.png | HIRE-013 | Placements: Joining pending | 2026-11-19 | rec-s12a-joining | viewport |
+| hiring/32-placement-pending.png | HIRE-013 | Placement before joining | 2026-11-19 | rec-s12a-joining | full page |
+| hiring/33-record-confirmation.png | HIRE-013 | Record candidate confirmation | 2026-11-19 | rec-s12a-joining | element |
+| hiring/34-update-joining.png | HIRE-011 | Update joining: Joined | 2026-11-19 | rec-s12a-joining | element |
+| hiring/35-joined.png | HIRE-011 | Joined, proof uploaded | 2026-11-19 | rec-s12a-joining | element |
+| hiring/36-placement-joined.png | HIRE-013 | Placement after joining | 2026-11-19 | rec-s12a-joining | full page |
+| hiring/37-joinings-joined.png | HIRE-012 | Joinings: Joined | 2026-11-19 | rec-s12a-joining | viewport |
+| hiring/38-placements-invoice-drafts.png | HIRE-014 | Placements: Invoice drafts | 2026-11-19 | rec-s12b-placement-views | viewport |
+| hiring/39-invoice-draft.png | HIRE-014 | Invoice draft to review (view only) | 2026-11-19 | rec-s12b-placement-views | element |
+| hiring/40-discard-draft-form.png | HIRE-014 | Discard draft form (cancelled) | 2026-11-19 | rec-s12b-placement-views | element |
+| hiring/41-guarantee.png | HIRE-015 | Replacement guarantee: in guarantee | 2026-11-19 | rec-s12b-placement-views | element |
+| hiring/42-record-dropout-form.png | HIRE-015 | Record dropout form (cancelled) | 2026-11-19 | rec-s12b-placement-views | element |
+| hiring/43-satisfaction.png | HIRE-016 | Satisfaction before sending | 2026-11-19 | rec-s12b-placement-views | element |
