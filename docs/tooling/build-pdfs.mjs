@@ -5,6 +5,7 @@
 //   node docs/tooling/build-pdfs.mjs telecaller -> Telecaller CRM, output docs/telecaller-crm/pdf/*.pdf
 //   node docs/tooling/build-pdfs.mjs bdm      -> BDM CRM, output docs/bdm-crm/pdf/*.pdf
 //   node docs/tooling/build-pdfs.mjs counselor -> Counselor CRM, output docs/counselor-crm/pdf/*.pdf
+//   node docs/tooling/build-pdfs.mjs it-counselor -> IT Counselor CRM, output docs/it-counselor-crm/pdf/*.pdf
 // DOCS_WEB_DIR overrides where @playwright/test is resolved from (default apps/web; a fresh worktree has no node_modules).
 // Intermediate HTML goes to <output>/.build/ (git-ignored by <output>/.gitignore).
 import { execFileSync } from "node:child_process";
@@ -16,14 +17,15 @@ const SCHOOL = process.argv[2] === "school";
 const TELECALLER = process.argv[2] === "telecaller";
 const BDM = process.argv[2] === "bdm";
 const COUNSELOR = process.argv[2] === "counselor";
-const ROOT = path.resolve(SCHOOL ? "docs/school-crm" : TELECALLER ? "docs/telecaller-crm" : BDM ? "docs/bdm-crm" : COUNSELOR ? "docs/counselor-crm" : "docs");
+const IT_COUNSELOR = process.argv[2] === "it-counselor";
+const ROOT = path.resolve(SCHOOL ? "docs/school-crm" : TELECALLER ? "docs/telecaller-crm" : BDM ? "docs/bdm-crm" : COUNSELOR ? "docs/counselor-crm" : IT_COUNSELOR ? "docs/it-counselor-crm" : "docs");
 const OUT = path.join(ROOT, "pdf");
 const BUILD = path.join(OUT, ".build");
 mkdirSync(BUILD, { recursive: true });
 writeFileSync(path.join(OUT, ".gitignore"), ".build/\n");
 
 const md = (dir) => readdirSync(path.join(ROOT, dir)).filter((f) => /^[a-z0-9]+-\d{3}-.*\.md$/.test(f)).sort().map((f) => `${dir}/${f}`);
-const PREFIX = SCHOOL ? "EduSphere School CRM — " : TELECALLER ? "EduSphere Overseas Telecaller CRM — " : BDM ? "EduSphere Overseas BDM CRM — " : COUNSELOR ? "EduSphere Overseas Counselor CRM — " : "EduSphere Agent CRM — ";
+const PREFIX = SCHOOL ? "EduSphere School CRM — " : TELECALLER ? "EduSphere Overseas Telecaller CRM — " : BDM ? "EduSphere Overseas BDM CRM — " : COUNSELOR ? "EduSphere Overseas Counselor CRM — " : IT_COUNSELOR ? "EduSphere IT Counselor CRM — " : "EduSphere Agent CRM — ";
 const UM = ["account-access", "dashboard", "students", "universities", "applications", "documents", "tasks", "notifications", "commissions", "reports", "team", "staff-performance"];
 const SCHOOL_UM = ["account-access", "dashboards", "students", "team", "transfers", "activities", "academic-team", "portfolio",
   "career-counselor", "psychometric-team", "student-360", "reports", "entitlements", "notifications", "parent"];
@@ -57,7 +59,16 @@ const COUNSELOR_BOOKS = () => [
   { file: "EduSphere-Counselor-CRM-FAQ-and-Troubleshooting", title: "EduSphere Overseas Counselor CRM — FAQ and Troubleshooting", subtitle: "Answers and fixes based on verified behaviour", pages: ["faq.md", "troubleshooting.md"] },
   { file: "EduSphere-Counselor-CRM-Documentation-Plan", title: "EduSphere Overseas Counselor CRM — Documentation Analysis and Plan", subtitle: "Scope, features, roles, product findings and capture sessions (planning stage, not browser-verified)", pages: ["documentation-analysis.md", "documentation-plan.md"], tocDepth: 2, dateLabel: "Planned" },
 ];
-const BOOKS = SCHOOL ? SCHOOL_BOOKS() : TELECALLER ? TELECALLER_BOOKS() : BDM ? BDM_BOOKS() : COUNSELOR ? COUNSELOR_BOOKS() : AGENT_BOOKS();
+const ITC_UM = ["account-access", "navigation", "dashboard", "appointments", "timetable", "notifications", "tasks", "leads", "conversion", "students",
+  "notes", "fees", "resume"];
+const ITC_AM = ["admin", "handoffs"];
+const IT_COUNSELOR_BOOKS = () => [
+  { file: "EduSphere-IT-Counselor-CRM-User-Manual", title: "EduSphere IT Counselor CRM — User Manual", subtitle: "For IT counselors: leads, conversion, students, fees, resume and HR", pages: ["user-manual/README.md", ...ITC_UM.flatMap((d) => md(`user-manual/${d}`))] },
+  { file: "EduSphere-IT-Counselor-CRM-Admin-Manual", title: "EduSphere IT Counselor CRM — Administrator Manual", subtitle: "For the IT Admin, with the hand-offs to telecallers, students and HR", pages: ["admin-manual/README.md", ...ITC_AM.flatMap((d) => md(`admin-manual/${d}`))] },
+  { file: "EduSphere-IT-Counselor-CRM-Role-Guides", title: "EduSphere IT Counselor CRM — Role Quick-Start Guides", subtitle: "IT Counselor · IT Admin", pages: ["role-guides/it-counselor.md", "role-guides/it-admin-counselors.md", "demo-accounts.md"] },
+  { file: "EduSphere-IT-Counselor-CRM-FAQ-and-Troubleshooting", title: "EduSphere IT Counselor CRM — FAQ and Troubleshooting", subtitle: "Answers and fixes based on verified behaviour", pages: ["faq.md", "troubleshooting.md"] },
+];
+const BOOKS = SCHOOL ? SCHOOL_BOOKS() : TELECALLER ? TELECALLER_BOOKS() : BDM ? BDM_BOOKS() : COUNSELOR ? COUNSELOR_BOOKS() : IT_COUNSELOR ? IT_COUNSELOR_BOOKS() : AGENT_BOOKS();
 const bookOf = (rel) => BOOKS.find((b) => b.pages.includes(rel));
 const anchor = (rel) => "p-" + rel.replace(/\.md$/, "").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
 

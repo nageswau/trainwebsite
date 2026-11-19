@@ -9,6 +9,8 @@ const ROOT = path.resolve(__dirname, "../../../../docs/screenshots");
 export const SCHOOL_ROOT = path.resolve(__dirname, "../../../../docs/school-crm/screenshots");
 // Overseas Counselor CRM set (docs/counselor-crm/documentation-plan.md S2.2): pass `root: COUNSELOR_ROOT` to shoot().
 export const COUNSELOR_ROOT = path.resolve(__dirname, "../../../../docs/counselor-crm/screenshots");
+// IT Counselor CRM set (docs/it-counselor-crm/documentation-plan.md S2): pass `root: ITC_ROOT` to shoot().
+export const ITC_ROOT = path.resolve(__dirname, "../../../../docs/it-counselor-crm/screenshots");
 
 // Every capture masks password inputs and the dev-only "Demo accounts" / "Demo super admin" cards (they print the demo password).
 // `center`: scroll that element to the middle of the viewport first (messages below a long form).
