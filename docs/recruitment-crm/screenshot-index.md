@@ -229,3 +229,22 @@ Path: `screenshots/<module>/<file>.png`. Captured by the spec named in each row 
 | candidate-portal/08-portal-profile.png | CAND-004 | Candidate profile | 2026-11-19 | rec-s8e-candidate-portal | full page |
 | candidate-portal/09-profile-saved.png | CAND-004 | Profile saved | 2026-11-19 | rec-s8e-candidate-portal | viewport |
 | candidate-portal/10-change-email.png | CAND-004 | Change my email | 2026-11-19 | rec-s8e-candidate-portal | element |
+| search/01-find-candidates.png | SRCH-001 | Find Candidates, empty | 2026-11-19 | rec-s9a-search-pools | viewport |
+| search/02-skills-entered.png | SRCH-001 | Must have Python, nice to have Docs FastAPI | 2026-11-19 | rec-s9a-search-pools | element |
+| search/03-results.png | SRCH-001 | Results with Why matched | 2026-11-19 | rec-s9a-search-pools | element |
+| search/04-refined.png | SRCH-002 | Refined by the 1–3 years band, sorted by matching skills | 2026-11-19 | rec-s9a-search-pools | viewport |
+| search/05-resume-search.png | SRCH-002 | Resume search with From the resume | 2026-11-19 | rec-s9a-search-pools | element |
+| search/06-save-search.png | SRCH-003 | Save this search, shared with the team | 2026-11-19 | rec-s9a-search-pools | element |
+| search/07-saved-search-loaded.png | SRCH-003 | Saved search loaded | 2026-11-19 | rec-s9a-search-pools | element |
+| search/08-selected.png | SRCH-004 | Selection bar | 2026-11-19 | rec-s9a-search-pools | element |
+| search/09-shortlisted.png | SRCH-004 | Kiran shortlisted into REQ-000005 | 2026-11-19 | rec-s9a-search-pools | element |
+| search/10-assign-task.png | SRCH-004 | Assign a task to the selection | 2026-11-19 | rec-s9a-search-pools | element |
+| search/12-export.png | SRCH-003 | Team Lead results with Export CSV / Excel | 2026-11-19 | rec-s9a-search-pools | element |
+| search/13-talent-pools.png | SRCH-005 | Talent pools (Team Lead) | 2026-11-19 | rec-s9a-search-pools | viewport |
+| search/14-pool-page.png | SRCH-005 | Experienced Professionals pool | 2026-11-19 | rec-s9a-search-pools | viewport |
+| search/19-new-pool.png | SRCH-005 | New talent pool form | 2026-11-19 | rec-s9a-search-pools | element |
+| search/20-new-pool-created.png | SRCH-005 | Docs FastAPI developers pool | 2026-11-19 | rec-s9a-search-pools | viewport |
+| search/15-hr-candidates.png | HR-006 | HR Candidate Master | 2026-11-19 | rec-s9a-search-pools | viewport |
+| search/16-hr-candidate-page.png | HR-006 | HR candidate page, read only | 2026-11-19 | rec-s9a-search-pools | viewport |
+| search/17-hr-find-candidates.png | HR-006 | HR search results, View profile only | 2026-11-19 | rec-s9a-search-pools | element |
+| search/18-hr-pools.png | HR-006 | HR talent pools | 2026-11-19 | rec-s9a-search-pools | viewport |
